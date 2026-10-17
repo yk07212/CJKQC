@@ -1,0 +1,248 @@
+{
+  "rq-0df0a5df": {
+    "decl": "### Executable",
+    "file": "scaffolding",
+    "level": 3,
+    "refs": [],
+    "title": "Executable",
+    "type": "section"
+  },
+  "rq-0e05c3af": {
+    "decl": "### Crate Layout",
+    "file": "scaffolding",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
+  "rq-1bbcf87c": {
+    "decl": "Scenario: --version prints the crate version",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--version prints the crate version",
+    "type": "scenario"
+  },
+  "rq-2072b6c4": {
+    "decl": "- `Cargo.toml` declares the package `complied-jkqc`, the `CJKQC` binary",
+    "file": "scaffolding",
+    "refs": [],
+    "title": "Cargo",
+    "type": "api-item"
+  },
+  "rq-22fd07a1": {
+    "decl": "Scenario: The test suite passes on the scaffolded crate",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The test suite passes on the scaffolded crate",
+    "type": "scenario"
+  },
+  "rq-2486bcc8": {
+    "decl": "Scenario: The build produces the exact executable name",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The build produces the exact executable name",
+    "type": "scenario"
+  },
+  "rq-486289b7": {
+    "decl": "# Feature: Project Scaffold and CJKQC Command Shell",
+    "file": "scaffolding",
+    "refs": [],
+    "title": "Feature: Project Scaffold and CJKQC Command Shell",
+    "type": "file"
+  },
+  "rq-56514e37": {
+    "decl": "## Feature API",
+    "file": "scaffolding",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-602d347c": {
+    "decl": "## Gherkin Scenarios",
+    "file": "scaffolding",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-6b872f89": {
+    "decl": "Scenario: No arguments is a usage error",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "No arguments is a usage error",
+    "type": "scenario"
+  },
+  "rq-72e0ded9": {
+    "decl": "Scenario: Help takes precedence over extra arguments",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Help takes precedence over extra arguments",
+    "type": "scenario"
+  },
+  "rq-843d152e": {
+    "decl": "Scenario: Short version flag behaves like --version",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Short version flag behaves like --version",
+    "type": "scenario"
+  },
+  "rq-899932a2": {
+    "decl": "- `CJKQC` — the only binary target of the crate `complied-jkqc`.",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "CJKQC",
+    "type": "api-item"
+  },
+  "rq-8c5e4002": {
+    "decl": "- `src/lib.rs` is the library target and contains only crate-level",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "src",
+    "type": "api-item"
+  },
+  "rq-953a8521": {
+    "decl": "Scenario: Version takes precedence over extra arguments",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Version takes precedence over extra arguments",
+    "type": "scenario"
+  },
+  "rq-bd59ba92": {
+    "decl": "Scenario: Help output advertises no domain flags",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Help output advertises no domain flags",
+    "type": "scenario"
+  },
+  "rq-be35a7b3": {
+    "decl": "Scenario: Positional arguments are a usage error",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Positional arguments are a usage error",
+    "type": "scenario"
+  },
+  "rq-c3792c41": {
+    "decl": "- `src/main.rs` holds the clap CLI definition and the stub error path.",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "src",
+    "type": "api-item"
+  },
+  "rq-e003541d": {
+    "decl": "Scenario: JKQC-style invocations are usage errors until domain flags exist",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "JKQC-style invocations are usage errors until domain flags exist",
+    "type": "scenario"
+  },
+  "rq-e1c51ff7": {
+    "decl": "Scenario: Short help flag behaves like --help",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Short help flag behaves like --help",
+    "type": "scenario"
+  },
+  "rq-e61c2633": {
+    "decl": "- `tests/` contains integration tests that run the built binary via the",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "tests",
+    "type": "api-item"
+  },
+  "rq-e71fbb0f": {
+    "decl": "## Out of Scope",
+    "file": "scaffolding",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
+  "rq-f9a3759e": {
+    "decl": "Scenario: --help prints usage",
+    "file": "scaffolding",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--help prints usage",
+    "type": "scenario"
+  }
+}

@@ -6,4 +6,11 @@ description = "A spiritual successor to JKQC from JKCS2.1: https://github.com/ku
 authors = ["YK <yosef@chem.au.dk>"]
 license = "MIT"
 
+# rq-2072b6c4
 [dependencies]
+clap = { version = "4", features = ["derive"] }
+
+# rq-2072b6c4
+[[bin]]
+name = "CJKQC"
+path = "src/main.rs"

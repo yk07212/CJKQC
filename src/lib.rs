@@ -1,39 +1,8 @@
-//! A spiritual successor to JKQC from JKCS2.1: https://github.com/kubeckaj/JKCS2.1/
+//! CJKQC — a spiritual successor to JKQC from JKCS2.1: a standalone tool for
+//! collecting, organizing, filtering, and post-processing quantum-chemistry
+//! output for molecular clusters (see `rqm/ARCHITECTURE.md`).
+//!
+//! Library target for unit and integration tests. Domain modules arrive with
+//! the milestones that implement them.
 
-/// Placeholder function to show example documentation and testing.
-///
-/// Replace this function and its documentation for your own project.
-///
-/// # Arguments
-///
-/// * `with_attribution` - Set whether or not to display who the quote is from.
-///
-/// # Returns
-///
-/// Compiled string including quote and optional attribution.
-///
-/// # Examples
-///
-/// ```
-/// let quote = complied_jkqc::canvas(false);
-/// assert!(quote.contains("canvas"));
-/// ```
-pub fn canvas(with_attribution: bool) -> String {
-    let mut quote = String::from("The code is but a canvas to our imagination.");
-    if with_attribution {
-        quote.push_str("\n\t- Adapted from Henry David Thoreau");
-    }
-    quote
-}
-
-#[cfg(test)]
-mod tests {
-    use super::canvas;
-
-    #[test]
-    fn canvas_without_attribution() {
-        let quote = canvas(false);
-        assert!(quote.contains("canvas to our imagination"));
-        assert!(!quote.contains("Thoreau"));
-    }
-}
+// rq-8c5e4002
