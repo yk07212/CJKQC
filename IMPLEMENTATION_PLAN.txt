@@ -22,6 +22,10 @@ Milestones
 2. Format detection + parser framework
    Content-based sniffing (never by extension); parser trait + registry;
    shared extractors; failed/truncated -> status records.
+   Note: plan a shared head+tail reader here — large outputs keep the
+   wanted data near the start and end; needs seekable files (full-read
+   fallback for pipes/stdin), and conformance fixtures must include
+   multi-job files and mid-file data so the windows stay honest.
 
 3. Parsers (conformance-driven, one rr-plan doc each, in this order)
    plain xyz -> XTB -> ORCA -> Gaussian -> MRCC.

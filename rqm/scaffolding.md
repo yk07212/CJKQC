@@ -34,22 +34,23 @@ library target for unit and integration tests alongside the binary.
 ### Crate Layout <!-- rq-0e05c3af -->
 
 - `Cargo.toml` declares the package `complied-jkqc`, the `CJKQC` binary <!-- rq-2072b6c4 -->
-  target, and a single dependency: `clap`. No other dependency is present;
-  `serde` and `serde_json` arrive with the record-schema milestone that uses
-  them.
+  target, and the dependencies `clap`, `serde`, and `serde_json`.
 - `src/main.rs` holds the clap CLI definition and the stub error path. <!-- rq-c3792c41 -->
-- `src/lib.rs` is the library target and contains only crate-level <!-- rq-8c5e4002 -->
-  documentation; no placeholder functions from the project template exist
-  anywhere in the crate, and no test references them.
-- `tests/` contains integration tests that run the built binary via the <!-- rq-e61c2633 -->
-  `CARGO_BIN_EXE_CJKQC` environment variable, without any extra
+- `src/lib.rs` is the library target: crate-level documentation, module <!-- rq-8c5e4002 -->
+  declarations for the domain modules, and re-exports of the record types.
+  No placeholder functions from the project template exist anywhere in the
+  crate, and no test references them.
+- `tests/` contains integration tests; the CLI tests run the built binary <!-- rq-e61c2633 -->
+  via the `CARGO_BIN_EXE_CJKQC` environment variable, and milestone features
+  add library-level integration tests alongside them, all without any extra
   dev-dependencies.
 
 ## Out of Scope <!-- rq-e71fbb0f -->
 
-- All domain functionality: parsing, database, filtering, thermochemistry,
-  export (milestones 1+ of the implementation plan).
-- The module map for later milestones (`record.rs`, `parser/`, `db.rs`, …);
+- All domain functionality beyond the scaffold: parsing, database,
+  filtering, thermochemistry, export (milestones 1+ of the implementation
+  plan).
+- The module map for later milestones (`parser/`, collection, export, …);
   each module is created by the milestone that requires it.
 - Any exit codes beyond the usage-error policy above.
 

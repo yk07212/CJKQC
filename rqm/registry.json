@@ -1,4 +1,56 @@
 {
+  "rq-009c7dab": {
+    "decl": "Scenario: Geometry serializes as parallel arrays",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Geometry serializes as parallel arrays",
+    "type": "scenario"
+  },
+  "rq-022a9f55": {
+    "decl": "### Types",
+    "file": "database",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
+  "rq-0ae95856": {
+    "decl": "# Feature: Record Schema of Primary Observables",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Record Schema of Primary Observables",
+    "type": "file"
+  },
+  "rq-0c3f8c54": {
+    "decl": "### Crate Layout",
+    "file": "database",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
+  "rq-0d722861": {
+    "decl": "Scenario: validate rejects a non-finite energy",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a non-finite energy",
+    "type": "scenario"
+  },
   "rq-0df0a5df": {
     "decl": "### Executable",
     "file": "scaffolding",
@@ -15,6 +67,54 @@
     "title": "Crate Layout",
     "type": "section"
   },
+  "rq-125f5313": {
+    "decl": "- `DbError` — error type for database operations:",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "DbError",
+    "type": "api-item"
+  },
+  "rq-13bcad95": {
+    "decl": "- `merge_databases(inputs: &[&Path], output: &Path) -> Result<MergeOutcome, DbError>`",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "merge_databases",
+    "type": "api-item"
+  },
+  "rq-15bf030c": {
+    "decl": "Scenario: Merge truncates an existing output",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge truncates an existing output",
+    "type": "scenario"
+  },
+  "rq-1736b3f9": {
+    "decl": "Scenario: A record that fails validation is skipped and reported",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record that fails validation is skipped and reported",
+    "type": "scenario"
+  },
   "rq-1bbcf87c": {
     "decl": "Scenario: --version prints the crate version",
     "file": "scaffolding",
@@ -25,6 +125,43 @@
       }
     ],
     "title": "--version prints the crate version",
+    "type": "scenario"
+  },
+  "rq-1d1a1d61": {
+    "decl": "## Database File Rules",
+    "file": "database",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Database File Rules",
+    "type": "section"
+  },
+  "rq-1d31610c": {
+    "decl": "- `Record::validate(&self) -> Result<(), RecordInvalidity>`",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Record",
+    "type": "api-item"
+  },
+  "rq-1d5bcfda": {
+    "decl": "Scenario: Append to a path with a missing parent directory fails",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Append to a path with a missing parent directory fails",
     "type": "scenario"
   },
   "rq-2072b6c4": {
@@ -46,6 +183,18 @@
     "title": "The test suite passes on the scaffolded crate",
     "type": "scenario"
   },
+  "rq-23fa0de7": {
+    "decl": "Scenario: Merge with a missing input writes nothing",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge with a missing input writes nothing",
+    "type": "scenario"
+  },
   "rq-2486bcc8": {
     "decl": "Scenario: The build produces the exact executable name",
     "file": "scaffolding",
@@ -58,12 +207,199 @@
     "title": "The build produces the exact executable name",
     "type": "scenario"
   },
+  "rq-26e2fe07": {
+    "decl": "Scenario: validate accepts a failed record with only status and error",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate accepts a failed record with only status and error",
+    "type": "scenario"
+  },
+  "rq-2a2407ed": {
+    "decl": "# Feature: Record Database (JSON Lines)",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Record Database (JSON Lines)",
+    "type": "file"
+  },
+  "rq-2bffd61d": {
+    "decl": "Scenario: Appended records round-trip",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Appended records round-trip",
+    "type": "scenario"
+  },
+  "rq-2c1dac26": {
+    "decl": "- `LoadOutcome` — `records: Vec<Record>` (valid records, in file order) and",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "LoadOutcome",
+    "type": "api-item"
+  },
+  "rq-2cc9076e": {
+    "decl": "- `load_database(path: &Path) -> Result<LoadOutcome, DbError>`",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "load_database",
+    "type": "api-item"
+  },
+  "rq-2ff394b0": {
+    "decl": "Scenario: A corrupt line is skipped and reported",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A corrupt line is skipped and reported",
+    "type": "scenario"
+  },
+  "rq-33d65b8c": {
+    "decl": "### Functions",
+    "file": "database",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
+  "rq-340e4add": {
+    "decl": "### Functions",
+    "file": "record",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
+  "rq-39867e78": {
+    "decl": "- `LoadProblem` — `line: usize` (1-based) and `reason: String`.",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "LoadProblem",
+    "type": "api-item"
+  },
+  "rq-3a147f99": {
+    "decl": "- `MergeOutcome` — `records: usize` (count written) and",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "MergeOutcome",
+    "type": "api-item"
+  },
+  "rq-3a6b7e46": {
+    "decl": "Scenario: validate rejects a gradient length that mismatches the geometry",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a gradient length that mismatches the geometry",
+    "type": "scenario"
+  },
+  "rq-41e77e57": {
+    "decl": "- `Cargo.toml` declares the `serde` and `serde_json` dependencies; no other",
+    "file": "record",
+    "refs": [],
+    "title": "Cargo",
+    "type": "api-item"
+  },
+  "rq-43be8f79": {
+    "decl": "- `Record` — one QC job's primary observables. Serializable to one line of",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Record",
+    "type": "api-item"
+  },
   "rq-486289b7": {
     "decl": "# Feature: Project Scaffold and CJKQC Command Shell",
     "file": "scaffolding",
     "refs": [],
     "title": "Feature: Project Scaffold and CJKQC Command Shell",
     "type": "file"
+  },
+  "rq-4dda3d71": {
+    "decl": "Scenario: Merging zero inputs creates an empty output",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merging zero inputs creates an empty output",
+    "type": "scenario"
+  },
+  "rq-4eefe504": {
+    "decl": "- `RecordInvalidity` — the reason a record fails validation. Variants:",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "RecordInvalidity",
+    "type": "api-item"
+  },
+  "rq-4f9a9a29": {
+    "decl": "## Feature API",
+    "file": "record",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-50bb7e83": {
+    "decl": "Scenario: A partially written last line is skipped and reported",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A partially written last line is skipped and reported",
+    "type": "scenario"
   },
   "rq-56514e37": {
     "decl": "## Feature API",
@@ -73,6 +409,31 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-58f8e962": {
+    "decl": "Scenario: Load returns all records in file order",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Load returns all records in file order",
+    "type": "scenario"
+  },
+  "rq-5e237eee": {
+    "decl": "## JSON Representation",
+    "file": "record",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "JSON Representation",
+    "type": "section"
+  },
   "rq-602d347c": {
     "decl": "## Gherkin Scenarios",
     "file": "scaffolding",
@@ -80,6 +441,42 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-61efc73e": {
+    "decl": "Scenario: Loading a missing file is an error",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Loading a missing file is an error",
+    "type": "scenario"
+  },
+  "rq-62bf0467": {
+    "decl": "Scenario: Merge to a path with a missing parent directory fails",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge to a path with a missing parent directory fails",
+    "type": "scenario"
+  },
+  "rq-636984f8": {
+    "decl": "Scenario: Round-trip a record with every observable set",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Round-trip a record with every observable set",
+    "type": "scenario"
   },
   "rq-6b872f89": {
     "decl": "Scenario: No arguments is a usage error",
@@ -93,6 +490,14 @@
     "title": "No arguments is a usage error",
     "type": "scenario"
   },
+  "rq-6bf96b51": {
+    "decl": "## Gherkin Scenarios",
+    "file": "record",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
   "rq-72e0ded9": {
     "decl": "Scenario: Help takes precedence over extra arguments",
     "file": "scaffolding",
@@ -103,6 +508,43 @@
       }
     ],
     "title": "Help takes precedence over extra arguments",
+    "type": "scenario"
+  },
+  "rq-72f50fe8": {
+    "decl": "## Canonical Units and Values",
+    "file": "record",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Canonical Units and Values",
+    "type": "section"
+  },
+  "rq-77c19ef4": {
+    "decl": "Scenario: A line with invalid UTF-8 is skipped and reported",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A line with invalid UTF-8 is skipped and reported",
+    "type": "scenario"
+  },
+  "rq-82900eac": {
+    "decl": "Scenario: Append seals a missing final newline",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Append seals a missing final newline",
     "type": "scenario"
   },
   "rq-843d152e": {
@@ -130,7 +572,7 @@
     "type": "api-item"
   },
   "rq-8c5e4002": {
-    "decl": "- `src/lib.rs` is the library target and contains only crate-level",
+    "decl": "- `src/lib.rs` is the library target: crate-level documentation, module",
     "file": "scaffolding",
     "refs": [
       {
@@ -140,6 +582,18 @@
     ],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-8f1add9c": {
+    "decl": "Scenario: Loading a directory is an error",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Loading a directory is an error",
+    "type": "scenario"
   },
   "rq-953a8521": {
     "decl": "Scenario: Version takes precedence over extra arguments",
@@ -153,6 +607,174 @@
     "title": "Version takes precedence over extra arguments",
     "type": "scenario"
   },
+  "rq-95c630bc": {
+    "decl": "Scenario: Merge concatenates inputs in order",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge concatenates inputs in order",
+    "type": "scenario"
+  },
+  "rq-96b8c74d": {
+    "decl": "- `MergeProblem` — `input: PathBuf`, `line: usize` (1-based), and",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "MergeProblem",
+    "type": "api-item"
+  },
+  "rq-97a677ce": {
+    "decl": "### Types",
+    "file": "record",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
+  "rq-9a96e81c": {
+    "decl": "### Crate Layout",
+    "file": "record",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
+  "rq-9b8f2e7b": {
+    "decl": "Scenario: A minimal record serializes to an exact canonical line",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A minimal record serializes to an exact canonical line",
+    "type": "scenario"
+  },
+  "rq-9c420eee": {
+    "decl": "Scenario: An unknown status value fails deserialization",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unknown status value fails deserialization",
+    "type": "scenario"
+  },
+  "rq-9f86cf20": {
+    "decl": "Scenario: Append with an invalid record writes nothing",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Append with an invalid record writes nothing",
+    "type": "scenario"
+  },
+  "rq-a0202680": {
+    "decl": "Scenario: validate rejects Mulliken charges that mismatch the geometry",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects Mulliken charges that mismatch the geometry",
+    "type": "scenario"
+  },
+  "rq-aeb0d510": {
+    "decl": "- `append_records(path: &Path, records: &[Record]) -> Result<(), DbError>`",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "append_records",
+    "type": "api-item"
+  },
+  "rq-af1baabc": {
+    "decl": "Scenario: validate rejects multiplicity zero",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects multiplicity zero",
+    "type": "scenario"
+  },
+  "rq-b032b41c": {
+    "decl": "Scenario: Merge can write onto an input path",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge can write onto an input path",
+    "type": "scenario"
+  },
+  "rq-b177c1e4": {
+    "decl": "Scenario: Appending zero records to a missing file creates nothing",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Appending zero records to a missing file creates nothing",
+    "type": "scenario"
+  },
+  "rq-b1b26ed5": {
+    "decl": "Scenario: Append preserves existing content",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Append preserves existing content",
+    "type": "scenario"
+  },
+  "rq-b2bab408": {
+    "decl": "Scenario: validate accepts a truncated record with partial observables",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate accepts a truncated record with partial observables",
+    "type": "scenario"
+  },
+  "rq-b9eeedfe": {
+    "decl": "## Feature API",
+    "file": "database",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
   "rq-bd59ba92": {
     "decl": "Scenario: Help output advertises no domain flags",
     "file": "scaffolding",
@@ -163,6 +785,18 @@
       }
     ],
     "title": "Help output advertises no domain flags",
+    "type": "scenario"
+  },
+  "rq-bdd60556": {
+    "decl": "Scenario: Merge skips and reports corrupt lines in inputs",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge skips and reports corrupt lines in inputs",
     "type": "scenario"
   },
   "rq-be35a7b3": {
@@ -177,6 +811,14 @@
     "title": "Positional arguments are a usage error",
     "type": "scenario"
   },
+  "rq-bed9e94b": {
+    "decl": "## Out of Scope",
+    "file": "record",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
   "rq-c3792c41": {
     "decl": "- `src/main.rs` holds the clap CLI definition and the stub error path.",
     "file": "scaffolding",
@@ -188,6 +830,82 @@
     ],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-c4aff078": {
+    "decl": "Scenario: validate rejects a geometry whose coordinates are not three per atom",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a geometry whose coordinates are not three per atom",
+    "type": "scenario"
+  },
+  "rq-c6367ec2": {
+    "decl": "## Gherkin Scenarios",
+    "file": "database",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-c8bfb90d": {
+    "decl": "Scenario: Absent observables are omitted, never null",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Absent observables are omitted, never null",
+    "type": "scenario"
+  },
+  "rq-cb5c083c": {
+    "decl": "Scenario: Blank lines are ignored",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Blank lines are ignored",
+    "type": "scenario"
+  },
+  "rq-d5e85a47": {
+    "decl": "Scenario: Unknown keys are ignored on read",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Unknown keys are ignored on read",
+    "type": "scenario"
+  },
+  "rq-d9b83cf2": {
+    "decl": "Scenario: validate rejects an empty geometry",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects an empty geometry",
+    "type": "scenario"
+  },
+  "rq-dfae85df": {
+    "decl": "## Out of Scope",
+    "file": "database",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
   },
   "rq-e003541d": {
     "decl": "Scenario: JKQC-style invocations are usage errors until domain flags exist",
@@ -201,6 +919,18 @@
     "title": "JKQC-style invocations are usage errors until domain flags exist",
     "type": "scenario"
   },
+  "rq-e17eea18": {
+    "decl": "- `Geometry` — a structure as parallel arrays.",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Geometry",
+    "type": "api-item"
+  },
   "rq-e1c51ff7": {
     "decl": "Scenario: Short help flag behaves like --help",
     "file": "scaffolding",
@@ -213,8 +943,20 @@
     "title": "Short help flag behaves like --help",
     "type": "scenario"
   },
+  "rq-e4fad868": {
+    "decl": "Scenario: Append creates a missing database",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Append creates a missing database",
+    "type": "scenario"
+  },
   "rq-e61c2633": {
-    "decl": "- `tests/` contains integration tests that run the built binary via the",
+    "decl": "- `tests/` contains integration tests; the CLI tests run the built binary",
     "file": "scaffolding",
     "refs": [
       {
@@ -233,6 +975,54 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-f0bf0879": {
+    "decl": "Scenario: An empty database loads as zero records",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An empty database loads as zero records",
+    "type": "scenario"
+  },
+  "rq-f8505d7b": {
+    "decl": "- `RecordStatus` — enum with variants `Ok`, `Failed`, `Truncated`, serialized",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "RecordStatus",
+    "type": "api-item"
+  },
+  "rq-f8d87123": {
+    "decl": "Scenario: A missing status key reads as ok",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing status key reads as ok",
+    "type": "scenario"
+  },
+  "rq-f9547ca9": {
+    "decl": "Scenario: validate rejects a failed record without an error message",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a failed record without an error message",
+    "type": "scenario"
+  },
   "rq-f9a3759e": {
     "decl": "Scenario: --help prints usage",
     "file": "scaffolding",
@@ -243,6 +1033,18 @@
       }
     ],
     "title": "--help prints usage",
+    "type": "scenario"
+  },
+  "rq-ffeb5456": {
+    "decl": "Scenario: validate accepts a gradient without a geometry",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate accepts a gradient without a geometry",
     "type": "scenario"
   }
 }

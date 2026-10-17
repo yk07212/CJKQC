@@ -9,6 +9,10 @@ license = "MIT"
 # rq-2072b6c4
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+# rq-41e77e57
+serde = { version = "1", features = ["derive"] }
+# rq-41e77e57
+serde_json = "1"
 
 # rq-2072b6c4
 [[bin]]

@@ -5,4 +5,8 @@
 //! Library target for unit and integration tests. Domain modules arrive with
 //! the milestones that implement them.
 
+pub mod db;
+pub mod record;
+
 // rq-8c5e4002
+pub use record::{Geometry, Record, RecordInvalidity, RecordStatus};
