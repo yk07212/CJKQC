@@ -1,0 +1,205 @@
+//! Shared extraction helpers: every per-format parser composes from these
+//! rather than duplicating logic — the Fortran-style float parser, the
+//! atomic-number-to-symbol map, and the columnar geometry-table reader
+//! shared by the plain-xyz, Gaussian, ORCA, and MRCC layouts.
+//!
+//! (rq-d59dac72)
+
+use crate::record::Geometry;
+
+/// The bohr-to-Ångström conversion constant (CODATA 2018), defined once:
+/// every Bohr-unit extraction converts through it.
+///
+/// (rq-0a70b97d)
+pub const BOHR_TO_ANGSTROM: f64 = 0.529177210903;
+
+/// Title-case element symbols for atomic numbers 1–118, in order.
+///
+/// (rq-295538b5 rq-0a70b97d)
+const ELEMENT_SYMBOLS: [&str; 118] = [
+    "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl",
+    "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As",
+    "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In",
+    "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb",
+    "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl",
+    "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk",
+    "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh",
+    "Fl", "Mc", "Lv", "Ts", "Og",
+];
+
+/// Maps an atomic number 1–118 to its title-case element symbol
+/// (`1` → `"H"`, `17` → `"Cl"`, `118` → `"Og"`); `None` outside that
+/// range.
+///
+/// (rq-295538b5)
+pub fn element_symbol(z: u32) -> Option<String> {
+    if z == 0 || z as usize > ELEMENT_SYMBOLS.len() {
+        return None;
+    }
+    Some(ELEMENT_SYMBOLS[(z - 1) as usize].to_string())
+}
+
+/// The canonical (title-case) symbol for a case-insensitive element
+/// symbol field; `None` when the field names no known element.
+///
+/// (rq-0a70b97d)
+fn element_from_symbol(field: &str) -> Option<&'static str> {
+    ELEMENT_SYMBOLS
+        .iter()
+        .find(|symbol| symbol.eq_ignore_ascii_case(field))
+        .copied()
+}
+
+/// Parses a decimal number accepting `e`, `E`, `d`, and `D` exponents
+/// (Fortran-style output, e.g. `1.2345678D-05`). Returns `None` for
+/// non-numeric or non-finite fields.
+///
+/// (rq-39759c8a)
+pub fn parse_fortran_f64(field: &str) -> Option<f64> {
+    if !field.contains(['d', 'D']) {
+        return field.parse::<f64>().ok().filter(|value| value.is_finite());
+    }
+    let normalized: String = field
+        .chars()
+        .map(|character| match character {
+            'd' => 'e',
+            'D' => 'E',
+            other => other,
+        })
+        .collect();
+    normalized
+        .parse::<f64>()
+        .ok()
+        .filter(|value| value.is_finite())
+}
+
+/// Which column of a geometry table carries the element, and how it is
+/// written: a column of element symbols (case-insensitive, normalized to
+/// title case) or a column of atomic numbers.
+///
+/// (rq-0a70b97d)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SymbolColumn {
+    /// A column of element symbols.
+    Symbol(usize),
+    /// A column of atomic numbers, mapped via `element_symbol`.
+    AtomicNumber(usize),
+}
+
+/// The length units a geometry table is written in.
+///
+/// (rq-0a70b97d)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LengthUnits {
+    /// Ångström — the record's canonical unit.
+    Angstrom,
+    /// Bohr — converted to Ångström with `BOHR_TO_ANGSTROM`.
+    Bohr,
+}
+
+/// Where the columns of a columnar geometry table live and how to read
+/// them.
+///
+/// (rq-0a70b97d)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TableSpec {
+    /// The column carrying the element.
+    pub symbol_column: SymbolColumn,
+    /// The x, y, z column indices.
+    pub coordinate_columns: [usize; 3],
+    /// The table's length units.
+    pub units: LengthUnits,
+    /// The exact row count the table must hold, when known.
+    pub expected_rows: Option<usize>,
+}
+
+/// Reads a columnar geometry block (the xyz-style table shared by the
+/// plain-xyz, Gaussian, ORCA, and MRCC layouts) from the lines that
+/// follow the block's header, returning the geometry in the record's
+/// canonical units.
+///
+/// A row is the line split on whitespace; it conforms when every
+/// referenced column exists, every referenced numeric field parses via
+/// `parse_fortran_f64`, and the symbol field is a known element; columns
+/// beyond the referenced ones are ignored. The first line that is not a
+/// row at all — a missing column or an unparsable coordinate — ends the
+/// table. Returns `None` when the table holds zero rows, when
+/// `expected_rows` is set and the row count found differs from it, or
+/// when the symbol column holds an unknown element: a table cut by a
+/// window boundary yields `None`, never a short geometry — the
+/// seam-honesty rule.
+///
+/// (rq-0a70b97d)
+pub fn read_geometry_table<'a, I>(lines: I, spec: &TableSpec) -> Option<Geometry>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let symbol_column = match spec.symbol_column {
+        SymbolColumn::Symbol(column) | SymbolColumn::AtomicNumber(column) => column,
+    };
+    let mut highest_column = symbol_column;
+    for &column in &spec.coordinate_columns {
+        highest_column = highest_column.max(column);
+    }
+
+    let mut symbols: Vec<String> = Vec::new();
+    let mut coordinates: Vec<f64> = Vec::new();
+
+    for line in lines {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() <= highest_column {
+            // a referenced column is missing: the table ends here
+            break;
+        }
+
+        let mut row = [0.0; 3];
+        let mut numeric = true;
+        for (index, &column) in spec.coordinate_columns.iter().enumerate() {
+            match parse_fortran_f64(fields[column]) {
+                Some(number) => row[index] = number,
+                None => {
+                    numeric = false;
+                    break;
+                }
+            }
+        }
+        if !numeric {
+            // a coordinate is not a number: the table ends here
+            break;
+        }
+
+        let symbol = match spec.symbol_column {
+            SymbolColumn::Symbol(column) => element_from_symbol(fields[column]).map(String::from),
+            SymbolColumn::AtomicNumber(column) => {
+                fields[column].parse::<u32>().ok().and_then(element_symbol)
+            }
+        };
+        let Some(symbol) = symbol else {
+            // row-shaped but the symbol column names no element: a cut
+            // or corrupted table, so the whole read fails
+            return None;
+        };
+
+        symbols.push(symbol);
+        coordinates.extend_from_slice(&row);
+    }
+
+    if symbols.is_empty() {
+        return None;
+    }
+    if let Some(expected) = spec.expected_rows {
+        if symbols.len() != expected {
+            return None;
+        }
+    }
+
+    if matches!(spec.units, LengthUnits::Bohr) {
+        for coordinate in &mut coordinates {
+            *coordinate *= BOHR_TO_ANGSTROM;
+        }
+    }
+    Some(Geometry {
+        symbols,
+        coordinates,
+    })
+}

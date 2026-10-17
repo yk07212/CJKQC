@@ -11,6 +11,18 @@
     "title": "Geometry serializes as parallel arrays",
     "type": "scenario"
   },
+  "rq-017a3a9c": {
+    "decl": "Scenario: Fortran float parsing rejects non-numeric and non-finite fields",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Fortran float parsing rejects non-numeric and non-finite fields",
+    "type": "scenario"
+  },
   "rq-022a9f55": {
     "decl": "### Types",
     "file": "database",
@@ -18,6 +30,30 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-033ff671": {
+    "decl": "Scenario: A file whose head matches a registered parser is parsed by it",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A file whose head matches a registered parser is parsed by it",
+    "type": "scenario"
+  },
+  "rq-0a70b97d": {
+    "decl": "- `read_geometry_table(lines, spec: &TableSpec) -> Option<Geometry>` — reads",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/extract.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "read_geometry_table",
+    "type": "api-item"
   },
   "rq-0ae95856": {
     "decl": "# Feature: Record Schema of Primary Observables",
@@ -31,6 +67,18 @@
     "title": "Feature: Record Schema of Primary Observables",
     "type": "file"
   },
+  "rq-0bd419c3": {
+    "decl": "Scenario: Streamed and seekable reads produce identical windows",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Streamed and seekable reads produce identical windows",
+    "type": "scenario"
+  },
   "rq-0c3f8c54": {
     "decl": "### Crate Layout",
     "file": "database",
@@ -38,6 +86,18 @@
     "refs": [],
     "title": "Crate Layout",
     "type": "section"
+  },
+  "rq-0cc3c80f": {
+    "decl": "- `Program` — the closed vocabulary of output formats: the variants",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Program",
+    "type": "api-item"
   },
   "rq-0d722861": {
     "decl": "Scenario: validate rejects a non-finite energy",
@@ -103,6 +163,31 @@
     "title": "Merge truncates an existing output",
     "type": "scenario"
   },
+  "rq-15f15563": {
+    "decl": "### Crate Layout",
+    "file": "parser-framework",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Crate Layout",
+    "type": "section"
+  },
+  "rq-16630511": {
+    "decl": "- `FileWindows` — the head and tail view of one file's content.",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/windows.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "FileWindows",
+    "type": "api-item"
+  },
   "rq-1736b3f9": {
     "decl": "Scenario: A record that fails validation is skipped and reported",
     "file": "database",
@@ -113,6 +198,18 @@
       }
     ],
     "title": "A record that fails validation is skipped and reported",
+    "type": "scenario"
+  },
+  "rq-18bc1945": {
+    "decl": "Scenario: Bohr coordinates are converted to Ångström",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Bohr coordinates are converted to Ångström",
     "type": "scenario"
   },
   "rq-1bbcf87c": {
@@ -164,12 +261,36 @@
     "title": "Append to a path with a missing parent directory fails",
     "type": "scenario"
   },
+  "rq-1fd7e03d": {
+    "decl": "Scenario: A signature beyond the head window is not detected",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A signature beyond the head window is not detected",
+    "type": "scenario"
+  },
   "rq-2072b6c4": {
     "decl": "- `Cargo.toml` declares the package `complied-jkqc`, the `CJKQC` binary",
     "file": "scaffolding",
     "refs": [],
     "title": "Cargo",
     "type": "api-item"
+  },
+  "rq-219164a5": {
+    "decl": "Scenario: The parser's status and error are preserved verbatim",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The parser's status and error are preserved verbatim",
+    "type": "scenario"
   },
   "rq-22fd07a1": {
     "decl": "Scenario: The test suite passes on the scaffolded crate",
@@ -218,6 +339,18 @@
     ],
     "title": "validate accepts a failed record with only status and error",
     "type": "scenario"
+  },
+  "rq-295538b5": {
+    "decl": "- `element_symbol(z: u32) -> Option<String>` — maps an atomic number",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/extract.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "element_symbol",
+    "type": "api-item"
   },
   "rq-2a2407ed": {
     "decl": "# Feature: Record Database (JSON Lines)",
@@ -279,6 +412,18 @@
     "title": "A corrupt line is skipped and reported",
     "type": "scenario"
   },
+  "rq-3172eb32": {
+    "decl": "Scenario: A large file yields disjoint line-aligned windows",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A large file yields disjoint line-aligned windows",
+    "type": "scenario"
+  },
   "rq-33d65b8c": {
     "decl": "### Functions",
     "file": "database",
@@ -295,6 +440,42 @@
     "title": "Functions",
     "type": "section"
   },
+  "rq-3562f71a": {
+    "decl": "Scenario: The first registered parser wins a signature conflict",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The first registered parser wins a signature conflict",
+    "type": "scenario"
+  },
+  "rq-383eea52": {
+    "decl": "Scenario: An atomic-number column maps to element symbols",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An atomic-number column maps to element symbols",
+    "type": "scenario"
+  },
+  "rq-39759c8a": {
+    "decl": "- `parse_fortran_f64(field: &str) -> Option<f64>` — parses a decimal number",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/extract.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_fortran_f64",
+    "type": "api-item"
+  },
   "rq-39867e78": {
     "decl": "- `LoadProblem` — `line: usize` (1-based) and `reason: String`.",
     "file": "database",
@@ -306,6 +487,18 @@
     ],
     "title": "LoadProblem",
     "type": "api-item"
+  },
+  "rq-39966431": {
+    "decl": "Scenario: Atomic numbers outside 1 to 118 map to nothing",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Atomic numbers outside 1 to 118 map to nothing",
+    "type": "scenario"
   },
   "rq-3a147f99": {
     "decl": "- `MergeOutcome` — `records: usize` (count written) and",
@@ -338,6 +531,18 @@
     "title": "Cargo",
     "type": "api-item"
   },
+  "rq-42e59efe": {
+    "decl": "# Feature: Format Detection and Parser Framework",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Format Detection and Parser Framework",
+    "type": "file"
+  },
   "rq-43be8f79": {
     "decl": "- `Record` — one QC job's primary observables. Serializable to one line of",
     "file": "record",
@@ -350,12 +555,64 @@
     "title": "Record",
     "type": "api-item"
   },
+  "rq-447f650f": {
+    "decl": "Scenario: A missing file is an Io error",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing file is an Io error",
+    "type": "scenario"
+  },
   "rq-486289b7": {
     "decl": "# Feature: Project Scaffold and CJKQC Command Shell",
     "file": "scaffolding",
     "refs": [],
     "title": "Feature: Project Scaffold and CJKQC Command Shell",
     "type": "file"
+  },
+  "rq-4aa069d5": {
+    "decl": "Scenario: last_line_where falls back to the head",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "last_line_where falls back to the head",
+    "type": "scenario"
+  },
+  "rq-4da7b314": {
+    "decl": "- `tests/parser.rs` exercises the framework through small in-test parser",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "tests",
+    "type": "api-item"
+  },
+  "rq-4dc770c8": {
+    "decl": "- `Parser` — the trait every output-format reader implements. The trait is",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Parser",
+    "type": "api-item"
   },
   "rq-4dda3d71": {
     "decl": "Scenario: Merging zero inputs creates an empty output",
@@ -409,6 +666,30 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-582aea7a": {
+    "decl": "Scenario: A row count below expected_rows yields None",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A row count below expected_rows yields None",
+    "type": "scenario"
+  },
+  "rq-58b86d07": {
+    "decl": "Scenario: An empty file yields a failed record",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An empty file yields a failed record",
+    "type": "scenario"
+  },
   "rq-58f8e962": {
     "decl": "Scenario: Load returns all records in file order",
     "file": "database",
@@ -419,6 +700,30 @@
       }
     ],
     "title": "Load returns all records in file order",
+    "type": "scenario"
+  },
+  "rq-5996dff9": {
+    "decl": "Scenario: Partial lines at the window seams are dropped",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Partial lines at the window seams are dropped",
+    "type": "scenario"
+  },
+  "rq-5ab5050d": {
+    "decl": "Scenario: A file within the window sizes is read whole",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A file within the window sizes is read whole",
     "type": "scenario"
   },
   "rq-5e237eee": {
@@ -478,6 +783,26 @@
     "title": "Round-trip a record with every observable set",
     "type": "scenario"
   },
+  "rq-662d12db": {
+    "decl": "Scenario: parse_windows stamps the program but not the identity",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_windows stamps the program but not the identity",
+    "type": "scenario"
+  },
+  "rq-6702f697": {
+    "decl": "## Gherkin Scenarios",
+    "file": "parser-framework",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
   "rq-6b872f89": {
     "decl": "Scenario: No arguments is a usage error",
     "file": "scaffolding",
@@ -496,6 +821,19 @@
     "level": 2,
     "refs": [],
     "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-6f803572": {
+    "decl": "## Window Contract",
+    "file": "parser-framework",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/parser/windows.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Window Contract",
     "type": "section"
   },
   "rq-72e0ded9": {
@@ -523,6 +861,18 @@
     "title": "Canonical Units and Values",
     "type": "section"
   },
+  "rq-761f2b95": {
+    "decl": "Scenario: Detection ignores the file name and extension",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Detection ignores the file name and extension",
+    "type": "scenario"
+  },
   "rq-77c19ef4": {
     "decl": "Scenario: A line with invalid UTF-8 is skipped and reported",
     "file": "database",
@@ -534,6 +884,18 @@
     ],
     "title": "A line with invalid UTF-8 is skipped and reported",
     "type": "scenario"
+  },
+  "rq-814d8aa2": {
+    "decl": "- `ParseError` — the error type of `parse_file`, with the single variant",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ParseError",
+    "type": "api-item"
   },
   "rq-82900eac": {
     "decl": "Scenario: Append seals a missing final newline",
@@ -695,6 +1057,38 @@
     "title": "validate rejects Mulliken charges that mismatch the geometry",
     "type": "scenario"
   },
+  "rq-a0dfc43a": {
+    "decl": "## Out of Scope",
+    "file": "parser-framework",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
+  "rq-a37342d6": {
+    "decl": "Scenario: The tail keeps the file's final unterminated line",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The tail keeps the file's final unterminated line",
+    "type": "scenario"
+  },
+  "rq-a7a34dab": {
+    "decl": "Scenario: An unregistered format yields a failed record",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unregistered format yields a failed record",
+    "type": "scenario"
+  },
   "rq-aeb0d510": {
     "decl": "- `append_records(path: &Path, records: &[Record]) -> Result<(), DbError>`",
     "file": "database",
@@ -706,6 +1100,18 @@
     ],
     "title": "append_records",
     "type": "api-item"
+  },
+  "rq-aeb8b3a8": {
+    "decl": "Scenario: A symbol table in Ångström parses to a Geometry",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A symbol table in Ångström parses to a Geometry",
+    "type": "scenario"
   },
   "rq-af1baabc": {
     "decl": "Scenario: validate rejects multiplicity zero",
@@ -755,6 +1161,18 @@
     "title": "Append preserves existing content",
     "type": "scenario"
   },
+  "rq-b28b6e69": {
+    "decl": "- `ParserRegistry` — the ordered set of parsers.",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ParserRegistry",
+    "type": "api-item"
+  },
   "rq-b2bab408": {
     "decl": "Scenario: validate accepts a truncated record with partial observables",
     "file": "record",
@@ -765,6 +1183,31 @@
       }
     ],
     "title": "validate accepts a truncated record with partial observables",
+    "type": "scenario"
+  },
+  "rq-b75cecef": {
+    "decl": "## Feature API",
+    "file": "parser-framework",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-b9209565": {
+    "decl": "Scenario: Atomic numbers map to title-case element symbols",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Atomic numbers map to title-case element symbols",
     "type": "scenario"
   },
   "rq-b9eeedfe": {
@@ -785,6 +1228,18 @@
       }
     ],
     "title": "Help output advertises no domain flags",
+    "type": "scenario"
+  },
+  "rq-bdb74057": {
+    "decl": "Scenario: Lines in the elided middle are invisible",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Lines in the elided middle are invisible",
     "type": "scenario"
   },
   "rq-bdd60556": {
@@ -809,6 +1264,18 @@
       }
     ],
     "title": "Positional arguments are a usage error",
+    "type": "scenario"
+  },
+  "rq-be817932": {
+    "decl": "Scenario: after_last_line_where stops at the window boundary",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "after_last_line_where stops at the window boundary",
     "type": "scenario"
   },
   "rq-bed9e94b": {
@@ -875,6 +1342,27 @@
     "title": "Blank lines are ignored",
     "type": "scenario"
   },
+  "rq-d0ee2621": {
+    "decl": "### Types",
+    "file": "parser-framework",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
+  "rq-d59dac72": {
+    "decl": "### Shared Extractors",
+    "file": "parser-framework",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/parser/extract.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Shared Extractors",
+    "type": "section"
+  },
   "rq-d5e85a47": {
     "decl": "Scenario: Unknown keys are ignored on read",
     "file": "record",
@@ -887,6 +1375,18 @@
     "title": "Unknown keys are ignored on read",
     "type": "scenario"
   },
+  "rq-d737472c": {
+    "decl": "Scenario: A table ends at its first non-row line",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A table ends at its first non-row line",
+    "type": "scenario"
+  },
   "rq-d9b83cf2": {
     "decl": "Scenario: validate rejects an empty geometry",
     "file": "record",
@@ -897,6 +1397,18 @@
       }
     ],
     "title": "validate rejects an empty geometry",
+    "type": "scenario"
+  },
+  "rq-dce37e6e": {
+    "decl": "Scenario: A parser record that fails validation is replaced",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A parser record that fails validation is replaced",
     "type": "scenario"
   },
   "rq-dfae85df": {
@@ -943,6 +1455,23 @@
     "title": "Short help flag behaves like --help",
     "type": "scenario"
   },
+  "rq-e4a815f2": {
+    "decl": "## Record Assembly",
+    "file": "parser-framework",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Record Assembly",
+    "type": "section"
+  },
   "rq-e4fad868": {
     "decl": "Scenario: Append creates a missing database",
     "file": "database",
@@ -975,6 +1504,42 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-e8bb37c3": {
+    "decl": "Scenario: Invalid UTF-8 bytes become replacement characters",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Invalid UTF-8 bytes become replacement characters",
+    "type": "scenario"
+  },
+  "rq-eb75bf8e": {
+    "decl": "Scenario: first_line_where prefers the match in the head",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "first_line_where prefers the match in the head",
+    "type": "scenario"
+  },
+  "rq-ed0686aa": {
+    "decl": "Scenario: Fortran float parsing accepts E, e, D, and d exponents",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Fortran float parsing accepts E, e, D, and d exponents",
+    "type": "scenario"
+  },
   "rq-f0bf0879": {
     "decl": "Scenario: An empty database loads as zero records",
     "file": "database",
@@ -985,6 +1550,30 @@
       }
     ],
     "title": "An empty database loads as zero records",
+    "type": "scenario"
+  },
+  "rq-f4a74fc9": {
+    "decl": "Scenario: last_line_where prefers the match in the tail",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "last_line_where prefers the match in the tail",
+    "type": "scenario"
+  },
+  "rq-f61c0532": {
+    "decl": "Scenario: Default windows cover every file of the fixture corpus",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Default windows cover every file of the fixture corpus",
     "type": "scenario"
   },
   "rq-f8505d7b": {
@@ -998,6 +1587,18 @@
     ],
     "title": "RecordStatus",
     "type": "api-item"
+  },
+  "rq-f87aad94": {
+    "decl": "Scenario: A directory is an Io error",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A directory is an Io error",
+    "type": "scenario"
   },
   "rq-f8d87123": {
     "decl": "Scenario: A missing status key reads as ok",
@@ -1033,6 +1634,30 @@
       }
     ],
     "title": "--help prints usage",
+    "type": "scenario"
+  },
+  "rq-fb368603": {
+    "decl": "Scenario: first_line_where falls back to the tail",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "first_line_where falls back to the tail",
+    "type": "scenario"
+  },
+  "rq-ffaf4e5b": {
+    "decl": "Scenario: A signature anywhere in a covered file is detected",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A signature anywhere in a covered file is detected",
     "type": "scenario"
   },
   "rq-ffeb5456": {

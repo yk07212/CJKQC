@@ -1,0 +1,494 @@
+# Feature: Format Detection and Parser Framework <!-- rq-42e59efe -->
+
+Every quantum-chemistry output file handed to CJKQC is turned into exactly
+one record by the parser framework: content-based format detection, a parser
+trait plus an ordered registry, a shared head+tail file reader, and shared
+extraction helpers. Detection inspects the file's leading lines only — never
+its name or extension — and routes the file to the first registered parser
+whose signature matches.
+
+A file yields exactly one record, describing the file's final job: the
+outcome of the last calculation step chain, the last frame of a multi-frame
+file. Earlier jobs and earlier frames are not extracted; the per-format
+parser requirements (milestone 3) define what "final job" means for each
+format. The final job's data lies in the tail window, which is what keeps
+one-record-per-file honest for files larger than the windows.
+
+The framework ships with an empty registry: no output format is recognized
+until the per-format parsers are registered (milestone 3), and every file
+parsed in the interim yields an unrecognized-format record. The framework is
+complete and testable without any real parser — tests register their own
+small parsers behind the same trait.
+
+Large outputs keep the wanted observables near their start (banners, route
+sections, charge and multiplicity) and end (final energies, geometries,
+frequencies, termination markers). The reader therefore presents each file
+as two bounded windows — a head and a tail — and parsers treat the windows
+as the entire file; no API exposes the elided middle. A file small enough to
+fit in the windows is presented whole. Records carry the observable
+vocabulary of `rqm/record.md` and feed the databases of `rqm/database.md`;
+failures and truncations are status records — never panics, never aborted
+runs (`rqm/ARCHITECTURE.md`).
+
+## Feature API <!-- rq-b75cecef -->
+
+### Types <!-- rq-d0ee2621 -->
+
+- `FileWindows` — the head and tail view of one file's content. <!-- rq-16630511 -->
+  - `head: String` and `tail: String` — the window texts, always valid UTF-8
+    (invalid bytes become U+FFFD replacement characters).
+  - `total_len: u64` — the file's size in bytes, before any lossy
+    conversion.
+  - `covered(&self) -> bool` — whether the whole file is visible: the file
+    is no larger than the head window plus the tail window. When covered,
+    `head` and `tail` are both the entire content.
+  - `from_seekable(seekable: &mut S, head_bytes: usize, tail_bytes: usize)
+    -> io::Result<FileWindows>` where `S: Read + Seek` — reads the head from
+    the start and the tail from the end by seeking; the bytes read are
+    bounded by the two window sizes regardless of file size.
+  - `from_stream(reader: &mut R, head_bytes: usize, tail_bytes: usize)
+    -> io::Result<FileWindows>` where `R: Read` — the fallback for
+    non-seekable sources (pipes, stdin): reads the stream once from start
+    to end, retaining at most the two windows in memory. For identical
+    content and window sizes it yields windows identical to
+    `from_seekable`'s.
+  - `first_line_where(&self, predicate: impl Fn(&str) -> bool)
+    -> Option<&str>` — the first visible line, in file order, that satisfies
+    the predicate.
+  - `last_line_where(&self, predicate: impl Fn(&str) -> bool)
+    -> Option<&str>` — the last visible line, in file order, that satisfies
+    the predicate.
+  - `after_first_line_where(…)` / `after_last_line_where(…)` — iterators
+    over the visible lines that follow the matched line, in file order.
+    Iteration never crosses a window boundary: when the matched line lies in
+    the head window of an uncovered file, iteration ends where the head
+    window ends.
+
+- `Program` — the closed vocabulary of output formats: the variants <!-- rq-0cc3c80f -->
+  `Gaussian`, `Orca`, `Xtb`, `Mrcc`, `Xyz`, displayed as the lowercase
+  tokens `"gaussian"`, `"orca"`, `"xtb"`, `"mrcc"`, `"xyz"` — the only
+  values that ever appear in `Record::program`. The framework owns this
+  vocabulary; every parser selects one of the five.
+
+- `Parser` — the trait every output-format reader implements. The trait is <!-- rq-4dc770c8 -->
+  `Send + Sync` so data-parallel collection can be added later without a
+  redesign (no concurrency commitment in v1).
+  - `program(&self) -> Program` — the format the parser handles.
+  - `detect(&self, head: &str) -> bool` — claims files whose head window
+    carries this format's signature.
+  - `parse(&self, windows: &FileWindows) -> Record` — turns the windows into
+    exactly one record. A parser never panics on any content; content-level
+    failures are returned as records with status `failed` or `truncated` and
+    a human-readable `error`, never as `Err`.
+
+- `ParserRegistry` — the ordered set of parsers. <!-- rq-b28b6e69 -->
+  - `new() -> Self` — an empty registry (the shipped state).
+  - `register(&mut self, parser: Box<dyn Parser>)` — appends a parser;
+    registration order fixes detection order.
+  - `parse_windows(&self, windows: &FileWindows) -> Record` — the core
+    entry: detection on the head window, then `parse` on the matching
+    parser, then the record-assembly rules below. Callers reading from
+    streams combine `FileWindows::from_stream` with this entry.
+  - `parse_file(&self, path: &Path) -> Result<Record, ParseError>` — reads
+    the file with the default window sizes (seekable), then behaves as
+    `parse_windows`. Filesystem-level failures — a missing file, an
+    unreadable file, a directory — return `Err`; every content-level
+    outcome is `Ok` with one record.
+
+- `ParseError` — the error type of `parse_file`, with the single variant <!-- rq-814d8aa2 -->
+  `Io(String)` — a filesystem operation failed (mirroring `DbError::Io` in
+  `rqm/database.md`).
+
+### Shared Extractors <!-- rq-d59dac72 -->
+
+Helpers shared by every per-format parser, in the framework's extract
+module:
+
+- `parse_fortran_f64(field: &str) -> Option<f64>` — parses a decimal number <!-- rq-39759c8a -->
+  accepting `e`, `E`, `d`, and `D` exponents (Fortran-style output, e.g.
+  `1.2345678D-05`). Returns `None` for non-numeric or non-finite fields.
+
+- `element_symbol(z: u32) -> Option<String>` — maps an atomic number <!-- rq-295538b5 -->
+  1–118 to its title-case element symbol (`1` → `"H"`, `17` → `"Cl"`,
+  `118` → `"Og"`); `None` outside that range.
+
+- `read_geometry_table(lines, spec: &TableSpec) -> Option<Geometry>` — reads <!-- rq-0a70b97d -->
+  a columnar geometry block (the xyz-style table shared by the plain-xyz,
+  Gaussian, ORCA, and MRCC layouts) from the lines that follow the block's
+  header, returning the geometry in the record's canonical units.
+  - `TableSpec` carries: `symbol_column: SymbolColumn` — `Symbol(usize)`
+    for a column of element symbols (case-insensitive, normalized to title
+    case) or `AtomicNumber(usize)` for a column of atomic numbers mapped
+    via `element_symbol`; `coordinate_columns: [usize; 3]` — the x, y, z
+    column indices; `units: LengthUnits` — `Angstrom` or `Bohr`; and
+    `expected_rows: Option<usize>`.
+  - A row is the line split on whitespace; it conforms when every
+    referenced column exists, every referenced numeric field parses via
+    `parse_fortran_f64`, and the symbol field is a known element. Columns
+    beyond the referenced ones are ignored. The first non-conforming line
+    ends the table.
+  - `read_geometry_table` returns `None` when the table holds zero rows,
+    when `expected_rows` is set and the row count found differs from it,
+    or when the symbol column holds an unknown element. A table cut by a
+    window boundary therefore yields `None`, never a short geometry — the
+    seam-honesty rule.
+  - `LengthUnits::Bohr` coordinates are converted to Ångström with the
+    constant `BOHR_TO_ANGSTROM = 0.529177210903` (CODATA 2018), defined
+    once in the extract module.
+
+### Crate Layout <!-- rq-15f15563 -->
+
+- The framework lives in `src/parser/`: `mod.rs` (the `Parser` trait,
+  `Program`, `ParserRegistry`, `ParseError`, and the record-assembly
+  rules), `windows.rs` (`FileWindows` and the window reader), and
+  `extract.rs` (the shared extractors). The library root re-exports the
+  public types.
+- `tests/parser.rs` exercises the framework through small in-test parser <!-- rq-4da7b314 -->
+  implementations and synthetic window content; boundary scenarios use
+  explicit small window sizes. The per-format conformance suites of
+  milestone 3 build on this module.
+- No new dependencies: the framework uses only `std` (plus the existing
+  `serde`/`serde_json` records); `Cargo.toml` is unchanged.
+
+## Window Contract <!-- rq-6f803572 -->
+
+- The default window sizes are `DEFAULT_HEAD_BYTES = 256 KiB` and
+  `DEFAULT_TAIL_BYTES = 4 MiB`, owned by the framework and overridable per
+  call. They fully cover every file of the current fixture corpus (largest:
+  3.1 MiB) and leave an order of magnitude over the ~540 KiB final-job span
+  of the multi-step Gaussian fixture; the fixture corpus keeps them honest
+  as it grows.
+- A file no larger than `head_bytes + tail_bytes` is read whole once:
+  covered, with `head` and `tail` both the entire content.
+- A larger file yields disjoint windows: the head is the first
+  `head_bytes` bytes trimmed back to its last complete line (at most one
+  partial trailing line is dropped); the tail is the last `tail_bytes`
+  bytes advanced to its first line start (at most one partial leading line
+  is dropped). The file's final line is kept in the tail even when it
+  lacks a trailing newline — the evidence of a truncated run.
+- Window cut points respect UTF-8 character boundaries, and invalid UTF-8
+  anywhere in a window becomes U+FFFD: parsing never aborts over stray
+  bytes from crashed programs, and binary junk simply fails detection.
+- Both constructors bound memory to the window sizes; only `from_stream`
+  reads the whole stream (pipes cannot seek), and it retains no more than
+  the two windows.
+- Detection sees only the head window; parsing sees head and tail; the
+  elided middle is visible to neither. Parsers must rely on no content
+  outside the windows — that is what keeps the framework honest for files
+  of any size.
+
+## Record Assembly <!-- rq-e4a815f2 -->
+
+`parse_windows` and `parse_file` produce exactly one record per file:
+
+- The parser fills the observables, `status`, and `error`; the framework
+  then stamps `program` with the matched parser's token (authoritative),
+  and — for `parse_file` only — `name` with the file stem and
+  `source_path` with the path verbatim as given. `parse_windows` leaves
+  `name` and `source_path` absent.
+- A non-empty file whose head matches no registered parser yields a record
+  with status `failed`, an error mentioning the unrecognized output format,
+  and no `program`. An empty file yields a record with status `failed` and
+  an error mentioning that the file is empty. Both carry `name` and
+  `source_path` when a path was given.
+- A parser-returned record that fails `Record::validate` is replaced by a
+  record with status `failed` and an error mentioning the invalid record
+  and the violated invariant; `name`, `source_path`, and `program` are
+  preserved.
+- The parser's own `status` and `error` are otherwise carried through
+  verbatim.
+- When several registered parsers claim the same head, the first in
+  registration order wins; with an empty registry every file is
+  unrecognized.
+- The file name and extension never influence detection or parsing.
+
+## Out of Scope <!-- rq-a0dfc43a -->
+
+- The per-format parsers — signatures, extraction rules, granularity of
+  "final job", status classification — one requirements document each,
+  milestone 3 (plain xyz first), together with the conformance suite and
+  fixture manifest over `tests/fixtures/`.
+- A registry constructor assembling the standard set of format parsers —
+  arrives with the milestone-3 parsers.
+- The collection command line (`CJKQC <files>`, stdin input, database
+  append) — milestone 4.
+- Parallel parsing: the trait is `Send + Sync`, but v1 makes no concurrency
+  commitment.
+- Transparent decompression (`.gz` and friends); files are read as they
+  are.
+- Any observable beyond the vocabulary of `rqm/record.md`, and any new
+  dependency.
+
+## Gherkin Scenarios <!-- rq-6702f697 -->
+
+```gherkin
+Feature: Format detection and parser framework
+
+  # --- Detection and routing ---
+
+  @rq-a7a34dab
+  Scenario: An unregistered format yields a failed record
+    Given the registry contains no parsers
+    And a file "job.log" containing arbitrary text
+    When parse_file is called on "job.log"
+    Then Ok is returned with exactly one record
+    And the record has status failed
+    And the record's error mentions the unrecognized output format
+    And the record has name "job" and source_path "job.log"
+    And the record has no program
+
+  @rq-033ff671
+  Scenario: A file whose head matches a registered parser is parsed by it
+    Given the registry contains a parser for the program token "xtb"
+    that claims heads containing the line "MAGIC" and returns a record
+    with electronic_energy -19.3
+    And a file "run.out" whose first line is "MAGIC"
+    When parse_file is called on "run.out"
+    Then the record has program "xtb"
+    And the record has name "run" and source_path "run.out"
+    And the record has electronic_energy -19.3
+
+  @rq-761f2b95
+  Scenario: Detection ignores the file name and extension
+    Given the registry contains a parser that claims heads containing "MAGIC"
+    And three files "a.log", "a.xyz", and "a" with identical content starting "MAGIC"
+    When each file is parsed
+    Then all three are routed to the same parser
+    And the three records differ only in name and source_path
+
+  @rq-3562f71a
+  Scenario: The first registered parser wins a signature conflict
+    Given the registry contains a "gaussian" parser and an "orca" parser,
+    both claiming heads containing "MAGIC", registered in that order
+    And a file whose first line is "MAGIC"
+    When the file is parsed
+    Then the record has program "gaussian"
+
+  @rq-1fd7e03d
+  Scenario: A signature beyond the head window is not detected
+    Given the registry contains a parser that claims heads containing "MAGIC"
+    And the windows of a large file read with head 3 lines and tail 3 lines
+    where the line "MAGIC" lies only in the elided middle
+    When parse_windows is called on the windows
+    Then the record has status failed
+    And the record's error mentions the unrecognized output format
+
+  @rq-ffaf4e5b
+  Scenario: A signature anywhere in a covered file is detected
+    Given the registry contains a parser that claims heads containing "MAGIC"
+    And a file smaller than the window sizes whose line "MAGIC" lies deep inside
+    When the file is parsed
+    Then the file is routed to that parser
+
+  # --- Window reading ---
+
+  @rq-5ab5050d
+  Scenario: A file within the window sizes is read whole
+    Given a file of 10 lines read with head 16 lines and tail 16 lines
+    When the windows are constructed
+    Then covered is true
+    And head and tail are both the entire content
+
+  @rq-3172eb32
+  Scenario: A large file yields disjoint line-aligned windows
+    Given a file of 20 lines read with head 4 lines and tail 4 lines
+    When the windows are constructed
+    Then covered is false
+    And head holds exactly the first 4 lines
+    And tail holds exactly the last 4 lines
+    And head and tail share no line
+
+  @rq-a37342d6
+  Scenario: The tail keeps the file's final unterminated line
+    Given a file larger than the windows whose last line lacks a trailing newline
+    When the windows are constructed
+    Then the tail ends with exactly that final line, newline or not
+
+  @rq-5996dff9
+  Scenario: Partial lines at the window seams are dropped
+    Given a file of one-letter lines "abcdefghij" read with head 3 bytes
+    and tail 3 bytes
+    When the windows are constructed
+    Then the head contains only whole lines from the start of the file
+    And the tail contains only whole lines from the end of the file
+    And no window contains a fragment of a line
+
+  @rq-e8bb37c3
+  Scenario: Invalid UTF-8 bytes become replacement characters
+    Given a file whose head contains bytes that are not valid UTF-8
+    When the windows are constructed
+    Then Ok is returned
+    And the head contains U+FFFD replacement characters
+
+  @rq-0bd419c3
+  Scenario: Streamed and seekable reads produce identical windows
+    Given the same content read once through from_seekable and once
+    through from_stream, with the same window sizes
+    When the content fits the windows
+    Then both constructions yield identical head, tail, and covered
+    When the content exceeds the windows
+    Then both constructions again yield identical head, tail, and covered
+
+  # --- Record assembly ---
+
+  @rq-662d12db
+  Scenario: parse_windows stamps the program but not the identity
+    Given the registry contains a parser for the program token "xyz"
+    that claims heads containing "MAGIC" and returns a record
+    When parse_windows is called on windows whose head starts "MAGIC"
+    Then the record has program "xyz"
+    And the record has no name and no source_path
+
+  @rq-219164a5
+  Scenario: The parser's status and error are preserved verbatim
+    Given the registry contains a parser that returns a record with
+    status failed and error "SCF did not converge"
+    When a matching file is parsed
+    Then the record has status failed and error "SCF did not converge"
+    And the framework adds no further error text
+
+  @rq-dce37e6e
+  Scenario: A parser record that fails validation is replaced
+    Given the registry contains a parser that returns a record whose
+    electronic_energy is NaN
+    And a file "bad.log" matching that parser
+    When parse_file is called on "bad.log"
+    Then the record has status failed
+    And the record's error mentions the invalid record
+    And the record has name "bad", source_path "bad.log", and the parser's program
+
+  @rq-58b86d07
+  Scenario: An empty file yields a failed record
+    Given the registry contains one parser claiming any head
+    And an empty file "empty.log"
+    When parse_file is called on "empty.log"
+    Then the record has status failed
+    And the record's error mentions that the file is empty
+    And the record has name "empty" and source_path "empty.log"
+
+  @rq-447f650f
+  Scenario: A missing file is an Io error
+    Given no file exists at "no/such.log"
+    When parse_file is called on "no/such.log"
+    Then Err(ParseError::Io(_)) is returned
+
+  @rq-f87aad94
+  Scenario: A directory is an Io error
+    Given a directory exists at "somedir"
+    When parse_file is called on "somedir"
+    Then Err(ParseError::Io(_)) is returned
+
+  # --- Line search across windows ---
+
+  @rq-f4a74fc9
+  Scenario: last_line_where prefers the match in the tail
+    Given uncovered windows where a matching line appears both in the
+    head and in the tail
+    When last_line_where is called with the predicate
+    Then the line from the tail is returned
+
+  @rq-4aa069d5
+  Scenario: last_line_where falls back to the head
+    Given uncovered windows where a matching line appears only in the head
+    When last_line_where is called with the predicate
+    Then the line from the head is returned
+
+  @rq-eb75bf8e
+  Scenario: first_line_where prefers the match in the head
+    Given uncovered windows where a matching line appears both in the
+    head and in the tail
+    When first_line_where is called with the predicate
+    Then the line from the head is returned
+
+  @rq-fb368603
+  Scenario: first_line_where falls back to the tail
+    Given uncovered windows where a matching line appears only in the tail
+    When first_line_where is called with the predicate
+    Then the line from the tail is returned
+
+  @rq-bdb74057
+  Scenario: Lines in the elided middle are invisible
+    Given uncovered windows where a matching line appears only in the
+    elided middle
+    When first_line_where and last_line_where are called with the predicate
+    Then both return None
+
+  @rq-be817932
+  Scenario: after_last_line_where stops at the window boundary
+    Given uncovered windows whose last matching line lies in the head,
+    followed by more head lines and then the elided middle
+    When after_last_line_where is called with the predicate
+    Then it yields exactly the following visible head lines
+    And it yields no line from the middle or the tail
+
+  # --- Geometry table extraction ---
+
+  @rq-aeb8b3a8
+  Scenario: A symbol table in Ångström parses to a Geometry
+    Given table lines with a symbol column and three coordinate columns,
+    in Ångström, with expected_rows matching
+    When read_geometry_table is called on them
+    Then a Geometry is returned with the symbols in title case
+    And the coordinates equal the table values unchanged
+
+  @rq-383eea52
+  Scenario: An atomic-number column maps to element symbols
+    Given table lines whose symbol column holds atomic numbers
+    When read_geometry_table is called on them
+    Then the Geometry's symbols are the title-case element symbols
+    for those numbers
+
+  @rq-18bc1945
+  Scenario: Bohr coordinates are converted to Ångström
+    Given table lines in bohr units
+    When read_geometry_table is called on them
+    Then the Geometry's coordinates equal the table values multiplied
+    by BOHR_TO_ANGSTROM
+
+  @rq-d737472c
+  Scenario: A table ends at its first non-row line
+    Given table lines followed by a blank line and unrelated text,
+    with expected_rows satisfied by the preceding rows
+    When read_geometry_table is called on them
+    Then a Geometry is returned with exactly those rows
+
+  @rq-582aea7a
+  Scenario: A row count below expected_rows yields None
+    Given table lines with fewer rows than expected_rows — because the
+    table is cut by a window boundary, truncated by the file's end, or
+    simply short — including zero rows
+    When read_geometry_table is called on them
+    Then None is returned, never a short geometry
+
+  # --- Number and element helpers ---
+
+  @rq-ed0686aa
+  Scenario: Fortran float parsing accepts E, e, D, and d exponents
+    When parse_fortran_f64 is called on "1.2345678D-05", "1.2345678d-05",
+    "1.2345678E-05", "-1.0D+03", and "3.14"
+    Then it returns 1.2345678e-05, 1.2345678e-05, 1.2345678e-05, -1000.0,
+    and 3.14 respectively
+
+  @rq-017a3a9c
+  Scenario: Fortran float parsing rejects non-numeric and non-finite fields
+    When parse_fortran_f64 is called on "abc", "", "NaN", and "Inf"
+    Then it returns None for every one of them
+
+  @rq-b9209565
+  Scenario: Atomic numbers map to title-case element symbols
+    When element_symbol is called on 1, 17, and 118
+    Then it returns "H", "Cl", and "Og"
+
+  @rq-39966431
+  Scenario: Atomic numbers outside 1 to 118 map to nothing
+    When element_symbol is called on 0 and 119
+    Then it returns None for both
+
+  # --- Window honesty over the fixture corpus ---
+
+  @rq-f61c0532
+  Scenario: Default windows cover every file of the fixture corpus
+    Given every output file under tests/fixtures
+    When the windows are read with the default sizes
+    Then every file is covered
+```

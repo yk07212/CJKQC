@@ -29,9 +29,7 @@ Milestones
 
 3. Parsers (conformance-driven, one rr-plan doc each, in this order)
    plain xyz -> XTB -> ORCA -> Gaussian -> MRCC.
-   Each is done when it passes the conformance suite over
-   tests/fixtures/ (see tests/fixtures/MANIFEST.md for what exists
-   and what is still missing).
+   Each is done when it passes the conformance suite over tests/fixtures/.
 
 4. Collection + composition resolution
    `cjkqc <files>` builds a database; JKQC filenames -> composition with
