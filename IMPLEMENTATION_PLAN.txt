@@ -30,6 +30,16 @@ Milestones
 3. Parsers (conformance-driven, one rr-plan doc each, in this order)
    plain xyz -> XTB -> ORCA -> Gaussian -> MRCC.
    Each is done when it passes the conformance suite over tests/fixtures/.
+    Note: TODO — add genuine failed-run fixtures under tests/fixtures/ for
+    every format: xtb, ORCA, and MRCC and a Gaussian one (provisional
+    abort-signal wording in rqm/parsers/conformance.md must be pinned to
+    the real logs), plus an xyz one (a first frame with an unknown element
+    symbol is a legitimate failed record per rqm/parsers/xyz.md
+    rq-9be2fad5 — no program output needed, it is fabricated). Add their
+    manifest.json entries and un-ignore the four #[ignore] tests awaiting
+    them: conformance.rs rq-d2ba6fbf (covers all five formats including
+    xyz), parser_xtb.rs rq-62e1382e, parser_orca.rs rq-0f8ebb73,
+    parser_mrcc.rs rq-91435a73.
 
 4. Collection + composition resolution
    `cjkqc <files>` builds a database; JKQC filenames -> composition with

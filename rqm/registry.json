@@ -31,6 +31,13 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-02fde316": {
+    "decl": "- `multiplicity` — `number of unpaired electrons` value `u`, rounded, plus",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "multiplicity",
+    "type": "api-item"
+  },
   "rq-033ff671": {
     "decl": "Scenario: A file whose head matches a registered parser is parsed by it",
     "file": "parser-framework",
@@ -42,6 +49,20 @@
     ],
     "title": "A file whose head matches a registered parser is parsed by it",
     "type": "scenario"
+  },
+  "rq-03fd1a40": {
+    "decl": "- `vibrational_frequencies` — the values of every `eigval :` line following",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "vibrational_frequencies",
+    "type": "api-item"
+  },
+  "rq-07f351b5": {
+    "decl": "- `detect(head)` claims the content when: the first line is a positive",
+    "file": "parsers/xyz",
+    "refs": [],
+    "title": "detect",
+    "type": "api-item"
   },
   "rq-0a70b97d": {
     "decl": "- `read_geometry_table(lines, spec: &TableSpec) -> Option<Geometry>` — reads",
@@ -55,6 +76,18 @@
     "title": "read_geometry_table",
     "type": "api-item"
   },
+  "rq-0aab8d11": {
+    "decl": "# Feature: ORCA Parser",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: ORCA Parser",
+    "type": "file"
+  },
   "rq-0ae95856": {
     "decl": "# Feature: Record Schema of Primary Observables",
     "file": "record",
@@ -66,6 +99,22 @@
     ],
     "title": "Feature: Record Schema of Primary Observables",
     "type": "file"
+  },
+  "rq-0bb4b64f": {
+    "decl": "Scenario: An unrelated head is not claimed",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unrelated head is not claimed",
+    "type": "scenario"
   },
   "rq-0bd419c3": {
     "decl": "Scenario: Streamed and seekable reads produce identical windows",
@@ -127,6 +176,38 @@
     "title": "Crate Layout",
     "type": "section"
   },
+  "rq-0ef73ad1": {
+    "decl": "## Feature API",
+    "file": "parsers/gaussian",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-0f8ebb73": {
+    "decl": "Scenario: A recorded failed run is classified failed",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A recorded failed run is classified failed",
+    "type": "scenario"
+  },
+  "rq-117fdecb": {
+    "decl": "### Types",
+    "file": "parsers/xtb",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-125f5313": {
     "decl": "- `DbError` — error type for database operations:",
     "file": "database",
@@ -139,6 +220,14 @@
     "title": "DbError",
     "type": "api-item"
   },
+  "rq-12fbb168": {
+    "decl": "### Types",
+    "file": "parsers/conformance",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-13bcad95": {
     "decl": "- `merge_databases(inputs: &[&Path], output: &Path) -> Result<MergeOutcome, DbError>`",
     "file": "database",
@@ -149,6 +238,25 @@
       }
     ],
     "title": "merge_databases",
+    "type": "api-item"
+  },
+  "rq-1475e428": {
+    "decl": "Scenario: The ORCA corpus fixture reproduces the JKQC ground truth",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The ORCA corpus fixture reproduces the JKQC ground truth",
+    "type": "scenario"
+  },
+  "rq-157f85ee": {
+    "decl": "- `electronic_energy` — the boxed final line `| TOTAL ENERGY <value> Eh |`",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "electronic_energy",
     "type": "api-item"
   },
   "rq-15bf030c": {
@@ -200,6 +308,33 @@
     "title": "A record that fails validation is skipped and reported",
     "type": "scenario"
   },
+  "rq-17559f33": {
+    "decl": "- `vibrational_frequencies` — the entries of the last `VIBRATIONAL",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "vibrational_frequencies",
+    "type": "api-item"
+  },
+  "rq-1810d098": {
+    "decl": "### Status Classification",
+    "file": "parsers/xyz",
+    "level": 3,
+    "refs": [],
+    "title": "Status Classification",
+    "type": "section"
+  },
+  "rq-1831b7fb": {
+    "decl": "- `OrcaParser` — unit struct implementing the framework `Parser` trait with",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "OrcaParser",
+    "type": "api-item"
+  },
   "rq-18bc1945": {
     "decl": "Scenario: Bohr coordinates are converted to Ångström",
     "file": "parser-framework",
@@ -211,6 +346,14 @@
     ],
     "title": "Bohr coordinates are converted to Ångström",
     "type": "scenario"
+  },
+  "rq-1b84a43e": {
+    "decl": "### Crate Layout",
+    "file": "parsers/conformance",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
   },
   "rq-1bbcf87c": {
     "decl": "Scenario: --version prints the crate version",
@@ -261,6 +404,42 @@
     "title": "Append to a path with a missing parent directory fails",
     "type": "scenario"
   },
+  "rq-1d6dade2": {
+    "decl": "## Gherkin Scenarios",
+    "file": "parsers/xtb",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-1db98ae8": {
+    "decl": "- `src/parser/mod.rs` gains `ParserRegistry::standard` and the five parser",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "src",
+    "type": "api-item"
+  },
+  "rq-1fb0a352": {
+    "decl": "Scenario: Method flags map to method names",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Method flags map to method names",
+    "type": "scenario"
+  },
   "rq-1fd7e03d": {
     "decl": "Scenario: A signature beyond the head window is not detected",
     "file": "parser-framework",
@@ -273,11 +452,46 @@
     "title": "A signature beyond the head window is not detected",
     "type": "scenario"
   },
+  "rq-20204b94": {
+    "decl": "Scenario: The last TOTAL ENERGY line wins",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The last TOTAL ENERGY line wins",
+    "type": "scenario"
+  },
   "rq-2072b6c4": {
     "decl": "- `Cargo.toml` declares the package `complied-jkqc`, the `CJKQC` binary",
     "file": "scaffolding",
     "refs": [],
     "title": "Cargo",
+    "type": "api-item"
+  },
+  "rq-21041eac": {
+    "decl": "- `dipole_moment` — the `Total Dipole Moment    :     <x> <y> <z>` line of",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "dipole_moment",
+    "type": "api-item"
+  },
+  "rq-212a38b5": {
+    "decl": "- `ParserRegistry::standard() -> ParserRegistry`",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ParserRegistry",
     "type": "api-item"
   },
   "rq-219164a5": {
@@ -303,6 +517,14 @@
     ],
     "title": "The test suite passes on the scaffolded crate",
     "type": "scenario"
+  },
+  "rq-23172936": {
+    "decl": "### Types",
+    "file": "parsers/mrcc",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
   },
   "rq-23fa0de7": {
     "decl": "Scenario: Merge with a missing input writes nothing",
@@ -340,6 +562,13 @@
     "title": "validate accepts a failed record with only status and error",
     "type": "scenario"
   },
+  "rq-28fce0b1": {
+    "decl": "- `geometry` — the table under the last `Standard orientation:` header:",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "geometry",
+    "type": "api-item"
+  },
   "rq-295538b5": {
     "decl": "- `element_symbol(z: u32) -> Option<String>` — maps an atomic number",
     "file": "parser-framework",
@@ -351,6 +580,26 @@
     ],
     "title": "element_symbol",
     "type": "api-item"
+  },
+  "rq-29e0af6a": {
+    "decl": "## Out of Scope",
+    "file": "parsers/orca",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
+  "rq-2a0d8029": {
+    "decl": "Scenario: The Gaussian corpus fixture reproduces the JKQC ground truth",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The Gaussian corpus fixture reproduces the JKQC ground truth",
+    "type": "scenario"
   },
   "rq-2a2407ed": {
     "decl": "# Feature: Record Database (JSON Lines)",
@@ -400,6 +649,22 @@
     "title": "load_database",
     "type": "api-item"
   },
+  "rq-2d633569": {
+    "decl": "Scenario: A single-point log reports no frequencies",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A single-point log reports no frequencies",
+    "type": "scenario"
+  },
   "rq-2ff394b0": {
     "decl": "Scenario: A corrupt line is skipped and reported",
     "file": "database",
@@ -412,6 +677,13 @@
     "title": "A corrupt line is skipped and reported",
     "type": "scenario"
   },
+  "rq-3028c385": {
+    "decl": "- `electronic_energy` — the last line of the energy summary matching",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "electronic_energy",
+    "type": "api-item"
+  },
   "rq-3172eb32": {
     "decl": "Scenario: A large file yields disjoint line-aligned windows",
     "file": "parser-framework",
@@ -422,6 +694,90 @@
       }
     ],
     "title": "A large file yields disjoint line-aligned windows",
+    "type": "scenario"
+  },
+  "rq-3265a4b3": {
+    "decl": "Scenario: A frame cut by the end of the file is truncated",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A frame cut by the end of the file is truncated",
+    "type": "scenario"
+  },
+  "rq-329b3c89": {
+    "decl": "### Status Classification",
+    "file": "parsers/xtb",
+    "level": 3,
+    "refs": [],
+    "title": "Status Classification",
+    "type": "section"
+  },
+  "rq-32f97fe7": {
+    "decl": "## Gherkin Scenarios",
+    "file": "parsers/orca",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-33106344": {
+    "decl": "# Feature: Gaussian Parser",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Gaussian Parser",
+    "type": "file"
+  },
+  "rq-33130099": {
+    "decl": "Scenario: Every fixture file is declared exactly once",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Every fixture file is declared exactly once",
+    "type": "scenario"
+  },
+  "rq-3340c63d": {
+    "decl": "Scenario: A window-hidden frame is honest, never half-read",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A window-hidden frame is honest, never half-read",
+    "type": "scenario"
+  },
+  "rq-33ab6159": {
+    "decl": "Scenario: The MRCC banner is detected",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The MRCC banner is detected",
     "type": "scenario"
   },
   "rq-33d65b8c": {
@@ -440,6 +796,21 @@
     "title": "Functions",
     "type": "section"
   },
+  "rq-34b49160": {
+    "decl": "### Extraction",
+    "file": "parsers/orca",
+    "level": 3,
+    "refs": [],
+    "title": "Extraction",
+    "type": "section"
+  },
+  "rq-355e66c9": {
+    "decl": "- `detect(head)` claims content with a line containing",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "detect",
+    "type": "api-item"
+  },
   "rq-3562f71a": {
     "decl": "Scenario: The first registered parser wins a signature conflict",
     "file": "parser-framework",
@@ -451,6 +822,53 @@
     ],
     "title": "The first registered parser wins a signature conflict",
     "type": "scenario"
+  },
+  "rq-35c8e2c9": {
+    "decl": "Scenario: The version banner is detected",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The version banner is detected",
+    "type": "scenario"
+  },
+  "rq-35f562fe": {
+    "decl": "### Extraction",
+    "file": "parsers/gaussian",
+    "level": 3,
+    "refs": [],
+    "title": "Extraction",
+    "type": "section"
+  },
+  "rq-363a8a65": {
+    "decl": "- `vibrational_frequencies` — every value on every",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "vibrational_frequencies",
+    "type": "api-item"
+  },
+  "rq-373378e9": {
+    "decl": "- `charge` / `multiplicity` — the values of the last",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "charge",
+    "type": "api-item"
   },
   "rq-383eea52": {
     "decl": "Scenario: An atomic-number column maps to element symbols",
@@ -524,12 +942,35 @@
     "title": "validate rejects a gradient length that mismatches the geometry",
     "type": "scenario"
   },
+  "rq-3ac29482": {
+    "decl": "- `rotational_symmetry_number` — absent: xtb describes its point group in",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "rotational_symmetry_number",
+    "type": "api-item"
+  },
+  "rq-3bb529ad": {
+    "decl": "### Types",
+    "file": "parsers/orca",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-41e77e57": {
     "decl": "- `Cargo.toml` declares the `serde` and `serde_json` dependencies; no other",
     "file": "record",
     "refs": [],
     "title": "Cargo",
     "type": "api-item"
+  },
+  "rq-4223dba9": {
+    "decl": "## Feature API",
+    "file": "parsers/xtb",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
   },
   "rq-42e59efe": {
     "decl": "# Feature: Format Detection and Parser Framework",
@@ -555,6 +996,22 @@
     "title": "Record",
     "type": "api-item"
   },
+  "rq-441c138f": {
+    "decl": "Scenario: The standard registry holds all five parsers in detection order",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The standard registry holds all five parsers in detection order",
+    "type": "scenario"
+  },
   "rq-447f650f": {
     "decl": "Scenario: A missing file is an Io error",
     "file": "parser-framework",
@@ -567,12 +1024,64 @@
     "title": "A missing file is an Io error",
     "type": "scenario"
   },
+  "rq-44ba9967": {
+    "decl": "Scenario: A dangling energy label is not an error",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A dangling energy label is not an error",
+    "type": "scenario"
+  },
+  "rq-45c63967": {
+    "decl": "## Feature API",
+    "file": "parsers/orca",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-465a02d6": {
+    "decl": "Scenario: The corpus fixture conforms",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corpus fixture conforms",
+    "type": "scenario"
+  },
   "rq-486289b7": {
     "decl": "# Feature: Project Scaffold and CJKQC Command Shell",
     "file": "scaffolding",
     "refs": [],
     "title": "Feature: Project Scaffold and CJKQC Command Shell",
     "type": "file"
+  },
+  "rq-48bb5800": {
+    "decl": "Scenario: A single-frame file yields its geometry",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A single-frame file yields its geometry",
+    "type": "scenario"
   },
   "rq-4aa069d5": {
     "decl": "Scenario: last_line_where falls back to the head",
@@ -585,6 +1094,14 @@
     ],
     "title": "last_line_where falls back to the head",
     "type": "scenario"
+  },
+  "rq-4c73955a": {
+    "decl": "## Out of Scope",
+    "file": "parsers/xyz",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
   },
   "rq-4da7b314": {
     "decl": "- `tests/parser.rs` exercises the framework through small in-test parser",
@@ -646,6 +1163,22 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-509b31ed": {
+    "decl": "Scenario: An unreadable first frame fails",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unreadable first frame fails",
+    "type": "scenario"
+  },
   "rq-50bb7e83": {
     "decl": "Scenario: A partially written last line is skipped and reported",
     "file": "database",
@@ -658,6 +1191,50 @@
     "title": "A partially written last line is skipped and reported",
     "type": "scenario"
   },
+  "rq-527a66db": {
+    "decl": "- `method` — the first keyword after `!` in the echoed input block (the",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "method",
+    "type": "api-item"
+  },
+  "rq-535bd7b8": {
+    "decl": "Scenario: Detection requires the xyz shape",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Detection requires the xyz shape",
+    "type": "scenario"
+  },
+  "rq-547a8fd6": {
+    "decl": "# Feature: MRCC Parser",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: MRCC Parser",
+    "type": "file"
+  },
   "rq-56514e37": {
     "decl": "## Feature API",
     "file": "scaffolding",
@@ -665,6 +1242,25 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-57329ad4": {
+    "decl": "Scenario: Detection ignores name and extension",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Detection ignores name and extension",
+    "type": "scenario"
+  },
+  "rq-5825f5e3": {
+    "decl": "- `failed` — no normal marker and the tail carries MRCC's own error or",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "failed",
+    "type": "api-item"
   },
   "rq-582aea7a": {
     "decl": "Scenario: A row count below expected_rows yields None",
@@ -676,6 +1272,38 @@
       }
     ],
     "title": "A row count below expected_rows yields None",
+    "type": "scenario"
+  },
+  "rq-5882d984": {
+    "decl": "Scenario: Negative frequencies keep their sign",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Negative frequencies keep their sign",
+    "type": "scenario"
+  },
+  "rq-58995f44": {
+    "decl": "Scenario: A hidden dipole section leaves the dipole absent",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A hidden dipole section leaves the dipole absent",
     "type": "scenario"
   },
   "rq-58b86d07": {
@@ -690,6 +1318,14 @@
     "title": "An empty file yields a failed record",
     "type": "scenario"
   },
+  "rq-58c33b85": {
+    "decl": "## Conformance Assertions",
+    "file": "parsers/conformance",
+    "level": 2,
+    "refs": [],
+    "title": "Conformance Assertions",
+    "type": "section"
+  },
   "rq-58f8e962": {
     "decl": "Scenario: Load returns all records in file order",
     "file": "database",
@@ -701,6 +1337,18 @@
     ],
     "title": "Load returns all records in file order",
     "type": "scenario"
+  },
+  "rq-597bef47": {
+    "decl": "- `XtbParser` — unit struct implementing the framework `Parser` trait with",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "XtbParser",
+    "type": "api-item"
   },
   "rq-5996dff9": {
     "decl": "Scenario: Partial lines at the window seams are dropped",
@@ -726,6 +1374,37 @@
     "title": "A file within the window sizes is read whole",
     "type": "scenario"
   },
+  "rq-5b9c015a": {
+    "decl": "Scenario: The ASCII-art banner is detected",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The ASCII-art banner is detected",
+    "type": "scenario"
+  },
+  "rq-5ba5c8ec": {
+    "decl": "- `mulliken_charges` — the third column of the rows under the last",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "mulliken_charges",
+    "type": "api-item"
+  },
+  "rq-5d0be798": {
+    "decl": "### Extraction",
+    "file": "parsers/xyz",
+    "level": 3,
+    "refs": [],
+    "title": "Extraction",
+    "type": "section"
+  },
   "rq-5e237eee": {
     "decl": "## JSON Representation",
     "file": "record",
@@ -739,6 +1418,34 @@
     "title": "JSON Representation",
     "type": "section"
   },
+  "rq-5e5adfe9": {
+    "decl": "Scenario: The corpus fixture conforms",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corpus fixture conforms",
+    "type": "scenario"
+  },
+  "rq-5f31c98f": {
+    "decl": "Scenario: An unrelated head is not claimed",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unrelated head is not claimed",
+    "type": "scenario"
+  },
   "rq-602d347c": {
     "decl": "## Gherkin Scenarios",
     "file": "scaffolding",
@@ -746,6 +1453,13 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-610cdd9d": {
+    "decl": "- `electronic_energy` — the last `FINAL SINGLE POINT ENERGY <value>`.",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "electronic_energy",
+    "type": "api-item"
   },
   "rq-61efc73e": {
     "decl": "Scenario: Loading a missing file is an error",
@@ -771,6 +1485,22 @@
     "title": "Merge to a path with a missing parent directory fails",
     "type": "scenario"
   },
+  "rq-62e1382e": {
+    "decl": "Scenario: A recorded failed run is classified failed",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A recorded failed run is classified failed",
+    "type": "scenario"
+  },
   "rq-636984f8": {
     "decl": "Scenario: Round-trip a record with every observable set",
     "file": "record",
@@ -782,6 +1512,25 @@
     ],
     "title": "Round-trip a record with every observable set",
     "type": "scenario"
+  },
+  "rq-646cd2be": {
+    "decl": "Scenario: The MRCC corpus fixture reproduces the JKQC ground truth",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The MRCC corpus fixture reproduces the JKQC ground truth",
+    "type": "scenario"
+  },
+  "rq-64d42f21": {
+    "decl": "- `program_version` — the token in `Program Version <v> - ... RELEASE`.",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "program_version",
+    "type": "api-item"
   },
   "rq-662d12db": {
     "decl": "Scenario: parse_windows stamps the program but not the identity",
@@ -803,6 +1552,45 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-68850338": {
+    "decl": "Scenario: A completed run yields the full observable set",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A completed run yields the full observable set",
+    "type": "scenario"
+  },
+  "rq-69c48453": {
+    "decl": "Scenario: A single-point file reports no frequencies or symmetry number",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A single-point file reports no frequencies or symmetry number",
+    "type": "scenario"
+  },
+  "rq-6aa61c29": {
+    "decl": "- `method` — the route section: the content of the `# …` line and its",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "method",
+    "type": "api-item"
+  },
   "rq-6b872f89": {
     "decl": "Scenario: No arguments is a usage error",
     "file": "scaffolding",
@@ -821,6 +1609,21 @@
     "level": 2,
     "refs": [],
     "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-6c1202df": {
+    "decl": "- `rotational_symmetry_number` — the value of the last",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "rotational_symmetry_number",
+    "type": "api-item"
+  },
+  "rq-6da52c3f": {
+    "decl": "## Out of Scope",
+    "file": "parsers/xtb",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
     "type": "section"
   },
   "rq-6f803572": {
@@ -861,6 +1664,14 @@
     "title": "Canonical Units and Values",
     "type": "section"
   },
+  "rq-7415b243": {
+    "decl": "## Feature API",
+    "file": "parsers/mrcc",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
   "rq-761f2b95": {
     "decl": "Scenario: Detection ignores the file name and extension",
     "file": "parser-framework",
@@ -873,6 +1684,13 @@
     "title": "Detection ignores the file name and extension",
     "type": "scenario"
   },
+  "rq-762ab556": {
+    "decl": "- `detect(head)` claims content with a line matching the banner pattern",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "detect",
+    "type": "api-item"
+  },
   "rq-77c19ef4": {
     "decl": "Scenario: A line with invalid UTF-8 is skipped and reported",
     "file": "database",
@@ -884,6 +1702,89 @@
     ],
     "title": "A line with invalid UTF-8 is skipped and reported",
     "type": "scenario"
+  },
+  "rq-799f6155": {
+    "decl": "Scenario: The version banner is detected",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The version banner is detected",
+    "type": "scenario"
+  },
+  "rq-7a42c9fb": {
+    "decl": "## Gherkin Scenarios",
+    "file": "parsers/gaussian",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-7b35091a": {
+    "decl": "## Gherkin Scenarios",
+    "file": "parsers/mrcc",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-7b39d1a8": {
+    "decl": "### Detection",
+    "file": "parsers/xtb",
+    "level": 3,
+    "refs": [],
+    "title": "Detection",
+    "type": "section"
+  },
+  "rq-7c34ac9b": {
+    "decl": "- `charge` — the value of `Charge:           <n>`.",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "charge",
+    "type": "api-item"
+  },
+  "rq-7d8c7128": {
+    "decl": "- `ok` — the last frame is complete and valid.",
+    "file": "parsers/xyz",
+    "refs": [],
+    "title": "ok",
+    "type": "api-item"
+  },
+  "rq-7dbde5b0": {
+    "decl": "- `failed` — the content carries `Error termination` after the final job's",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "failed",
+    "type": "api-item"
+  },
+  "rq-8011b3d2": {
+    "decl": "## Fixture Corpus and Manifest",
+    "file": "parsers/conformance",
+    "level": 2,
+    "refs": [],
+    "title": "Fixture Corpus and Manifest",
+    "type": "section"
+  },
+  "rq-80f193f5": {
+    "decl": "- `failed` — no normal marker and the tail carries ORCA's own error or",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "failed",
+    "type": "api-item"
+  },
+  "rq-80fdb0f3": {
+    "decl": "- `mulliken_charges` — the values of the rows `<idx> <El> : <q>` under the",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "mulliken_charges",
+    "type": "api-item"
   },
   "rq-814d8aa2": {
     "decl": "- `ParseError` — the error type of `parse_file`, with the single variant",
@@ -909,6 +1810,18 @@
     "title": "Append seals a missing final newline",
     "type": "scenario"
   },
+  "rq-83dbd29d": {
+    "decl": "Scenario: Element symbols are normalized to title case",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Element symbols are normalized to title case",
+    "type": "scenario"
+  },
   "rq-843d152e": {
     "decl": "Scenario: Short version flag behaves like --version",
     "file": "scaffolding",
@@ -919,6 +1832,46 @@
       }
     ],
     "title": "Short version flag behaves like --version",
+    "type": "scenario"
+  },
+  "rq-85ba0ac2": {
+    "decl": "### Extraction",
+    "file": "parsers/mrcc",
+    "level": 3,
+    "refs": [],
+    "title": "Extraction",
+    "type": "section"
+  },
+  "rq-8692e310": {
+    "decl": "Scenario: Comments without the energy label carry no energy",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Comments without the energy label carry no energy",
+    "type": "scenario"
+  },
+  "rq-8890cc1d": {
+    "decl": "Scenario: An unrelated head is not claimed",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unrelated head is not claimed",
     "type": "scenario"
   },
   "rq-899932a2": {
@@ -933,6 +1886,29 @@
     "title": "CJKQC",
     "type": "api-item"
   },
+  "rq-89cb2071": {
+    "decl": "- `rotational_symmetry_number` — the value of `Symmetry Number: <n>` in the",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "rotational_symmetry_number",
+    "type": "api-item"
+  },
+  "rq-8b1c135f": {
+    "decl": "### Status Classification",
+    "file": "parsers/orca",
+    "level": 3,
+    "refs": [],
+    "title": "Status Classification",
+    "type": "section"
+  },
+  "rq-8c38a83e": {
+    "decl": "## Out of Scope",
+    "file": "parsers/mrcc",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
   "rq-8c5e4002": {
     "decl": "- `src/lib.rs` is the library target: crate-level documentation, module",
     "file": "scaffolding",
@@ -945,6 +1921,21 @@
     "title": "src",
     "type": "api-item"
   },
+  "rq-8d91e753": {
+    "decl": "- `geometry` — the table under the last `CARTESIAN COORDINATES",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "geometry",
+    "type": "api-item"
+  },
+  "rq-8ebc2a41": {
+    "decl": "### Status Classification",
+    "file": "parsers/gaussian",
+    "level": 3,
+    "refs": [],
+    "title": "Status Classification",
+    "type": "section"
+  },
   "rq-8f1add9c": {
     "decl": "Scenario: Loading a directory is an error",
     "file": "database",
@@ -956,6 +1947,38 @@
     ],
     "title": "Loading a directory is an error",
     "type": "scenario"
+  },
+  "rq-91435a73": {
+    "decl": "Scenario: A recorded failed run is classified failed",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A recorded failed run is classified failed",
+    "type": "scenario"
+  },
+  "rq-918b7b58": {
+    "decl": "### Detection",
+    "file": "parsers/gaussian",
+    "level": 3,
+    "refs": [],
+    "title": "Detection",
+    "type": "section"
+  },
+  "rq-93f2fd85": {
+    "decl": "### Detection",
+    "file": "parsers/orca",
+    "level": 3,
+    "refs": [],
+    "title": "Detection",
+    "type": "section"
   },
   "rq-953a8521": {
     "decl": "Scenario: Version takes precedence over extra arguments",
@@ -981,6 +2004,13 @@
     "title": "Merge concatenates inputs in order",
     "type": "scenario"
   },
+  "rq-95cbb226": {
+    "decl": "- `truncated` — neither marker present.",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "truncated",
+    "type": "api-item"
+  },
   "rq-96b8c74d": {
     "decl": "- `MergeProblem` — `input: PathBuf`, `line: usize` (1-based), and",
     "file": "database",
@@ -993,6 +2023,13 @@
     "title": "MergeProblem",
     "type": "api-item"
   },
+  "rq-97790ec7": {
+    "decl": "- `ok` — the tail carries `Normal termination of mrcc`.",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "ok",
+    "type": "api-item"
+  },
   "rq-97a677ce": {
     "decl": "### Types",
     "file": "record",
@@ -1000,6 +2037,25 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-991e31a2": {
+    "decl": "Scenario: A declared fixture conforms",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A declared fixture conforms",
+    "type": "scenario"
+  },
+  "rq-99a2e2ce": {
+    "decl": "- `geometry` — the `final structure:` block: an xyz-style table",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "geometry",
+    "type": "api-item"
   },
   "rq-9a96e81c": {
     "decl": "### Crate Layout",
@@ -1021,6 +2077,20 @@
     "title": "A minimal record serializes to an exact canonical line",
     "type": "scenario"
   },
+  "rq-9be2fad5": {
+    "decl": "- `failed` — the first frame's rows are not parseable geometry (unknown",
+    "file": "parsers/xyz",
+    "refs": [],
+    "title": "failed",
+    "type": "api-item"
+  },
+  "rq-9c076f14": {
+    "decl": "- `ok` — the tail carries `finished run` (xtb's normal-exit banner).",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "ok",
+    "type": "api-item"
+  },
   "rq-9c420eee": {
     "decl": "Scenario: An unknown status value fails deserialization",
     "file": "record",
@@ -1031,6 +2101,66 @@
       }
     ],
     "title": "An unknown status value fails deserialization",
+    "type": "scenario"
+  },
+  "rq-9d65a814": {
+    "decl": "## Feature API",
+    "file": "parsers/xyz",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-9d9e798e": {
+    "decl": "Scenario: Imaginary modes keep their sign",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Imaginary modes keep their sign",
+    "type": "scenario"
+  },
+  "rq-9dc0e7f0": {
+    "decl": "### Functions",
+    "file": "parsers/conformance",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
+  "rq-9ea94102": {
+    "decl": "- `GaussianParser` — unit struct implementing the framework `Parser` trait",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "GaussianParser",
+    "type": "api-item"
+  },
+  "rq-9f5aa509": {
+    "decl": "Scenario: An unrelated head is not claimed",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unrelated head is not claimed",
     "type": "scenario"
   },
   "rq-9f86cf20": {
@@ -1044,6 +2174,14 @@
     ],
     "title": "Append with an invalid record writes nothing",
     "type": "scenario"
+  },
+  "rq-9fc00a11": {
+    "decl": "## Out of Scope",
+    "file": "parsers/conformance",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
   },
   "rq-a0202680": {
     "decl": "Scenario: validate rejects Mulliken charges that mismatch the geometry",
@@ -1065,6 +2203,20 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-a1f4c207": {
+    "decl": "- `tests/conformance.rs` — the manifest-driven suite; it builds",
+    "file": "parsers/conformance",
+    "refs": [],
+    "title": "tests",
+    "type": "api-item"
+  },
+  "rq-a24eec14": {
+    "decl": "- `detect(head)` claims content with a line matching the regex",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "detect",
+    "type": "api-item"
+  },
   "rq-a37342d6": {
     "decl": "Scenario: The tail keeps the file's final unterminated line",
     "file": "parser-framework",
@@ -1077,6 +2229,45 @@
     "title": "The tail keeps the file's final unterminated line",
     "type": "scenario"
   },
+  "rq-a5fee06d": {
+    "decl": "Scenario: A frequency calculation without a terminated run is truncated",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A frequency calculation without a terminated run is truncated",
+    "type": "scenario"
+  },
+  "rq-a60f442f": {
+    "decl": "Scenario: A run without local corrections reports its plain total",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A run without local corrections reports its plain total",
+    "type": "scenario"
+  },
+  "rq-a652c946": {
+    "decl": "- `failed` — no normal marker and the tail carries xtb's own error report.",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "failed",
+    "type": "api-item"
+  },
   "rq-a7a34dab": {
     "decl": "Scenario: An unregistered format yields a failed record",
     "file": "parser-framework",
@@ -1088,6 +2279,40 @@
     ],
     "title": "An unregistered format yields a failed record",
     "type": "scenario"
+  },
+  "rq-a7d9edb9": {
+    "decl": "- `program_version` — the token in `Version: <v>`.",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "program_version",
+    "type": "api-item"
+  },
+  "rq-a849a9cc": {
+    "decl": "- `multiplicity` — the value of `Spin multiplicity:  <n>`.",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "multiplicity",
+    "type": "api-item"
+  },
+  "rq-aa33eaea": {
+    "decl": "- `XyzParser` — unit struct implementing the framework `Parser` trait with",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "XyzParser",
+    "type": "api-item"
+  },
+  "rq-ad79643a": {
+    "decl": "### Detection",
+    "file": "parsers/mrcc",
+    "level": 3,
+    "refs": [],
+    "title": "Detection",
+    "type": "section"
   },
   "rq-aeb0d510": {
     "decl": "- `append_records(path: &Path, records: &[Record]) -> Result<(), DbError>`",
@@ -1123,6 +2348,22 @@
       }
     ],
     "title": "validate rejects multiplicity zero",
+    "type": "scenario"
+  },
+  "rq-afe58819": {
+    "decl": "Scenario: A hidden final structure leaves geometry absent",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A hidden final structure leaves geometry absent",
     "type": "scenario"
   },
   "rq-b032b41c": {
@@ -1173,6 +2414,13 @@
     "title": "ParserRegistry",
     "type": "api-item"
   },
+  "rq-b2af2117": {
+    "decl": "- `method` — from the echoed input deck: the values of `calc=<x>` and",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "method",
+    "type": "api-item"
+  },
   "rq-b2bab408": {
     "decl": "Scenario: validate accepts a truncated record with partial observables",
     "file": "record",
@@ -1183,6 +2431,67 @@
       }
     ],
     "title": "validate accepts a truncated record with partial observables",
+    "type": "scenario"
+  },
+  "rq-b3135fcd": {
+    "decl": "- `truncated` — neither marker present: the run never reached its end.",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "truncated",
+    "type": "api-item"
+  },
+  "rq-b41a1001": {
+    "decl": "### Status Classification",
+    "file": "parsers/mrcc",
+    "level": 3,
+    "refs": [],
+    "title": "Status Classification",
+    "type": "section"
+  },
+  "rq-b47001c1": {
+    "decl": "- `ok` — the tail carries `Normal termination of Gaussian`.",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "ok",
+    "type": "api-item"
+  },
+  "rq-b5b01447": {
+    "decl": "- `multiplicity` — `Multiplicity           Mult            .... <n>` value",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "multiplicity",
+    "type": "api-item"
+  },
+  "rq-b721514a": {
+    "decl": "Scenario: A cut-off final job is truncated",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A cut-off final job is truncated",
+    "type": "scenario"
+  },
+  "rq-b7387503": {
+    "decl": "Scenario: A single-point-only run reports the last job's values",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A single-point-only run reports the last job's values",
     "type": "scenario"
   },
   "rq-b75cecef": {
@@ -1197,6 +2506,36 @@
     ],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-b846e66c": {
+    "decl": "- `charge` — `Total Charge           Charge          .... <n>` value.",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "charge",
+    "type": "api-item"
+  },
+  "rq-b8a853f8": {
+    "decl": "Scenario: A method without a basis keyword omits the basis",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A method without a basis keyword omits the basis",
+    "type": "scenario"
+  },
+  "rq-b90c3497": {
+    "decl": "- `truncated` — neither marker present: the final job never printed its",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "truncated",
+    "type": "api-item"
   },
   "rq-b9209565": {
     "decl": "Scenario: Atomic numbers map to title-case element symbols",
@@ -1216,6 +2555,14 @@
     "level": 2,
     "refs": [],
     "title": "Feature API",
+    "type": "section"
+  },
+  "rq-bd3986f2": {
+    "decl": "### Extraction",
+    "file": "parsers/xtb",
+    "level": 3,
+    "refs": [],
+    "title": "Extraction",
     "type": "section"
   },
   "rq-bd59ba92": {
@@ -1266,6 +2613,22 @@
     "title": "Positional arguments are a usage error",
     "type": "scenario"
   },
+  "rq-be38168f": {
+    "decl": "Scenario: A run cut mid-flight is truncated",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A run cut mid-flight is truncated",
+    "type": "scenario"
+  },
   "rq-be817932": {
     "decl": "Scenario: after_last_line_where stops at the window boundary",
     "file": "parser-framework",
@@ -1285,6 +2648,41 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-bf318b99": {
+    "decl": "Scenario: The last SCF Done wins",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The last SCF Done wins",
+    "type": "scenario"
+  },
+  "rq-bfac850d": {
+    "decl": "# Feature: Plain xyz Parser",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Plain xyz Parser",
+    "type": "file"
+  },
+  "rq-c01ba326": {
+    "decl": "- `method` — from the `program call` line, mapping the method flag:",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "method",
+    "type": "api-item"
   },
   "rq-c3792c41": {
     "decl": "- `src/main.rs` holds the clap CLI definition and the stub error path.",
@@ -1318,6 +2716,22 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-c7886a80": {
+    "decl": "Scenario: An imaginary frequency keeps its sign",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An imaginary frequency keeps its sign",
+    "type": "scenario"
+  },
   "rq-c8bfb90d": {
     "decl": "Scenario: Absent observables are omitted, never null",
     "file": "record",
@@ -1342,6 +2756,41 @@
     "title": "Blank lines are ignored",
     "type": "scenario"
   },
+  "rq-cd5bd6c0": {
+    "decl": "# Feature: XTB Parser",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: XTB Parser",
+    "type": "file"
+  },
+  "rq-ce1b9305": {
+    "decl": "Scenario: A run without its end marker is truncated",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A run without its end marker is truncated",
+    "type": "scenario"
+  },
+  "rq-cec83ed0": {
+    "decl": "- `program_version` — the version token from the banner: `xtb version",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "program_version",
+    "type": "api-item"
+  },
   "rq-d0ee2621": {
     "decl": "### Types",
     "file": "parser-framework",
@@ -1349,6 +2798,64 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-d1446f61": {
+    "decl": "- `electronic_energy` — the value after `=` in the last",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "electronic_energy",
+    "type": "api-item"
+  },
+  "rq-d2239555": {
+    "decl": "Scenario: The XTB corpus fixture reproduces the JKQC ground truth",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The XTB corpus fixture reproduces the JKQC ground truth",
+    "type": "scenario"
+  },
+  "rq-d2ba6fbf": {
+    "decl": "Scenario: Every format directory covers all three outcomes",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Every format directory covers all three outcomes",
+    "type": "scenario"
+  },
+  "rq-d2cba02a": {
+    "decl": "- `detect(head)` claims content with a line matching `xtb version` (the",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "detect",
+    "type": "api-item"
+  },
+  "rq-d519cff6": {
+    "decl": "## Gherkin Scenarios",
+    "file": "parsers/xyz",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-d56ab087": {
+    "decl": "Scenario: Companion xyz files route to the plain-xyz parser",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Companion xyz files route to the plain-xyz parser",
+    "type": "scenario"
   },
   "rq-d59dac72": {
     "decl": "### Shared Extractors",
@@ -1363,6 +2870,13 @@
     "title": "Shared Extractors",
     "type": "section"
   },
+  "rq-d5dd0577": {
+    "decl": "- `dipole_moment` — the `X= <x> Y= <y> Z= <z>` values of the last",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "dipole_moment",
+    "type": "api-item"
+  },
   "rq-d5e85a47": {
     "decl": "Scenario: Unknown keys are ignored on read",
     "file": "record",
@@ -1375,6 +2889,18 @@
     "title": "Unknown keys are ignored on read",
     "type": "scenario"
   },
+  "rq-d72bb4c5": {
+    "decl": "- `MrccParser` — unit struct implementing the framework `Parser` trait with",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "MrccParser",
+    "type": "api-item"
+  },
   "rq-d737472c": {
     "decl": "Scenario: A table ends at its first non-row line",
     "file": "parser-framework",
@@ -1385,6 +2911,22 @@
       }
     ],
     "title": "A table ends at its first non-row line",
+    "type": "scenario"
+  },
+  "rq-d8a0968b": {
+    "decl": "Scenario: An opt+freq log yields the final job's observables",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An opt+freq log yields the final job's observables",
     "type": "scenario"
   },
   "rq-d9b83cf2": {
@@ -1399,6 +2941,25 @@
     "title": "validate rejects an empty geometry",
     "type": "scenario"
   },
+  "rq-daf59b28": {
+    "decl": "- `XtbParser`, `OrcaParser`, `GaussianParser`, `MrccParser`, `XyzParser` —",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "XtbParser",
+    "type": "api-item"
+  },
+  "rq-db156cde": {
+    "decl": "# Feature: Parser Conformance Harness and Standard Registry",
+    "file": "parsers/conformance",
+    "refs": [],
+    "title": "Feature: Parser Conformance Harness and Standard Registry",
+    "type": "file"
+  },
   "rq-dce37e6e": {
     "decl": "Scenario: A parser record that fails validation is replaced",
     "file": "parser-framework",
@@ -1409,6 +2970,22 @@
       }
     ],
     "title": "A parser record that fails validation is replaced",
+    "type": "scenario"
+  },
+  "rq-de12aef8": {
+    "decl": "Scenario: A normally terminated run yields the observable set",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A normally terminated run yields the observable set",
     "type": "scenario"
   },
   "rq-dfae85df": {
@@ -1455,6 +3032,36 @@
     "title": "Short help flag behaves like --help",
     "type": "scenario"
   },
+  "rq-e21fcb88": {
+    "decl": "- `tests/fixtures/manifest.json` — the fixture manifest (below).",
+    "file": "parsers/conformance",
+    "refs": [],
+    "title": "tests",
+    "type": "api-item"
+  },
+  "rq-e2eda6d5": {
+    "decl": "Scenario: A JKQC-style comment yields the electronic energy",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A JKQC-style comment yields the electronic energy",
+    "type": "scenario"
+  },
+  "rq-e3f9be75": {
+    "decl": "- `charge` — `molecular charge` value (e), rounded to an integer.",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "charge",
+    "type": "api-item"
+  },
   "rq-e4a815f2": {
     "decl": "## Record Assembly",
     "file": "parser-framework",
@@ -1496,6 +3103,45 @@
     "title": "tests",
     "type": "api-item"
   },
+  "rq-e6338052": {
+    "decl": "Scenario: An error termination is failed",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An error termination is failed",
+    "type": "scenario"
+  },
+  "rq-e6e7e0ad": {
+    "decl": "- `truncated` — neither marker present.",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "truncated",
+    "type": "api-item"
+  },
+  "rq-e719ddf4": {
+    "decl": "Scenario: The corrected total energy wins",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected total energy wins",
+    "type": "scenario"
+  },
   "rq-e71fbb0f": {
     "decl": "## Out of Scope",
     "file": "scaffolding",
@@ -1503,6 +3149,25 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-e770b7b2": {
+    "decl": "Scenario: The corpus fixture conforms",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corpus fixture conforms",
+    "type": "scenario"
+  },
+  "rq-e7bbca13": {
+    "decl": "- `mulliken_charges` — the charge column (`q`) of the last `Atomic charges",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "mulliken_charges",
+    "type": "api-item"
   },
   "rq-e8bb37c3": {
     "decl": "Scenario: Invalid UTF-8 bytes become replacement characters",
@@ -1516,6 +3181,36 @@
     "title": "Invalid UTF-8 bytes become replacement characters",
     "type": "scenario"
   },
+  "rq-e9a48d20": {
+    "decl": "## Out of Scope",
+    "file": "parsers/gaussian",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
+  "rq-e9a83a65": {
+    "decl": "- `program_version` — from the first banner line",
+    "file": "parsers/gaussian",
+    "refs": [],
+    "title": "program_version",
+    "type": "api-item"
+  },
+  "rq-ea1f9893": {
+    "decl": "### Types",
+    "file": "parsers/gaussian",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
+  "rq-eb256ed1": {
+    "decl": "- `geometry` — the table under the header line",
+    "file": "parsers/mrcc",
+    "refs": [],
+    "title": "geometry",
+    "type": "api-item"
+  },
   "rq-eb75bf8e": {
     "decl": "Scenario: first_line_where prefers the match in the head",
     "file": "parser-framework",
@@ -1526,6 +3221,66 @@
       }
     ],
     "title": "first_line_where prefers the match in the head",
+    "type": "scenario"
+  },
+  "rq-eb7784d8": {
+    "decl": "Scenario: A normally terminated opt+freq run yields the full observable set",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A normally terminated opt+freq run yields the full observable set",
+    "type": "scenario"
+  },
+  "rq-ebaddd9d": {
+    "decl": "Scenario: The last complete frame of a multi-frame file wins",
+    "file": "parsers/xyz",
+    "refs": [
+      {
+        "file": "src/parser/xyz.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_xyz.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The last complete frame of a multi-frame file wins",
+    "type": "scenario"
+  },
+  "rq-ebeceeae": {
+    "decl": "Scenario: The corpus fixture conforms",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corpus fixture conforms",
+    "type": "scenario"
+  },
+  "rq-ec125e27": {
+    "decl": "Scenario: A hidden dipole block leaves the dipole absent",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A hidden dipole block leaves the dipole absent",
     "type": "scenario"
   },
   "rq-ed0686aa": {
@@ -1552,6 +3307,26 @@
     "title": "An empty database loads as zero records",
     "type": "scenario"
   },
+  "rq-f1754e10": {
+    "decl": "Scenario: Failed and truncated fixtures yield status records",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Failed and truncated fixtures yield status records",
+    "type": "scenario"
+  },
+  "rq-f30931da": {
+    "decl": "### Types",
+    "file": "parsers/xyz",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-f4a74fc9": {
     "decl": "Scenario: last_line_where prefers the match in the tail",
     "file": "parser-framework",
@@ -1564,6 +3339,13 @@
     "title": "last_line_where prefers the match in the tail",
     "type": "scenario"
   },
+  "rq-f4c1072b": {
+    "decl": "- `dipole_moment` — the `total` row of the last `Atomic dipole moments`",
+    "file": "parsers/xtb",
+    "refs": [],
+    "title": "dipole_moment",
+    "type": "api-item"
+  },
   "rq-f61c0532": {
     "decl": "Scenario: Default windows cover every file of the fixture corpus",
     "file": "parser-framework",
@@ -1575,6 +3357,21 @@
     ],
     "title": "Default windows cover every file of the fixture corpus",
     "type": "scenario"
+  },
+  "rq-f695c066": {
+    "decl": "## Feature API",
+    "file": "parsers/conformance",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-f6a569e1": {
+    "decl": "- `ok` — the tail carries `****ORCA TERMINATED NORMALLY****`.",
+    "file": "parsers/orca",
+    "refs": [],
+    "title": "ok",
+    "type": "api-item"
   },
   "rq-f8505d7b": {
     "decl": "- `RecordStatus` — enum with variants `Ok`, `Failed`, `Truncated`, serialized",
@@ -1599,6 +3396,13 @@
     ],
     "title": "A directory is an Io error",
     "type": "scenario"
+  },
+  "rq-f8c76b21": {
+    "decl": "- `truncated` — the content ends inside a frame: a count line with fewer",
+    "file": "parsers/xyz",
+    "refs": [],
+    "title": "truncated",
+    "type": "api-item"
   },
   "rq-f8d87123": {
     "decl": "Scenario: A missing status key reads as ok",
@@ -1636,6 +3440,14 @@
     "title": "--help prints usage",
     "type": "scenario"
   },
+  "rq-fa8178d7": {
+    "decl": "## Gherkin Scenarios",
+    "file": "parsers/conformance",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
   "rq-fb368603": {
     "decl": "Scenario: first_line_where falls back to the tail",
     "file": "parser-framework",
@@ -1647,6 +3459,30 @@
     ],
     "title": "first_line_where falls back to the tail",
     "type": "scenario"
+  },
+  "rq-fd767996": {
+    "decl": "Scenario: A hidden geometry table leaves geometry absent",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A hidden geometry table leaves geometry absent",
+    "type": "scenario"
+  },
+  "rq-fd7af40a": {
+    "decl": "### Detection",
+    "file": "parsers/xyz",
+    "level": 3,
+    "refs": [],
+    "title": "Detection",
+    "type": "section"
   },
   "rq-ffaf4e5b": {
     "decl": "Scenario: A signature anywhere in a covered file is detected",

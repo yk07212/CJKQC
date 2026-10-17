@@ -4,15 +4,19 @@
 //! tail file reader (the `windows` module), and shared extraction helpers
 //! (the `extract` module). Detection inspects the file's leading lines
 //! only — never its name or extension — and routes the file to the first
-//! registered parser whose signature matches. The registry ships empty:
-//! no output format is recognized until the per-format parsers register
-//! (milestone 3), and every file parsed in the interim yields an
-//! unrecognized-format record.
+//! registered parser whose signature matches. `ParserRegistry::new()`
+//! is empty; `ParserRegistry::standard()` assembles the shipped set of
+//! five format parsers (`rqm/parsers/`).
 //!
-//! (rq-42e59efe rq-b75cecef)
+//! (rq-42e59efe rq-b75cecef rq-1db98ae8)
 
 pub mod extract;
+mod gaussian;
+mod mrcc;
+mod orca;
 mod windows;
+mod xtb;
+mod xyz;
 
 use std::fmt;
 use std::fs::File;
@@ -20,7 +24,12 @@ use std::path::Path;
 
 use crate::record::{Record, RecordStatus};
 
+pub use gaussian::GaussianParser;
+pub use mrcc::MrccParser;
+pub use orca::OrcaParser;
 pub use windows::{FileWindows, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES};
+pub use xtb::XtbParser;
+pub use xyz::XyzParser;
 
 /// The closed vocabulary of output formats, displayed as the lowercase
 /// tokens `"gaussian"`, `"orca"`, `"xtb"`, `"mrcc"`, `"xyz"` — the only
@@ -137,6 +146,29 @@ impl ParserRegistry {
         self.parsers.push(parser);
     }
 
+    /// The shipped parser set: one parser per supported format,
+    /// registered `xtb`, `orca`, `gaussian`, `mrcc`, `xyz` — banner
+    /// signatures first, the structurally-detected plain-xyz parser
+    /// last, so a banner-bearing file is never claimed by xyz routing.
+    ///
+    /// (rq-212a38b5 rq-daf59b28)
+    pub fn standard() -> Self {
+        let mut registry = Self::new();
+        registry.register(Box::new(XtbParser));
+        registry.register(Box::new(OrcaParser));
+        registry.register(Box::new(GaussianParser));
+        registry.register(Box::new(MrccParser));
+        registry.register(Box::new(XyzParser));
+        registry
+    }
+
+    /// The registered parsers' program tokens, in registration order.
+    ///
+    /// (rq-441c138f)
+    pub fn programs(&self) -> Vec<Program> {
+        self.parsers.iter().map(|parser| parser.program()).collect()
+    }
+
     /// The core entry: detection on the head window, then `parse` on the
     /// matching parser, then the record-assembly rules. Callers reading
     /// from streams combine `FileWindows::from_stream` with this entry.
@@ -224,4 +256,42 @@ fn failed_record(message: &str) -> Record {
         error: Some(message.to_string()),
         ..Record::default()
     }
+}
+
+/// The lines following the last visible line satisfying `header`: every
+/// line from the first row-shaped one (`row` on its whitespace fields)
+/// through the last consecutive row-shaped one. Leading non-row lines
+/// (rules, column headings) are skipped; the first non-row line after the
+/// table starts ends it. Shared by the per-format block extractors.
+pub(crate) fn rows_after_last(
+    windows: &FileWindows,
+    header: impl Fn(&str) -> bool,
+    row: impl Fn(&[&str]) -> bool,
+) -> Vec<&str> {
+    let mut rows: Vec<&str> = Vec::new();
+    let mut started = false;
+    for line in windows.after_last_line_where(&header) {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if row(&fields) {
+            rows.push(line);
+            started = true;
+        } else if started {
+            break;
+        }
+    }
+    rows
+}
+
+/// Whether a field reads as an integer.
+pub(crate) fn is_integer(field: &str) -> bool {
+    field.parse::<i64>().is_ok()
+}
+
+/// Three whitespace-separated fields as a 3-vector of finite floats.
+pub(crate) fn parse_vector3(fields: [&str; 3]) -> Option<[f64; 3]> {
+    let mut vector = [0.0; 3];
+    for (slot, field) in vector.iter_mut().zip(fields) {
+        *slot = crate::parser::extract::parse_fortran_f64(field)?;
+    }
+    Some(vector)
 }

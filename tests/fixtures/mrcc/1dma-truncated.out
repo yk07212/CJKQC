@@ -1,0 +1,1400 @@
+ **********************************************************************
+                          MRCC program system
+ **********************************************************************
+ 
+                              Written by
+     Mihaly Kallay, Peter R. Nagy, David Mester, Laszlo Gyevi-Nagy,
+        Jozsef Csoka, P. Bernat Szabo, Zoltan Rolik, Gyula Samu,
+      Bence Hegely, Bence Ladoczki, Klara Petrov, Jozsef Csontos,
+     Adam Ganyecz, Istvan Ladjanszki, Lorant Szegedy, Mate Farkas,
+          Pal D. Mezei, Reka A. Horvath, and Balazs D. Lorincz
+ 
+        Department of Physical Chemistry and Materials Science
+            Budapest University of Technology and Economics
+                  Budapest P.O.Box 91, H-1521 Hungary
+ 
+                              www.mrcc.hu
+ 
+                            Version: 25.1.2
+
+ ************************ 2026-10-07 12:27:54 *************************
+ Executing minp...
+
+ Reading input from MINP...
+ 
+ Input file:
+ 
+calc=LCCSD(T) 
+basis=aug'-cc-pVTZ
+scfalg=direct
+mem=86GB
+charge=0
+mult=1
+ccsdthreads=12
+ptthreads=12
+geom=xyz
+10
+
+H      -0.766387079452810      1.198837471610640      0.000000002142340
+H       0.957430846799970     -0.783538366931850      1.277415763690990
+H      -0.030100322733990      0.426869351192290      2.081070852617120
+H      -0.800719141159950     -0.946702301963440      1.262180636711100
+H       0.957430852739580     -0.783538357973120     -1.277415761513340
+H      -0.800719133261960     -0.946702307315680     -1.262180633137990
+H      -0.030100330577230      0.426869351802160     -2.081070856699000
+C       0.026508575285320     -0.220211390340620      1.207314882508460
+C       0.026508576624960     -0.220211391796760     -1.207314885655630
+N       0.036429155736100      0.583432941716360     -0.000000000664050
+ 
+ 
+ Checking keyword combinations...
+ 
+ Keywords:
+ 
+ active=none
+ agrid=ld0006-ld0590
+ agrid_pssp=ld0006-ld0194
+ agrid_pssp_sm=ld0006-ld0074
+ basis=aug'-cc-pvtz
+ basis_sm=none
+ basopt=off
+ bfbasis=none
+ bfgsmem=10
+ bfgstol=1.0d-3
+ boysalg=jacobi
+ bpcompo=0.985
+ bpcompv=0.98
+ bpdfo=0.985
+ bpocc=0.9999d0
+ bppdo=0.999d0
+ bppdv=0.98
+ bpedo=0.9999d0
+ bpedv=0.995d0
+ bp_subsyso=0.95
+ bp_subsysv=0.95
+ cabscorr=off
+ cabsdual=off
+ calc=ccsd(t)
+ ccmaxit=50
+ ccprog=ccsd
+ ccsdalg=dfdirect
+ ccsdmkl=seq
+ ccsdrest=off
+ ccsdthreads=12
+ cctol=5
+ charge=0
+ cialg=direct
+ ciguess=off
+ cmpgrp=auto
+ comprest=off
+ coord_sys=ric
+ core=frozen
+ corembed=off
+ csapprox=off
+ cvs=off
+ dboc=off
+ deltaf12=off
+ delocsomofact=
+ dendec=cholesky
+ dens=0
+ denscorr=0
+ dfalg=lineq
+ dfbasis_cab=none
+ dfbasis_cor=auto
+ dfbasis_scf=auto
+ dfbasis_scf_sm=auto
+ dfintran=drpa
+ dft=off
+ dhexc=adc(2)
+ diag=david
+ docc=
+ domrad=10.d0
+ drpaalg=auto
+ dual=off
+ dual_df=off
+ dyson=off
+ ecp=auto
+ edisp=off
+ edisp_embed=off
+ embed=off
+ epairestfact=50.d0
+ epairscale=5.d0
+ etemp=300
+ epert=none
+ eps=
+ espcharge=off
+ excrad=0.d0
+ excrad_f12=0.d0
+ excrad_fin=0.000000000D+00
+ fastdbbsc=v2
+ fitting=coulomb
+ fmm=off
+ fmmord=8
+ fnonorb=
+ freq=off
+ gamma=1.d0
+ gauss=spher
+ geom=xyz
+ gopt=off
+ ghost=none
+ gtol=7
+ grdens=off
+ grid=auto
+ grid_sm=auto
+ gridbatch_cos=2000
+ grtol=10
+ guido_ct=off
+ hamilton=dc
+ iface=none
+ incore=off
+ intalg=auto
+ ip_ea=off
+ itol=10
+ laptol=1.d-2
+ lccoporder=lccfirst
+ lcorthr=normal
+ lccrest=off
+ ldfgrad_tol=8
+ lmp2dens=on
+ lnoepso=1e-5
+ lnoepsv=1e-6
+ localcc=2024
+ localcorrsymm=off
+ locintrf=direct
+ mact=
+ maxact=off
+ maxdim=200
+ maxex=0
+ maxmicroit=100
+ mcscfiguess=hf
+ mem=86gb
+ mmprog=
+ molden=on
+ mp2ongrid=off
+ mpitasks=1
+ mulmet=3
+ mult=1
+ nab=off
+ nacto=0
+ nactv=0
+ naf_amp=3.16d-3
+ naf_cor=1e-2
+ naf_f12=off
+ naf_scf=off
+ nafalg=albe
+ nafdens=off
+ naftyp=jpq
+ nchol=auto
+ ndeps=1e-3
+ nstate=1
+ nsing=0
+ nto=off
+ ntrip=0
+ num_grad=off
+ occ=
+ occri=off
+ oniom=off
+ oniom_eechg=off
+ oniom_pcm=off
+ oniom_qcorr=off
+ optalg=
+ optmaxit=50
+ optetol=1e-6
+ optex=0
+ optgtol=1e-4
+ optstol=1e-3
+ orblocc=off
+ orbloce=off
+ orbloco=boys
+ orblocv=pao
+ orblocguess=cholesky
+ osveps=-1.d0
+ ovirt=off
+ ovltol=1e-7
+ ovosnorb=80.0
+ pao_subsys_tol=1e-3
+ pao_tol=1e-3
+ pcm=off
+ popul=off
+ pressure=100000
+ pssp=off
+ ptfreq=0.0
+ ptthreads=12
+ qmreg=
+ qmmm=off
+ qro=off
+ qscf=off
+ redcost_exc=off
+ redcost_tddft=0.985d0
+ refdet=none
+ rest=0
+ rgrid=log3
+ rism=off
+ rohfcore=standard
+ rohftype=semicanonical
+ scfalg=direct
+ scf_conv=auto
+ scfdamp=0.0d0
+ scfdamp_mode=off
+ scfdamp_end=50
+ scfdamp_dampstep=0.d0
+ scfdamp_dtol=0.0d0
+ scfdamp_maxfact=0.0d0
+ scfdamp_minfact=0.0d0
+ scfdiis=on
+ scfdiis_dtol=0.0d0
+ scfdiis_end=50
+ scfdiis_start=2
+ scfdiis_step=1
+ scfdiis_watch=off
+ scfdiis_wrange=10
+ scfdiis_wlimit=5
+ scfdiis_delmax=2
+ scfdtol=7
+ scfext=10
+ scfguessdens=
+ scfiguess=sad
+ scfloc=off
+ scflshift=0.20
+ scflshift_end=8
+ scflshift_dtol=0.0
+ scflshift_gaptol=0.20
+ scfmaxit=50
+ scftype=
+ scftol=6
+ scspe=1.d0
+ scsph=1.d0
+ scsps=1.2d0
+ scsps_t=1.2d0
+ scspt=0.33333333333333
+ scspt_t=0.33333333333333
+ scspv=1.d0
+ spairtol=-1.d0
+ sqmprog=
+ subminp=top
+ subsys_bopu=on
+ symm=
+ talg=lapl
+ temp=298.15
+ test=off
+ theodore=off
+ tlmo=0.999
+ tpao=0.94
+ tprint=off
+ uncontract=off
+ unit=angs
+ usedisk=2
+ verbosity=2
+ wpairtol=1.d-5
+
+ ************************ 2026-10-07 12:27:55 *************************
+ Executing integ...
+
+ Allocation of 86.0 Gbytes of memory...
+ 
+ 
+ Number of atoms:                 10
+ Charge:                           0
+ Number of electrons:             26
+ Number of core electrons:         6
+ Spin multiplicity:                1
+ 
+                 Cartesian coordinates [bohr]      Atomic mass [AMU]  Z
+   1  H    -1.44826169    2.26547449    0.00000000     1.007825       1
+   2  H     1.80928208   -1.48067292    2.41396594     1.007825       1
+   3  H    -0.05688137    0.80666617    3.93265396     1.007825       1
+   4  H    -1.51313988   -1.78900807    2.38517572     1.007825       1
+   5  H     1.80928210   -1.48067291   -2.41396594     1.007825       1
+   6  H    -1.51313987   -1.78900808   -2.38517572     1.007825       1
+   7  H    -0.05688138    0.80666617   -3.93265397     1.007825       1
+   8  C     0.05009395   -0.41613922    2.28149448    12.000000       6
+   9  C     0.05009395   -0.41613922   -2.28149448    12.000000       6
+  10  N     0.06884113    1.10252847   -0.00000000    14.003074       7
+ 
+ This molecule is an asymmetric top.
+ 
+ Rotational constants [cm-1]: 
+      1.162362192247      0.312858690071      0.276150563247
+ 
+ Point group: Cs  
+ Computational point group: Cs  
+ 
+ Cartesian coordinates in standard orientation [bohr]
+   1  H     0.00000001   -2.35560658   -1.21790991
+   2  H     2.41396594    1.73254813    1.59850678
+   3  H     3.93265396   -0.74982524    0.00091216
+   4  H     2.38517573    1.66596470   -1.73752754
+   5  H    -2.41396594    1.73254812    1.59850679
+   6  H    -2.38517572    1.66596471   -1.73752752
+   7  H    -3.93265396   -0.74982524    0.00091214
+   8  C     2.28149448    0.47725973   -0.03005883
+   9  C    -2.28149448    0.47725973   -0.03005883
+  10  N     0.00000000   -1.02970402    0.15905298
+ 
+ Nuclear repulsion energy [au]:         84.374993584543
+ 
+ 
+ Basis set information:
+ 
+ Maximum angular momentum: g
+ Maximum number of contracted Gaussians:   11
+ Maximum number of primitive Gaussians:    11
+ Spherical harmonic GTOs are used.
+ 
+ 
+ Conventional basis set:
+ 
+   1  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   2  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   3  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   4  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   5  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   6  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   7  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   8  C  aug-cc-pvtz [ 11s 6p 3d 2f | 5s 4p 3d 2f ]
+   9  C  aug-cc-pvtz [ 11s 6p 3d 2f | 5s 4p 3d 2f ]
+  10  N  aug-cc-pvtz [ 11s 6p 3d 2f | 5s 4p 3d 2f ]
+ 
+ Total number of basis functions:    236
+ 
+ 
+ Fitting basis set for the SCF calculation:
+ 
+   1  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   2  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   3  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   4  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   5  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   6  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   7  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   8  C  aug-cc-pvtz-ri-jk [ 11s 8p 6d 3f 2g | 11s 8p 6d 3f 2g ]
+   9  C  aug-cc-pvtz-ri-jk [ 11s 8p 6d 3f 2g | 11s 8p 6d 3f 2g ]
+  10  N  aug-cc-pvtz-ri-jk [ 11s 8p 6d 3f 2g | 11s 8p 6d 3f 2g ]
+ 
+ Total number of basis functions:    522
+ 
+ 
+ Fitting basis set for the correlation calculation:
+ 
+   1  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   2  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   3  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   4  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   5  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   6  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   7  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   8  C  aug-cc-pvtz-ri [ 9s 7p 6d 4f 2g | 9s 7p 6d 4f 2g ]
+   9  C  aug-cc-pvtz-ri [ 9s 7p 6d 4f 2g | 9s 7p 6d 4f 2g ]
+  10  N  aug-cc-pvtz-ri [ 9s 7p 6d 4f 2g | 9s 7p 6d 4f 2g ]
+ 
+ Total number of basis functions:    528
+ 
+ 
+ Initializing the SAD routines for the initial guess...
+ Checking the files required for the initial guess...
+ Density files have not been found for the initial guess.
+ Generating SCFDENSITIES.H.cc-pvtz.0
+ Generating SCFDENSITIES.C.aug-cc-pvtz.0
+ Generating SCFDENSITIES.N.aug-cc-pvtz.0
+ CPU time [min]:     0.006                   Wall time [min]:     0.087
+ 
+ Character table for point group Cs:
+ 
+          E  Qh  
+    A'    1   1
+    A"    1  -1
+ 
+ Number of basis functions per irrep:
+    A'    128
+    A"    108
+ 
+ 
+ Calculation of overlap integrals...
+ CPU time [min]:     0.006                   Wall time [min]:     0.087
+ 
+ Calculation of the square root of the overlap matrix...
+ Minimum eigenvalue of the overlap matrix: 0.905237E-04
+ CPU time [min]:     0.016                   Wall time [min]:     0.090
+ 
+ Calculation of kinetic energy integrals...
+ CPU time [min]:     0.016                   Wall time [min]:     0.090
+ Calculation of dipole moment integrals...
+ CPU time [min]:     0.016                   Wall time [min]:     0.090
+ Calculation of nuclear attraction integrals...
+ CPU time [min]:     0.017                   Wall time [min]:     0.090
+ 
+ Calculation of prescreening integrals...
+ CPU time [min]:     0.023                   Wall time [min]:     0.092
+ 
+ Calculation of two-center Coulomb integrals...
+   1% done.
+  12% done.
+  28% done.
+  39% done.
+  53% done.
+  64% done.
+  75% done.
+  86% done.
+ 100% done.
+ CPU time [min]:     0.024                   Wall time [min]:     0.092
+ 
+ Cholesky decomposition of the two-center matrix...
+ Reciprocal of the condition number:  0.124932E-04
+ CPU time [min]:     0.027                   Wall time [min]:     0.092
+ 
+
+ ************************ 2026-10-07 12:28:01 *************************
+ Executing scf...
+
+ Allocation of 86.0 Gbytes of memory...
+ ======================================================================
+ ITERATION STEP   1
+ CPU time [min]:     0.008                   Wall time [min]:     0.005
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.040                   Wall time [min]:     0.008
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.076                   Wall time [min]:     0.012
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.091                   Wall time [min]:     0.014
+ 
+ RMS of [F,P]:                                         0.01872370918953
+ RMS of difference density:                            0.02468844904832
+ Gap [au]:  0.50795488
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   1 IS       -133.6600682626284424 [AU]
+ ======================================================================
+ ITERATION STEP   2
+ CPU time [min]:     0.111                   Wall time [min]:     0.015
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.151                   Wall time [min]:     0.019
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.152                   Wall time [min]:     0.019
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.161                   Wall time [min]:     0.020
+ 
+ RMS of [F,P]:                                         0.00415342771863
+ RMS of difference density:                            0.00645054863629
+ Gap [au]:  0.40683914
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   2 IS       -134.2368958052728658 [AU]
+ ======================================================================
+ ITERATION STEP   3
+ CPU time [min]:     0.168                   Wall time [min]:     0.021
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.190                   Wall time [min]:     0.022
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.191                   Wall time [min]:     0.022
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.199                   Wall time [min]:     0.023
+ 
+ RMS of [F,P]:                                         0.00167916624767
+ RMS of difference density:                            0.00196527885035
+ Gap [au]:  0.43493173
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   3 IS       -134.2846375946562318 [AU]
+ ======================================================================
+ ITERATION STEP   4
+ CPU time [min]:     0.207                   Wall time [min]:     0.024
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.229                   Wall time [min]:     0.026
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.230                   Wall time [min]:     0.026
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.239                   Wall time [min]:     0.027
+ 
+ RMS of [F,P]:                                         0.00023503670446
+ RMS of difference density:                            0.00048138279709
+ Gap [au]:  0.42937744
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   4 IS       -134.2939112773786690 [AU]
+ ======================================================================
+ ITERATION STEP   5
+ CPU time [min]:     0.246                   Wall time [min]:     0.027
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.269                   Wall time [min]:     0.029
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.269                   Wall time [min]:     0.029
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.278                   Wall time [min]:     0.030
+ 
+ RMS of [F,P]:                                         0.00005724156287
+ RMS of difference density:                            0.00013243513892
+ Gap [au]:  0.42892752
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   5 IS       -134.2943603906091425 [AU]
+ ======================================================================
+ ITERATION STEP   6
+ CPU time [min]:     0.285                   Wall time [min]:     0.031
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.307                   Wall time [min]:     0.032
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.307                   Wall time [min]:     0.032
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.316                   Wall time [min]:     0.033
+ 
+ RMS of [F,P]:                                         0.00001539029716
+ RMS of difference density:                            0.00003971705016
+ Gap [au]:  0.42843582
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   6 IS       -134.2943905071229835 [AU]
+ ======================================================================
+ ITERATION STEP   7
+ CPU time [min]:     0.323                   Wall time [min]:     0.034
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.346                   Wall time [min]:     0.036
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.346                   Wall time [min]:     0.036
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.355                   Wall time [min]:     0.036
+ 
+ RMS of [F,P]:                                         0.00000554457630
+ RMS of difference density:                            0.00001128037511
+ Gap [au]:  0.42853523
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   7 IS       -134.2943928391192685 [AU]
+ ======================================================================
+ ITERATION STEP   8
+ CPU time [min]:     0.362                   Wall time [min]:     0.037
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.384                   Wall time [min]:     0.039
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.385                   Wall time [min]:     0.039
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.394                   Wall time [min]:     0.040
+ 
+ RMS of [F,P]:                                         0.00000178948915
+ RMS of difference density:                            0.00000370807208
+ Gap [au]:  0.42845538
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   8 IS       -134.2943930547926072 [AU]
+ ======================================================================
+ ITERATION STEP   9
+ CPU time [min]:     0.401                   Wall time [min]:     0.040
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.424                   Wall time [min]:     0.042
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.425                   Wall time [min]:     0.042
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.434                   Wall time [min]:     0.043
+ 
+ RMS of [F,P]:                                         0.00000028411910
+ RMS of difference density:                            0.00000089567781
+ Gap [au]:  0.42845266
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP   9 IS       -134.2943930772181602 [AU]
+ ======================================================================
+ ITERATION STEP  10
+ CPU time [min]:     0.438                   Wall time [min]:     0.044
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.461                   Wall time [min]:     0.045
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.461                   Wall time [min]:     0.045
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.470                   Wall time [min]:     0.046
+ 
+ RMS of [F,P]:                                         0.00000005670219
+ RMS of difference density:                            0.00000016421998
+ Gap [au]:  0.42845181
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP  10 IS       -134.2943930780549806 [AU]
+ ======================================================================
+ ITERATION STEP  11
+ CPU time [min]:     0.477                   Wall time [min]:     0.047
+ 
+ Constructing Fock-matrix...
+ 
+ First step of Coulomb + first step of exchange...
+ Exchange contribution is evaluated for MOs 1 to 13.
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.500                   Wall time [min]:     0.049
+ 
+ Fitting and assembly step of exchange...
+ CPU time [min]:     0.500                   Wall time [min]:     0.049
+ 
+ Second step of Coulomb...
+   1% done.
+  13% done.
+  24% done.
+  37% done.
+  56% done.
+  68% done.
+  89% done.
+ 100% done.
+ CPU time [min]:     0.509                   Wall time [min]:     0.050
+ 
+ RMS of [F,P]:                                         0.00000001389461
+ RMS of difference density:                            0.00000004460863
+ Gap [au]:  0.42845174
+ ALPHA OCC:   8   5
+ BETA  OCC:   8   5
+ 
+ ***HARTREE-FOCK ENERGY IN STEP  11 IS       -134.2943930780812707 [AU]
+ ======================================================================
+ 
+ SUCCESS...
+ THE SCF ITERATION HAS CONVERGED!
+ 
+                   A'  A"  
+ FINAL ALPHA OCC:   8   5
+ FINAL BETA  OCC:   8   5
+ 
+ ***FINAL HARTREE-FOCK ENERGY:       -134.2943930780812707 [AU]
+ 
+ RETURNING FROM SCF ALGORITHM
+ ======================================================================
+
+ ************************ 2026-10-07 12:28:04 *************************
+ Executing orbloc...
+
+ Allocation of 86.0 Gbytes of memory...
+
+ Localization of occupied orbitals...
+ Localization type: Boys
+ Localization algorithm: Jacobi
+ 
+ Step   Convergence
+   1   1.338789397895
+   2   0.067713092256
+   3   0.000521186462
+   4   0.000008623563
+   5   0.000000029024
+   6   0.000000000371
+
+ Localization succeeded.
+
+ File MOCOEF is overwritten with localized orbitals.
+ 
+ CPU time [min]:     0.016                   Wall time [min]:     0.002
+
+ ************************ 2026-10-07 12:28:04 *************************
+ Executing integ...
+
+ Allocation of 86.0 Gbytes of memory...
+ 
+ 
+ Basis set information:
+ 
+ Maximum angular momentum: g
+ Maximum number of contracted Gaussians:   11
+ Maximum number of primitive Gaussians:    11
+ Spherical harmonic GTOs are used.
+ 
+ 
+ Conventional basis set:
+ 
+   1  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   2  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   3  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   4  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   5  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   6  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   7  H  cc-pvtz [ 5s 2p 1d | 3s 2p 1d ]
+   8  C  aug-cc-pvtz [ 11s 6p 3d 2f | 5s 4p 3d 2f ]
+   9  C  aug-cc-pvtz [ 11s 6p 3d 2f | 5s 4p 3d 2f ]
+  10  N  aug-cc-pvtz [ 11s 6p 3d 2f | 5s 4p 3d 2f ]
+ 
+ Total number of basis functions:    236
+ 
+ 
+ Fitting basis set for the SCF calculation:
+ 
+   1  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   2  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   3  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   4  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   5  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   6  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   7  H  cc-pvtz-ri-jk [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   8  C  aug-cc-pvtz-ri-jk [ 11s 8p 6d 3f 2g | 11s 8p 6d 3f 2g ]
+   9  C  aug-cc-pvtz-ri-jk [ 11s 8p 6d 3f 2g | 11s 8p 6d 3f 2g ]
+  10  N  aug-cc-pvtz-ri-jk [ 11s 8p 6d 3f 2g | 11s 8p 6d 3f 2g ]
+ 
+ Total number of basis functions:    522
+ 
+ 
+ Fitting basis set for the correlation calculation:
+ 
+   1  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   2  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   3  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   4  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   5  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   6  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   7  H  cc-pvtz-ri [ 4s 3p 2d 1f | 4s 3p 2d 1f ]
+   8  C  aug-cc-pvtz-ri [ 9s 7p 6d 4f 2g | 9s 7p 6d 4f 2g ]
+   9  C  aug-cc-pvtz-ri [ 9s 7p 6d 4f 2g | 9s 7p 6d 4f 2g ]
+  10  N  aug-cc-pvtz-ri [ 9s 7p 6d 4f 2g | 9s 7p 6d 4f 2g ]
+ 
+ Total number of basis functions:    528
+ 
+ 
+ Calculation of two-center Coulomb integrals...
+   1% done.
+  12% done.
+  26% done.
+  38% done.
+  51% done.
+  64% done.
+  83% done.
+ 100% done.
+ CPU time [min]:     0.004                   Wall time [min]:     0.004
+ 
+
+ ************************ 2026-10-07 12:28:04 *************************
+ Executing drpa...
+
+ Three-index integral transformation
+ Allocation of 86.0 Gbytes of memory...
+ 
+ 
+ Constructing PAOs...
+ CPU time [min]:     0.003                   Wall time [min]:     0.002
+ 
+ Executing the Boughton-Pulay algorithm...
+  with occ/virt MO completeness:    0.9990000000    0.9800000000
+ 
+   MO  Natoms  Completeness   Atoms
+    1    4     0.999756        1    8    9   10
+    2    3     0.999679        2    8   10
+    3    3     0.999679        5    9   10
+    4    3     0.999281        3    8   10
+    5    3     0.999281        7    9   10
+    6    3     0.999659        4    8   10
+    7    3     0.999659        6    9   10
+    8    4     0.999888        1    8    9   10
+    9    3     0.999691        8    9   10
+   10    3     0.999691        8    9   10
+ 
+   11    2     0.989501        1   10
+   12    2     0.990897        1   10
+   13    2     0.981759        1   10
+   14    1     0.985802        1
+   15    1     0.986523        1
+   16    1     0.985781        1
+   17    2     0.997211        1   10
+   18    2     0.989071        1   10
+   19    2     0.983198        1   10
+   20    2     0.997561        1   10
+   21    1     0.992348        1
+   22    2     0.998192        1   10
+   23    1     0.985371        1
+   24    1     0.988005        1
+   25    2     0.989409        2    8
+   26    2     0.991002        2    8
+   27    3     0.990093        2    8   10
+   28    1     0.995534        2
+   29    1     0.993434        2
+   30    1     0.991898        2
+   31    2     0.998107        2    8
+   32    2     0.992162        2    8
+   33    2     0.990111        2    8
+   34    1     0.990200        2
+   35    1     0.992497        2
+   36    1     0.982998        2
+   37    1     0.989882        2
+   38    1     0.995660        2
+   39    2     0.992313        3    8
+   40    2     0.990801        3    8
+   41    2     0.990418        3    8
+   42    1     0.990239        3
+   43    1     0.994670        3
+   44    1     0.996038        3
+   45    2     0.997162        3    8
+   46    2     0.995895        3    8
+   47    2     0.986114        3    8
+   48    1     0.992643        3
+   49    1     0.989378        3
+   50    1     0.997907        3
+   51    1     0.988542        3
+   52    1     0.982838        3
+   53    2     0.985454        4    8
+   54    2     0.987807        4    8
+   55    3     0.987506        4    8   10
+   56    1     0.995795        4
+   57    1     0.992979        4
+   58    1     0.992378        4
+   59    2     0.997337        4    8
+   60    2     0.991245        4    8
+   61    2     0.989031        4    8
+   62    1     0.991902        4
+   63    1     0.992233        4
+   64    1     0.983979        4
+   65    1     0.989585        4
+   66    1     0.996285        4
+   67    2     0.989409        5    9
+   68    2     0.991002        5    9
+   69    3     0.990093        5    9   10
+   70    1     0.995534        5
+   71    1     0.993434        5
+   72    1     0.991898        5
+   73    2     0.998107        5    9
+   74    2     0.992162        5    9
+   75    2     0.990111        5    9
+   76    1     0.990200        5
+   77    1     0.992497        5
+   78    1     0.982998        5
+   79    1     0.989882        5
+   80    1     0.995660        5
+   81    2     0.985454        6    9
+   82    2     0.987807        6    9
+   83    3     0.987506        6    9   10
+   84    1     0.995795        6
+   85    1     0.992979        6
+   86    1     0.992378        6
+   87    2     0.997337        6    9
+   88    2     0.991245        6    9
+   89    2     0.989031        6    9
+   90    1     0.991902        6
+   91    1     0.992233        6
+   92    1     0.983979        6
+   93    1     0.989585        6
+   94    1     0.996285        6
+   95    2     0.992313        7    9
+   96    2     0.990801        7    9
+   97    2     0.990418        7    9
+   98    1     0.990239        7
+   99    1     0.994670        7
+  100    1     0.996038        7
+  101    2     0.997162        7    9
+  102    2     0.995895        7    9
+  103    2     0.986114        7    9
+  104    1     0.992643        7
+  105    1     0.989378        7
+  106    1     0.997907        7
+  107    1     0.988542        7
+  108    1     0.982838        7
+  109    5     0.998434        2    3    4    8   10
+  110    2     0.990668        8   10
+  111    5     0.988269        2    4    8    9   10
+  112    4     0.981183        1    4    8   10
+  113    4     0.999300        2    4    8   10
+  114    5     0.996224        2    3    4    8   10
+  115    3     0.995830        3    8   10
+  116    4     0.997544        2    4    8   10
+  117    5     0.997514        2    3    4    8   10
+  118    3     0.996075        3    8   10
+  119    3     0.985922        4    8   10
+  120    3     0.986412        4    8   10
+  121    3     0.989738        8    9   10
+  122    2     0.986381        8   10
+  123    2     0.992460        8   10
+  124    3     0.996999        8    9   10
+  125    1     0.996888        8
+  126    1     0.995702        8
+  127    1     0.998948        8
+  128    1     0.996493        8
+  129    1     0.995771        8
+  130    2     0.996283        8   10
+  131    2     0.994400        8   10
+  132    1     0.991808        8
+  133    2     0.998508        8   10
+  134    3     0.999281        8    9   10
+  135    4     0.984357        3    7    8   10
+  136    2     0.989266        8   10
+  137    4     0.980042        2    3    4    8
+  138    3     0.998262        8    9   10
+  139    3     0.982952        1    8    9
+  140    1     0.998081        8
+  141    1     0.993447        8
+  142    1     0.999236        8
+  143    1     0.995665        8
+  144    1     0.998991        8
+  145    1     0.998494        8
+  146    1     0.989958        8
+  147    2     0.992183        8   10
+  148    2     0.994591        8   10
+  149    1     0.992342        8
+  150    2     0.997876        8   10
+  151    1     0.987453        8
+  152    1     0.983403        8
+  153    2     0.992569        8   10
+  154    5     0.998434        5    6    7    9   10
+  155    2     0.990668        9   10
+  156    5     0.988269        5    6    8    9   10
+  157    4     0.981183        1    6    9   10
+  158    4     0.999300        5    6    9   10
+  159    5     0.996224        5    6    7    9   10
+  160    3     0.995830        7    9   10
+  161    4     0.997544        5    6    9   10
+  162    5     0.997514        5    6    7    9   10
+  163    3     0.996075        7    9   10
+  164    3     0.985922        6    9   10
+  165    3     0.986412        6    9   10
+  166    3     0.989738        8    9   10
+  167    2     0.986381        9   10
+  168    2     0.992460        9   10
+  169    3     0.996999        8    9   10
+  170    1     0.996888        9
+  171    1     0.995702        9
+  172    1     0.998948        9
+  173    1     0.996493        9
+  174    1     0.995771        9
+  175    2     0.996283        9   10
+  176    2     0.994400        9   10
+  177    1     0.991808        9
+  178    2     0.998508        9   10
+  179    3     0.999281        8    9   10
+  180    4     0.984357        3    7    9   10
+  181    2     0.989266        9   10
+  182    4     0.980042        5    6    7    9
+  183    3     0.998262        8    9   10
+  184    3     0.982952        1    8    9
+  185    1     0.998081        9
+  186    1     0.993447        9
+  187    1     0.999236        9
+  188    1     0.995665        9
+  189    1     0.998991        9
+  190    1     0.998494        9
+  191    1     0.989958        9
+  192    2     0.992183        9   10
+  193    2     0.994591        9   10
+  194    1     0.992342        9
+  195    2     0.997876        9   10
+  196    1     0.987453        9
+  197    1     0.983403        9
+  198    2     0.992569        9   10
+  199    4     0.999553        1    8    9   10
+  200    2     0.987482        8   10
+  201    3     0.987742        8    9   10
+  202    3     0.993757        8    9   10
+  203    4     0.999404        1    8    9   10
+  204    4     0.999332        1    8    9   10
+  205    3     0.999233        8    9   10
+  206    4     0.999269        1    8    9   10
+  207    4     0.999456        1    8    9   10
+  208    3     0.999291        8    9   10
+  209    4     0.998007        1    8    9   10
+  210    6     0.980661        1    2    5    6    8   10
+  211    3     0.993360        8    9   10
+  212    3     0.997361        8    9   10
+  213    3     0.995435        8    9   10
+  214    3     0.993399        8    9   10
+  215    1     0.998440       10
+  216    1     0.998874       10
+  217    1     0.999777       10
+  218    1     0.998694       10
+  219    1     0.998166       10
+  220    2     0.987926        8   10
+  221    2     0.980326        2   10
+  222    1     0.996062       10
+  223    2     0.981052        8   10
+  224    3     0.985162        3    7   10
+  225    4     0.994465        5    8    9   10
+  226    5     0.997553        4    6    8    9   10
+  227    4     0.980020        1    2    5   10
+  228    3     0.993692        8    9   10
+  229    5     0.998539        3    7    8    9   10
+  230    1     0.999556       10
+  231    1     0.997361       10
+  232    1     0.999611       10
+  233    1     0.998787       10
+  234    1     0.999592       10
+  235    1     0.999608       10
+  236    1     0.995293       10
+  237    2     0.983889        9   10
+  238    3     0.997837        8    9   10
+  239    1     0.989296       10
+  240    2     0.980800        8   10
+  241    2     0.989485        8   10
+  242    1     0.996123       10
+  243    3     0.996223        8    9   10
+ CPU time [min]:     0.028                   Wall time [min]:     0.005
+ 
+ Warning: point group symmetry was detected, but localcorrsymm=off
+  The local correlation calculation will not exploit the symmetry
+ 
+ Constructing orbital domains...
+ CPU time [min]:     0.065                   Wall time [min]:     0.008
+ 
+ Dimensions of the primary domains:     Minimum / Average / Maximum
+ 
+ Number of atoms in domain:                  10      10.0        10
+ Number of atoms in occ BP domain:            3       3.2         4
+ Number of atoms in PAO BP domain:            1       2.0         6
+ Number of atomic orbitals:                 236     236.0       236
+ Number of PAOs:                            104     119.2       149
+ 
+ Prescreening pairs...
+ CPU time [min]:     0.070                   Wall time [min]:     0.009
+ 
+ Occupied LMO domain definition with Boughton-Pulay completeness:    0.9999000000
+ 
+   MO  Natoms  Completeness   Atoms
+    1   10     1.000000        1    2    3    4    5    6    7    8    9   10
+    2    8     0.999999        1    2    3    4    5    8    9   10
+    3    8     0.999999        1    2    5    6    7    8    9   10
+    4    7     0.999993        1    2    3    4    8    9   10
+    5    7     0.999993        1    5    6    7    8    9   10
+    6    8     0.999999        1    2    3    4    6    8    9   10
+    7    8     0.999999        1    4    5    6    7    8    9   10
+    8    8     0.999991        1    2    3    5    7    8    9   10
+    9    8     0.999966        1    2    4    6    7    8    9   10
+   10    8     0.999966        1    3    4    5    6    8    9   10
+ 
+ Executing the Boughton-Pulay algorithm...
+  with occ MO completeness:    0.9850000000
+ 
+   MO  Natoms  Completeness   Atoms
+    1    1     0.987319       10
+    2    2     0.996857        2    8
+    3    2     0.996857        5    9
+    4    2     0.996810        3    8
+    5    2     0.996810        7    9
+    6    2     0.995998        4    8
+    7    2     0.995998        6    9
+    8    2     0.994537        1   10
+    9    2     0.997145        8   10
+   10    2     0.997145        9   10
+ CPU time [min]:     0.089                   Wall time [min]:     0.010
+ 
+ Dimensions of the occupied LMO domains:  Minimum / Average / Maximum
+ 
+ Number of atoms in domain:                   7       8.0        10
+ Number of atomic orbitals:                 194     208.0       236
+ 
+    0 more strong LMO pairs due to epairestfact keyword!
+ Total number of pairs:   45
+ Number of distant pairs: 0 (0.0%)
+ Sum of multipole based pair energies:      0.0000000000
+ 
+ CPU time [min]:     0.092                   Wall time [min]:     0.011
+ Number of strong pairs: 45 (100.0%)
+        2.04 MB memory is used for domain independent quantities
+ 
+ Calculating the contribution of occupied LMOs...
+    using local fitting domains
+ 
+ MO:     1
+ Number of atoms in domain:      10
+ Number of atoms in PCD:         10
+ Number of atomic orbitals:     236
+ Number of atoms for local DF:   10
+ Number of fitting functions:   528 (100.00%)
+ Number of occupied orbitals:    10
+ Number of virtual  orbitals:   223
+ Number of Cholesky vectors:      7
+********** MB more memory is required for more efficient route
+ store PAO-LMO integrals in file        0.01GB
+  this can be avoided setting usedisk=0
+ usedisk=2 & small available memory  -> store (aI|P) on disk, its file size in GBs is:    0.01
+********** MB more memory is required to store(aI|P) integrals in memory
+ MP2 energy in ED [au]:          -0.065973959478
+ Number of occupied LNOs:        10 (100.00%)
+ Number of virtual  LNOs:        93  (41.70%)
+ Number of Cholesky vectors:      6
+ MP2 energy in LIS [au]:         -0.065711164428
+ Correction for frozen LNO [au]: -0.000262795050     (0.398%)
+ Number of NAFs:                286  (54.17%)
+ CPU time [min]:     0.323                   Wall time [min]:     0.031
+ 
+
+ Direct DF-CCSD(T) calculation
+ 
+ Convergence criterion:  1.0E-05
+ 
+ Number of occupied/virtual/auxiliary orbitals:    10    93   286
+    234.59 MB is the minimal memory requirement for (T)
+     77.77 MB is the minimal memory requirement for CCSD
+ 
+ MP2 correlation energy [au]:       -0.510555360216
+ 
+ LMP2 domain correlation energy contribution [au]:       -0.065708227950
+ 
+ CPU time [min]:     0.346                   Wall time [min]:     0.033
+ 
+ 
+ Starting CCSD iterations...
+ 
+                     Residual norm       Correlation Energy
+ Iteration  1        0.200837733628       -0.533483631577
+ Iteration  2        0.048578388571       -0.547846795723
+ Iteration  3        0.014431948711       -0.549459835849
+ Iteration  4        0.003444136617       -0.549444279213
+ Iteration  5        0.001011400697       -0.549483668127
+ Iteration  6        0.000275617985       -0.549486937256
+ Iteration  7        0.000071586754       -0.549485145364
+ 
+ CCSD iteration has converged in  7 steps.
+      337.99 MB memory was utilized by CCSD
+ 
+ T1 diagnostic:      9.039E-03            D1 diagnostic:      2.136E-02
+ 
+ T1 contribution [au]:                         0.000000000000
+ CCSD correlation energy [au]:                -0.067186826400
+ 
+ CPU time [min]:     0.564                   Wall time [min]:     0.051
+ 
+ Calculation of (T) correction...
+ 
+ Laplace threshold, nquadmin:  1.00E-02   3
+ Number of quadrature points:    3
+ 
+      263.50 MB memory is utilized for (T)
+
+ 0%       25%       50%       75%       100%
+ |---------|---------|---------|---------| 
+ 
+ (T) correction [au]:                   -0.002806262446
+ CCSD(T) correlation energy [au]:       -0.069993088846
+ 
+ CPU time [min]:     0.849                   Wall time [min]:     0.075
+ 
+ MO:     2
+ Number of atoms in domain:      10
+ Number of atoms in PCD:         10
+ Number of atomic orbitals:     236
+ Number of atoms for local DF:   10
+ Number of fitting functions:   528 (100.00%)
+ Number of occupied orbitals:    10
+ Number of virtual  orbitals:   223
+ Number of Cholesky vectors:      7
+********** MB more memory is required for more efficient route
+ store PAO-LMO integrals in file        0.01GB
+  this can be avoided setting usedisk=0

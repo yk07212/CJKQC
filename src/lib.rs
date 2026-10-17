@@ -14,8 +14,8 @@ pub use record::{Geometry, Record, RecordInvalidity, RecordStatus};
 
 // rq-15f15563
 pub use parser::{
-    FileWindows, ParseError, Parser, ParserRegistry, Program, DEFAULT_HEAD_BYTES,
-    DEFAULT_TAIL_BYTES,
+    FileWindows, GaussianParser, MrccParser, OrcaParser, ParseError, Parser, ParserRegistry,
+    Program, XtbParser, XyzParser, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES,
 };
 // rq-15f15563
 pub use parser::extract::{
