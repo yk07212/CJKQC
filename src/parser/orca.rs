@@ -12,7 +12,7 @@ use crate::parser::extract::{
 use crate::parser::{parse_vector3, rows_after_last, FileWindows, Parser, Program};
 use crate::record::{Record, RecordStatus};
 
-/// ORCA output reader: `program()` is `Program::Orca`.
+/// ORCA output reader: `program()` is `Program::ORCA`.
 ///
 /// (rq-1831b7fb)
 pub struct OrcaParser;
@@ -55,7 +55,7 @@ fn is_frequency_row(fields: &[&str]) -> bool {
 // rq-1831b7fb
 impl Parser for OrcaParser {
     fn program(&self) -> Program {
-        Program::Orca
+        Program::ORCA
     }
 
     // rq-5b9c015a rq-5f31c98f

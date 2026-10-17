@@ -12,7 +12,7 @@ use crate::parser::extract::{
 use crate::parser::{is_integer, rows_after_last, FileWindows, Parser, Program};
 use crate::record::{Record, RecordStatus};
 
-/// MRCC output reader: `program()` is `Program::Mrcc`.
+/// MRCC output reader: `program()` is `Program::MRCC`.
 ///
 /// (rq-d72bb4c5)
 pub struct MrccParser;
@@ -60,7 +60,7 @@ fn total_energy_line(line: &str) -> Option<f64> {
 // rq-d72bb4c5
 impl Parser for MrccParser {
     fn program(&self) -> Program {
-        Program::Mrcc
+        Program::MRCC
     }
 
     // rq-33ab6159 rq-8890cc1d

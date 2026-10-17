@@ -13,7 +13,7 @@ use crate::parser::extract::{
 use crate::parser::{FileWindows, Parser, Program};
 use crate::record::{Geometry, Record, RecordStatus};
 
-/// Plain xyz reader: `program()` is `Program::Xyz`.
+/// Plain xyz reader: `program()` is `Program::XYZ`.
 ///
 /// (rq-aa33eaea)
 pub struct XyzParser;
@@ -71,7 +71,7 @@ fn comment_energy(comment: &str) -> Option<f64> {
 // rq-aa33eaea
 impl Parser for XyzParser {
     fn program(&self) -> Program {
-        Program::Xyz
+        Program::XYZ
     }
 
     // rq-535bd7b8

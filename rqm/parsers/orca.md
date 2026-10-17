@@ -26,7 +26,7 @@ rotational entries are filtered downstream, not in the parser.
 ### Types <!-- rq-3bb529ad -->
 
 - `OrcaParser` — unit struct implementing the framework `Parser` trait with <!-- rq-1831b7fb -->
-  `program()` = `Program::Orca`. Lives in `src/parser/orca.rs`, re-exported
+  `program()` = `Program::ORCA`. Lives in `src/parser/orca.rs`, re-exported
   by the library root.
 
 ### Detection <!-- rq-93f2fd85 -->

@@ -31,38 +31,42 @@ pub use windows::{FileWindows, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES};
 pub use xtb::XtbParser;
 pub use xyz::XyzParser;
 
-/// The closed vocabulary of output formats, displayed as the lowercase
-/// tokens `"gaussian"`, `"orca"`, `"xtb"`, `"mrcc"`, `"xyz"` — the only
-/// values that ever appear in `Record::program`. The framework owns this
-/// vocabulary; every parser selects one of the five.
+/// A program token: a wrapper over a `&'static str` lowercase token — the
+/// value stamped into `Record::program`. Two `Program` values are equal
+/// exactly when their tokens are equal. The five shipped formats are
+/// published as associated constants; `Program::new` carries any other
+/// token, so a parser defined elsewhere names its own format in its own
+/// module.
 ///
 /// (rq-0cc3c80f)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Program {
-    /// Gaussian log files.
-    Gaussian,
-    /// ORCA output files.
-    Orca,
-    /// xtb output files.
-    Xtb,
-    /// MRCC output files.
-    Mrcc,
-    /// Plain xyz geometry files.
-    Xyz,
-}
+pub struct Program(&'static str);
 
 impl Program {
+    /// Gaussian log files: the token `"gaussian"`.
+    pub const GAUSSIAN: Self = Self("gaussian");
+    /// ORCA output files: the token `"orca"`.
+    pub const ORCA: Self = Self("orca");
+    /// xtb output files: the token `"xtb"`.
+    pub const XTB: Self = Self("xtb");
+    /// MRCC output files: the token `"mrcc"`.
+    pub const MRCC: Self = Self("mrcc");
+    /// Plain xyz geometry files: the token `"xyz"`.
+    pub const XYZ: Self = Self("xyz");
+
+    /// A token outside the shipped constants, named by its parser's own
+    /// module.
+    ///
+    /// (rq-0cc3c80f)
+    pub const fn new(token: &'static str) -> Self {
+        Self(token)
+    }
+
     /// The lowercase program token carried by records.
     ///
     /// (rq-0cc3c80f)
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Program::Gaussian => "gaussian",
-            Program::Orca => "orca",
-            Program::Xtb => "xtb",
-            Program::Mrcc => "mrcc",
-            Program::Xyz => "xyz",
-        }
+    pub fn as_str(&self) -> &str {
+        self.0
     }
 }
 
@@ -100,19 +104,27 @@ pub trait Parser: Send + Sync {
 pub enum ParseError {
     /// A filesystem operation failed — a missing file, an unreadable
     /// file, a directory — mirroring `DbError::Io`.
-    Io(String),
+    Io {
+        /// The underlying failure's kind (`NotFound`, `PermissionDenied`, …).
+        kind: std::io::ErrorKind,
+        /// The human-readable message.
+        reason: String,
+    },
 }
 
 impl ParseError {
     fn from_io(error: std::io::Error) -> Self {
-        Self::Io(error.to_string())
+        Self::Io {
+            kind: error.kind(),
+            reason: error.to_string(),
+        }
     }
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ParseError::Io(reason) => write!(f, "parser I/O failure: {reason}"),
+            ParseError::Io { reason, .. } => write!(f, "parser I/O failure: {reason}"),
         }
     }
 }

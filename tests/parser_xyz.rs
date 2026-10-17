@@ -150,7 +150,7 @@ fn window_hidden_frame_is_honest_never_half_read() {
 // Corpus routing sanity: every .xyz under tests/fixtures parses as xyz.
 #[test]
 fn corpus_xyz_files_parse_cleanly() {
-    assert_eq!(Program::Xyz.to_string(), "xyz");
+    assert_eq!(Program::XYZ.to_string(), "xyz");
     let registry = ParserRegistry::standard();
     for file in [
         "tests/fixtures/xyz/h2o.xyz",

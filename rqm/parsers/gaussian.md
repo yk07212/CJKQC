@@ -25,7 +25,7 @@ stores e·a₀ like every other source.
 ### Types <!-- rq-ea1f9893 -->
 
 - `GaussianParser` — unit struct implementing the framework `Parser` trait <!-- rq-9ea94102 -->
-  with `program()` = `Program::Gaussian`. Lives in `src/parser/gaussian.rs`,
+  with `program()` = `Program::GAUSSIAN`. Lives in `src/parser/gaussian.rs`,
   re-exported by the library root.
 
 ### Detection <!-- rq-918b7b58 -->

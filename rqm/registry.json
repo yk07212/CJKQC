@@ -137,7 +137,7 @@
     "type": "section"
   },
   "rq-0cc3c80f": {
-    "decl": "- `Program` — the closed vocabulary of output formats: the variants",
+    "decl": "- `Program` — a program token: a wrapper over a `&'static str` lowercase",
     "file": "parser-framework",
     "refs": [
       {
@@ -1841,6 +1841,18 @@
     "refs": [],
     "title": "Extraction",
     "type": "section"
+  },
+  "rq-86740b39": {
+    "decl": "Scenario: A parser from outside the shipped set carries its own token",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A parser from outside the shipped set carries its own token",
+    "type": "scenario"
   },
   "rq-8692e310": {
     "decl": "Scenario: Comments without the energy label carry no energy",

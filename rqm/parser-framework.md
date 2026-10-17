@@ -64,11 +64,16 @@ runs (`rqm/ARCHITECTURE.md`).
     the head window of an uncovered file, iteration ends where the head
     window ends.
 
-- `Program` — the closed vocabulary of output formats: the variants <!-- rq-0cc3c80f -->
-  `Gaussian`, `Orca`, `Xtb`, `Mrcc`, `Xyz`, displayed as the lowercase
-  tokens `"gaussian"`, `"orca"`, `"xtb"`, `"mrcc"`, `"xyz"` — the only
-  values that ever appear in `Record::program`. The framework owns this
-  vocabulary; every parser selects one of the five.
+- `Program` — a program token: a wrapper over a `&'static str` lowercase <!-- rq-0cc3c80f -->
+  token — the value stamped into `Record::program`. Two `Program` values
+  are equal exactly when their tokens are equal. The five shipped formats
+  are published as associated constants — `Program::GAUSSIAN`,
+  `Program::ORCA`, `Program::XTB`, `Program::MRCC`, `Program::XYZ`
+  (tokens `"gaussian"`, `"orca"`, `"xtb"`, `"mrcc"`, `"xyz"`) — and
+  `Program::new(&'static str) -> Program` is a `const fn` carrying any
+  other token, so a parser defined elsewhere names its own format in its
+  own module; no central vocabulary blocks a new format.
+  - `as_str(&self) -> &str` — the lowercase token; `Display` writes it.
 
 - `Parser` — the trait every output-format reader implements. The trait is <!-- rq-4dc770c8 -->
   `Send + Sync` so data-parallel collection can be added later without a
@@ -96,8 +101,11 @@ runs (`rqm/ARCHITECTURE.md`).
     outcome is `Ok` with one record.
 
 - `ParseError` — the error type of `parse_file`, with the single variant <!-- rq-814d8aa2 -->
-  `Io(String)` — a filesystem operation failed (mirroring `DbError::Io` in
-  `rqm/database.md`).
+  `Io { kind: std::io::ErrorKind, reason: String }` — a filesystem
+  operation failed. `kind` is the underlying failure's kind (`NotFound`,
+  `PermissionDenied`, …) so callers branch on the cause without parsing
+  text; `reason` is the human-readable message. Mirrors `DbError::Io` in
+  `rqm/database.md`.
 
 ### Shared Extractors <!-- rq-d59dac72 -->
 
@@ -371,6 +379,15 @@ Feature: Format detection and parser framework
     Given no file exists at "no/such.log"
     When parse_file is called on "no/such.log"
     Then Err(ParseError::Io(_)) is returned
+    And the Io error's kind is NotFound
+
+  @rq-86740b39
+  Scenario: A parser from outside the shipped set carries its own token
+    Given the registry contains a parser whose program token is "turbomole",
+    claiming heads containing "MAGIC"
+    And a file whose first line is "MAGIC"
+    When the file is parsed
+    Then the record has program "turbomole"
 
   @rq-f87aad94
   Scenario: A directory is an Io error

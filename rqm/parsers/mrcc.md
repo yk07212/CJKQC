@@ -26,7 +26,7 @@ shared `BOHR_TO_ANGSTROM` constant at extraction time
 ### Types <!-- rq-23172936 -->
 
 - `MrccParser` — unit struct implementing the framework `Parser` trait with <!-- rq-d72bb4c5 -->
-  `program()` = `Program::Mrcc`. Lives in `src/parser/mrcc.rs`, re-exported
+  `program()` = `Program::MRCC`. Lives in `src/parser/mrcc.rs`, re-exported
   by the library root.
 
 ### Detection <!-- rq-ad79643a -->

@@ -65,9 +65,15 @@ reported problem while the valid records load; only filesystem-level failures
 - `MergeProblem` — `input: PathBuf`, `line: usize` (1-based), and <!-- rq-96b8c74d -->
   `reason: String`.
 - `DbError` — error type for database operations: <!-- rq-125f5313 -->
-  - `Io(String)` — a filesystem operation failed: missing input file,
-    uncreatable or unwritable output, missing parent directory, permission
-    failure.
+  - `Io { kind: std::io::ErrorKind, reason: String }` — a filesystem
+    operation failed: missing input file, uncreatable or unwritable
+    output, missing parent directory, permission failure. `kind` is the
+    underlying failure's kind (`NotFound`, `PermissionDenied`, …) so
+    callers branch on the cause without parsing text; `reason` is the
+    human-readable message.
+  - `Serialize(String)` — a record could not be serialized to its JSON
+    line while writing (append or merge). This is a record-content
+    failure, never reported as `Io`.
   - `InvalidRecord(RecordInvalidity)` — a record handed to
     `append_records` failed validation (see `rqm/record.md`); nothing was
     written.
@@ -133,6 +139,7 @@ Feature: Record database
     Given no file exists at "missing.jsonl"
     When load_database is called on it
     Then Err(DbError::Io(_)) is returned
+    And the Io error's kind is NotFound
 
   @rq-8f1add9c
   Scenario: Loading a directory is an error

@@ -21,7 +21,7 @@ frequencies in cm⁻¹, so extraction is unit-preserving.
 ### Types <!-- rq-117fdecb -->
 
 - `XtbParser` — unit struct implementing the framework `Parser` trait with <!-- rq-597bef47 -->
-  `program()` = `Program::Xtb`. Lives in `src/parser/xtb.rs`, re-exported
+  `program()` = `Program::XTB`. Lives in `src/parser/xtb.rs`, re-exported
   by the library root.
 
 ### Detection <!-- rq-7b39d1a8 -->

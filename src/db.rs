@@ -67,7 +67,15 @@ pub struct MergeProblem {
 pub enum DbError {
     /// A filesystem operation failed: missing input file, uncreatable or
     /// unwritable output, missing parent directory, permission failure.
-    Io(String),
+    Io {
+        /// The underlying failure's kind (`NotFound`, `PermissionDenied`, …).
+        kind: std::io::ErrorKind,
+        /// The human-readable message.
+        reason: String,
+    },
+    /// A record could not be serialized to its JSON line while writing
+    /// (append or merge); a record-content failure, never an `Io`.
+    Serialize(String),
     /// A record handed to `append_records` failed validation; nothing was
     /// written.
     InvalidRecord(RecordInvalidity),
@@ -75,14 +83,18 @@ pub enum DbError {
 
 impl DbError {
     fn from_io(error: std::io::Error) -> Self {
-        Self::Io(error.to_string())
+        Self::Io {
+            kind: error.kind(),
+            reason: error.to_string(),
+        }
     }
 }
 
 impl fmt::Display for DbError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DbError::Io(reason) => write!(f, "database I/O failure: {reason}"),
+            DbError::Io { reason, .. } => write!(f, "database I/O failure: {reason}"),
+            DbError::Serialize(reason) => write!(f, "record serialization failure: {reason}"),
             DbError::InvalidRecord(invalidity) => write!(f, "invalid record: {invalidity}"),
         }
     }
@@ -91,14 +103,14 @@ impl fmt::Display for DbError {
 impl std::error::Error for DbError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            DbError::Io(_) => None,
+            DbError::Io { .. } | DbError::Serialize(_) => None,
             DbError::InvalidRecord(invalidity) => Some(invalidity),
         }
     }
 }
 
 /// Loads a database. The path must exist and be a readable file; otherwise
-/// `Err(DbError::Io(_))`. Blank lines are ignored silently. Every non-blank
+/// `Err(DbError::Io { .. })`. Blank lines are ignored silently. Every non-blank
 /// line is deserialized into a `Record` and validated; a line that fails
 /// either step is skipped and reported with its 1-based line number. Content
 /// problems never fail the load.
@@ -245,9 +257,10 @@ fn missing_final_newline(path: &Path) -> Result<bool, DbError> {
     Ok(last[0] != b'\n')
 }
 
-// rq-13bcad95 rq-aeb0d510
+// rq-13bcad95 rq-aeb0d510 rq-125f5313
 fn write_line<W: Write>(writer: &mut W, record: &Record) -> Result<(), DbError> {
-    let mut line = serde_json::to_string(record).map_err(|error| DbError::Io(error.to_string()))?;
+    let mut line =
+        serde_json::to_string(record).map_err(|error| DbError::Serialize(error.to_string()))?;
     line.push('\n');
     writer
         .write_all(line.as_bytes())

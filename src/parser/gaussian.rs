@@ -16,7 +16,7 @@ use crate::record::{Record, RecordStatus};
 /// dipole table needs to reach the record's atomic units.
 const DEBYE_PER_E_A0: f64 = 2.541746473;
 
-/// Gaussian log reader: `program()` is `Program::Gaussian`.
+/// Gaussian log reader: `program()` is `Program::GAUSSIAN`.
 ///
 /// (rq-9ea94102)
 pub struct GaussianParser;
@@ -98,7 +98,7 @@ fn charge_and_multiplicity(line: &str) -> Option<(i32, u32)> {
 // rq-9ea94102
 impl Parser for GaussianParser {
     fn program(&self) -> Program {
-        Program::Gaussian
+        Program::GAUSSIAN
     }
 
     // rq-799f6155 rq-9f5aa509

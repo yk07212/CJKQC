@@ -41,7 +41,7 @@ fn write_jsonl(path: &Path, records: &[Record]) {
 
 fn io_error<T>(result: Result<T, DbError>) -> DbError {
     match result {
-        Err(error @ DbError::Io(_)) => error,
+        Err(error @ DbError::Io { .. }) => error,
         Err(other) => panic!("expected DbError::Io, got {other:?}"),
         Ok(_) => panic!("expected DbError::Io, got Ok"),
     }
@@ -107,7 +107,13 @@ fn loading_a_missing_file_is_an_error() {
     let dir = temp_dir();
     let path = dir.join("missing.jsonl");
     let error = io_error(load_database(&path));
-    assert!(matches!(error, DbError::Io(_)));
+    assert!(matches!(
+        error,
+        DbError::Io {
+            kind: std::io::ErrorKind::NotFound,
+            ..
+        }
+    ));
     fs::remove_dir_all(&dir).ok();
 }
 
@@ -117,7 +123,7 @@ fn loading_a_directory_is_an_error() {
     let path = dir.join("somedir");
     fs::create_dir(&path).expect("create directory");
     let error = io_error(load_database(&path));
-    assert!(matches!(error, DbError::Io(_)));
+    assert!(matches!(error, DbError::Io { .. }));
     fs::remove_dir_all(&dir).ok();
 }
 
@@ -268,7 +274,7 @@ fn append_to_missing_parent_directory_fails() {
     let dir = temp_dir();
     let path = dir.join("no/such/dir/db.jsonl");
     let error = io_error(append_records(&path, &[sample_record("A1", -1.0)]));
-    assert!(matches!(error, DbError::Io(_)));
+    assert!(matches!(error, DbError::Io { .. }));
     fs::remove_dir_all(&dir).ok();
 }
 
@@ -383,7 +389,7 @@ fn merge_with_missing_input_writes_nothing() {
     let c = dir.join("c.jsonl");
     write_jsonl(&a, &[sample_record("A1", -1.0)]);
     let error = io_error(merge_databases(&[&a, &missing], &c));
-    assert!(matches!(error, DbError::Io(_)));
+    assert!(matches!(error, DbError::Io { .. }));
     assert!(!c.exists());
     fs::remove_dir_all(&dir).ok();
 }
@@ -395,7 +401,7 @@ fn merge_to_missing_parent_directory_fails() {
     let c = dir.join("no/such/dir/c.jsonl");
     write_jsonl(&a, &[sample_record("A1", -1.0)]);
     let error = io_error(merge_databases(&[&a], &c));
-    assert!(matches!(error, DbError::Io(_)));
+    assert!(matches!(error, DbError::Io { .. }));
     fs::remove_dir_all(&dir).ok();
 }
 

@@ -12,7 +12,7 @@ use crate::parser::extract::{
 use crate::parser::{is_integer, parse_vector3, rows_after_last, FileWindows, Parser, Program};
 use crate::record::{Record, RecordStatus};
 
-/// xtb log reader: `program()` is `Program::Xtb`.
+/// xtb log reader: `program()` is `Program::XTB`.
 ///
 /// (rq-597bef47)
 pub struct XtbParser;
@@ -66,7 +66,7 @@ fn last_numeric_line(windows: &FileWindows, marker: &str, words_in_label: usize)
 // rq-597bef47
 impl Parser for XtbParser {
     fn program(&self) -> Program {
-        Program::Xtb
+        Program::XTB
     }
 
     // rq-35c8e2c9 rq-0bb4b64f

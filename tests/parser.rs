@@ -146,7 +146,7 @@ fn a_head_matching_a_registered_parser_is_parsed_by_it() {
     let mut registry = ParserRegistry::new();
     register_stub(
         &mut registry,
-        Program::Xtb,
+        Program::XTB,
         "MAGIC",
         Record {
             electronic_energy: Some(-19.3),
@@ -167,7 +167,7 @@ fn detection_ignores_the_file_name_and_extension() {
     let dir = temp_dir();
     let content = "MAGIC\nsame body\n";
     let mut registry = ParserRegistry::new();
-    register_stub(&mut registry, Program::Xtb, "MAGIC", Record::default());
+    register_stub(&mut registry, Program::XTB, "MAGIC", Record::default());
 
     let mut stripped = Vec::new();
     let mut source_paths = Vec::new();
@@ -201,8 +201,8 @@ fn the_first_registered_parser_wins_a_signature_conflict() {
     let dir = temp_dir();
     let path = write_file(&dir, "conflict.out", "MAGIC\nbody\n");
     let mut registry = ParserRegistry::new();
-    register_stub(&mut registry, Program::Gaussian, "MAGIC", Record::default());
-    register_stub(&mut registry, Program::Orca, "MAGIC", Record::default());
+    register_stub(&mut registry, Program::GAUSSIAN, "MAGIC", Record::default());
+    register_stub(&mut registry, Program::ORCA, "MAGIC", Record::default());
 
     let record = registry.parse_file(&path).expect("parse file");
 
@@ -220,7 +220,7 @@ fn a_signature_beyond_the_head_window_is_not_detected() {
     assert!(!windows.covered());
 
     let mut registry = ParserRegistry::new();
-    register_stub(&mut registry, Program::Xtb, "MAGIC", Record::default());
+    register_stub(&mut registry, Program::XTB, "MAGIC", Record::default());
 
     let record = registry.parse_windows(&windows);
 
@@ -242,7 +242,7 @@ fn a_signature_anywhere_in_a_covered_file_is_detected() {
     let content: String = lines.iter().map(|line| format!("{line}\n")).collect();
     let path = write_file(&dir, "deep.out", content);
     let mut registry = ParserRegistry::new();
-    register_stub(&mut registry, Program::Xtb, "MAGIC", Record::default());
+    register_stub(&mut registry, Program::XTB, "MAGIC", Record::default());
 
     let record = registry.parse_file(&path).expect("parse file");
 
@@ -346,7 +346,7 @@ fn streamed_and_seekable_reads_produce_identical_windows() {
 fn parse_windows_stamps_the_program_but_not_the_identity() {
     let windows = seekable_windows("MAGIC\nbody\n", 64, 64);
     let mut registry = ParserRegistry::new();
-    register_stub(&mut registry, Program::Xyz, "MAGIC", Record::default());
+    register_stub(&mut registry, Program::XYZ, "MAGIC", Record::default());
 
     let record = registry.parse_windows(&windows);
 
@@ -361,7 +361,7 @@ fn parse_windows_strips_identity_furnished_by_the_parser() {
     let mut registry = ParserRegistry::new();
     register_stub(
         &mut registry,
-        Program::Xyz,
+        Program::XYZ,
         "MAGIC",
         Record {
             name: Some("hijacked".to_string()),
@@ -384,7 +384,7 @@ fn the_parsers_status_and_error_are_preserved_verbatim() {
     let mut registry = ParserRegistry::new();
     register_stub(
         &mut registry,
-        Program::Xtb,
+        Program::XTB,
         "MAGIC",
         Record {
             status: RecordStatus::Failed,
@@ -406,7 +406,7 @@ fn a_parser_record_that_fails_validation_is_replaced() {
     let mut registry = ParserRegistry::new();
     register_stub(
         &mut registry,
-        Program::Orca,
+        Program::ORCA,
         "MAGIC",
         Record {
             electronic_energy: Some(f64::NAN),
@@ -438,7 +438,7 @@ fn an_empty_file_yields_a_failed_record() {
     let path = write_file(&dir, "empty.log", b"");
     let mut registry = ParserRegistry::new();
     // the empty signature claims any head
-    register_stub(&mut registry, Program::Xtb, "", Record::default());
+    register_stub(&mut registry, Program::XTB, "", Record::default());
 
     let record = registry.parse_file(&path).expect("parse file");
 
@@ -459,7 +459,30 @@ fn a_missing_file_is_an_io_error() {
 
     let result = registry.parse_file(Path::new("no/such.log"));
 
-    assert!(matches!(result, Err(ParseError::Io(_))));
+    assert!(matches!(
+        result,
+        Err(ParseError::Io {
+            kind: std::io::ErrorKind::NotFound,
+            ..
+        })
+    ));
+}
+
+#[test] // rq-86740b39
+fn a_parser_from_outside_the_shipped_set_carries_its_own_token() {
+    let dir = temp_dir();
+    let path = write_file(&dir, "run.out", "MAGIC\nfirst line\n");
+    let mut registry = ParserRegistry::new();
+    register_stub(
+        &mut registry,
+        Program::new("turbomole"),
+        "MAGIC",
+        Record::default(),
+    );
+
+    let record = registry.parse_file(&path).expect("exactly one record");
+
+    assert_eq!(record.program.as_deref(), Some("turbomole"));
 }
 
 #[test] // rq-f87aad94
@@ -471,7 +494,7 @@ fn a_directory_is_an_io_error() {
 
     let result = registry.parse_file(&somedir);
 
-    assert!(matches!(result, Err(ParseError::Io(_))));
+    assert!(matches!(result, Err(ParseError::Io { .. })));
 }
 
 // --- Line search across windows ---

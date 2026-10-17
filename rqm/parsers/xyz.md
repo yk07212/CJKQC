@@ -25,7 +25,7 @@ itself writes energies into xyz comments: a token `Electronic_Energy:`
 ### Types <!-- rq-f30931da -->
 
 - `XyzParser` — unit struct implementing the framework `Parser` trait with <!-- rq-aa33eaea -->
-  `program()` = `Program::Xyz`. Lives in `src/parser/xyz.rs`, re-exported
+  `program()` = `Program::XYZ`. Lives in `src/parser/xyz.rs`, re-exported
   by the library root. Detection and extraction use the shared
   `read_geometry_table` and `parse_fortran_f64` helpers
   (`rqm/parser-framework.md`).

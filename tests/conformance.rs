@@ -240,11 +240,11 @@ fn standard_registry_holds_all_five_parsers_in_detection_order() {
     assert_eq!(
         ParserRegistry::standard().programs(),
         vec![
-            Program::Xtb,
-            Program::Orca,
-            Program::Gaussian,
-            Program::Mrcc,
-            Program::Xyz,
+            Program::XTB,
+            Program::ORCA,
+            Program::GAUSSIAN,
+            Program::MRCC,
+            Program::XYZ,
         ]
     );
 }
