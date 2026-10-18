@@ -31,8 +31,8 @@ shared `BOHR_TO_ANGSTROM` constant at extraction time
 
 ### Detection <!-- rq-ad79643a -->
 
-- `detect(head)` claims content with a line containing <!-- rq-355e66c9 -->
-  `MRCC program system`.
+- `detect(head)` returns the byte offset of the earliest line containing <!-- rq-355e66c9 -->
+  `MRCC program system`, or `None` when no such line is visible.
 
 ### Extraction <!-- rq-85ba0ac2 -->
 
@@ -84,13 +84,13 @@ Feature: MRCC parser
   Scenario: The MRCC banner is detected
     Given a head containing the line "MRCC program system"
     When detect is called
-    Then it returns true
+    Then it returns Some with the byte offset of the matching line
 
   @rq-8890cc1d
   Scenario: An unrelated head is not claimed
     Given a head without the MRCC banner
     When detect is called
-    Then it returns false
+    Then it returns None
 
   @rq-de12aef8
   Scenario: A normally terminated run yields the observable set

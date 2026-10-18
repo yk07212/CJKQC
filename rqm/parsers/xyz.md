@@ -32,10 +32,11 @@ itself writes energies into xyz comments: a token `Electronic_Energy:`
 
 ### Detection <!-- rq-fd7af40a -->
 
-- `detect(head)` claims the content when: the first line is a positive <!-- rq-07f351b5 -->
-  integer in ASCII digits, the second line exists (any content, including
-  empty), and the third line is a well-formed atom row (element symbol
-  followed by three fields that parse via `parse_fortran_f64`).
+- `detect(head)` returns `Some(0)` — the structural signature begins at the <!-- rq-07f351b5 -->
+  first byte — when: the first line is a positive integer in ASCII digits, the
+  second line exists (any content, including empty), and the third line is a
+  well-formed atom row (element symbol followed by three fields that parse via
+  `parse_fortran_f64`); otherwise `None`.
 - The structural test never consults the file name or extension.
 
 ### Extraction <!-- rq-5d0be798 -->
@@ -137,7 +138,7 @@ Feature: Plain xyz parser
   Scenario: Detection requires the xyz shape
     Given content whose first line is "10" but whose third line is prose
     When detect is called
-    Then it returns false
+    Then it returns None
 
   @rq-57329ad4
   Scenario: Detection ignores name and extension

@@ -1739,5 +1739,20 @@
    "program_version": null,
    "method": null
   }
+ },
+ {
+  "file": "orca/1sa1am.out",
+  "program": "orca",
+  "status": "ok",
+  "expect": {
+   "program_version": "6.1.0",
+   "method": "XTB1",
+   "electronic_energy": -28.322836452490,
+   "charge": null,
+   "multiplicity": null,
+   "geometry": {"atoms": 11},
+   "vibrational_frequencies": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 38.55, 96.58, 171.93, 186.34, 365.24, 367.13, 420.61, 453.14, 499.08, 543.18, 561.98, 685.85, 763.51, 907.29, 970.17, 1085.9, 1161.58, 1360.07, 1377.91, 1479.73, 1522.71, 1538.87, 1632.5, 3439.62, 3552.44, 3595.76, 3641.12],
+   "rotational_symmetry_number": 1
+  }
  }
 ]

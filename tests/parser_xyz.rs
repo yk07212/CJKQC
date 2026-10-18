@@ -130,8 +130,11 @@ fn unreadable_first_frame_fails() {
 // rq-535bd7b8
 #[test]
 fn detection_requires_the_xyz_shape() {
-    assert!(!XyzParser.detect("10\nsome count\nthis is prose\nmore prose\n"));
-    assert!(XyzParser.detect("1\ncomment\nHe 0.0 0.0 0.0\n"));
+    assert_eq!(
+        XyzParser.detect("10\nsome count\nthis is prose\nmore prose\n"),
+        None
+    );
+    assert_eq!(XyzParser.detect("1\ncomment\nHe 0.0 0.0 0.0\n"), Some(0));
 }
 
 // rq-57329ad4

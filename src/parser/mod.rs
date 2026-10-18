@@ -3,8 +3,9 @@
 //! detection, a parser trait plus an ordered registry, a shared head and
 //! tail file reader (the `windows` module), and shared extraction helpers
 //! (the `extract` module). Detection inspects the file's leading lines
-//! only — never its name or extension — and routes the file to the first
-//! registered parser whose signature matches. `ParserRegistry::new()`
+//! only — never its name or extension — and routes the file to the parser
+//! whose signature appears earliest in the head window, breaking ties by
+//! registration order. `ParserRegistry::new()`
 //! is empty; `ParserRegistry::standard()` assembles the shipped set of
 //! five format parsers (`rqm/parsers/`).
 //!
@@ -85,8 +86,11 @@ pub trait Parser: Send + Sync {
     /// The format the parser handles.
     fn program(&self) -> Program;
 
-    /// Claims files whose head window carries this format's signature.
-    fn detect(&self, head: &str) -> bool;
+    /// The byte offset, into `head`, of the earliest line that carries this
+    /// format's signature, or `None` when the head carries none. A parser
+    /// claims the file exactly when it returns `Some`
+    /// (`rqm/parser-framework.md`).
+    fn detect(&self, head: &str) -> Option<usize>;
 
     /// Turns the windows into exactly one record. A parser never panics
     /// on any content; content-level failures are returned as records
@@ -131,7 +135,8 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-/// The ordered set of parsers: registration order fixes detection order.
+/// The ordered set of parsers: the earliest signature offset in the head
+/// fixes detection, with registration order breaking equal-offset ties.
 /// `new()` yields the shipped state — an empty registry in which every
 /// file is unrecognized.
 ///
@@ -151,7 +156,8 @@ impl ParserRegistry {
         }
     }
 
-    /// Appends a parser; registration order fixes detection order.
+    /// Appends a parser; registration order breaks ties when two parsers
+    /// share a signature offset.
     ///
     /// (rq-b28b6e69)
     pub fn register(&mut self, parser: Box<dyn Parser>) {
@@ -160,8 +166,10 @@ impl ParserRegistry {
 
     /// The shipped parser set: one parser per supported format,
     /// registered `xtb`, `orca`, `gaussian`, `mrcc`, `xyz` — banner
-    /// signatures first, the structurally-detected plain-xyz parser
-    /// last, so a banner-bearing file is never claimed by xyz routing.
+    /// signatures first, the structurally-detected plain-xyz parser last.
+    /// Routing is by earliest signature offset (`rqm/parser-framework.md`);
+    /// registration order only breaks equal-offset ties, which a structural
+    /// xyz head and a banner can never produce.
     ///
     /// (rq-212a38b5 rq-daf59b28)
     pub fn standard() -> Self {
@@ -226,12 +234,16 @@ impl ParserRegistry {
             return failed_record("the file is empty");
         }
 
-        // Detection sees only the head window; the first parser in
-        // registration order whose signature matches wins.
+        // Detection sees only the head window; the parser whose signature
+        // appears earliest in the head wins, and `min_by_key` keeps the
+        // first parser on equal offsets — so registration order breaks a
+        // same-offset tie (rqm/parser-framework.md).
         let Some(parser) = self
             .parsers
             .iter()
-            .find(|parser| parser.detect(&windows.head))
+            .filter_map(|parser| parser.detect(&windows.head).map(|offset| (offset, parser)))
+            .min_by_key(|(offset, _)| *offset)
+            .map(|(_, parser)| parser)
         else {
             return failed_record("unrecognized output format");
         };
@@ -297,6 +309,27 @@ pub(crate) fn rows_after_last(
 /// Whether a field reads as an integer.
 pub(crate) fn is_integer(field: &str) -> bool {
     field.parse::<i64>().is_ok()
+}
+
+/// The byte offset, into `head`, of the earliest line satisfying
+/// `predicate` (each line is a `'\n'`-delimited span with its trailing
+/// `'\n'` withheld from the predicate); `None` when no visible line matches.
+/// This is the public home of the detection offset: the registry compares
+/// these offsets across parsers when more than one claims a head, and
+/// banner-signature parsers — including external ones built through
+/// `Program::new` — call it so every parser measures its signature offset the
+/// same way.
+///
+/// (rq-166e917c)
+pub fn first_line_offset(head: &str, predicate: impl Fn(&str) -> bool) -> Option<usize> {
+    let mut offset = 0usize;
+    for chunk in head.split_inclusive('\n') {
+        if predicate(chunk.strip_suffix('\n').unwrap_or(chunk)) {
+            return Some(offset);
+        }
+        offset += chunk.len();
+    }
+    None
 }
 
 /// Three whitespace-separated fields as a 3-vector of finite floats.

@@ -58,8 +58,8 @@ pub use filter::{
 
 // rq-15f15563
 pub use parser::{
-    FileWindows, GaussianParser, MrccParser, OrcaParser, ParseError, Parser, ParserRegistry,
-    Program, XtbParser, XyzParser, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES,
+    first_line_offset, FileWindows, GaussianParser, MrccParser, OrcaParser, ParseError, Parser,
+    ParserRegistry, Program, XtbParser, XyzParser, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES,
 };
 // rq-15f15563
 pub use parser::extract::{

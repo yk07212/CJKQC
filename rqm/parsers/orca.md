@@ -31,8 +31,9 @@ rotational entries are filtered downstream, not in the parser.
 
 ### Detection <!-- rq-93f2fd85 -->
 
-- `detect(head)` claims content with a line matching the banner pattern <!-- rq-762ab556 -->
-  `\* O\s+R\s+C\s+A \*` (the ASCII-art title line).
+- `detect(head)` returns the byte offset of the earliest line matching the <!-- rq-762ab556 -->
+  banner pattern `\* O\s+R\s+C\s+A \*` (the ASCII-art title line), or `None`
+  when no such line is visible.
 
 ### Extraction <!-- rq-34b49160 -->
 
@@ -98,13 +99,13 @@ Feature: ORCA parser
   Scenario: The ASCII-art banner is detected
     Given a head containing the line "                                 * O   R   C   A *"
     When detect is called
-    Then it returns true
+    Then it returns Some with the byte offset of that line
 
   @rq-5f31c98f
   Scenario: An unrelated head is not claimed
     Given a head without the ORCA banner line
     When detect is called
-    Then it returns false
+    Then it returns None
 
   @rq-eb7784d8
   Scenario: A normally terminated opt+freq run yields the full observable set

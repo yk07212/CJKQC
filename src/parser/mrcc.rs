@@ -9,7 +9,7 @@
 use crate::parser::extract::{
     parse_fortran_f64, read_geometry_table, LengthUnits, SymbolColumn, TableSpec,
 };
-use crate::parser::{is_integer, rows_after_last, FileWindows, Parser, Program};
+use crate::parser::{first_line_offset, is_integer, rows_after_last, FileWindows, Parser, Program};
 use crate::record::{Record, RecordStatus};
 
 /// MRCC output reader: `program()` is `Program::MRCC`.
@@ -64,9 +64,8 @@ impl Parser for MrccParser {
     }
 
     // rq-33ab6159 rq-8890cc1d
-    fn detect(&self, head: &str) -> bool {
-        head.lines()
-            .any(|line| line.contains("MRCC program system"))
+    fn detect(&self, head: &str) -> Option<usize> {
+        first_line_offset(head, |line| line.contains("MRCC program system"))
     }
 
     fn parse(&self, windows: &FileWindows) -> Record {

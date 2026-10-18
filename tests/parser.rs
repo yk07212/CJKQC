@@ -12,9 +12,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use complied_jkqc::{
-    element_symbol, parse_fortran_f64, read_geometry_table, FileWindows, LengthUnits, ParseError,
-    Parser, ParserRegistry, Program, Record, RecordStatus, SymbolColumn, TableSpec,
-    BOHR_TO_ANGSTROM, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES,
+    element_symbol, first_line_offset, parse_fortran_f64, read_geometry_table, FileWindows,
+    LengthUnits, ParseError, Parser, ParserRegistry, Program, Record, RecordStatus, SymbolColumn,
+    TableSpec, BOHR_TO_ANGSTROM, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES,
 };
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -111,8 +111,12 @@ impl Parser for StubParser {
         self.program
     }
 
-    fn detect(&self, head: &str) -> bool {
-        head.contains(self.signature)
+    fn detect(&self, head: &str) -> Option<usize> {
+        // The framework helper gives the byte offset of the first line
+        // carrying the signature, so a test registry compares signatures
+        // positionally exactly like the shipped parsers.
+        // rq-166e917c
+        first_line_offset(head, |line| line.contains(self.signature))
     }
 
     fn parse(&self, _windows: &FileWindows) -> Record {
@@ -220,7 +224,7 @@ fn detection_ignores_the_file_name_and_extension() {
 }
 
 #[test] // rq-3562f71a
-fn the_first_registered_parser_wins_a_signature_conflict() {
+fn registration_order_breaks_a_same_offset_signature_tie() {
     let dir = temp_dir();
     let path = write_file(&dir, "conflict.out", "MAGIC\nbody\n");
     let mut registry = ParserRegistry::new();
@@ -230,6 +234,67 @@ fn the_first_registered_parser_wins_a_signature_conflict() {
     let record = registry.parse_file(&path).expect("parse file");
 
     assert_eq!(record.program.as_deref(), Some("gaussian"));
+}
+
+#[test] // rq-86ee6f34
+fn the_earliest_signature_wins_when_a_wrapper_embeds_a_foreign_banner() {
+    let dir = temp_dir();
+    // The ORCA banner opens the head; the wrapper embeds an xtb banner
+    // further down, so the earliest signature routes the file to ORCA even
+    // though xtb was registered first.
+    let path = write_file(
+        &dir,
+        "wrap.out",
+        "ORCA BANNER\nbody line\nXTB BANNER\nbody\n",
+    );
+    let mut registry = ParserRegistry::new();
+    register_stub(&mut registry, Program::XTB, "XTB BANNER", Record::default());
+    register_stub(
+        &mut registry,
+        Program::ORCA,
+        "ORCA BANNER",
+        Record::default(),
+    );
+
+    let record = registry.parse_file(&path).expect("parse file");
+
+    assert_eq!(record.program.as_deref(), Some("orca"));
+}
+
+#[test] // rq-b7081115
+fn a_head_that_opens_xyz_shaped_wins_over_a_later_banner() {
+    let dir = temp_dir();
+    // An xyz-shaped head (count, comment, row) at offset 0 beats an MRCC
+    // banner sitting on a later line: the structural signature is earlier.
+    let path = write_file(
+        &dir,
+        "xyz-first.xyz",
+        "2\ncomment\nHe 0.0 0.0 0.0\nO 0.0 0.0 1.0\nMRCC program system\n",
+    );
+
+    let record = ParserRegistry::standard()
+        .parse_file(&path)
+        .expect("parse file");
+
+    assert_eq!(record.program.as_deref(), Some("xyz"));
+}
+
+#[test] // rq-8209f22b
+fn a_plain_xyz_head_naming_a_program_in_its_comment_stays_xyz() {
+    let dir = temp_dir();
+    // The comment names "Gaussian 16", but the head opens xyz-shaped, so the
+    // offset-0 structural signature wins over the later banner.
+    let path = write_file(
+        &dir,
+        "named.xyz",
+        "1\nGaussian 16 optimization\nHe 0.0 0.0 0.0\n",
+    );
+
+    let record = ParserRegistry::standard()
+        .parse_file(&path)
+        .expect("parse file");
+
+    assert_eq!(record.program.as_deref(), Some("xyz"));
 }
 
 #[test] // rq-1fd7e03d

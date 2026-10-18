@@ -83,14 +83,20 @@ fn completed_log() -> String {
 // rq-5b9c015a
 #[test]
 fn ascii_art_banner_is_detected() {
-    assert!(OrcaParser
-        .detect("                                        ****ORCA*****\n   * O   R   C   A *\n"));
+    // The banner pattern matches only the second line, so the offset the
+    // parser reports is that line's byte start, not the head's start.
+    let head = "                                        ****ORCA*****\n   * O   R   C   A *\n";
+    let banner_offset = "                                        ****ORCA*****\n".len();
+    assert_eq!(OrcaParser.detect(head), Some(banner_offset));
 }
 
 // rq-5f31c98f
 #[test]
 fn unrelated_head_is_not_claimed() {
-    assert!(!OrcaParser.detect("Some other program's fine output\nnothing here\n"));
+    assert_eq!(
+        OrcaParser.detect("Some other program's fine output\nnothing here\n"),
+        None
+    );
 }
 
 // rq-eb7784d8

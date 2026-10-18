@@ -58,13 +58,17 @@ fn completed_run() -> String {
 // rq-33ab6159
 #[test]
 fn banner_is_detected() {
-    assert!(MrccParser.detect("                          MRCC program system\n"));
+    assert!(MrccParser
+        .detect("                          MRCC program system\n")
+        .is_some());
 }
 
 // rq-8890cc1d
 #[test]
 fn unrelated_head_is_not_claimed() {
-    assert!(!MrccParser.detect("Some other program's fine output\nnothing here\n"));
+    assert!(MrccParser
+        .detect("Some other program's fine output\nnothing here\n")
+        .is_none());
 }
 
 // rq-de12aef8

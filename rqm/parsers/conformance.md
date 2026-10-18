@@ -10,14 +10,22 @@ through the standard registry. A parser is "done" when the suite passes.
 
 The registry is assembled in one place so detection order is a single
 decision: banner-signature parsers first (XTB, ORCA, Gaussian, MRCC), the
-structural plain-xyz parser last, so a file that happens to begin with an
-atom count never reaches xyz routing before a program banner claims it
-(first registered wins, `rqm/parser-framework.md`).
+structural plain-xyz parser last. Detection resolves a head by the earliest
+signature in the head window — so a wrapper's embedded banner never wins a
+file from the program whose banner opens it — with registration order as the
+tie-break for equal offsets (`rqm/parser-framework.md`). Plain xyz is
+registered last purely as a deterministic tie-break; because a structural
+xyz signature is the first line (an atom count) and a banner line never is,
+the two never tie, so an xyz-shaped head always wins on offset — and a head
+that both opens xyz-shaped and bears a program banner is claimed by xyz.
 
 The expected values in the manifest come from the JKQC ground-truth tables
 checked into the corpus as `examples.pkl` (one per program directory); the
 manifest is the machine-readable encoding of those tables, and the pickles
-remain as provenance. The framework's window contract and record assembly
+remain as provenance. A fixture with no `examples.pkl` row — one added after
+the tables were cut, such as an extra corpus case — carries expectations
+hand-verified against the program's own printed values in the file. The
+framework's window contract and record assembly
 rules (`rqm/parser-framework.md`) apply unchanged; records carry the
 observable vocabulary of `rqm/record.md`.
 
@@ -173,6 +181,13 @@ Feature: Parser conformance harness and standard registry
     Given the manifest entry for the successful ORCA run
     When the file is parsed through the standard registry
     Then the record has electronic_energy exactly -199.642065483666
+
+  @rq-71a3e979
+  Scenario: An ORCA run embedding an xtb banner routes to ORCA
+    Given the manifest entry for the ORCA run whose head carries a GFN2-xTB version banner below the ORCA banner (tests/fixtures/orca/1sa1am.out)
+    When the file is parsed through the standard registry
+    Then the record has program "orca" and status ok
+    And the record has a geometry, so its thermochemistry is defined
 
   @rq-d56ab087
   Scenario: Companion xyz files route to the plain-xyz parser

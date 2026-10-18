@@ -9,7 +9,9 @@
 use crate::parser::extract::{
     parse_fortran_f64, read_geometry_table, LengthUnits, SymbolColumn, TableSpec,
 };
-use crate::parser::{parse_vector3, rows_after_last, FileWindows, Parser, Program};
+use crate::parser::{
+    first_line_offset, parse_vector3, rows_after_last, FileWindows, Parser, Program,
+};
 use crate::record::{Record, RecordStatus};
 
 /// ORCA output reader: `program()` is `Program::ORCA`.
@@ -59,8 +61,8 @@ impl Parser for OrcaParser {
     }
 
     // rq-5b9c015a rq-5f31c98f
-    fn detect(&self, head: &str) -> bool {
-        head.lines().any(is_banner)
+    fn detect(&self, head: &str) -> Option<usize> {
+        first_line_offset(head, is_banner)
     }
 
     fn parse(&self, windows: &FileWindows) -> Record {

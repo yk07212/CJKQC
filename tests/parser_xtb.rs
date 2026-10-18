@@ -72,13 +72,19 @@ fn completed_log() -> String {
 // rq-35c8e2c9
 #[test]
 fn version_banner_is_detected() {
-    assert!(XtbParser.detect("* xtb version 6.7.1 (26dd68d) compiled by 'x' on 2026-05-14"));
+    assert_eq!(
+        XtbParser.detect("* xtb version 6.7.1 (26dd68d) compiled by 'x' on 2026-05-14"),
+        Some(0)
+    );
 }
 
 // rq-0bb4b64f
 #[test]
 fn unrelated_head_is_not_claimed() {
-    assert!(!XtbParser.detect("Some other program's fine output\nnothing here\n"));
+    assert_eq!(
+        XtbParser.detect("Some other program's fine output\nnothing here\n"),
+        None
+    );
 }
 
 // rq-68850338

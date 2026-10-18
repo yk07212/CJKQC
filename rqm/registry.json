@@ -199,7 +199,7 @@
     "type": "section"
   },
   "rq-07f351b5": {
-    "decl": "- `detect(head)` claims the content when: the first line is a positive",
+    "decl": "- `detect(head)` returns `Some(0)` — the structural signature begins at the",
     "file": "parsers/xyz",
     "refs": [],
     "title": "detect",
@@ -625,6 +625,22 @@
       }
     ],
     "title": "FileWindows",
+    "type": "api-item"
+  },
+  "rq-166e917c": {
+    "decl": "- `first_line_offset(head: &str, predicate) -> Option<usize>` — the public",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "first_line_offset",
     "type": "api-item"
   },
   "rq-16a6fe88": {
@@ -1737,14 +1753,14 @@
     "type": "section"
   },
   "rq-355e66c9": {
-    "decl": "- `detect(head)` claims content with a line containing",
+    "decl": "- `detect(head)` returns the byte offset of the earliest line containing",
     "file": "parsers/mrcc",
     "refs": [],
     "title": "detect",
     "type": "api-item"
   },
   "rq-3562f71a": {
-    "decl": "Scenario: The first registered parser wins a signature conflict",
+    "decl": "Scenario: Registration order breaks a same-offset signature tie",
     "file": "parser-framework",
     "refs": [
       {
@@ -1752,7 +1768,7 @@
         "kind": "code"
       }
     ],
-    "title": "The first registered parser wins a signature conflict",
+    "title": "Registration order breaks a same-offset signature tie",
     "type": "scenario"
   },
   "rq-35c8e2c9": {
@@ -3377,6 +3393,18 @@
     "title": "src",
     "type": "api-item"
   },
+  "rq-71a3e979": {
+    "decl": "Scenario: An ORCA run embedding an xtb banner routes to ORCA",
+    "file": "parsers/conformance",
+    "refs": [
+      {
+        "file": "tests/conformance.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An ORCA run embedding an xtb banner routes to ORCA",
+    "type": "scenario"
+  },
   "rq-720a810c": {
     "decl": "Scenario: A genuine failed record from a matched parser is collected",
     "file": "collection",
@@ -3447,7 +3475,7 @@
     "type": "scenario"
   },
   "rq-762ab556": {
-    "decl": "- `detect(head)` claims content with a line matching the banner pattern",
+    "decl": "- `detect(head)` returns the byte offset of the earliest line matching the",
     "file": "parsers/orca",
     "refs": [],
     "title": "detect",
@@ -3790,6 +3818,18 @@
     "title": "validate rejects a component count below one",
     "type": "scenario"
   },
+  "rq-8209f22b": {
+    "decl": "Scenario: A plain xyz head that names a program in its comment stays xyz",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A plain xyz head that names a program in its comment stays xyz",
+    "type": "scenario"
+  },
   "rq-8237e2b7": {
     "decl": "Scenario: Gibbs values within the rounding agree and collapse",
     "file": "uniqueness",
@@ -3913,6 +3953,18 @@
       }
     ],
     "title": "Comments without the energy label carry no energy",
+    "type": "scenario"
+  },
+  "rq-86ee6f34": {
+    "decl": "Scenario: The earliest signature wins when a wrapper embeds a foreign banner",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The earliest signature wins when a wrapper embeds a foreign banner",
     "type": "scenario"
   },
   "rq-8718aee5": {
@@ -4822,7 +4874,7 @@
     "type": "api-item"
   },
   "rq-a24eec14": {
-    "decl": "- `detect(head)` claims content with a line matching the regex",
+    "decl": "- `detect(head)` returns the byte offset of the earliest line matching the",
     "file": "parsers/gaussian",
     "refs": [],
     "title": "detect",
@@ -5333,6 +5385,18 @@
       }
     ],
     "title": "Under noname, extract compares names verbatim",
+    "type": "scenario"
+  },
+  "rq-b7081115": {
+    "decl": "Scenario: A head that opens xyz-shaped wins over a banner further down",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A head that opens xyz-shaped wins over a banner further down",
     "type": "scenario"
   },
   "rq-b721514a": {
@@ -6074,7 +6138,7 @@
     "type": "scenario"
   },
   "rq-d2cba02a": {
-    "decl": "- `detect(head)` claims content with a line matching `xtb version` (the",
+    "decl": "- `detect(head)` returns the byte offset of the earliest line matching",
     "file": "parsers/xtb",
     "refs": [],
     "title": "detect",

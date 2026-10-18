@@ -75,15 +75,16 @@ impl Parser for XyzParser {
     }
 
     // rq-535bd7b8
-    fn detect(&self, head: &str) -> bool {
+    fn detect(&self, head: &str) -> Option<usize> {
+        // The structural signature begins at the file's first line.
         let mut lines = head.lines();
-        let Some(first) = lines.next() else {
-            return false;
-        };
-        let Some(_comment) = lines.next() else {
-            return false;
-        };
-        count_line(first).is_some() && lines.next().is_some_and(is_row_line)
+        let first = lines.next()?;
+        lines.next()?;
+        if count_line(first).is_some() && lines.next().is_some_and(is_row_line) {
+            Some(0)
+        } else {
+            None
+        }
     }
 
     fn parse(&self, windows: &FileWindows) -> Record {

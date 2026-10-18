@@ -371,6 +371,22 @@ fn orca_corpus_fixture_reproduces_the_jkqc_ground_truth() {
     assert_eq!(record.electronic_energy, Some(-199.642065483666));
 }
 
+// rq-71a3e979
+#[test]
+fn an_orca_run_embedding_an_xtb_banner_routes_to_orca() {
+    // The GFN2-xTB version banner sits below the ORCA banner in the head,
+    // so the earliest-signature rule routes the file to ORCA and the record
+    // keeps a geometry (defined thermochemistry).
+    let entry = manifest()
+        .into_iter()
+        .find(|entry| entry["file"] == "orca/1sa1am.out")
+        .expect("orca-embedding-xtb entry");
+    let record = check(&entry);
+    assert_eq!(record.program.as_deref(), Some("orca"));
+    assert_eq!(record.status, RecordStatus::Ok);
+    assert!(record.geometry.is_some(), "geometry should be parsed");
+}
+
 // rq-d56ab087
 #[test]
 fn companion_xyz_files_route_to_the_plain_xyz_parser() {

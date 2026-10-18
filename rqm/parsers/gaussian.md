@@ -30,8 +30,8 @@ stores e·a₀ like every other source.
 
 ### Detection <!-- rq-918b7b58 -->
 
-- `detect(head)` claims content with a line matching the regex <!-- rq-a24eec14 -->
-  `Gaussian (03|09|11|13|16)`.
+- `detect(head)` returns the byte offset of the earliest line matching the <!-- rq-a24eec14 -->
+  regex `Gaussian (03|09|11|13|16)`, or `None` when no such line is visible.
 
 ### Extraction <!-- rq-35f562fe -->
 
@@ -98,13 +98,13 @@ Feature: Gaussian parser
   Scenario: The version banner is detected
     Given a head containing the line " Gaussian 16, Revision B.01,"
     When detect is called
-    Then it returns true
+    Then it returns Some with the byte offset of the matching line
 
   @rq-9f5aa509
   Scenario: An unrelated head is not claimed
     Given a head without any "Gaussian <version>" line
     When detect is called
-    Then it returns false
+    Then it returns None
 
   @rq-d8a0968b
   Scenario: An opt+freq log yields the final job's observables

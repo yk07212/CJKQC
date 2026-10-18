@@ -9,7 +9,9 @@
 use crate::parser::extract::{
     parse_fortran_f64, read_geometry_table, LengthUnits, SymbolColumn, TableSpec,
 };
-use crate::parser::{is_integer, parse_vector3, rows_after_last, FileWindows, Parser, Program};
+use crate::parser::{
+    first_line_offset, is_integer, parse_vector3, rows_after_last, FileWindows, Parser, Program,
+};
 use crate::record::{Record, RecordStatus};
 
 /// xtb log reader: `program()` is `Program::XTB`.
@@ -70,8 +72,8 @@ impl Parser for XtbParser {
     }
 
     // rq-35c8e2c9 rq-0bb4b64f
-    fn detect(&self, head: &str) -> bool {
-        head.lines().any(|line| line.contains("xtb version"))
+    fn detect(&self, head: &str) -> Option<usize> {
+        first_line_offset(head, |line| line.contains("xtb version"))
     }
 
     fn parse(&self, windows: &FileWindows) -> Record {

@@ -4,8 +4,9 @@ Every quantum-chemistry output file handed to CJKQC is turned into exactly
 one record by the parser framework: content-based format detection, a parser
 trait plus an ordered registry, a shared head+tail file reader, and shared
 extraction helpers. Detection inspects the file's leading lines only — never
-its name or extension — and routes the file to the first registered parser
-whose signature matches.
+its name or extension — and routes the file to the parser whose signature
+appears earliest in the head window; when several parsers match, the program
+whose banner opens the file wins over a banner a wrapper embeds further down.
 
 A file yields exactly one record, describing the file's final job: the
 outcome of the last calculation step chain, the last frame of a multi-frame
@@ -79,8 +80,10 @@ runs (`rqm/ARCHITECTURE.md`).
   `Send + Sync` so data-parallel collection can be added later without a
   redesign (no concurrency commitment in v1).
   - `program(&self) -> Program` — the format the parser handles.
-  - `detect(&self, head: &str) -> bool` — claims files whose head window
-    carries this format's signature.
+  - `detect(&self, head: &str) -> Option<usize>` — the byte offset, into
+    `head`, of the earliest line that carries this format's signature, or
+    `None` when the head carries none. A parser claims the file exactly when
+    it returns `Some`.
   - `parse(&self, windows: &FileWindows) -> Record` — turns the windows into
     exactly one record. A parser never panics on any content; content-level
     failures are returned as records with status `failed` or `truncated` and
@@ -89,9 +92,10 @@ runs (`rqm/ARCHITECTURE.md`).
 - `ParserRegistry` — the ordered set of parsers. <!-- rq-b28b6e69 -->
   - `new() -> Self` — an empty registry (the shipped state).
   - `register(&mut self, parser: Box<dyn Parser>)` — appends a parser;
-    registration order fixes detection order.
+    registration order breaks signature ties (equal signature offsets).
   - `parse_windows(&self, windows: &FileWindows) -> Record` — the core
-    entry: detection on the head window, then `parse` on the matching
+    entry: detection on the head window (the earliest-signature parser
+    wins, ties by registration order), then `parse` on the selected
     parser, then the record-assembly rules below. Callers reading from
     streams combine `FileWindows::from_stream` with this entry.
   - `parse_file(&self, path: &Path) -> Result<Record, ParseError>` — reads
@@ -119,6 +123,16 @@ module:
 - `element_symbol(z: u32) -> Option<String>` — maps an atomic number <!-- rq-295538b5 -->
   1–118 to its title-case element symbol (`1` → `"H"`, `17` → `"Cl"`,
   `118` → `"Og"`); `None` outside that range.
+
+- `first_line_offset(head: &str, predicate) -> Option<usize>` — the public <!-- rq-166e917c -->
+  home of the detection offset: the byte offset into `head` of the earliest
+  line satisfying `predicate`, or `None` when no visible line does. A line is
+  a `'\n'`-delimited span with its trailing `'\n'` withheld from the
+  predicate, so every parser measures its signature offset the same way. The
+  banner-signature parsers call it with their banner predicate, which is what
+  makes the registry's earliest-offset routing meaningful; it is public so an
+  external parser built through `Program::new` locates its offset identically
+  rather than hand-rolling a line walk.
 
 - `read_geometry_table(lines, spec: &TableSpec) -> Option<Geometry>` — reads <!-- rq-0a70b97d -->
   a columnar geometry block (the xyz-style table shared by the plain-xyz,
@@ -207,9 +221,15 @@ module:
   preserved.
 - The parser's own `status` and `error` are otherwise carried through
   verbatim.
-- When several registered parsers claim the same head, the first in
-  registration order wins; with an empty registry every file is
-  unrecognized.
+- When several registered parsers claim the same head, the one whose
+  signature offset is smallest wins; equal offsets break by registration
+  order. A wrapper's embedded banner therefore never routes a file away from
+  the program whose banner opens it. The structural plain-xyz signature is
+  the file's first line (an atom-count line), so a head that opens xyz-shaped
+  — count, comment, then a row — is read as plain xyz even when a program
+  banner appears further down the head; a banner line is never an all-digit
+  count line, so the two signatures can never tie at offset 0. With an empty
+  registry every file is unrecognized.
 - The file name and extension never influence detection or parsing.
 
 ## Out of Scope <!-- rq-a0dfc43a -->
@@ -227,6 +247,12 @@ module:
   commitment.
 - Transparent decompression (`.gz` and friends); files are read as they
   are.
+- Concatenated multi-program files: a file formed by appending one program's
+  whole output onto another's (an xtb log followed by an ORCA log in one file)
+  is not a supported shape. Detection picks the earliest banner, while the
+  "final job" rule would describe the last program — the two disagree for such
+  concatenations, which are neither a real program's output nor a wrapper
+  case, and are out of scope.
 - Any observable beyond the vocabulary of `rqm/record.md`, and any new
   dependency.
 
@@ -268,12 +294,33 @@ Feature: Format detection and parser framework
     And the three records differ only in name and source_path
 
   @rq-3562f71a
-  Scenario: The first registered parser wins a signature conflict
+  Scenario: Registration order breaks a same-offset signature tie
     Given the registry contains a "gaussian" parser and an "orca" parser,
     both claiming heads containing "MAGIC", registered in that order
     And a file whose first line is "MAGIC"
     When the file is parsed
     Then the record has program "gaussian"
+
+  @rq-86ee6f34
+  Scenario: The earliest signature wins when a wrapper embeds a foreign banner
+    Given the registry contains an "xtb" parser claiming heads containing "XTB BANNER" and an "orca" parser claiming heads containing "ORCA BANNER", registered xtb-then-orca
+    And a file whose head opens with a line "ORCA BANNER" and carries a later line "XTB BANNER"
+    When the file is parsed
+    Then the record has program "orca"
+
+  @rq-b7081115
+  Scenario: A head that opens xyz-shaped wins over a banner further down
+    Given the standard registry
+    And a file whose head begins with an atom-count line, a comment line, and a row, and carries a program banner on a later line
+    When the file is parsed
+    Then the record has program "xyz"
+
+  @rq-8209f22b
+  Scenario: A plain xyz head that names a program in its comment stays xyz
+    Given the standard registry
+    And a file whose head is a one-atom count line, a comment line mentioning "Gaussian 16", and a single row
+    When the file is parsed
+    Then the record has program "xyz"
 
   @rq-1fd7e03d
   Scenario: A signature beyond the head window is not detected

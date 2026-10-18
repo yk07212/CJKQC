@@ -26,8 +26,11 @@ frequencies in cm⁻¹, so extraction is unit-preserving.
 
 ### Detection <!-- rq-7b39d1a8 -->
 
-- `detect(head)` claims content with a line matching `xtb version` (the <!-- rq-d2cba02a -->
-  banner line `* xtb version <version> (...)`).
+- `detect(head)` returns the byte offset of the earliest line matching <!-- rq-d2cba02a -->
+  `xtb version` (the banner line `* xtb version <version> (...)`), or `None`
+  when no such line is visible (`rqm/parser-framework.md` routes by the
+  earliest signature, so an embedded banner never wins a file from the
+  program whose banner opens it).
 
 ### Extraction <!-- rq-bd3986f2 -->
 
@@ -91,13 +94,13 @@ Feature: XTB parser
   Scenario: The version banner is detected
     Given a head containing the line "* xtb version 6.7.1 (26dd68d) compiled by 'x' on 2026-05-14"
     When detect is called
-    Then it returns true
+    Then it returns Some with the byte offset of that line
 
   @rq-0bb4b64f
   Scenario: An unrelated head is not claimed
     Given a head without an "xtb version" line
     When detect is called
-    Then it returns false
+    Then it returns None
 
   @rq-68850338
   Scenario: A completed run yields the full observable set

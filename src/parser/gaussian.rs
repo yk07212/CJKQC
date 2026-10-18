@@ -9,7 +9,9 @@
 use crate::parser::extract::{
     parse_fortran_f64, read_geometry_table, LengthUnits, SymbolColumn, TableSpec,
 };
-use crate::parser::{is_integer, parse_vector3, rows_after_last, FileWindows, Parser, Program};
+use crate::parser::{
+    first_line_offset, is_integer, parse_vector3, rows_after_last, FileWindows, Parser, Program,
+};
 use crate::record::{Record, RecordStatus};
 
 /// Debye per elementary-charge bohr (CODATA), the conversion Gaussian's
@@ -102,9 +104,10 @@ impl Parser for GaussianParser {
     }
 
     // rq-799f6155 rq-9f5aa509
-    fn detect(&self, head: &str) -> bool {
-        head.lines()
-            .any(|line| GAUSSIAN_VERSIONS.iter().any(|name| line.contains(name)))
+    fn detect(&self, head: &str) -> Option<usize> {
+        first_line_offset(head, |line| {
+            GAUSSIAN_VERSIONS.iter().any(|name| line.contains(name))
+        })
     }
 
     fn parse(&self, windows: &FileWindows) -> Record {

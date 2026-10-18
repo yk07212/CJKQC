@@ -52,13 +52,17 @@ fn completed_log() -> String {
 // rq-799f6155
 #[test]
 fn version_banner_is_detected() {
-    assert!(GaussianParser.detect(" Entering Gaussian System\n Gaussian 16, Revision B.01,\n"));
+    assert!(GaussianParser
+        .detect(" Entering Gaussian System\n Gaussian 16, Revision B.01,\n")
+        .is_some());
 }
 
 // rq-9f5aa509
 #[test]
 fn unrelated_head_is_not_claimed() {
-    assert!(!GaussianParser.detect("Some other program's fine output\nnothing here\n"));
+    assert!(GaussianParser
+        .detect("Some other program's fine output\nnothing here\n")
+        .is_none());
 }
 
 // rq-d8a0968b
