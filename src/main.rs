@@ -42,11 +42,12 @@ const CUTOFF_FLAGS: &[(&str, CmpOp, Mode)] = &[
 #[command(
     name = "CJKQC",
     version,
-    about = "Collect, organize, filter, and post-process quantum-chemistry output for molecular clusters"
+    about = "Collect, organize, filter, and post-process quantum-chemistry output for molecular clusters",
+    after_help = "Cutoff/sort/uniqueness PROPERTY: el (electronic energy), g (Gibbs at --temp), rg (radius of gyration), lf (lowest frequency), dip (dipole magnitude), mass, charge, multiplicity, natoms, nfreq, nimag.\nEnergy units: absolute cutoffs compare hartree, relative cutoffs kcal/mol; --unit switches printing to kcal/mol."
 )]
 struct Cli {
     /// Database to write; required unless a manipulation or print flag
-    /// makes it optional (enforced in `run`, see `rqm/filtering.md`).
+    /// makes it optional.
     #[arg(short = 'o', long = "out")]
     out: Option<PathBuf>,
 
@@ -62,7 +63,8 @@ struct Cli {
     #[arg(long = "nextract")]
     nextract: Vec<String>,
 
-    /// Uniqueness: `dup` or a `metric[decimals]` comma list (el2.4,rg).
+    /// Uniqueness: `dup` or a `metric[decimals]` comma list
+    /// (el2.4,g,rg).
     #[arg(long = "uniq")]
     uniq: Option<String>,
 
@@ -74,7 +76,7 @@ struct Cli {
     #[arg(long = "reacted2")]
     reacted2: bool,
 
-    /// Sort by el, rg, mass, or name.
+    /// Sort by el, g (Gibbs at --temp), rg, mass, or name.
     #[arg(long = "sort")]
     sort: Option<String>,
 
@@ -128,64 +130,109 @@ struct Cli {
     formation: bool,
 
     // --- cutoff flags: `--<flag> PROPERTY VALUE` (repeatable) ---
+    /// Absolute cutoff: keep records whose PROPERTY <= VALUE (energies
+    /// in hartree).
     #[arg(long = "cut", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     cut: Vec<String>,
+    /// Relative cutoff: keep records whose PROPERTY is at most VALUE
+    /// above the group minimum (energies in kcal/mol).
     #[arg(long = "cutr", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     cutr: Vec<String>,
+    /// Absolute cutoff: keep records whose PROPERTY > VALUE (energies in
+    /// hartree).
     #[arg(long = "pass", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     pass: Vec<String>,
+    /// Relative cutoff: keep records whose PROPERTY is more than VALUE
+    /// above the group minimum (energies in kcal/mol).
     #[arg(long = "passr", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     passr: Vec<String>,
+    /// Absolute cutoff: keep records whose PROPERTY == VALUE.
     #[arg(long = "is", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     is: Vec<String>,
+    /// Absolute cutoff: keep records whose PROPERTY != VALUE; records
+    /// with an undefined PROPERTY pass.
     #[arg(long = "isnot", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     isnot: Vec<String>,
+    /// Absolute cutoff: keep records whose PROPERTY < VALUE (energies in
+    /// hartree).
     #[arg(long = "filter-lt", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     filter_lt: Vec<String>,
+    /// Absolute cutoff: keep records whose PROPERTY >= VALUE (energies
+    /// in hartree).
     #[arg(long = "filter-ge", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     filter_ge: Vec<String>,
+    /// Relative cutoff: keep records whose PROPERTY is less than VALUE
+    /// above the group minimum (energies in kcal/mol).
     #[arg(long = "rel-filter-lt", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     rel_filter_lt: Vec<String>,
+    /// Relative cutoff: keep records whose PROPERTY is at least VALUE
+    /// above the group minimum (energies in kcal/mol).
     #[arg(long = "rel-filter-ge", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
     rel_filter_ge: Vec<String>,
 
     // --- print flags: one per column (rqm/filtering.md) ---
+    /// Print the record name column.
     #[arg(long = "name")]
     name: bool,
+    /// Print the job status column (ok, failed, truncated).
     #[arg(long = "status")]
     status: bool,
+    /// Print the program token column (orca, gaussian, xtb, mrcc, xyz).
     #[arg(long = "program")]
     program: bool,
+    /// Print the method / level-of-theory column.
     #[arg(long = "method")]
     method: bool,
+    /// Print the electronic energy (hartree; kcal/mol with --unit).
     #[arg(long = "el")]
     el: bool,
+    /// Print the harmonic zero-point energy (thermo.md model, derived).
     #[arg(long = "zpe")]
     zpe: bool,
+    /// Print the enthalpy H at --temp (thermo.md model, derived).
     #[arg(long = "h")]
     h: bool,
+    /// Print the T*S entropy term at --temp (thermo.md model, derived).
     #[arg(long = "s")]
     s: bool,
+    /// Print the Gibbs free energy at --temp (thermo.md model, derived).
     #[arg(long = "g")]
     g: bool,
+    /// Print the mass-weighted radius of gyration (Angstrom).
     #[arg(long = "rg")]
     rg: bool,
+    /// Print the total mass (u).
     #[arg(long = "mass")]
     mass: bool,
+    /// Print the dipole moment magnitude (atomic units).
     #[arg(long = "dip")]
     dip: bool,
+    /// Print the net charge (elementary charges).
     #[arg(long = "charge")]
     charge: bool,
+    /// Print the spin multiplicity column.
     #[arg(long = "multiplicity")]
     multiplicity: bool,
+    /// Print the geometry atom count.
     #[arg(long = "natoms")]
     natoms: bool,
+    /// Print the lowest stored vibrational frequency (cm^-1, 1 decimal;
+    /// raw values, so imaginary modes print negative).
+    #[arg(long = "lf")]
+    lf: bool,
+    /// Print the vibrational frequency count.
     #[arg(long = "nfreq")]
     nfreq: bool,
+    /// Print the negative (imaginary) frequency count.
     #[arg(long = "nimag")]
     nimag: bool,
+    /// Print the resolved composition as 2am+3sa-style pairs.
     #[arg(long = "components")]
     components: bool,
+    /// Print the composition token: 2am3sa-style alphabetical pairs
+    /// without separators.
+    #[arg(long = "ct")]
+    ct: bool,
 
     /// Input files: QC program outputs (build) or record databases (merge).
     #[arg(required = true)]
@@ -337,9 +384,11 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         Column::Charge => cli.charge,
         Column::Multiplicity => cli.multiplicity,
         Column::Natoms => cli.natoms,
+        Column::Lf => cli.lf,
         Column::Nfreq => cli.nfreq,
         Column::Nimag => cli.nimag,
         Column::Components => cli.components,
+        Column::Ct => cli.ct,
     };
     let columns: Vec<Column> = Column::ALL
         .iter()

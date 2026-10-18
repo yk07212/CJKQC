@@ -169,7 +169,8 @@ the property set and units:
 - Printing follows JKQC: every printable column has its own flag —
   `--name`, `--status`, `--program`, `--method`, `--el`, `--zpe`, `--h`,
   `--s`, `--g`, `--rg`, `--mass`, `--dip`, `--charge`, `--multiplicity`,
-  `--natoms`, `--nfreq`, `--nimag`, `--components`. There is no default
+  `--natoms`, `--lf`, `--nfreq`, `--nimag`, `--components`, `--ct`.
+  There is no default
   selection: no print flag means no table is printed at all. The
   `--formation` flag (`rqm/formation.md`) prints a section after the
   table; it selects no column and counts as a print flag for the
@@ -183,8 +184,13 @@ the property set and units:
   record in run order, values separated by a single space. `el` prints
   in hartree with 10 decimals; the thermochemistry columns `zpe`, `h`,
   `s`, `g` (`rqm/thermo.md`; `s` is the T·S entropy term) print like
-  `el`; `rg`, `mass`, `dip` with 3; integer fields plainly; `components`
-  as `2am+3sa`-style alphabetical pairs; an undefined or absent value
+  `el`; `rg`, `mass`, `dip` with 3; `lf` with 1 — the lowest stored
+  vibrational frequency in cm⁻¹, a raw observable so imaginary modes
+  print negative whatever `--makereal` does, undefined when the record
+  stores no frequencies; integer fields plainly; `components`
+  as `2am+3sa`-style alphabetical pairs; `ct` as the same alphabetical
+  pairs with the `+` separators dropped (`2am3sa`), undefined when the
+  record has no components or an empty map; an undefined or absent value
   prints `-`.
 - `--unit` converts every Hartree-valued print quantity — the energy
   columns (`el`, `zpe`, `h`, `s`, `g`) and the `--formation` section's
@@ -491,6 +497,30 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record whose geometry has an unknown element symbol
     When CJKQC is invoked with the database, "--mass --rg --name" and no --out
     Then the table columns are name, rg, mass in that order, undefined values printed as -
+
+  @rq-207aec4d
+  Scenario: The lf column prints the lowest raw frequency
+    Given a database with one ok record whose frequencies are [1000.0, -300.0, 150.0]
+    When CJKQC is invoked with the database and "--lf" and no --out
+    Then the lf column prints -300.0
+
+  @rq-4633531a
+  Scenario: The lf column is undefined without stored frequencies
+    Given a database with one ok record with no vibrational_frequencies
+    When CJKQC is invoked with the database and "--lf" and no --out
+    Then the lf column prints -
+
+  @rq-1f63ac38
+  Scenario: The ct column prints components without separators
+    Given a database with one ok record with components am = 2 sa = 3
+    When CJKQC is invoked with the database and "--ct" and no --out
+    Then the ct column prints 2am3sa
+
+  @rq-7b0d8978
+  Scenario: The ct column is undefined without components
+    Given a database with one ok record without components
+    When CJKQC is invoked with the database and "--ct" and no --out
+    Then the ct column prints -
 
   @rq-b81cce20
   Scenario: A manipulation with neither --out nor a print flag is a usage error

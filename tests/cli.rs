@@ -727,6 +727,61 @@ fn print_columns_follow_canonical_order_regardless_of_flag_order() {
     assert_eq!(stdout(&run).trim(), "name rg mass\nunknown - -");
 }
 
+#[test] // rq-207aec4d
+fn lf_column_prints_the_lowest_raw_frequency() {
+    let dir = temp_dir();
+    let record = Record {
+        vibrational_frequencies: Some(vec![1000.0, -300.0, 150.0]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--lf"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "lf\n-300.0");
+}
+
+#[test] // rq-4633531a
+fn lf_column_is_undefined_without_stored_frequencies() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--lf"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "lf\n-");
+}
+
+#[test] // rq-1f63ac38
+fn ct_column_prints_components_without_separators() {
+    let dir = temp_dir();
+    let record = Record {
+        components: Some(
+            [("am", 2u32), ("sa", 3u32)]
+                .into_iter()
+                .map(|(code, count)| (code.to_string(), count))
+                .collect(),
+        ),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--ct"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "ct\n2am3sa");
+}
+
+#[test] // rq-7b0d8978
+fn ct_column_is_undefined_without_components() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--ct"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "ct\n-");
+}
+
 #[test] // rq-b81cce20
 fn a_manipulation_without_out_or_print_flags_is_a_usage_error() {
     let dir = temp_dir();
@@ -1226,14 +1281,14 @@ fn db_with(dir: &TempDir, filename: &str, lines: &[String]) -> String {
     path.to_string_lossy().into_owned()
 }
 
-fn formation_row(stdout_text: &str, name: &str) -> Vec<String> {
+fn formation_row(stdout_text: &str, token: &str) -> Vec<String> {
     for line in stdout_text.lines().skip(1) {
         let cells: Vec<&str> = line.split(' ').collect();
-        if cells.first() == Some(&name) {
+        if cells.first() == Some(&token) {
             return cells.iter().map(|cell| cell.to_string()).collect();
         }
     }
-    panic!("no formation row for {name} in:\n{stdout_text}");
+    panic!("no formation row for {token} in:\n{stdout_text}");
 }
 
 #[test] // rq-bf8fdacc
@@ -1554,7 +1609,7 @@ fn reverse_does_not_change_the_reference() {
     // The reference is the minimum-gibbs monomer (-50.5) regardless of
     // --reverse.
     let expected = format!("{:.10}", -49.0 - -50.5);
-    let row = formation_row(&stdout(&run), "cluster");
+    let row = formation_row(&stdout(&run), "1am");
     assert_eq!(row[2], expected, "{:?}", row);
 }
 
@@ -1601,7 +1656,7 @@ fn the_formation_section_follows_the_table_and_precedes_the_summary() {
     let text = stdout(&run);
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines[0], "name el", "the table comes first");
-    assert_eq!(lines[4], "name el g", "the section follows the table");
+    assert_eq!(lines[4], "ct el g", "the section follows the table");
     let _ = &out;
     assert!(
         lines.last().unwrap().contains("filtered 3 records into"),
@@ -1632,7 +1687,7 @@ fn formation_alone_is_a_visible_outcome() {
     );
     let run = cjkqc(&[&db, "--formation"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert!(stdout(&run).starts_with("name el g"), "{}", stdout(&run));
+    assert!(stdout(&run).starts_with("ct el g"), "{}", stdout(&run));
     // No database file is written: the only file in the directory is the
     // input itself.
     let entries: Vec<_> = fs::read_dir(&dir)
@@ -1646,6 +1701,58 @@ fn formation_alone_is_a_visible_outcome() {
         })
         .collect();
     assert_eq!(entries, ["db.jsonl"], "{entries:?}");
+}
+
+#[test] // rq-2d5b9aba
+fn formation_section_identifies_rows_by_composition_token() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-141.0),
+                &[("am", 2), ("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "sa1",
+                Some(-40.0),
+                &[("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines[0], "ct el g", "{text}");
+    assert!(
+        lines[1].starts_with("2am1sa "),
+        "the cluster row leads with its composition token: {}",
+        lines[1]
+    );
+}
+
+#[test] // rq-ed9e179c
+fn record_without_components_has_dash_composition_token() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "ct el g\n- - -");
 }
 
 #[test] // rq-043c29fe
@@ -1671,7 +1778,7 @@ fn undefined_formation_levels_print_as_dashes() {
     );
     let run = cjkqc(&[&db, "--formation"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    let row = formation_row(&stdout(&run), "cluster");
+    let row = formation_row(&stdout(&run), "1am1na");
     assert_eq!(row[1], "-", "{:?}: the na reference is missing", row);
     assert_eq!(row[2], "-", "{:?}", row);
 }
@@ -1709,7 +1816,7 @@ fn filtered_away_monomers_serve_as_no_references() {
     let text = text.trim();
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines.len(), 2, "only the cluster row prints: {text}");
-    assert_eq!(lines[1], "cluster - -", "{text}");
+    assert_eq!(lines[1], "1am1sa - -", "{text}");
 }
 
 #[test] // rq-b46a6e05
@@ -1741,7 +1848,7 @@ fn a_print_only_run_sees_every_loaded_monomer() {
     );
     let run = cjkqc(&[&db, "--formation"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    let row = formation_row(&stdout(&run), "cluster");
+    let row = formation_row(&stdout(&run), "1am1sa");
     assert_ne!(row[1], "-", "{:?}: both references are loaded", row);
     assert_ne!(row[2], "-", "{:?}", row);
     // And the values are the stoichiometric ones.
@@ -1782,7 +1889,7 @@ fn the_section_obeys_the_unit_setting() {
     );
     let run = cjkqc(&[&db, "--formation", "--unit"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    let row = formation_row(&stdout(&run), "cluster");
+    let row = formation_row(&stdout(&run), "1am1sa");
     let expected = format!("{:.4}", -0.01 * complied_jkqc::KCAL_MOL_PER_HARTREE);
     assert_eq!(row[1], expected, "{:?}", row);
 }
@@ -1818,8 +1925,8 @@ fn the_g_level_follows_the_run_s_temperature() {
     let hot = cjkqc(&[&db, "--formation", "--temp", "350"]);
     assert_eq!(warm.status.code(), Some(0), "{}", stderr(&warm));
     assert_eq!(hot.status.code(), Some(0), "{}", stderr(&hot));
-    let warm_row = formation_row(&stdout(&warm), "cluster");
-    let hot_row = formation_row(&stdout(&hot), "cluster");
+    let warm_row = formation_row(&stdout(&warm), "1am1sa");
+    let hot_row = formation_row(&stdout(&hot), "1am1sa");
     assert_eq!(
         warm_row[1], hot_row[1],
         "the el level ignores the temperature"

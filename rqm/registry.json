@@ -936,6 +936,18 @@
     "title": "- `tests/thermo.rs` tests the derivation as pure functions against",
     "type": "anchor"
   },
+  "rq-1f63ac38": {
+    "decl": "Scenario: The ct column prints components without separators",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The ct column prints components without separators",
+    "type": "scenario"
+  },
   "rq-1fb0a352": {
     "decl": "Scenario: Method flags map to method names",
     "file": "parsers/xtb",
@@ -986,6 +998,18 @@
     "refs": [],
     "title": "Cargo",
     "type": "api-item"
+  },
+  "rq-207aec4d": {
+    "decl": "Scenario: The lf column prints the lowest raw frequency",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The lf column prints the lowest raw frequency",
+    "type": "scenario"
   },
   "rq-21041eac": {
     "decl": "- `dipole_moment` — the `Total Dipole Moment    :     <x> <y> <z>` line of",
@@ -1366,6 +1390,18 @@
     "refs": [],
     "title": "tests",
     "type": "api-item"
+  },
+  "rq-2d5b9aba": {
+    "decl": "Scenario: The section identifies rows by composition token",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The section identifies rows by composition token",
+    "type": "scenario"
   },
   "rq-2d633569": {
     "decl": "Scenario: A single-point log reports no frequencies",
@@ -2184,6 +2220,18 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-4633531a": {
+    "decl": "Scenario: The lf column is undefined without stored frequencies",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The lf column is undefined without stored frequencies",
+    "type": "scenario"
   },
   "rq-465a02d6": {
     "decl": "Scenario: The corpus fixture conforms",
@@ -3501,6 +3549,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-7b0d8978": {
+    "decl": "Scenario: The ct column is undefined without components",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The ct column is undefined without components",
+    "type": "scenario"
+  },
   "rq-7b35091a": {
     "decl": "## Gherkin Scenarios",
     "file": "parsers/mrcc",
@@ -4043,6 +4103,10 @@
     "file": "formation",
     "level": 2,
     "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
       {
         "file": "src/formation.rs",
         "kind": "code"
@@ -6803,6 +6867,18 @@
       }
     ],
     "title": "Temperature changes every thermal term but not zpe",
+    "type": "scenario"
+  },
+  "rq-ed9e179c": {
+    "decl": "Scenario: A record without components has a dash composition token",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without components has a dash composition token",
     "type": "scenario"
   },
   "rq-ef146284": {

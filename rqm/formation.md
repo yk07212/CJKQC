@@ -73,12 +73,14 @@ binding column exists.
   print flags requested one) and before any summary line, so stdout is
   always: main table, formation section, summary. A run with `--formation`
   but no column flags prints only the formation section.
-- The section is a table: a header row `name el g`, then one row per
-  printed record in run order. `name` is the record's name or `-`;
-  `el` and `g` are the formation energy and formation free energy in the
-  run's energy unit — kcal/mol under `--unit`, hartree otherwise
-  (`rqm/filtering.md` Printing) — formatted like the corresponding energy
-  columns, and `-` when undefined.
+- The section is a table: a header row `ct el g`, then one row per
+  printed record in run order. `ct` is the record's composition token —
+  the same alphabetical `2am3sa`-style pairs the `--ct` column prints
+  (`rqm/filtering.md` Printing) — and `-` when the record has no
+  components; `el` and `g` are the formation energy and formation free
+  energy in the run's energy unit — kcal/mol under `--unit`, hartree
+  otherwise (`rqm/filtering.md` Printing) — formatted like the
+  corresponding energy columns, and `-` when undefined.
 - `--formation` computes values for exactly the records the run prints:
   the pipeline survivors for a manipulation run, every loaded record for a
   print-only run.
@@ -104,8 +106,9 @@ binding column exists.
   value resolves through the derived-property registry on the memo
   (`rqm/thermo.md`).
 - `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit) -> String` <!-- rq-9503bcb2 -->
-  — the section table, one row per record in the given order, `-` for
-  undefined values and absent names.
+  — the section table with header `ct el g`, one row per record in the
+  given order, `-` for undefined values and for the composition token
+  when the record has no components.
 
 ### Crate Layout <!-- rq-22e7999c -->
 
@@ -227,6 +230,19 @@ Feature: Formation energies from monomer references
     Then both levels are None
 
   # --- Printing ---
+
+  @rq-2d5b9aba
+  Scenario: The section identifies rows by composition token
+    Given a database with a 2am1sa cluster and am and sa monomers
+    When CJKQC is invoked with the database and "--formation" and no --out
+    Then the section header is "ct el g"
+    And the cluster's row starts with the composition token 2am1sa
+
+  @rq-ed9e179c
+  Scenario: A record without components has a dash composition token
+    Given a database with a single ok record without components
+    When CJKQC is invoked with the database and "--formation" and no --out
+    Then its section row is "- - -"
 
   @rq-1b6b5757
   Scenario: The formation section follows the table and precedes the summary

@@ -298,17 +298,27 @@ pub enum Column {
     Multiplicity,
     /// Atom count.
     Natoms,
+    /// Lowest stored vibrational frequency in cm⁻¹, raw values, 1 decimal
+    /// (`rqm/filtering.md` Printing).
+    ///
+    /// (rq-38b619ff)
+    Lf,
     /// Frequency count.
     Nfreq,
     /// Negative frequency count.
     Nimag,
     /// Components as `2am+3sa`.
     Components,
+    /// Composition token: alphabetical pairs without separators
+    /// (`2am3sa`).
+    ///
+    /// (rq-38b619ff)
+    Ct,
 }
 
 impl Column {
     /// All columns in canonical print order.
-    pub const ALL: [Column; 18] = [
+    pub const ALL: [Column; 20] = [
         Column::Name,
         Column::Status,
         Column::Program,
@@ -324,9 +334,11 @@ impl Column {
         Column::Charge,
         Column::Multiplicity,
         Column::Natoms,
+        Column::Lf,
         Column::Nfreq,
         Column::Nimag,
         Column::Components,
+        Column::Ct,
     ];
 
     /// The derived-property registry key of an energy column
@@ -364,9 +376,11 @@ impl Column {
             Column::Charge => "charge",
             Column::Multiplicity => "multiplicity",
             Column::Natoms => "natoms",
+            Column::Lf => "lf",
             Column::Nfreq => "nfreq",
             Column::Nimag => "nimag",
             Column::Components => "components",
+            Column::Ct => "ct",
         }
     }
 }
@@ -619,6 +633,10 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
             Some(geometry) => geometry.symbols.len().to_string(),
             None => undefined(),
         },
+        // The lowest raw frequency, shared with the `lf` cutoff property
+        // (rq-4ea8ca35).
+        Column::Lf => property_value(record, Property::Lf, memo)
+            .map_or_else(undefined, |value| format!("{value:.1}")),
         Column::Nfreq => match &record.vibrational_frequencies {
             Some(values) => values.len().to_string(),
             None => undefined(),
@@ -639,7 +657,27 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
                 .join("+"),
             _ => undefined(),
         },
+        Column::Ct => composition_token(record.components.as_ref()).unwrap_or_else(undefined),
     }
+}
+
+/// The composition token: the components map as alphabetical
+/// `{count}{code}` pairs with the separators dropped (`2am3sa`,
+/// `rqm/filtering.md` Printing); `None` without components or for an
+/// empty map. Shared with the formation section (`rqm/formation.md`).
+///
+/// (rq-4ea8ca35 rq-8dee4f4e)
+pub(crate) fn composition_token(components: Option<&Components>) -> Option<String> {
+    let components = components?;
+    if components.is_empty() {
+        return None;
+    }
+    Some(
+        components
+            .iter()
+            .map(|(code, count)| format!("{count}{code}"))
+            .collect(),
+    )
 }
 
 // ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::filter::{format_energy, sort_value_for, Unit};
+use crate::filter::{composition_token, format_energy, sort_value_for, Unit};
 use crate::record::{Record, RecordStatus};
 use crate::thermo::ThermoMemo;
 
@@ -158,10 +158,12 @@ pub fn formation_values(
     Formation { electronic, gibbs }
 }
 
-/// The formation section: a `name el g` header row, then one row per record
-/// in the given order; values follow the run's energy unit (kcal/mol under
-/// `--unit`, hartree otherwise) and print through the same energy formatter
-/// as the table columns, `-` when undefined or the name absent.
+/// The formation section: a `ct el g` header row, then one row per record
+/// in the given order. The `ct` cell is the record's composition token
+/// (`rqm/filtering.md` Printing), `-` without components; values follow
+/// the run's energy unit (kcal/mol under `--unit`, hartree otherwise) and
+/// print through the same energy formatter as the table columns, `-` when
+/// undefined.
 ///
 /// (rq-9503bcb2 rq-8dee4f4e)
 pub fn print_formation_section(
@@ -170,17 +172,18 @@ pub fn print_formation_section(
     memo: &ThermoMemo,
     unit: Unit,
 ) -> String {
-    let mut lines = vec!["name el g".to_string()];
+    let mut lines = vec!["ct el g".to_string()];
     for record in records {
         let formation = formation_values(record, references, memo);
-        let name = record.name.clone().unwrap_or_else(|| "-".to_string());
+        let token =
+            composition_token(record.components.as_ref()).unwrap_or_else(|| "-".to_string());
         let electronic = formation
             .electronic
             .map_or_else(|| "-".to_string(), |value| format_energy(value, unit));
         let gibbs = formation
             .gibbs
             .map_or_else(|| "-".to_string(), |value| format_energy(value, unit));
-        lines.push(format!("{name} {electronic} {gibbs}"));
+        lines.push(format!("{token} {electronic} {gibbs}"));
     }
     lines.join("\n")
 }
