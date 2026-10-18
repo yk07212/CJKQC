@@ -1,4 +1,16 @@
 {
+  "rq-00285b24": {
+    "decl": "Scenario: Hydrogen bonded only under 0.80 Å to another H",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Hydrogen bonded only under 0.80 Å to another H",
+    "type": "scenario"
+  },
   "rq-009c7dab": {
     "decl": "Scenario: Geometry serializes as parallel arrays",
     "file": "record",
@@ -11,6 +23,19 @@
     "title": "Geometry serializes as parallel arrays",
     "type": "scenario"
   },
+  "rq-0137b5f9": {
+    "decl": "## Pipeline Order",
+    "file": "filtering",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Pipeline Order",
+    "type": "section"
+  },
   "rq-017a3a9c": {
     "decl": "Scenario: Fortran float parsing rejects non-numeric and non-finite fields",
     "file": "parser-framework",
@@ -22,6 +47,18 @@
     ],
     "title": "Fortran float parsing rejects non-numeric and non-finite fields",
     "type": "scenario"
+  },
+  "rq-0186810c": {
+    "decl": "- `ExtractPattern` — a parsed pattern: pairs `(count, code)` (zero allowed)",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ExtractPattern",
+    "type": "api-item"
   },
   "rq-022a9f55": {
     "decl": "### Types",
@@ -50,6 +87,30 @@
     "title": "A file whose head matches a registered parser is parsed by it",
     "type": "scenario"
   },
+  "rq-03784756": {
+    "decl": "Scenario: Identical keys collapse, differing decimals do not",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Identical keys collapse, differing decimals do not",
+    "type": "scenario"
+  },
+  "rq-03ad3478": {
+    "decl": "Scenario: The count-range cap holds exactly 1000 values",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The count-range cap holds exactly 1000 values",
+    "type": "scenario"
+  },
   "rq-03fd1a40": {
     "decl": "- `vibrational_frequencies` — the values of every `eigval :` line following",
     "file": "parsers/xtb",
@@ -57,11 +118,51 @@
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
+  "rq-04bf58f3": {
+    "decl": "Scenario: Nameless records are never duplicates",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Nameless records are never duplicates",
+    "type": "scenario"
+  },
+  "rq-071ab7e7": {
+    "decl": "Scenario: An underscore in a pattern is a usage error",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An underscore in a pattern is a usage error",
+    "type": "scenario"
+  },
   "rq-07f351b5": {
     "decl": "- `detect(head)` claims the content when: the first line is a positive",
     "file": "parsers/xyz",
     "refs": [],
     "title": "detect",
+    "type": "api-item"
+  },
+  "rq-07f5aebd": {
+    "decl": "- `parse_uniq_mode(value: &str) -> Result<UniqMode, String>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_uniq_mode",
     "type": "api-item"
   },
   "rq-084c74fa": {
@@ -216,6 +317,18 @@
     "title": "A failed record still gains its composition",
     "type": "scenario"
   },
+  "rq-0f6147ac": {
+    "decl": "- `parse_uniq_keys(list: &str) -> Result<Vec<UniqKey>, String>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_uniq_keys",
+    "type": "api-item"
+  },
   "rq-0f8ebb73": {
     "decl": "Scenario: A recorded failed run is classified failed",
     "file": "parsers/orca",
@@ -251,6 +364,19 @@
     ],
     "title": "DbError",
     "type": "api-item"
+  },
+  "rq-12d8fdf2": {
+    "decl": "## Mass Table",
+    "file": "uniqueness",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Mass Table",
+    "type": "section"
   },
   "rq-12d931b9": {
     "decl": "Scenario: Classification ignores the file name",
@@ -314,6 +440,30 @@
     "refs": [],
     "title": "electronic_energy",
     "type": "api-item"
+  },
+  "rq-159da4d1": {
+    "decl": "- `UniqKey` — a metric `El | Rg | Mass | Dip` with an explicit decimal",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "UniqKey",
+    "type": "api-item"
+  },
+  "rq-15a24c78": {
+    "decl": "Scenario: An absolute energy cutoff uses hartree",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An absolute energy cutoff uses hartree",
+    "type": "scenario"
   },
   "rq-15bf030c": {
     "decl": "Scenario: Merge replaces an existing output",
@@ -383,6 +533,19 @@
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
+  "rq-17ea1903": {
+    "decl": "## Sort, Select, Shuffle",
+    "file": "filtering",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Sort, Select, Shuffle",
+    "type": "section"
+  },
   "rq-180cebd1": {
     "decl": "Scenario: An unrecognized output aborts the run and writes nothing",
     "file": "collection",
@@ -447,6 +610,14 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-19b7a23e": {
+    "decl": "## Feature API",
+    "file": "filtering",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
   "rq-19cf3c0b": {
     "decl": "Scenario: A failed record without a program is unrecognized",
     "file": "record",
@@ -470,6 +641,14 @@
     ],
     "title": "An implicit count does not resolve",
     "type": "scenario"
+  },
+  "rq-1b5c13f5": {
+    "decl": "## Gherkin Scenarios",
+    "file": "detection",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
   },
   "rq-1b84a43e": {
     "decl": "### Crate Layout",
@@ -546,6 +725,18 @@
       }
     ],
     "title": "src",
+    "type": "api-item"
+  },
+  "rq-1e1f9c11": {
+    "decl": "- `extract_matches(pattern: &ExtractPattern, components: Option<&Components>) -> bool`",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "extract_matches",
     "type": "api-item"
   },
   "rq-1fb0a352": {
@@ -642,6 +833,13 @@
     "title": "validate rejects a component code holding a digit",
     "type": "scenario"
   },
+  "rq-21d1d450": {
+    "decl": "# Feature: Geometric Metrics and Property Uniqueness",
+    "file": "uniqueness",
+    "refs": [],
+    "title": "Feature: Geometric Metrics and Property Uniqueness",
+    "type": "file"
+  },
   "rq-22fd07a1": {
     "decl": "Scenario: The test suite passes on the scaffolded crate",
     "file": "scaffolding",
@@ -673,6 +871,30 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-23365bec": {
+    "decl": "Scenario: Duplicate names collapse to the first occurrence",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Duplicate names collapse to the first occurrence",
+    "type": "scenario"
+  },
+  "rq-239fd4b8": {
+    "decl": "Scenario: Hydrogens never join the heavy skeleton",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Hydrogens never join the heavy skeleton",
+    "type": "scenario"
   },
   "rq-23fa0de7": {
     "decl": "Scenario: Merge with a missing input writes nothing",
@@ -749,6 +971,34 @@
     "title": "element_symbol",
     "type": "api-item"
   },
+  "rq-297b5bf7": {
+    "decl": "Scenario: Boundary values sit on the inclusive side of their operator",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Boundary values sit on the inclusive side of their operator",
+    "type": "scenario"
+  },
+  "rq-297da2a2": {
+    "decl": "Scenario: Select keeps the first N per group",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Select keeps the first N per group",
+    "type": "scenario"
+  },
   "rq-29e0af6a": {
     "decl": "## Out of Scope",
     "file": "parsers/orca",
@@ -780,6 +1030,38 @@
     ],
     "title": "Feature: Record Database (JSON Lines)",
     "type": "file"
+  },
+  "rq-2a53d618": {
+    "decl": "## Gherkin Scenarios",
+    "file": "uniqueness",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-2b862de1": {
+    "decl": "Scenario: --out writes the filtered database and prints a summary",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--out writes the filtered database and prints a summary",
+    "type": "scenario"
+  },
+  "rq-2bc9762e": {
+    "decl": "- `parse_extract_query(query: &str) -> Result<Vec<ExtractPattern>, ExtractError>`",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_extract_query",
+    "type": "api-item"
   },
   "rq-2bffd61d": {
     "decl": "Scenario: Appended records round-trip",
@@ -817,6 +1099,14 @@
     "title": "load_database",
     "type": "api-item"
   },
+  "rq-2ce828ba": {
+    "decl": "### Functions",
+    "file": "uniqueness",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
   "rq-2d06ae4a": {
     "decl": "Scenario: validate rejects an empty components map",
     "file": "record",
@@ -827,6 +1117,18 @@
       }
     ],
     "title": "validate rejects an empty components map",
+    "type": "scenario"
+  },
+  "rq-2d073323": {
+    "decl": "Scenario: Sorting by energy ascending with reverse",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Sorting by energy ascending with reverse",
     "type": "scenario"
   },
   "rq-2d29c3a7": {
@@ -863,6 +1165,31 @@
     ],
     "title": "Components read from a JSON object",
     "type": "scenario"
+  },
+  "rq-2f2ca923": {
+    "decl": "Scenario: Uniq implies sorting by energy",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Uniq implies sorting by energy",
+    "type": "scenario"
+  },
+  "rq-2f996ba6": {
+    "decl": "## Grouping",
+    "file": "filtering",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Grouping",
+    "type": "section"
   },
   "rq-2ff394b0": {
     "decl": "Scenario: A corrupt line is skipped and reported",
@@ -947,6 +1274,19 @@
     "title": "A frame cut by the end of the file is truncated",
     "type": "scenario"
   },
+  "rq-327095a8": {
+    "decl": "## Bonded Graph",
+    "file": "detection",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Bonded Graph",
+    "type": "section"
+  },
   "rq-3275eeb1": {
     "decl": "Scenario: A descriptive stem does not resolve",
     "file": "composition",
@@ -966,6 +1306,18 @@
     "refs": [],
     "title": "Status Classification",
     "type": "section"
+  },
+  "rq-32c242d5": {
+    "decl": "Scenario: Under noname, extract accepts names outside the composition grammar",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Under noname, extract accepts names outside the composition grammar",
+    "type": "scenario"
   },
   "rq-32f97fe7": {
     "decl": "## Gherkin Scenarios",
@@ -1149,6 +1501,18 @@
     "title": "An atomic-number column maps to element symbols",
     "type": "scenario"
   },
+  "rq-38b619ff": {
+    "decl": "- `Column` — the print columns above.",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Column",
+    "type": "api-item"
+  },
   "rq-39759c8a": {
     "decl": "- `parse_fortran_f64(field: &str) -> Option<f64>` — parses a decimal number",
     "file": "parser-framework",
@@ -1260,6 +1624,26 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-3bbefb05": {
+    "decl": "Scenario: ArbAlign flags remain unknown usage errors",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ArbAlign flags remain unknown usage errors",
+    "type": "scenario"
+  },
+  "rq-3c8142e6": {
+    "decl": "## Out of Scope",
+    "file": "uniqueness",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
   "rq-3d76ed40": {
     "decl": "## Feature API",
     "file": "collection",
@@ -1267,6 +1651,18 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-3e2c966b": {
+    "decl": "- `atomic_mass(symbol: &str) -> Option<f64>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "atomic_mass",
+    "type": "api-item"
   },
   "rq-41e77e57": {
     "decl": "- `Cargo.toml` declares the `serde` and `serde_json` dependencies; no other",
@@ -1307,6 +1703,18 @@
     "title": "Feature: Format Detection and Parser Framework",
     "type": "file"
   },
+  "rq-4319b627": {
+    "decl": "Scenario: The lowest-frequency pass drops imaginary modes",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The lowest-frequency pass drops imaginary modes",
+    "type": "scenario"
+  },
   "rq-43be8f79": {
     "decl": "- `Record` — one QC job's primary observables. Serializable to one line of",
     "file": "record",
@@ -1333,6 +1741,18 @@
       }
     ],
     "title": "The standard registry holds all five parsers in detection order",
+    "type": "scenario"
+  },
+  "rq-443f2709": {
+    "decl": "Scenario: nextract inverts the selection",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "nextract inverts the selection",
     "type": "scenario"
   },
   "rq-447f650f": {
@@ -1387,6 +1807,13 @@
     "title": "A database recognized by content, not extension",
     "type": "scenario"
   },
+  "rq-4555c02d": {
+    "decl": "# Feature: Reacted / Exploded Structure Detection",
+    "file": "detection",
+    "refs": [],
+    "title": "Feature: Reacted / Exploded Structure Detection",
+    "type": "file"
+  },
   "rq-45c63967": {
     "decl": "## Feature API",
     "file": "parsers/orca",
@@ -1405,6 +1832,18 @@
       }
     ],
     "title": "The corpus fixture conforms",
+    "type": "scenario"
+  },
+  "rq-46ff4c56": {
+    "decl": "Scenario: Fractional decimal counts are accepted",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Fractional decimal counts are accepted",
     "type": "scenario"
   },
   "rq-486289b7": {
@@ -1429,6 +1868,26 @@
     ],
     "title": "A single-frame file yields its geometry",
     "type": "scenario"
+  },
+  "rq-49f1442c": {
+    "decl": "Scenario: A label comment in a pattern is ignored",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A label comment in a pattern is ignored",
+    "type": "scenario"
+  },
+  "rq-4a909f01": {
+    "decl": "## Metric Definitions",
+    "file": "uniqueness",
+    "level": 2,
+    "refs": [],
+    "title": "Metric Definitions",
+    "type": "section"
   },
   "rq-4aa069d5": {
     "decl": "Scenario: last_line_where falls back to the head",
@@ -1462,6 +1921,18 @@
     "title": "tests",
     "type": "api-item"
   },
+  "rq-4dbf6ef0": {
+    "decl": "Scenario: A wildcard admits any extras",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A wildcard admits any extras",
+    "type": "scenario"
+  },
   "rq-4dc770c8": {
     "decl": "- `Parser` — the trait every output-format reader implements. The trait is",
     "file": "parser-framework",
@@ -1489,6 +1960,19 @@
     ],
     "title": "Merging zero inputs creates an empty output",
     "type": "scenario"
+  },
+  "rq-4ea8ca35": {
+    "decl": "## Printing",
+    "file": "filtering",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Printing",
+    "type": "section"
   },
   "rq-4eefe504": {
     "decl": "- `RecordInvalidity` — the reason a record fails validation. Variants:",
@@ -1548,6 +2032,18 @@
       }
     ],
     "title": "A partially written last line is skipped and reported",
+    "type": "scenario"
+  },
+  "rq-516d24b1": {
+    "decl": "Scenario: Deviants mode keeps exactly the deviants",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Deviants mode keeps exactly the deviants",
     "type": "scenario"
   },
   "rq-522c8a7d": {
@@ -1820,6 +2316,26 @@
     "title": "mulliken_charges",
     "type": "api-item"
   },
+  "rq-5c0b0b75": {
+    "decl": "### Types",
+    "file": "detection",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
+  "rq-5c68d6cb": {
+    "decl": "Scenario: A count range expands inclusively",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A count range expands inclusively",
+    "type": "scenario"
+  },
   "rq-5d0be798": {
     "decl": "### Extraction",
     "file": "parsers/xyz",
@@ -1847,6 +2363,19 @@
     ],
     "title": "Codes differing only in case are distinct",
     "type": "scenario"
+  },
+  "rq-5dc8fe52": {
+    "decl": "## Cutoffs",
+    "file": "filtering",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Cutoffs",
+    "type": "section"
   },
   "rq-5e237eee": {
     "decl": "## JSON Representation",
@@ -1889,6 +2418,18 @@
     "title": "An unrelated head is not claimed",
     "type": "scenario"
   },
+  "rq-5f4593c6": {
+    "decl": "Scenario: Unknown element leaves mass-based metrics undefined",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Unknown element leaves mass-based metrics undefined",
+    "type": "scenario"
+  },
   "rq-602d347c": {
     "decl": "## Gherkin Scenarios",
     "file": "scaffolding",
@@ -1896,6 +2437,18 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-60c7278b": {
+    "decl": "Scenario: A count-star-code wildcard combines both restrictions",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A count-star-code wildcard combines both restrictions",
+    "type": "scenario"
   },
   "rq-610cdd9d": {
     "decl": "- `electronic_energy` — the last `FINAL SINGLE POINT ENERGY <value>`.",
@@ -1914,6 +2467,30 @@
       }
     ],
     "title": "Loading a missing file is an error",
+    "type": "scenario"
+  },
+  "rq-6203c24a": {
+    "decl": "Scenario: Detection never panics on hostile geometries",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Detection never panics on hostile geometries",
+    "type": "scenario"
+  },
+  "rq-627522b6": {
+    "decl": "Scenario: A multi-key signature requires agreement on every component",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A multi-key signature requires agreement on every component",
     "type": "scenario"
   },
   "rq-62bf0467": {
@@ -2035,6 +2612,18 @@
     "title": "A single-point file reports no frequencies or symmetry number",
     "type": "scenario"
   },
+  "rq-6a872802": {
+    "decl": "Scenario: Shuffle is deterministic per seed",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Shuffle is deterministic per seed",
+    "type": "scenario"
+  },
   "rq-6aa61c29": {
     "decl": "- `method` — the route section: the content of the `# …` line and its",
     "file": "parsers/gaussian",
@@ -2081,6 +2670,18 @@
     "title": "Adopted JKQC-era unknown flags remain usage errors",
     "type": "scenario"
   },
+  "rq-6d5b5f10": {
+    "decl": "Scenario: Print flags print the table while --out writes",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Print flags print the table while --out writes",
+    "type": "scenario"
+  },
   "rq-6da52c3f": {
     "decl": "## Out of Scope",
     "file": "parsers/xtb",
@@ -2088,6 +2689,30 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-6e0398ec": {
+    "decl": "Scenario: An Rg cutoff uses angstroms",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An Rg cutoff uses angstroms",
+    "type": "scenario"
+  },
+  "rq-6e881115": {
+    "decl": "Scenario: A print-only run prints the database without writing anything",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A print-only run prints the database without writing anything",
+    "type": "scenario"
   },
   "rq-6eeaa8ed": {
     "decl": "Scenario: An empty composition part does not resolve",
@@ -2117,12 +2742,7 @@
   "rq-70fc34c2": {
     "decl": "- `src/main.rs` holds the clap definition (inputs positional, `--out`",
     "file": "collection",
-    "refs": [
-      {
-        "file": "src/main.rs",
-        "kind": "code"
-      }
-    ],
+    "refs": [],
     "title": "src",
     "type": "api-item"
   },
@@ -2171,6 +2791,18 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-74c176bd": {
+    "decl": "Scenario: Energies within the rounding agree and collapse",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Energies within the rounding agree and collapse",
+    "type": "scenario"
+  },
   "rq-761f2b95": {
     "decl": "Scenario: Detection ignores the file name and extension",
     "file": "parser-framework",
@@ -2190,6 +2822,54 @@
     "title": "detect",
     "type": "api-item"
   },
+  "rq-7650a23d": {
+    "decl": "- `unique_by_properties(records: &[Record], keys: &[UniqKey]) -> Vec<Record>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "unique_by_properties",
+    "type": "api-item"
+  },
+  "rq-767b9e05": {
+    "decl": "Scenario: A choice expands",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A choice expands",
+    "type": "scenario"
+  },
+  "rq-773db11b": {
+    "decl": "- `FilterSpec` — the whole manipulation: `extract: Option<(Vec<String>,",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "FilterSpec",
+    "type": "api-item"
+  },
+  "rq-775c5278": {
+    "decl": "Scenario: Groups vote independently",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Groups vote independently",
+    "type": "scenario"
+  },
   "rq-77c19ef4": {
     "decl": "Scenario: A line with invalid UTF-8 is skipped and reported",
     "file": "database",
@@ -2200,6 +2880,18 @@
       }
     ],
     "title": "A line with invalid UTF-8 is skipped and reported",
+    "type": "scenario"
+  },
+  "rq-77d0cf6c": {
+    "decl": "Scenario: A relative energy window is per composition group",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A relative energy window is per composition group",
     "type": "scenario"
   },
   "rq-799f6155": {
@@ -2242,12 +2934,33 @@
     "title": "Detection",
     "type": "section"
   },
+  "rq-7b7e2114": {
+    "decl": "## Extract and Nextract",
+    "file": "filtering",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Extract and Nextract",
+    "type": "section"
+  },
   "rq-7c34ac9b": {
     "decl": "- `charge` — the value of `Charge:           <n>`.",
     "file": "parsers/mrcc",
     "refs": [],
     "title": "charge",
     "type": "api-item"
+  },
+  "rq-7c56284e": {
+    "decl": "## Feature API",
+    "file": "uniqueness",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
   },
   "rq-7d8c7128": {
     "decl": "- `ok` — the last frame is complete and valid.",
@@ -2263,6 +2976,31 @@
     "title": "failed",
     "type": "api-item"
   },
+  "rq-7e73da19": {
+    "decl": "## Fragment Signature",
+    "file": "detection",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Fragment Signature",
+    "type": "section"
+  },
+  "rq-7fe408ee": {
+    "decl": "Scenario: A bare star matches everything",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A bare star matches everything",
+    "type": "scenario"
+  },
   "rq-8011b3d2": {
     "decl": "## Fixture Corpus and Manifest",
     "file": "parsers/conformance",
@@ -2270,6 +3008,30 @@
     "refs": [],
     "title": "Fixture Corpus and Manifest",
     "type": "section"
+  },
+  "rq-80b74fa7": {
+    "decl": "Scenario: An exact pattern rejects extras",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An exact pattern rejects extras",
+    "type": "scenario"
+  },
+  "rq-80e048db": {
+    "decl": "Scenario: Dipole magnitude from the stored vector",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Dipole magnitude from the stored vector",
+    "type": "scenario"
   },
   "rq-80f193f5": {
     "decl": "- `failed` — no normal marker and the tail carries ORCA's own error or",
@@ -2333,6 +3095,19 @@
     "title": "Append seals a missing final newline",
     "type": "scenario"
   },
+  "rq-83c62ce0": {
+    "decl": "### Crate Layout",
+    "file": "detection",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Crate Layout",
+    "type": "section"
+  },
   "rq-83dbd29d": {
     "decl": "Scenario: Element symbols are normalized to title case",
     "file": "parsers/xyz",
@@ -2345,6 +3120,18 @@
     "title": "Element symbols are normalized to title case",
     "type": "scenario"
   },
+  "rq-8420b870": {
+    "decl": "- `print_table(records: &[Record], columns: &[Column]) -> String`",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "print_table",
+    "type": "api-item"
+  },
   "rq-843d152e": {
     "decl": "Scenario: Short version flag behaves like --version",
     "file": "scaffolding",
@@ -2356,6 +3143,14 @@
     ],
     "title": "Short version flag behaves like --version",
     "type": "scenario"
+  },
+  "rq-8472dc37": {
+    "decl": "## Uniqueness Model",
+    "file": "uniqueness",
+    "level": 2,
+    "refs": [],
+    "title": "Uniqueness Model",
+    "type": "section"
   },
   "rq-85ba0ac2": {
     "decl": "### Extraction",
@@ -2393,6 +3188,18 @@
     "title": "Comments without the energy label carry no energy",
     "type": "scenario"
   },
+  "rq-881749dc": {
+    "decl": "- `ExtractError` — parse failure detail for usage reporting.",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ExtractError",
+    "type": "api-item"
+  },
   "rq-8890cc1d": {
     "decl": "Scenario: An unrelated head is not claimed",
     "file": "parsers/mrcc",
@@ -2409,17 +3216,33 @@
     "title": "An unrelated head is not claimed",
     "type": "scenario"
   },
-  "rq-899932a2": {
-    "decl": "- `CJKQC` — the only binary target of the crate `complied-jkqc`.",
-    "file": "scaffolding",
+  "rq-88cb3513": {
+    "decl": "### Crate Layout",
+    "file": "uniqueness",
+    "level": 3,
     "refs": [
       {
-        "file": "src/main.rs",
+        "file": "src/lib.rs",
         "kind": "code"
       }
     ],
+    "title": "Crate Layout",
+    "type": "section"
+  },
+  "rq-899932a2": {
+    "decl": "- `CJKQC` — the only binary target of the crate `complied-jkqc`.",
+    "file": "scaffolding",
+    "refs": [],
     "title": "CJKQC",
     "type": "api-item"
+  },
+  "rq-89c26378": {
+    "decl": "## Out of Scope",
+    "file": "detection",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
   },
   "rq-89cb2071": {
     "decl": "- `rotational_symmetry_number` — the value of `Symmetry Number: <n>` in the",
@@ -2435,6 +3258,18 @@
     "refs": [],
     "title": "Input Classification",
     "type": "section"
+  },
+  "rq-8ad5e95a": {
+    "decl": "- `Cutoff` — `op: CmpOp` (`Lt, Le, Gt, Ge, Eq, Ne`), `mode: Mode`",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Cutoff",
+    "type": "api-item"
   },
   "rq-8b1c135f": {
     "decl": "### Status Classification",
@@ -2599,6 +3434,18 @@
     "title": "Version takes precedence over extra arguments",
     "type": "scenario"
   },
+  "rq-953da4ce": {
+    "decl": "- `SortKey` — `El | Rg | Mass | Name`.",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "SortKey",
+    "type": "api-item"
+  },
   "rq-95c630bc": {
     "decl": "Scenario: Merge concatenates inputs in order",
     "file": "database",
@@ -2673,6 +3520,38 @@
     "title": "CollectError",
     "type": "api-item"
   },
+  "rq-98d88fc4": {
+    "decl": "Scenario: A reversed count range is a usage error",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A reversed count range is a usage error",
+    "type": "scenario"
+  },
+  "rq-98e65100": {
+    "decl": "## Out of Scope",
+    "file": "filtering",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
+  "rq-990dde7d": {
+    "decl": "- `UniqMode` — `Dup` or `Keys(Vec<UniqKey>)` (non-empty, identical",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "UniqMode",
+    "type": "api-item"
+  },
   "rq-991e31a2": {
     "decl": "Scenario: A declared fixture conforms",
     "file": "parsers/conformance",
@@ -2699,6 +3578,34 @@
     "refs": [],
     "title": "Crate Layout",
     "type": "section"
+  },
+  "rq-9b28d28a": {
+    "decl": "Scenario: Missing --out is still required without manipulation flags",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Missing --out is still required without manipulation flags",
+    "type": "scenario"
+  },
+  "rq-9b4dda85": {
+    "decl": "# Feature: Filtering, Sorting, and Printing (Manipulation Pipeline)",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Filtering, Sorting, and Printing (Manipulation Pipeline)",
+    "type": "file"
   },
   "rq-9b8f2e7b": {
     "decl": "Scenario: A minimal record serializes to an exact canonical line",
@@ -2798,6 +3705,26 @@
     "title": "Functions",
     "type": "section"
   },
+  "rq-9e36a525": {
+    "decl": "### Functions",
+    "file": "detection",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
+  "rq-9ea7dfb5": {
+    "decl": "Scenario: Rounding is floor-based for negative values",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Rounding is floor-based for negative values",
+    "type": "scenario"
+  },
   "rq-9ea94102": {
     "decl": "- `GaussianParser` — unit struct implementing the framework `Parser` trait",
     "file": "parsers/gaussian",
@@ -2808,6 +3735,18 @@
       }
     ],
     "title": "GaussianParser",
+    "type": "api-item"
+  },
+  "rq-9f4db37a": {
+    "decl": "- `metric_total_mass(record: &Record) -> Option<f64>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "metric_total_mass",
     "type": "api-item"
   },
   "rq-9f5aa509": {
@@ -2836,6 +3775,18 @@
       }
     ],
     "title": "Append with an invalid record writes nothing",
+    "type": "scenario"
+  },
+  "rq-9fa28264": {
+    "decl": "Scenario: A comma list unions",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A comma list unions",
     "type": "scenario"
   },
   "rq-9fc00a11": {
@@ -2917,6 +3868,18 @@
     "title": "The tail keeps the file's final unterminated line",
     "type": "scenario"
   },
+  "rq-a38b5428": {
+    "decl": "Scenario: Rg of a two-atom system matches the hand-verified value",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Rg of a two-atom system matches the hand-verified value",
+    "type": "scenario"
+  },
   "rq-a3a948bc": {
     "decl": "Scenario: A record gains components from its resolvable name",
     "file": "composition",
@@ -2981,6 +3944,18 @@
     "title": "failed",
     "type": "api-item"
   },
+  "rq-a7757bca": {
+    "decl": "- `dedup_names(records: &[Record]) -> Vec<Record>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "dedup_names",
+    "type": "api-item"
+  },
   "rq-a7a34dab": {
     "decl": "Scenario: An unregistered format yields a failed record",
     "file": "parser-framework",
@@ -3005,6 +3980,13 @@
     "file": "parsers/mrcc",
     "refs": [],
     "title": "multiplicity",
+    "type": "api-item"
+  },
+  "rq-a921051d": {
+    "decl": "- `filter_reacted(groups: &[(Vec<Record>)], mode: ReactedMode) -> Vec<Record>`",
+    "file": "detection",
+    "refs": [],
+    "title": "filter_reacted",
     "type": "api-item"
   },
   "rq-aa33eaea": {
@@ -3051,12 +4033,32 @@
     "title": "Functions",
     "type": "section"
   },
+  "rq-acf714ae": {
+    "decl": "Scenario: Print columns follow canonical order regardless of flag order",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Print columns follow canonical order regardless of flag order",
+    "type": "scenario"
+  },
   "rq-ad79643a": {
     "decl": "### Detection",
     "file": "parsers/mrcc",
     "level": 3,
     "refs": [],
     "title": "Detection",
+    "type": "section"
+  },
+  "rq-ad88b915": {
+    "decl": "## Gherkin Scenarios",
+    "file": "filtering",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
     "type": "section"
   },
   "rq-aeb0d510": {
@@ -3123,6 +4125,26 @@
     "title": "Merge can write onto an input path",
     "type": "scenario"
   },
+  "rq-b07a1042": {
+    "decl": "## Feature API",
+    "file": "detection",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-b0d6f2f5": {
+    "decl": "- `ExtractMode` — `Keep` (`--extract`) or `Drop` (`--nextract`).",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ExtractMode",
+    "type": "api-item"
+  },
   "rq-b177c1e4": {
     "decl": "Scenario: Appending zero records to a missing file creates nothing",
     "file": "database",
@@ -3146,6 +4168,18 @@
     ],
     "title": "Append preserves existing content",
     "type": "scenario"
+  },
+  "rq-b21ce0b5": {
+    "decl": "- `tests/filter.rs` tests the pipeline as pure functions (grouping,",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "tests",
+    "type": "api-item"
   },
   "rq-b28b6e69": {
     "decl": "- `ParserRegistry` — the ordered set of parsers.",
@@ -3231,6 +4265,18 @@
     "title": "multiplicity",
     "type": "api-item"
   },
+  "rq-b6a5add7": {
+    "decl": "Scenario: Under noname, extract compares names verbatim",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Under noname, extract compares names verbatim",
+    "type": "scenario"
+  },
   "rq-b721514a": {
     "decl": "Scenario: A cut-off final job is truncated",
     "file": "parsers/gaussian",
@@ -3263,6 +4309,18 @@
     "title": "A single-point-only run reports the last job's values",
     "type": "scenario"
   },
+  "rq-b73d0021": {
+    "decl": "Scenario: Exact composition extracts its records",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Exact composition extracts its records",
+    "type": "scenario"
+  },
   "rq-b75cecef": {
     "decl": "## Feature API",
     "file": "parser-framework",
@@ -3275,6 +4333,46 @@
     ],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-b76b0761": {
+    "decl": "- `property_value(record: &Record, property: Property) -> Option<f64>`",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "property_value",
+    "type": "api-item"
+  },
+  "rq-b7959747": {
+    "decl": "- `metric_radius_of_gyration(record: &Record) -> Option<f64>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "metric_radius_of_gyration",
+    "type": "api-item"
+  },
+  "rq-b81cce20": {
+    "decl": "Scenario: A manipulation with neither --out nor a print flag is a usage error",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A manipulation with neither --out nor a print flag is a usage error",
+    "type": "scenario"
   },
   "rq-b846e66c": {
     "decl": "- `charge` — `Total Charge           Charge          .... <n>` value.",
@@ -3345,6 +4443,22 @@
     "refs": [],
     "title": "Resolution Model",
     "type": "section"
+  },
+  "rq-bc3e1482": {
+    "decl": "- `apply_filters(records: &[Record], spec: &FilterSpec) -> Result<Vec<Record>,",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "apply_filters",
+    "type": "api-item"
   },
   "rq-bd3986f2": {
     "decl": "### Extraction",
@@ -3450,6 +4564,19 @@
     "title": "A directory input is fatal",
     "type": "scenario"
   },
+  "rq-bf062c8f": {
+    "decl": "### Crate Layout",
+    "file": "filtering",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Crate Layout",
+    "type": "section"
+  },
   "rq-bf318b99": {
     "decl": "Scenario: The last SCF Done wins",
     "file": "parsers/gaussian",
@@ -3477,6 +4604,18 @@
     ],
     "title": "Feature: Plain xyz Parser",
     "type": "file"
+  },
+  "rq-bfd2765b": {
+    "decl": "Scenario: Tie in frequency breaks by earliest occurrence",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Tie in frequency breaks by earliest occurrence",
+    "type": "scenario"
   },
   "rq-c01ba326": {
     "decl": "- `method` — from the `program call` line, mapping the method flag:",
@@ -3536,6 +4675,19 @@
     "title": "A non-ASCII character in a code does not resolve",
     "type": "scenario"
   },
+  "rq-c6746a5e": {
+    "decl": "## Consensus Rule",
+    "file": "detection",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Consensus Rule",
+    "type": "section"
+  },
   "rq-c7356b3e": {
     "decl": "Scenario: A failed record from a matched parser is not unrecognized",
     "file": "record",
@@ -3546,6 +4698,18 @@
       }
     ],
     "title": "A failed record from a matched parser is not unrecognized",
+    "type": "scenario"
+  },
+  "rq-c74aa6d8": {
+    "decl": "Scenario: Custom decimals loosen the signature",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Custom decimals loosen the signature",
     "type": "scenario"
   },
   "rq-c7886a80": {
@@ -3574,6 +4738,18 @@
       }
     ],
     "title": "Absent observables are omitted, never null",
+    "type": "scenario"
+  },
+  "rq-ca0185f6": {
+    "decl": "Scenario: Undefined metrics are mutually equal",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined metrics are mutually equal",
     "type": "scenario"
   },
   "rq-cae3826b": {
@@ -3610,6 +4786,30 @@
       }
     ],
     "title": "Blank lines are ignored",
+    "type": "scenario"
+  },
+  "rq-cc3c275c": {
+    "decl": "Scenario: A geometryless record survives only with a none-consensus",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A geometryless record survives only with a none-consensus",
+    "type": "scenario"
+  },
+  "rq-cd33a3de": {
+    "decl": "Scenario: Non-ok records are excluded and counted",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Non-ok records are excluded and counted",
     "type": "scenario"
   },
   "rq-cd5bd6c0": {
@@ -3674,6 +4874,30 @@
     "title": "electronic_energy",
     "type": "api-item"
   },
+  "rq-d157ebb2": {
+    "decl": "- `Property` — `El, Rg, Lf, Dip, Mass, Charge, Multiplicity, Natoms,",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Property",
+    "type": "api-item"
+  },
+  "rq-d1cfac2d": {
+    "decl": "Scenario: Stage order is fixed",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Stage order is fixed",
+    "type": "scenario"
+  },
   "rq-d2239555": {
     "decl": "Scenario: The XTB corpus fixture reproduces the JKQC ground truth",
     "file": "parsers/conformance",
@@ -3725,6 +4949,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-d54c69c6": {
+    "decl": "Scenario: Energies one rounding step apart both survive",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Energies one rounding step apart both survive",
+    "type": "scenario"
+  },
   "rq-d56ab087": {
     "decl": "Scenario: Companion xyz files route to the plain-xyz parser",
     "file": "parsers/conformance",
@@ -3735,6 +4971,18 @@
       }
     ],
     "title": "Companion xyz files route to the plain-xyz parser",
+    "type": "scenario"
+  },
+  "rq-d59cd7df": {
+    "decl": "Scenario: Mass-weighted Rg differs from unweighted for mixed masses",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Mass-weighted Rg differs from unweighted for mixed masses",
     "type": "scenario"
   },
   "rq-d59dac72": {
@@ -3769,6 +5017,14 @@
     "title": "Unknown keys are ignored on read",
     "type": "scenario"
   },
+  "rq-d6e00bdf": {
+    "decl": "### Functions",
+    "file": "filtering",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
   "rq-d72bb4c5": {
     "decl": "- `MrccParser` — unit struct implementing the framework `Parser` trait with",
     "file": "parsers/mrcc",
@@ -3792,6 +5048,18 @@
     ],
     "title": "A table ends at its first non-row line",
     "type": "scenario"
+  },
+  "rq-d7383be9": {
+    "decl": "- `tests/metrics.rs` tests the metrics and both uniqueness modes as pure",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "tests",
+    "type": "api-item"
   },
   "rq-d8a0968b": {
     "decl": "Scenario: An opt+freq log yields the final job's observables",
@@ -3833,6 +5101,18 @@
     "title": "validate rejects an empty geometry",
     "type": "scenario"
   },
+  "rq-dab135ee": {
+    "decl": "- `metric_dipole_magnitude(record: &Record) -> Option<f64>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "metric_dipole_magnitude",
+    "type": "api-item"
+  },
   "rq-daf59b28": {
     "decl": "- `XtbParser`, `OrcaParser`, `GaussianParser`, `MrccParser`, `XyzParser` —",
     "file": "parsers/conformance",
@@ -3851,6 +5131,14 @@
     "refs": [],
     "title": "Feature: Parser Conformance Harness and Standard Registry",
     "type": "file"
+  },
+  "rq-db938553": {
+    "decl": "### Types",
+    "file": "uniqueness",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
   },
   "rq-dce37e6e": {
     "decl": "Scenario: A parser record that fails validation is replaced",
@@ -3900,6 +5188,18 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-dfb86bb9": {
+    "decl": "Scenario: A reacted heavy skeleton deviates from the consensus",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A reacted heavy skeleton deviates from the consensus",
+    "type": "scenario"
+  },
   "rq-e003541d": {
     "decl": "Scenario: Unknown JKQC flags are usage errors",
     "file": "scaffolding",
@@ -3936,6 +5236,18 @@
     "title": "Short help flag behaves like --help",
     "type": "scenario"
   },
+  "rq-e1e64cd9": {
+    "decl": "Scenario: A pathological count range is a usage error",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A pathological count range is a usage error",
+    "type": "scenario"
+  },
   "rq-e21fcb88": {
     "decl": "- `tests/fixtures/manifest.json` — the fixture manifest (below).",
     "file": "parsers/conformance",
@@ -3953,6 +5265,18 @@
       }
     ],
     "title": "A repeated invocation replaces the database with a warning",
+    "type": "scenario"
+  },
+  "rq-e2e0998d": {
+    "decl": "Scenario: Distance exactly at a cutoff is unbonded",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Distance exactly at a cutoff is unbonded",
     "type": "scenario"
   },
   "rq-e2eda6d5": {
@@ -4071,6 +5395,18 @@
     "title": "An error termination is failed",
     "type": "scenario"
   },
+  "rq-e64bbc62": {
+    "decl": "Scenario: Undefined values fail comparisons except inequality",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined values fail comparisons except inequality",
+    "type": "scenario"
+  },
   "rq-e6e7e0ad": {
     "decl": "- `truncated` — neither marker present.",
     "file": "parsers/mrcc",
@@ -4148,6 +5484,14 @@
     "title": "program_version",
     "type": "api-item"
   },
+  "rq-ea151d18": {
+    "decl": "### Types",
+    "file": "filtering",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-ea1f9893": {
     "decl": "### Types",
     "file": "parsers/gaussian",
@@ -4155,6 +5499,18 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-ea25c7ce": {
+    "decl": "Scenario: Total mass sums atomic weights",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Total mass sums atomic weights",
+    "type": "scenario"
   },
   "rq-eabf1669": {
     "decl": "- `parse_jkqc_name(name: &str) -> Option<Components>`",
@@ -4219,6 +5575,18 @@
     "title": "The last complete frame of a multi-frame file wins",
     "type": "scenario"
   },
+  "rq-ebb500d9": {
+    "decl": "Scenario: A negative decimal count is rejected",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A negative decimal count is rejected",
+    "type": "scenario"
+  },
   "rq-ebeceeae": {
     "decl": "Scenario: The corpus fixture conforms",
     "file": "parsers/xtb",
@@ -4259,6 +5627,18 @@
     "title": "Fortran float parsing accepts E, e, D, and d exponents",
     "type": "scenario"
   },
+  "rq-ef146284": {
+    "decl": "- `ReactedMode` — `Consensus` (`--reacted`, keep the majority pattern) or",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "src/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ReactedMode",
+    "type": "api-item"
+  },
   "rq-f00ebeae": {
     "decl": "### Types",
     "file": "composition",
@@ -4278,6 +5658,13 @@
     ],
     "title": "A missing --out is a usage error",
     "type": "scenario"
+  },
+  "rq-f0b153d7": {
+    "decl": "- `fragment_signature(record: &Record) -> Option<String>`",
+    "file": "detection",
+    "refs": [],
+    "title": "fragment_signature",
+    "type": "api-item"
   },
   "rq-f0bf0879": {
     "decl": "Scenario: An empty database loads as zero records",
@@ -4303,6 +5690,18 @@
     "title": "Failed and truncated fixtures yield status records",
     "type": "scenario"
   },
+  "rq-f2821d27": {
+    "decl": "Scenario: The 2.00 Å default applies to unlisted heavy pairs",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The 2.00 Å default applies to unlisted heavy pairs",
+    "type": "scenario"
+  },
   "rq-f30931da": {
     "decl": "### Types",
     "file": "parsers/xyz",
@@ -4310,6 +5709,22 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-f43b5dbf": {
+    "decl": "Scenario: An unparsable query is a usage error",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unparsable query is a usage error",
+    "type": "scenario"
   },
   "rq-f4a74fc9": {
     "decl": "Scenario: last_line_where prefers the match in the tail",
@@ -4540,6 +5955,30 @@
     ],
     "title": "Crate Layout",
     "type": "section"
+  },
+  "rq-fe2a60bf": {
+    "decl": "Scenario: Missing geometry yields no metrics",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Missing geometry yields no metrics",
+    "type": "scenario"
+  },
+  "rq-fe68801f": {
+    "decl": "- `tests/reacted.rs` tests the bond table edge cases (exactly-at-cutoff",
+    "file": "detection",
+    "refs": [
+      {
+        "file": "tests/reacted.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "tests",
+    "type": "api-item"
   },
   "rq-ffaf4e5b": {
     "decl": "Scenario: A signature anywhere in a covered file is detected",

@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use crate::composition::resolve_components;
 use crate::db::{self, DbError, MergeProblem};
 use crate::parser::{ParseError, ParserRegistry};
-use crate::record::RecordStatus;
+use crate::record::{Record, RecordStatus};
 
 /// Which operation the inputs call for.
 ///
@@ -178,9 +178,8 @@ pub fn collect_inputs(inputs: &[&Path], output: &Path) -> Result<CollectOutcome,
 
 /// Parse every input with the standard registry, abort on any record the
 /// framework marked unrecognized or empty (status `failed` with no
-/// program), resolve compositions, then write the collected records as the
-/// complete new content of the output.
-fn build_database(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
+/// program), and resolve compositions.
+fn parse_records(inputs: &[&Path]) -> Result<Vec<Record>, CollectError> {
     let registry = ParserRegistry::standard();
     let mut records = Vec::with_capacity(inputs.len());
     for path in inputs {
@@ -198,6 +197,15 @@ fn build_database(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, Col
         resolve_components(&mut record);
         records.push(record);
     }
+    Ok(records)
+}
+
+/// Parse every input with the standard registry, abort on any record the
+/// framework marked unrecognized or empty (status `failed` with no
+/// program), resolve compositions, then write the collected records as the
+/// complete new content of the output.
+fn build_database(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
+    let records = parse_records(inputs)?;
 
     // Every input is read, validated, and serialized before the output is
     // touched; write_database then replaces it atomically, so a failure
@@ -246,5 +254,48 @@ fn from_db(error: DbError) -> CollectError {
     match error {
         DbError::Io { kind, reason } => CollectError::Io { kind, reason },
         other => CollectError::Db(other),
+    }
+}
+
+/// Records gathered before any manipulation (see `rqm/filtering.md`):
+/// the same classification and collection a plain run performs, held in
+/// memory instead of written to an output.
+///
+/// (rq-9b4dda85)
+#[derive(Debug, Clone, PartialEq)]
+pub enum Gathered {
+    /// Build: every parsed record, in argument order.
+    Build { records: Vec<Record> },
+    /// Merge: every valid record in file order, with the skipped lines.
+    Merge {
+        records: Vec<Record>,
+        problems: Vec<MergeProblem>,
+    },
+}
+
+/// Classifies the inputs and gathers their records without writing
+/// anything; errors are exactly the ones `collect_inputs` reports before
+/// writing.
+///
+/// (rq-9b4dda85)
+pub fn gather_inputs(inputs: &[&Path]) -> Result<Gathered, CollectError> {
+    match classify_inputs(inputs)? {
+        CollectionMode::Build => Ok(Gathered::Build {
+            records: parse_records(inputs)?,
+        }),
+        CollectionMode::Merge => {
+            let mut records = Vec::new();
+            let mut problems = Vec::new();
+            for path in inputs {
+                let outcome = db::load_database(path).map_err(from_db)?;
+                records.extend(outcome.records);
+                problems.extend(outcome.problems.into_iter().map(|problem| MergeProblem {
+                    input: path.to_path_buf(),
+                    line: problem.line,
+                    reason: problem.reason,
+                }));
+            }
+            Ok(Gathered::Merge { records, problems })
+        }
     }
 }

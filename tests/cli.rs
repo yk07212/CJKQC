@@ -562,3 +562,564 @@ fn a_genuine_failed_record_from_a_matched_parser_is_collected() {
         "components: {components:?}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Milestone 5: filtering & manipulation scenarios from `rqm/filtering.md`
+// that are CLI-shaped.
+// ---------------------------------------------------------------------------
+
+fn comp_line(
+    name: &str,
+    energy: Option<f64>,
+    comps: &[(&str, u32)],
+    status: RecordStatus,
+) -> String {
+    let mut record = Record {
+        name: Some(name.to_string()),
+        electronic_energy: energy,
+        status,
+        ..Record::default()
+    };
+    if !comps.is_empty() {
+        record.components = Some(
+            comps
+                .iter()
+                .map(|(code, count)| (code.to_string(), *count))
+                .collect(),
+        );
+    }
+    if status == RecordStatus::Failed {
+        record.error = Some("boom".to_string());
+    }
+    serde_json::to_string(&record).expect("serialization")
+}
+
+fn database_in(dir: &TempDir, lines: &[String]) -> String {
+    let path = dir.join("db.jsonl");
+    let owned: Vec<&str> = lines.iter().map(String::as_str).collect();
+    write_jsonl(&path, &owned);
+    path.to_string_lossy().into_owned()
+}
+
+#[test] // rq-b73d0021
+fn extract_selects_the_exact_composition() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("wide", None, &[("am", 2), ("sa", 3)], RecordStatus::Ok),
+            comp_line("small", None, &[("am", 1), ("sa", 1)], RecordStatus::Ok),
+        ],
+    );
+    let run = cjkqc(&[&db, "--extract", "2am3sa", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name\nwide");
+}
+
+#[test] // rq-443f2709
+fn nextract_inverts_the_selection() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("diammonia", None, &[("am", 2)], RecordStatus::Ok),
+            comp_line("sasa", None, &[("sa", 3)], RecordStatus::Ok),
+        ],
+    );
+    let run = cjkqc(&[&db, "--nextract", "2am", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name\nsasa");
+}
+
+#[test] // rq-f43b5dbf
+fn an_unparsable_extract_query_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("a", None, &[("am", 1)], RecordStatus::Ok)],
+    );
+    let run = cjkqc(&[&db, "--extract", "2am$", "--name"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-b6a5add7
+fn noname_extract_compares_names_verbatim() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line(
+                "2am3sa-1conf",
+                None,
+                &[("am", 2), ("sa", 3)],
+                RecordStatus::Ok,
+            ),
+            comp_line(
+                "2am3sa-2conf",
+                None,
+                &[("am", 2), ("sa", 3)],
+                RecordStatus::Ok,
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--noname", "--extract", "2am3sa-1conf", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name\n2am3sa-1conf");
+}
+
+#[test] // rq-cd33a3de
+fn non_ok_records_are_excluded_and_counted() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("a", Some(-2.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("b", Some(-1.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("c", None, &[], RecordStatus::Failed),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "el", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name\na\nb");
+    assert!(
+        stderr(&run).contains("excluded 1 records with status failed or truncated"),
+        "{}",
+        stderr(&run)
+    );
+}
+
+#[test] // rq-6d5b5f10
+fn print_flags_print_the_table_while_out_writes() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line(
+            "1dma",
+            Some(-38.51),
+            &[("am", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let out = dir.join("kept.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&db, "--sort", "el", "--name", "--el", "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(loaded(&out).len(), 1);
+    let text = stdout(&run);
+    assert!(text.starts_with("name el\n"), "{text}");
+    assert!(text.contains("1dma -38.5100000000"), "{text}");
+}
+
+#[test] // rq-acf714ae
+fn print_columns_follow_canonical_order_regardless_of_flag_order() {
+    let dir = temp_dir();
+    let mut record = Record {
+        name: Some("unknown".to_string()),
+        ..Record::default()
+    };
+    record.geometry = Some(complied_jkqc::Geometry {
+        symbols: vec!["Xx".to_string()],
+        coordinates: vec![0.0, 0.0, 0.0],
+    });
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--mass", "--rg", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name rg mass\nunknown - -");
+}
+
+#[test] // rq-b81cce20
+fn a_manipulation_without_out_or_print_flags_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("a", Some(-1.0), &[("am", 1)], RecordStatus::Ok)],
+    );
+    let run = cjkqc(&[&db, "--sort", "el"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-6e881115
+fn a_print_only_run_prints_every_record_without_writing() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("a", Some(-2.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("b", Some(-1.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("c", None, &[], RecordStatus::Failed),
+        ],
+    );
+    let run = cjkqc(&[&db, "--status", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name status\na ok\nb ok\nc failed");
+    assert_eq!(
+        fs::read_to_string(&db).expect("db").lines().count(),
+        3,
+        "the input database is untouched and nothing else is written"
+    );
+}
+
+#[test] // rq-2b862de1
+fn out_writes_the_filtered_database_and_prints_a_summary() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("a", Some(-38.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("b", Some(-38.005), &[("am", 1)], RecordStatus::Ok),
+            comp_line("c", Some(-38.02), &[("am", 1)], RecordStatus::Ok),
+        ],
+    );
+    let out = dir.join("kept.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&db, "--cutr", "el", "1", "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let survivors = loaded(&out);
+    assert!(!survivors.is_empty() && survivors.len() <= 3);
+    assert_eq!(survivors.len(), 1, "only the group minimum survives");
+    assert_eq!(
+        stdout(&run).trim(),
+        format!("filtered 1 records into {out_text}")
+    );
+}
+
+#[test] // rq-9b28d28a
+fn missing_out_is_still_required_without_manipulation_flags() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("a", Some(-1.0), &[("am", 1)], RecordStatus::Ok)],
+    );
+    let run = cjkqc(&[&db]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(stderr(&run).contains("--out"), "{}", stderr(&run));
+}
+
+#[test] // rq-3bbefb05
+fn arbalign_flags_remain_unknown_usage_errors() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("a", Some(-1.0), &[("am", 1)], RecordStatus::Ok)],
+    );
+    let run = cjkqc(&[&db, "--arbalign", "0.38"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(stderr(&run).contains("arbalign"), "{}", stderr(&run));
+}
+
+// ---------------------------------------------------------------------------
+// PR-review follow-ups: new extract-scenario coverage and CLI-level pinning
+// of the flag wiring in `src/main.rs` (`rqm/filtering.md`).
+// ---------------------------------------------------------------------------
+
+fn geom_line(name: &str, comps: &[(&str, u32)], symbols: &[&str], coords: &[f64]) -> String {
+    let mut record = Record {
+        name: Some(name.to_string()),
+        ..Record::default()
+    };
+    if !comps.is_empty() {
+        record.components = Some(
+            comps
+                .iter()
+                .map(|(code, count)| (code.to_string(), *count))
+                .collect(),
+        );
+    }
+    record.geometry = Some(complied_jkqc::Geometry {
+        symbols: symbols.iter().map(|symbol| symbol.to_string()).collect(),
+        coordinates: coords.to_vec(),
+    });
+    serde_json::to_string(&record).expect("serialization")
+}
+
+#[test] // rq-071ab7e7
+fn an_underscore_in_an_extract_pattern_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line(
+            "a",
+            None,
+            &[("am", 2), ("sa", 3)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[&db, "--extract", "2am3sa_1conf", "--name"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-32c242d5
+fn noname_extract_accepts_names_outside_the_composition_grammar() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("conf-A", None, &[("am", 2)], RecordStatus::Ok),
+            comp_line("conf-B", None, &[("am", 2)], RecordStatus::Ok),
+        ],
+    );
+    let run = cjkqc(&[&db, "--noname", "--extract", "conf-A", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name\nconf-A");
+}
+
+#[test]
+fn cli_uniq_dup_and_keys_pick_records() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("x", Some(-2.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("x", Some(-1.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("y", Some(-3.0), &[("am", 1)], RecordStatus::Ok),
+        ],
+    );
+    let dup = cjkqc(&[&db, "--uniq", "dup", "--name"]);
+    assert_eq!(dup.status.code(), Some(0), "{}", stderr(&dup));
+    assert_eq!(stdout(&dup).trim(), "name\nx\ny");
+    let keys = cjkqc(&[&db, "--uniq", "el", "--name"]);
+    assert_eq!(keys.status.code(), Some(0), "{}", stderr(&keys));
+    // No two energies agree at 3 decimals, so uniq keeps all of them in
+    // implicit el-ascending order.
+    assert_eq!(stdout(&keys).trim(), "name\ny\nx\nx");
+}
+
+#[test]
+fn cli_reacted_and_reacted2_use_the_fragment_consensus() {
+    let dir = temp_dir();
+    let bonded = || {
+        geom_line(
+            "d",
+            &[("n", 2)],
+            &["N", "N"],
+            &[0.0, 0.0, 0.0, 1.4, 0.0, 0.0],
+        )
+    };
+    let db = database_in(
+        &dir,
+        &[
+            geom_line(
+                "a",
+                &[("n", 2)],
+                &["N", "N"],
+                &[0.0, 0.0, 0.0, 3.0, 0.0, 0.0],
+            ),
+            geom_line(
+                "b",
+                &[("n", 2)],
+                &["N", "N"],
+                &[0.0, 0.0, 0.0, 3.0, 0.0, 0.0],
+            ),
+            bonded(),
+        ],
+    );
+    let consensus = cjkqc(&[&db, "--reacted", "--name"]);
+    assert_eq!(consensus.status.code(), Some(0), "{}", stderr(&consensus));
+    assert_eq!(stdout(&consensus).trim(), "name\na\nb");
+    let deviants = cjkqc(&[&db, "--reacted2", "--name"]);
+    assert_eq!(deviants.status.code(), Some(0), "{}", stderr(&deviants));
+    assert_eq!(stdout(&deviants).trim(), "name\nd");
+}
+
+#[test]
+fn cli_shuffle_is_reproducible_per_seed() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &(0..5)
+            .map(|index| {
+                comp_line(
+                    &format!("n{index}"),
+                    Some(index as f64),
+                    &[("am", 1)],
+                    RecordStatus::Ok,
+                )
+            })
+            .collect::<Vec<_>>(),
+    );
+    let first = cjkqc(&[&db, "--shuffle", "--seed", "7", "--name"]);
+    let second = cjkqc(&[&db, "--shuffle", "--seed", "7", "--name"]);
+    assert_eq!(stdout(&first), stdout(&second));
+    assert_ne!(stdout(&first).trim(), "name\nn0\nn1\nn2\nn3\nn4");
+}
+
+#[test]
+fn cli_select_and_reverse_sort_apply() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("a", Some(-3.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("b", Some(-2.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("s", Some(-9.0), &[("sa", 1)], RecordStatus::Ok),
+        ],
+    );
+    let selected = cjkqc(&[&db, "--select", "1", "--name"]);
+    assert_eq!(selected.status.code(), Some(0), "{}", stderr(&selected));
+    // Implicit el-ascending sort puts s (-9.0) before a (-3.0); each group
+    // contributes its first record.
+    assert_eq!(stdout(&selected).trim(), "name\ns\na");
+    let reversed = cjkqc(&[&db, "--sort", "el", "--reverse", "--name"]);
+    assert_eq!(reversed.status.code(), Some(0), "{}", stderr(&reversed));
+    assert_eq!(stdout(&reversed).trim(), "name\nb\na\ns");
+}
+
+#[test]
+fn cli_cutoff_flags_wire_their_operators() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            // 3 atoms, no imaginary frequency; 2 atoms; charge variants.
+            geom_line(
+                "big",
+                &[("am", 1)],
+                &["N", "N", "N"],
+                &[0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 6.0, 0.0, 0.0],
+            ),
+            geom_line(
+                "small",
+                &[("am", 1)],
+                &["N", "N"],
+                &[0.0, 0.0, 0.0, 3.0, 0.0, 0.0],
+            ),
+        ],
+    );
+    let pass = cjkqc(&[&db, "--pass", "natoms", "2", "--name"]);
+    assert_eq!(pass.status.code(), Some(0), "{}", stderr(&pass));
+    assert_eq!(stdout(&pass).trim(), "name\nbig");
+
+    let mut imag = Record {
+        name: Some("imag".to_string()),
+        components: Some([("am".to_string(), 1)].into_iter().collect()),
+        ..Record::default()
+    };
+    imag.vibrational_frequencies = Some(vec![-50.0]);
+    let mut real = Record {
+        name: Some("real".to_string()),
+        components: Some([("am".to_string(), 1)].into_iter().collect()),
+        ..Record::default()
+    };
+    real.vibrational_frequencies = Some(vec![50.0]);
+    let freq_db = database_in(
+        &dir,
+        &[
+            serde_json::to_string(&imag).expect("line"),
+            serde_json::to_string(&real).expect("line"),
+        ],
+    );
+    let is_not = cjkqc(&[&freq_db, "--isnot", "nimag", "0", "--name"]);
+    assert_eq!(is_not.status.code(), Some(0), "{}", stderr(&is_not));
+    assert_eq!(stdout(&is_not).trim(), "name\nimag");
+    let is_zero = cjkqc(&[&freq_db, "--is", "nimag", "0", "--name"]);
+    assert_eq!(is_zero.status.code(), Some(0), "{}", stderr(&is_zero));
+    assert_eq!(stdout(&is_zero).trim(), "name\nreal");
+}
+
+#[test]
+fn cli_sort_keys_cover_rg_mass_and_name() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            geom_line(
+                "wide",
+                &[("n", 2)],
+                &["N", "N"],
+                &[0.0, 0.0, 0.0, 6.0, 0.0, 0.0],
+            ),
+            geom_line(
+                "tight",
+                &[("n", 2)],
+                &["N", "N"],
+                &[0.0, 0.0, 0.0, 1.4, 0.0, 0.0],
+            ),
+        ],
+    );
+    let by_rg = cjkqc(&[&db, "--sort", "rg", "--name"]);
+    assert_eq!(by_rg.status.code(), Some(0), "{}", stderr(&by_rg));
+    assert_eq!(stdout(&by_rg).trim(), "name\ntight\nwide");
+    let by_name = cjkqc(&[&db, "--sort", "name", "--name"]);
+    assert_eq!(by_name.status.code(), Some(0), "{}", stderr(&by_name));
+    assert_eq!(stdout(&by_name).trim(), "name\ntight\nwide");
+
+    let mass_db = database_in(
+        &dir,
+        &[
+            geom_line("carbon", &[("c", 1)], &["C"], &[0.0, 0.0, 0.0]),
+            geom_line("hydrogen", &[("h", 1)], &["H"], &[0.0, 0.0, 0.0]),
+        ],
+    );
+    let by_mass = cjkqc(&[&mass_db, "--sort", "mass", "--name"]);
+    assert_eq!(by_mass.status.code(), Some(0), "{}", stderr(&by_mass));
+    assert_eq!(stdout(&by_mass).trim(), "name\nhydrogen\ncarbon");
+}
+
+#[test]
+fn mixed_inputs_with_print_flags_is_a_usage_error_once() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("a", None, &[("am", 1)], RecordStatus::Ok)],
+    );
+    let program = dir.join("prog.out");
+    fs::write(&program, "not json at all\n").expect("write program output");
+    let run = cjkqc(&[&db, &program.to_string_lossy(), "--status", "--name"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    let errors = stderr(&run);
+    assert_eq!(
+        errors.matches("cannot mix").count(),
+        1,
+        "the mixed-input error must print exactly once"
+    );
+}
+
+#[test] // rq-297b5bf7
+fn every_cutoff_flag_wires_its_operator() {
+    let dir = temp_dir();
+    // Absolute: low < at == threshold > high, so every operator has a
+    // distinct survivor set.
+    let abs_db = database_in(
+        &dir,
+        &[
+            comp_line("low", Some(-1.0), &[("am", 1)], RecordStatus::Ok),
+            comp_line("at", Some(-0.5), &[("am", 1)], RecordStatus::Ok),
+            comp_line("high", Some(0.0), &[("am", 1)], RecordStatus::Ok),
+        ],
+    );
+    // Relative: one group with minimum "deep"; "zero" sits exactly
+    // 0.62750947 kcal/mol above it (0.001 hartree), on the boundary.
+    let rel_path = dir.join("rel.jsonl");
+    write_jsonl(
+        &rel_path,
+        &[
+            &comp_line("zero", Some(0.0), &[("am", 1)], RecordStatus::Ok),
+            &comp_line("deep", Some(-0.001), &[("am", 1)], RecordStatus::Ok),
+        ],
+    );
+    let rel_db = rel_path.to_string_lossy().into_owned();
+    // (flag, database, threshold, expected names in file order)
+    let cases: &[(&str, &str, &str, &str)] = &[
+        ("--cut", "abs", "-0.5", "low\nat"),
+        ("--filter-lt", "abs", "-0.5", "low"),
+        ("--pass", "abs", "-0.5", "high"),
+        ("--filter-ge", "abs", "-0.5", "at\nhigh"),
+        ("--is", "abs", "-0.5", "at"),
+        ("--isnot", "abs", "-0.5", "low\nhigh"),
+        ("--cutr", "rel", "0.62750947", "zero\ndeep"),
+        ("--rel-filter-lt", "rel", "0.62750947", "deep"),
+        ("--passr", "rel", "0.62750947", ""),
+        ("--rel-filter-ge", "rel", "0.62750947", "zero"),
+    ];
+    for (flag, db_kind, threshold, expected) in cases {
+        let db = if *db_kind == "abs" { &abs_db } else { &rel_db };
+        let run = cjkqc(&[db, flag, "el", threshold, "--name"]);
+        assert_eq!(run.status.code(), Some(0), "{flag}: {}", stderr(&run));
+        let want = if expected.is_empty() {
+            "name".to_string()
+        } else {
+            format!("name\n{expected}")
+        };
+        assert_eq!(stdout(&run).trim(), want, "{flag} {threshold}");
+    }
+}
