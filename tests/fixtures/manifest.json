@@ -1722,5 +1722,22 @@
    "program_version": null,
    "method": null
   }
+ },
+ {
+  "file": "xyz/1am1x-bad.xyz",
+  "program": "xyz",
+  "status": "failed",
+  "expect": {
+   "electronic_energy": null,
+   "geometry": null,
+   "charge": null,
+   "multiplicity": null,
+   "vibrational_frequencies": null,
+   "dipole_moment": null,
+   "mulliken_charges": null,
+   "rotational_symmetry_number": null,
+   "program_version": null,
+   "method": null
+  }
  }
 ]

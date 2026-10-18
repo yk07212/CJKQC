@@ -1,13 +1,20 @@
 //! Integration tests for the record schema, one per Gherkin scenario in
 //! `rqm/record.md`.
 
-use complied_jkqc::{Geometry, Record, RecordInvalidity, RecordStatus};
+use complied_jkqc::{Components, Geometry, Record, RecordInvalidity, RecordStatus};
 
 fn geometry(symbols: &[&str], coordinates: &[f64]) -> Geometry {
     Geometry {
         symbols: symbols.iter().map(|symbol| symbol.to_string()).collect(),
         coordinates: coordinates.to_vec(),
     }
+}
+
+fn components(pairs: &[(&str, u32)]) -> Components {
+    pairs
+        .iter()
+        .map(|(code, count)| (code.to_string(), *count))
+        .collect()
 }
 
 #[test] // rq-636984f8
@@ -32,6 +39,7 @@ fn round_trip_a_record_with_every_observable_set() {
         dipole_moment: Some([0.1, 0.2, 0.3]),
         mulliken_charges: Some(vec![-0.3, 0.15, 0.15]),
         rotational_symmetry_number: Some(1),
+        components: Some(components(&[("am", 2), ("sa", 3)])),
     };
     assert!(record.validate().is_ok());
     let line = serde_json::to_string(&record).expect("serialization");
@@ -77,7 +85,7 @@ fn geometry_serializes_as_parallel_arrays() {
 #[test] // rq-d5e85a47
 fn unknown_keys_are_ignored_on_read() {
     let record: Record =
-        serde_json::from_str(r#"{"status":"ok","electronic_energy":-1.5,"components":{"am":2}}"#)
+        serde_json::from_str(r#"{"status":"ok","electronic_energy":-1.5,"zpe":0.42}"#)
             .expect("deserialization");
     assert_eq!(record.status, RecordStatus::Ok);
     assert_eq!(record.electronic_energy, Some(-1.5));
@@ -225,4 +233,98 @@ fn validate_rejects_multiplicity_zero() {
             ..
         })
     ));
+}
+
+#[test] // rq-b37a708d
+fn components_map_round_trips() {
+    let record = Record {
+        components: Some(components(&[("am", 2), ("sa", 3)])),
+        ..Record::default()
+    };
+    assert!(record.validate().is_ok());
+    let line = serde_json::to_string(&record).expect("serialization");
+    let back: Record = serde_json::from_str(&line).expect("deserialization");
+    assert_eq!(back, record);
+}
+
+#[test] // rq-4501ef81
+fn components_serialize_alphabetically_regardless_of_insertion_order() {
+    let mut map = Components::new();
+    map.insert("sa".to_string(), 3);
+    map.insert("am".to_string(), 2);
+    let record = Record {
+        components: Some(map),
+        ..Record::default()
+    };
+    let line = serde_json::to_string(&record).expect("serialization");
+    assert!(line.contains(r#""components":{"am":2,"sa":3}"#));
+}
+
+#[test] // rq-2e483977
+fn components_read_from_a_json_object() {
+    let record: Record = serde_json::from_str(r#"{"status":"ok","components":{"am":2,"sa":3}}"#)
+        .expect("deserialization");
+    assert_eq!(record.components, Some(components(&[("am", 2), ("sa", 3)])));
+}
+
+#[test] // rq-2d06ae4a
+fn validate_rejects_empty_components_map() {
+    let record = Record {
+        components: Some(Components::new()),
+        ..Record::default()
+    };
+    assert!(matches!(
+        record.validate(),
+        Err(RecordInvalidity::InvalidComponents)
+    ));
+}
+
+#[test] // rq-219c9bd9
+fn validate_rejects_component_code_holding_a_digit() {
+    let record = Record {
+        components: Some(components(&[("a1", 1)])),
+        ..Record::default()
+    };
+    assert!(matches!(
+        record.validate(),
+        Err(RecordInvalidity::InvalidComponents)
+    ));
+}
+
+#[test] // rq-819d16cd
+fn validate_rejects_component_count_below_one() {
+    let record = Record {
+        components: Some(components(&[("am", 0)])),
+        ..Record::default()
+    };
+    assert!(matches!(
+        record.validate(),
+        Err(RecordInvalidity::InvalidComponents)
+    ));
+}
+
+#[test] // rq-19cf3c0b
+fn failed_record_without_program_is_unrecognized() {
+    let record = Record {
+        status: RecordStatus::Failed,
+        error: Some("unrecognized output format".to_string()),
+        ..Record::default()
+    };
+    assert!(record.is_unrecognized());
+}
+
+#[test] // rq-c7356b3e
+fn failed_record_from_a_matched_parser_is_not_unrecognized() {
+    let record = Record {
+        status: RecordStatus::Failed,
+        error: Some("SCF did not converge".to_string()),
+        program: Some("xtb".to_string()),
+        ..Record::default()
+    };
+    assert!(!record.is_unrecognized());
+}
+
+#[test] // rq-5aa5a715
+fn ok_record_is_not_unrecognized() {
+    assert!(!Record::default().is_unrecognized());
 }

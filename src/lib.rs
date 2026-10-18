@@ -5,12 +5,20 @@
 //! Library target for unit and integration tests. Domain modules arrive with
 //! the milestones that implement them.
 
+pub mod collect;
+pub mod composition;
 pub mod db;
 pub mod parser;
 pub mod record;
 
 // rq-8c5e4002
-pub use record::{Geometry, Record, RecordInvalidity, RecordStatus};
+pub use record::{Components, Geometry, Record, RecordInvalidity, RecordStatus};
+
+// rq-fe2700dc
+pub use composition::{parse_jkqc_name, resolve_components};
+
+// rq-fcb0174f
+pub use collect::{classify_inputs, collect_inputs, CollectError, CollectOutcome, CollectionMode};
 
 // rq-15f15563
 pub use parser::{

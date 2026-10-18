@@ -198,7 +198,9 @@ module:
   with status `failed`, an error mentioning the unrecognized output format,
   and no `program`. An empty file yields a record with status `failed` and
   an error mentioning that the file is empty. Both carry `name` and
-  `source_path` when a path was given.
+  `source_path` when a path was given. This failed-without-program signature
+  is exposed as `Record::is_unrecognized` (`rqm/record.md`) so consumers can
+  distinguish "no parser read this file" from a real failed job.
 - A parser-returned record that fails `Record::validate` is replaced by a
   record with status `failed` and an error mentioning the invalid record
   and the violated invariant; `name`, `source_path`, and `program` are
@@ -218,8 +220,9 @@ module:
   fixture manifest over `tests/fixtures/`.
 - A registry constructor assembling the standard set of format parsers —
   arrives with the milestone-3 parsers.
-- The collection command line (`CJKQC <files>`, stdin input, database
-  append) — milestone 4.
+- The collection command line (`CJKQC <files>`, database append) —
+  `rqm/collection.md`. Stdin collection is not part of that surface yet; the
+  `from_stream` reader stands ready for it.
 - Parallel parsing: the trait is `Send + Sync`, but v1 makes no concurrency
   commitment.
 - Transparent decompression (`.gz` and friends); files are read as they

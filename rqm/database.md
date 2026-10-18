@@ -4,7 +4,8 @@ A **database** is a JSON Lines file: UTF-8 text, one record per line, in any
 order, inspectable with any JSONL tool (`jq`, pandas, a text editor). Databases
 are the interchange format between CJKQC invocations. The record type and its
 JSON form are defined by `rqm/record.md`; this feature defines the file-level
-rules and the three database operations: load, append, and merge.
+rules and the three database operations: load, append, and merge, built on one
+shared atomic replacement write.
 
 Failures never panic and never lose good data: an unreadable *line* becomes a
 reported problem while the valid records load; only filesystem-level failures
@@ -46,14 +47,35 @@ reported problem while the valid records load; only filesystem-level failures
   - Loads every input in the given order with the same per-line rules as
     `load_database` (skip and report). A missing or unreadable input is
     `Err(DbError::Io(_))` and nothing is written.
-  - After all inputs are read, writes every loaded record to `output` in
-    input order — the first input's records, then the second's, and so on.
-  - `output` is created or truncated (existing content is replaced); its
-    parent directory must already exist.
-  - `output` may be the same path as one of the inputs: all inputs are fully
-    read before `output` is opened.
+  - Every line that loads as a valid record is copied **verbatim** — the
+    original line text, byte for byte, newline normalized — to `output` in
+    input order: the first input's lines, then the second's, and so on.
+    Unknown keys survive merge unchanged, so records written by a newer
+    version of CJKQC pass through an older one without losing fields.
+  - The write is `write_database`: `output` is replaced **atomically**
+    (it is also created when missing). A failed replacement leaves any
+    previous content of `output` intact and leaves no temporary file
+    behind. The parent directory must already exist.
+  - `output` may be the same path as one of the inputs: all inputs are
+    fully read before `output` is replaced.
   - Zero inputs produce an empty output file.
   - Returns the number of records written and every problem encountered.
+
+- `write_database(path: &Path, lines: &[String]) -> Result<(), DbError>` <!-- rq-96595784 -->
+  - Writes `lines` as the complete new content of the database: each line
+    plus its terminating newline, nothing else.
+  - The content lands in a temporary file in the parent directory of
+    `path`, is flushed and synced to the storage device, then renamed over
+    `path`, replacing any existing file atomically. Any failure before the
+    rename leaves the previous content of `path` (if any) intact and any
+    temporary file removed. After a successful rename the parent directory
+    is synced as well where the platform allows it, so the replacement
+    itself is durable; beyond that, persistence across storage-device
+    failure is outside this guarantee.
+  - The parent directory must already exist; a missing one is
+    `Err(DbError::Io(_))`. Zero lines produce an empty file.
+  - Callers hand in lines they have already validated; the write itself
+    neither validates nor re-serializes.
 
 ### Types <!-- rq-022a9f55 -->
 
@@ -69,8 +91,9 @@ reported problem while the valid records load; only filesystem-level failures
     operation failed: missing input file, uncreatable or unwritable
     output, missing parent directory, permission failure. `kind` is the
     underlying failure's kind (`NotFound`, `PermissionDenied`, …) so
-    callers branch on the cause without parsing text; `reason` is the
-    human-readable message.
+    callers branch on the cause without parsing text; `reason` is a
+    human-readable message naming the path the failed operation
+    concerned.
   - `Serialize(String)` — a record could not be serialized to its JSON
     line while writing (append or merge). This is a record-content
     failure, never reported as `Io`.
@@ -102,7 +125,7 @@ reported problem while the valid records load; only filesystem-level failures
 - Producing records from QC output files — the parser framework, milestones
   2–3 of the implementation plan.
 - The `CJKQC` command-line surface for building and merging databases —
-  milestone 4.
+  `rqm/collection.md`.
 - Duplicate removal, subsetting, sorting — milestone 5.
 - File locking, concurrent writers, and compressed or non-JSONL storage.
 
@@ -247,7 +270,7 @@ Feature: Record database
     And "b.jsonl" is unchanged
 
   @rq-15bf030c
-  Scenario: Merge truncates an existing output
+  Scenario: Merge replaces an existing output
     Given database "a.jsonl" with 1 record and database "old.jsonl" with 5 records
     When merge_databases is called on "a.jsonl" alone with output "old.jsonl"
     Then Ok is returned
@@ -279,4 +302,30 @@ Feature: Record database
     When merge_databases is called with no inputs and output "c.jsonl"
     Then Ok is returned with 0 records written
     And "c.jsonl" exists and is empty
+
+  # --- Verbatim copying and atomic replacement ---
+
+  @rq-e487b172
+  Scenario: Merge preserves unknown fields in copied lines
+    Given a database "a.jsonl" whose only line is {"status":"ok","name":"A1","future_field":42}
+    When merge_databases is called on it with output "c.jsonl"
+    Then Ok is returned with 1 record written
+    And the sole line of "c.jsonl" is byte-identical to the input line
+
+  @rq-abf80ccb
+  Scenario: Merge copies lines without re-serializing them
+    Given a database "a.jsonl" whose only line is {"electronic_energy":-1.5} with no status key
+    When merge_databases is called on it with output "c.jsonl"
+    Then Ok is returned with 1 record written
+    And the sole line of "c.jsonl" is byte-identical to the input line
+    And that line contains no "status" key
+
+  @rq-3ace0885
+  Scenario: A failed replacement leaves the existing target intact
+    Given a directory "out" containing a file "keep.txt"
+    And database "a.jsonl" with 1 record
+    When merge_databases is called on "a.jsonl" with output "out"
+    Then Err is returned
+    And "out/keep.txt" still exists unchanged
+    And the parent directory of "out" holds no leftover temporary file
 ```

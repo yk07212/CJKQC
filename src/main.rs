@@ -1,31 +1,85 @@
 //! CJKQC — a spiritual successor to JKQC from JKCS2.1.
 //!
-//! Command-line shell for CJKQC. The scaffold provides only the built-in
-//! `--help`/`--version`; every other invocation is a usage error.
+//! Collection command line: `CJKQC <inputs>… --out <db>` builds a database
+//! from QC outputs or merges record databases, per `rqm/collection.md`.
+
+use std::path::PathBuf;
+use std::process::ExitCode;
 
 use clap::Parser;
 
-// rq-c3792c41 rq-899932a2
+use complied_jkqc::collect::{collect_inputs, CollectError, CollectOutcome};
+
+// rq-70fc34c2 rq-899932a2
 #[derive(Parser)]
 #[command(
     name = "CJKQC",
     version,
     about = "Collect, organize, filter, and post-process quantum-chemistry output for molecular clusters"
 )]
-struct Cli {}
+struct Cli {
+    /// Database to write: build replaces it, merge combines inputs into it.
+    #[arg(short = 'o', long = "out")]
+    out: PathBuf,
 
-// rq-899932a2
-fn unimplemented_stub() -> ! {
-    eprintln!("error: no functionality is implemented yet");
-    eprintln!("For more information, try '--help'.");
-    std::process::exit(2);
+    /// Replace an existing --out without the warning.
+    #[arg(long = "fout")]
+    fout: bool,
+
+    /// Input files: QC program outputs (build) or record databases (merge).
+    #[arg(required = true)]
+    inputs: Vec<PathBuf>,
 }
 
-// rq-c3792c41
-fn main() {
-    match Cli::try_parse() {
-        Ok(_) => unimplemented_stub(),
-        Err(err) if err.use_stderr() => unimplemented_stub(),
-        Err(err) => err.exit(),
+// rq-a4e0ba89 rq-a2681a7a
+fn main() -> ExitCode {
+    let cli = Cli::parse();
+    let replacing = cli.out.exists();
+    let inputs: Vec<&std::path::Path> = cli.inputs.iter().map(PathBuf::as_path).collect();
+    match collect_inputs(&inputs, &cli.out) {
+        Ok(CollectOutcome::Build {
+            written,
+            failed,
+            truncated,
+        }) => {
+            warn_if_replacing(replacing, cli.fout, &cli.out);
+            println!(
+                "collected {written} records into {} ({failed} failed, {truncated} truncated)",
+                cli.out.display()
+            );
+            ExitCode::SUCCESS
+        }
+        Ok(CollectOutcome::Merge { written, problems }) => {
+            warn_if_replacing(replacing, cli.fout, &cli.out);
+            for problem in &problems {
+                eprintln!(
+                    "warning: {} line {}: {}",
+                    problem.input.display(),
+                    problem.line,
+                    problem.reason
+                );
+            }
+            println!("merged {written} records into {}", cli.out.display());
+            if problems.is_empty() {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
+        Err(error @ CollectError::Mixed { .. }) => {
+            eprintln!("error: {error}");
+            ExitCode::from(2)
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+// rq-a2681a7a
+fn warn_if_replacing(replacing: bool, forced: bool, out: &std::path::Path) {
+    if replacing && !forced {
+        eprintln!("warning: replacing existing database {}", out.display());
     }
 }

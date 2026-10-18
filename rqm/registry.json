@@ -64,6 +64,26 @@
     "title": "detect",
     "type": "api-item"
   },
+  "rq-084c74fa": {
+    "decl": "## Gherkin Scenarios",
+    "file": "collection",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-0a2ed6f8": {
+    "decl": "Scenario: An unwritable output directory is fatal",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unwritable output directory is fatal",
+    "type": "scenario"
+  },
   "rq-0a70b97d": {
     "decl": "- `read_geometry_table(lines, spec: &TableSpec) -> Option<Geometry>` — reads",
     "file": "parser-framework",
@@ -184,6 +204,18 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-0f1c73be": {
+    "decl": "Scenario: A failed record still gains its composition",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A failed record still gains its composition",
+    "type": "scenario"
+  },
   "rq-0f8ebb73": {
     "decl": "Scenario: A recorded failed run is classified failed",
     "file": "parsers/orca",
@@ -220,6 +252,18 @@
     "title": "DbError",
     "type": "api-item"
   },
+  "rq-12d931b9": {
+    "decl": "Scenario: Classification ignores the file name",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Classification ignores the file name",
+    "type": "scenario"
+  },
   "rq-12fbb168": {
     "decl": "### Types",
     "file": "parsers/conformance",
@@ -227,6 +271,18 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-1308259f": {
+    "decl": "# Feature: Composition Resolution from JKQC Names",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "src/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Composition Resolution from JKQC Names",
+    "type": "file"
   },
   "rq-13bcad95": {
     "decl": "- `merge_databases(inputs: &[&Path], output: &Path) -> Result<MergeOutcome, DbError>`",
@@ -260,7 +316,7 @@
     "type": "api-item"
   },
   "rq-15bf030c": {
-    "decl": "Scenario: Merge truncates an existing output",
+    "decl": "Scenario: Merge replaces an existing output",
     "file": "database",
     "refs": [
       {
@@ -268,7 +324,7 @@
         "kind": "code"
       }
     ],
-    "title": "Merge truncates an existing output",
+    "title": "Merge replaces an existing output",
     "type": "scenario"
   },
   "rq-15f15563": {
@@ -283,6 +339,18 @@
     ],
     "title": "Crate Layout",
     "type": "section"
+  },
+  "rq-160a5957": {
+    "decl": "Scenario: A zero count makes the name unresolvable",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A zero count makes the name unresolvable",
+    "type": "scenario"
   },
   "rq-16630511": {
     "decl": "- `FileWindows` — the head and tail view of one file's content.",
@@ -315,6 +383,18 @@
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
+  "rq-180cebd1": {
+    "decl": "Scenario: An unrecognized output aborts the run and writes nothing",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unrecognized output aborts the run and writes nothing",
+    "type": "scenario"
+  },
   "rq-1810d098": {
     "decl": "### Status Classification",
     "file": "parsers/xyz",
@@ -335,6 +415,18 @@
     "title": "OrcaParser",
     "type": "api-item"
   },
+  "rq-18ba8ffb": {
+    "decl": "Scenario: A label containing hyphens and underscores is ignored",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A label containing hyphens and underscores is ignored",
+    "type": "scenario"
+  },
   "rq-18bc1945": {
     "decl": "Scenario: Bohr coordinates are converted to Ångström",
     "file": "parser-framework",
@@ -345,6 +437,38 @@
       }
     ],
     "title": "Bohr coordinates are converted to Ångström",
+    "type": "scenario"
+  },
+  "rq-19b11795": {
+    "decl": "## Gherkin Scenarios",
+    "file": "composition",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-19cf3c0b": {
+    "decl": "Scenario: A failed record without a program is unrecognized",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A failed record without a program is unrecognized",
+    "type": "scenario"
+  },
+  "rq-1adfe3e9": {
+    "decl": "Scenario: An implicit count does not resolve",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An implicit count does not resolve",
     "type": "scenario"
   },
   "rq-1b84a43e": {
@@ -506,6 +630,18 @@
     "title": "The parser's status and error are preserved verbatim",
     "type": "scenario"
   },
+  "rq-219c9bd9": {
+    "decl": "Scenario: validate rejects a component code holding a digit",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a component code holding a digit",
+    "type": "scenario"
+  },
   "rq-22fd07a1": {
     "decl": "Scenario: The test suite passes on the scaffolded crate",
     "file": "scaffolding",
@@ -517,6 +653,18 @@
     ],
     "title": "The test suite passes on the scaffolded crate",
     "type": "scenario"
+  },
+  "rq-230f406d": {
+    "decl": "- `resolve_components(record: &mut Record)`",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "src/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "resolve_components",
+    "type": "api-item"
   },
   "rq-23172936": {
     "decl": "### Types",
@@ -550,6 +698,14 @@
     "title": "The build produces the exact executable name",
     "type": "scenario"
   },
+  "rq-26ba140d": {
+    "decl": "### Functions",
+    "file": "composition",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
   "rq-26e2fe07": {
     "decl": "Scenario: validate accepts a failed record with only status and error",
     "file": "record",
@@ -560,6 +716,18 @@
       }
     ],
     "title": "validate accepts a failed record with only status and error",
+    "type": "scenario"
+  },
+  "rq-276adb9e": {
+    "decl": "Scenario: A missing input is fatal and writes nothing",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing input is fatal and writes nothing",
     "type": "scenario"
   },
   "rq-28fce0b1": {
@@ -649,6 +817,25 @@
     "title": "load_database",
     "type": "api-item"
   },
+  "rq-2d06ae4a": {
+    "decl": "Scenario: validate rejects an empty components map",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects an empty components map",
+    "type": "scenario"
+  },
+  "rq-2d29c3a7": {
+    "decl": "- `tests/collect.rs` tests classification and `collect_inputs` over the",
+    "file": "collection",
+    "refs": [],
+    "title": "tests",
+    "type": "api-item"
+  },
   "rq-2d633569": {
     "decl": "Scenario: A single-point log reports no frequencies",
     "file": "parsers/gaussian",
@@ -663,6 +850,18 @@
       }
     ],
     "title": "A single-point log reports no frequencies",
+    "type": "scenario"
+  },
+  "rq-2e483977": {
+    "decl": "Scenario: Components read from a JSON object",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Components read from a JSON object",
     "type": "scenario"
   },
   "rq-2ff394b0": {
@@ -684,6 +883,30 @@
     "title": "electronic_energy",
     "type": "api-item"
   },
+  "rq-306e6285": {
+    "decl": "Scenario: A proton adduct resolves",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A proton adduct resolves",
+    "type": "scenario"
+  },
+  "rq-3091cb1e": {
+    "decl": "Scenario: Uppercase codes resolve and differ from lowercase ones",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Uppercase codes resolve and differ from lowercase ones",
+    "type": "scenario"
+  },
   "rq-3172eb32": {
     "decl": "Scenario: A large file yields disjoint line-aligned windows",
     "file": "parser-framework",
@@ -694,6 +917,18 @@
       }
     ],
     "title": "A large file yields disjoint line-aligned windows",
+    "type": "scenario"
+  },
+  "rq-31d988e1": {
+    "decl": "Scenario: Multiple inputs are written in argument order",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Multiple inputs are written in argument order",
     "type": "scenario"
   },
   "rq-3265a4b3": {
@@ -710,6 +945,18 @@
       }
     ],
     "title": "A frame cut by the end of the file is truncated",
+    "type": "scenario"
+  },
+  "rq-3275eeb1": {
+    "decl": "Scenario: A descriptive stem does not resolve",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A descriptive stem does not resolve",
     "type": "scenario"
   },
   "rq-329b3c89": {
@@ -764,6 +1011,14 @@
     "title": "A window-hidden frame is honest, never half-read",
     "type": "scenario"
   },
+  "rq-336152ed": {
+    "decl": "### Crate Layout",
+    "file": "collection",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
   "rq-33ab6159": {
     "decl": "Scenario: The MRCC banner is detected",
     "file": "parsers/mrcc",
@@ -795,6 +1050,18 @@
     "refs": [],
     "title": "Functions",
     "type": "section"
+  },
+  "rq-34231bdc": {
+    "decl": "Scenario: Merge truncates an existing output",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge truncates an existing output",
+    "type": "scenario"
   },
   "rq-34b49160": {
     "decl": "### Extraction",
@@ -942,6 +1209,18 @@
     "title": "validate rejects a gradient length that mismatches the geometry",
     "type": "scenario"
   },
+  "rq-3a95d0f8": {
+    "decl": "Scenario: A two-component name resolves",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A two-component name resolves",
+    "type": "scenario"
+  },
   "rq-3ac29482": {
     "decl": "- `rotational_symmetry_number` — absent: xtb describes its point group in",
     "file": "parsers/xtb",
@@ -949,12 +1228,44 @@
     "title": "rotational_symmetry_number",
     "type": "api-item"
   },
+  "rq-3ace0885": {
+    "decl": "Scenario: A failed replacement leaves the existing target intact",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A failed replacement leaves the existing target intact",
+    "type": "scenario"
+  },
+  "rq-3b9e8002": {
+    "decl": "Scenario: Collect one XTB output into a new database",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Collect one XTB output into a new database",
+    "type": "scenario"
+  },
   "rq-3bb529ad": {
     "decl": "### Types",
     "file": "parsers/orca",
     "level": 3,
     "refs": [],
     "title": "Types",
+    "type": "section"
+  },
+  "rq-3d76ed40": {
+    "decl": "## Feature API",
+    "file": "collection",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
     "type": "section"
   },
   "rq-41e77e57": {
@@ -971,6 +1282,18 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-4293ca31": {
+    "decl": "- `CollectionMode` — `Build` or `Merge`, the classification verdict.",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "CollectionMode",
+    "type": "api-item"
   },
   "rq-42e59efe": {
     "decl": "# Feature: Format Detection and Parser Framework",
@@ -1038,6 +1361,30 @@
       }
     ],
     "title": "A dangling energy label is not an error",
+    "type": "scenario"
+  },
+  "rq-4501ef81": {
+    "decl": "Scenario: Components serialize alphabetically regardless of insertion order",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Components serialize alphabetically regardless of insertion order",
+    "type": "scenario"
+  },
+  "rq-45238f22": {
+    "decl": "Scenario: A database recognized by content, not extension",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A database recognized by content, not extension",
     "type": "scenario"
   },
   "rq-45c63967": {
@@ -1163,6 +1510,18 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-503eebe7": {
+    "decl": "Scenario: --fout silences the replacement warning",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--fout silences the replacement warning",
+    "type": "scenario"
+  },
   "rq-509b31ed": {
     "decl": "Scenario: An unreadable first frame fails",
     "file": "parsers/xyz",
@@ -1191,6 +1550,18 @@
     "title": "A partially written last line is skipped and reported",
     "type": "scenario"
   },
+  "rq-522c8a7d": {
+    "decl": "Scenario: A conformer label after a hyphen is ignored",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A conformer label after a hyphen is ignored",
+    "type": "scenario"
+  },
   "rq-527a66db": {
     "decl": "- `method` — the first keyword after `!` in the echoed input block (the",
     "file": "parsers/orca",
@@ -1206,6 +1577,18 @@
     ],
     "title": "method",
     "type": "api-item"
+  },
+  "rq-53463f17": {
+    "decl": "Scenario: Databases merge in argument order",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Databases merge in argument order",
+    "type": "scenario"
   },
   "rq-535bd7b8": {
     "decl": "Scenario: Detection requires the xyz shape",
@@ -1223,6 +1606,18 @@
     "title": "Detection requires the xyz shape",
     "type": "scenario"
   },
+  "rq-54536800": {
+    "decl": "Scenario: A dash argument is an ordinary path, not stdin",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A dash argument is an ordinary path, not stdin",
+    "type": "scenario"
+  },
   "rq-547a8fd6": {
     "decl": "# Feature: MRCC Parser",
     "file": "parsers/mrcc",
@@ -1234,6 +1629,22 @@
     ],
     "title": "Feature: MRCC Parser",
     "type": "file"
+  },
+  "rq-550ff715": {
+    "decl": "- `classify_inputs(inputs: &[&Path]) -> Result<CollectionMode, CollectError>`",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "classify_inputs",
+    "type": "api-item"
   },
   "rq-56514e37": {
     "decl": "## Feature API",
@@ -1362,6 +1773,18 @@
     "title": "Partial lines at the window seams are dropped",
     "type": "scenario"
   },
+  "rq-5aa5a715": {
+    "decl": "Scenario: An ok record is not unrecognized",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An ok record is not unrecognized",
+    "type": "scenario"
+  },
   "rq-5ab5050d": {
     "decl": "Scenario: A file within the window sizes is read whole",
     "file": "parser-framework",
@@ -1404,6 +1827,26 @@
     "refs": [],
     "title": "Extraction",
     "type": "section"
+  },
+  "rq-5d7eda5b": {
+    "decl": "## Build Mode",
+    "file": "collection",
+    "level": 2,
+    "refs": [],
+    "title": "Build Mode",
+    "type": "section"
+  },
+  "rq-5d9fe801": {
+    "decl": "Scenario: Codes differing only in case are distinct",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Codes differing only in case are distinct",
+    "type": "scenario"
   },
   "rq-5e237eee": {
     "decl": "## JSON Representation",
@@ -1532,6 +1975,14 @@
     "title": "program_version",
     "type": "api-item"
   },
+  "rq-64f91c42": {
+    "decl": "### Types",
+    "file": "collection",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-662d12db": {
     "decl": "Scenario: parse_windows stamps the program but not the identity",
     "file": "parser-framework",
@@ -1618,6 +2069,18 @@
     "title": "rotational_symmetry_number",
     "type": "api-item"
   },
+  "rq-6cc1264d": {
+    "decl": "Scenario: Adopted JKQC-era unknown flags remain usage errors",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Adopted JKQC-era unknown flags remain usage errors",
+    "type": "scenario"
+  },
   "rq-6da52c3f": {
     "decl": "## Out of Scope",
     "file": "parsers/xtb",
@@ -1625,6 +2088,18 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-6eeaa8ed": {
+    "decl": "Scenario: An empty composition part does not resolve",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An empty composition part does not resolve",
+    "type": "scenario"
   },
   "rq-6f803572": {
     "decl": "## Window Contract",
@@ -1638,6 +2113,30 @@
     ],
     "title": "Window Contract",
     "type": "section"
+  },
+  "rq-70fc34c2": {
+    "decl": "- `src/main.rs` holds the clap definition (inputs positional, `--out`",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "src",
+    "type": "api-item"
+  },
+  "rq-720a810c": {
+    "decl": "Scenario: A genuine failed record from a matched parser is collected",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A genuine failed record from a matched parser is collected",
+    "type": "scenario"
   },
   "rq-72e0ded9": {
     "decl": "Scenario: Help takes precedence over extra arguments",
@@ -1798,6 +2297,30 @@
     "title": "ParseError",
     "type": "api-item"
   },
+  "rq-8197fd08": {
+    "decl": "Scenario: A multi-part name from the fixture corpus resolves via its stem",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A multi-part name from the fixture corpus resolves via its stem",
+    "type": "scenario"
+  },
+  "rq-819d16cd": {
+    "decl": "Scenario: validate rejects a component count below one",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a component count below one",
+    "type": "scenario"
+  },
   "rq-82900eac": {
     "decl": "Scenario: Append seals a missing final newline",
     "file": "database",
@@ -1905,6 +2428,14 @@
     "title": "rotational_symmetry_number",
     "type": "api-item"
   },
+  "rq-8ad5063d": {
+    "decl": "## Input Classification",
+    "file": "collection",
+    "level": 2,
+    "refs": [],
+    "title": "Input Classification",
+    "type": "section"
+  },
   "rq-8b1c135f": {
     "decl": "### Status Classification",
     "file": "parsers/orca",
@@ -1940,6 +2471,19 @@
     "title": "geometry",
     "type": "api-item"
   },
+  "rq-8e661b0d": {
+    "decl": "## Filename Grammar",
+    "file": "composition",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Filename Grammar",
+    "type": "section"
+  },
   "rq-8ebc2a41": {
     "decl": "### Status Classification",
     "file": "parsers/gaussian",
@@ -1947,6 +2491,18 @@
     "refs": [],
     "title": "Status Classification",
     "type": "section"
+  },
+  "rq-8ebc6467": {
+    "decl": "- `Record::is_unrecognized(&self) -> bool`",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Record",
+    "type": "api-item"
   },
   "rq-8f1add9c": {
     "decl": "Scenario: Loading a directory is an error",
@@ -1959,6 +2515,25 @@
     ],
     "title": "Loading a directory is an error",
     "type": "scenario"
+  },
+  "rq-8f9a701f": {
+    "decl": "Scenario: Merge can write onto one of its inputs",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge can write onto one of its inputs",
+    "type": "scenario"
+  },
+  "rq-8fb6fccc": {
+    "decl": "- `src/main.rs` holds the clap CLI definition and the dispatch to the",
+    "file": "scaffolding",
+    "refs": [],
+    "title": "src",
+    "type": "api-item"
   },
   "rq-91435a73": {
     "decl": "Scenario: A recorded failed run is classified failed",
@@ -1982,6 +2557,26 @@
     "level": 3,
     "refs": [],
     "title": "Detection",
+    "type": "section"
+  },
+  "rq-9215f506": {
+    "decl": "Scenario: A record-carried composition wins over the name",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record-carried composition wins over the name",
+    "type": "scenario"
+  },
+  "rq-92e3f3e9": {
+    "decl": "## Out of Scope",
+    "file": "collection",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
     "type": "section"
   },
   "rq-93f2fd85": {
@@ -2023,6 +2618,18 @@
     "title": "truncated",
     "type": "api-item"
   },
+  "rq-96595784": {
+    "decl": "- `write_database(path: &Path, lines: &[String]) -> Result<(), DbError>`",
+    "file": "database",
+    "refs": [
+      {
+        "file": "src/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "write_database",
+    "type": "api-item"
+  },
   "rq-96b8c74d": {
     "decl": "- `MergeProblem` — `input: PathBuf`, `line: usize` (1-based), and",
     "file": "database",
@@ -2049,6 +2656,22 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-989e6417": {
+    "decl": "- `CollectError` — why a run wrote nothing:",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "CollectError",
+    "type": "api-item"
   },
   "rq-991e31a2": {
     "decl": "Scenario: A declared fixture conforms",
@@ -2115,6 +2738,18 @@
     "title": "An unknown status value fails deserialization",
     "type": "scenario"
   },
+  "rq-9d155d29": {
+    "decl": "Scenario: Leading zeros in a count are accepted",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Leading zeros in a count are accepted",
+    "type": "scenario"
+  },
   "rq-9d65a814": {
     "decl": "## Feature API",
     "file": "parsers/xyz",
@@ -2122,6 +2757,22 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-9d8725d5": {
+    "decl": "- `collect_inputs(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError>`",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "collect_inputs",
+    "type": "api-item"
   },
   "rq-9d9e798e": {
     "decl": "Scenario: Imaginary modes keep their sign",
@@ -2215,6 +2866,18 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-a1b00922": {
+    "decl": "Scenario: A digit-only name does not resolve",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A digit-only name does not resolve",
+    "type": "scenario"
+  },
   "rq-a1f4c207": {
     "decl": "- `tests/conformance.rs` — the manifest-driven suite; it builds",
     "file": "parsers/conformance",
@@ -2229,6 +2892,19 @@
     "title": "detect",
     "type": "api-item"
   },
+  "rq-a2681a7a": {
+    "decl": "## Reporting and Exit Codes",
+    "file": "collection",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Reporting and Exit Codes",
+    "type": "section"
+  },
   "rq-a37342d6": {
     "decl": "Scenario: The tail keeps the file's final unterminated line",
     "file": "parser-framework",
@@ -2240,6 +2916,31 @@
     ],
     "title": "The tail keeps the file's final unterminated line",
     "type": "scenario"
+  },
+  "rq-a3a948bc": {
+    "decl": "Scenario: A record gains components from its resolvable name",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record gains components from its resolvable name",
+    "type": "scenario"
+  },
+  "rq-a4e0ba89": {
+    "decl": "## Command Line",
+    "file": "collection",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Command Line",
+    "type": "section"
   },
   "rq-a5fee06d": {
     "decl": "Scenario: A frequency calculation without a terminated run is truncated",
@@ -2317,6 +3018,38 @@
     ],
     "title": "XyzParser",
     "type": "api-item"
+  },
+  "rq-ab9f329c": {
+    "decl": "Scenario: An unresolvable name leaves components absent",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unresolvable name leaves components absent",
+    "type": "scenario"
+  },
+  "rq-abf80ccb": {
+    "decl": "Scenario: Merge copies lines without re-serializing them",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge copies lines without re-serializing them",
+    "type": "scenario"
+  },
+  "rq-acd8f4f9": {
+    "decl": "### Functions",
+    "file": "collection",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
   },
   "rq-ad79643a": {
     "decl": "### Detection",
@@ -2452,6 +3185,18 @@
     "title": "truncated",
     "type": "api-item"
   },
+  "rq-b37a708d": {
+    "decl": "Scenario: A components map round-trips",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A components map round-trips",
+    "type": "scenario"
+  },
   "rq-b41a1001": {
     "decl": "### Status Classification",
     "file": "parsers/mrcc",
@@ -2466,6 +3211,18 @@
     "refs": [],
     "title": "ok",
     "type": "api-item"
+  },
+  "rq-b51f8bc8": {
+    "decl": "Scenario: Merge copies records verbatim",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge copies records verbatim",
+    "type": "scenario"
   },
   "rq-b5b01447": {
     "decl": "- `multiplicity` — `Multiplicity           Mult            .... <n>` value",
@@ -2561,12 +3318,32 @@
     "title": "Atomic numbers map to title-case element symbols",
     "type": "scenario"
   },
+  "rq-b992e561": {
+    "decl": "Scenario: A nameless record is left unchanged",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A nameless record is left unchanged",
+    "type": "scenario"
+  },
   "rq-b9eeedfe": {
     "decl": "## Feature API",
     "file": "database",
     "level": 2,
     "refs": [],
     "title": "Feature API",
+    "type": "section"
+  },
+  "rq-bb72c241": {
+    "decl": "## Resolution Model",
+    "file": "composition",
+    "level": 2,
+    "refs": [],
+    "title": "Resolution Model",
     "type": "section"
   },
   "rq-bd3986f2": {
@@ -2578,7 +3355,7 @@
     "type": "section"
   },
   "rq-bd59ba92": {
-    "decl": "Scenario: Help output advertises no domain flags",
+    "decl": "Scenario: Help output advertises the collection surface",
     "file": "scaffolding",
     "refs": [
       {
@@ -2586,7 +3363,7 @@
         "kind": "code"
       }
     ],
-    "title": "Help output advertises no domain flags",
+    "title": "Help output advertises the collection surface",
     "type": "scenario"
   },
   "rq-bdb74057": {
@@ -2614,7 +3391,7 @@
     "type": "scenario"
   },
   "rq-be35a7b3": {
-    "decl": "Scenario: Positional arguments are a usage error",
+    "decl": "Scenario: Positional arguments without --out are a usage error",
     "file": "scaffolding",
     "refs": [
       {
@@ -2622,7 +3399,7 @@
         "kind": "code"
       }
     ],
-    "title": "Positional arguments are a usage error",
+    "title": "Positional arguments without --out are a usage error",
     "type": "scenario"
   },
   "rq-be38168f": {
@@ -2661,6 +3438,18 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-bedf480a": {
+    "decl": "Scenario: A directory input is fatal",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A directory input is fatal",
+    "type": "scenario"
+  },
   "rq-bf318b99": {
     "decl": "Scenario: The last SCF Done wins",
     "file": "parsers/gaussian",
@@ -2696,17 +3485,24 @@
     "title": "method",
     "type": "api-item"
   },
-  "rq-c3792c41": {
-    "decl": "- `src/main.rs` holds the clap CLI definition and the stub error path.",
-    "file": "scaffolding",
+  "rq-c1056d55": {
+    "decl": "# Feature: Collection Command Line",
+    "file": "collection",
     "refs": [
       {
-        "file": "src/main.rs",
+        "file": "src/collect.rs",
         "kind": "code"
       }
     ],
-    "title": "src",
-    "type": "api-item"
+    "title": "Feature: Collection Command Line",
+    "type": "file"
+  },
+  "rq-c3792c41": {
+    "decl": "collection pipeline (`rqm/collection.md`).",
+    "file": "scaffolding",
+    "refs": [],
+    "title": "collection pipeline (`rqm/collection.md`).",
+    "type": "anchor"
   },
   "rq-c4aff078": {
     "decl": "Scenario: validate rejects a geometry whose coordinates are not three per atom",
@@ -2727,6 +3523,30 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-c66abc39": {
+    "decl": "Scenario: A non-ASCII character in a code does not resolve",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-ASCII character in a code does not resolve",
+    "type": "scenario"
+  },
+  "rq-c7356b3e": {
+    "decl": "Scenario: A failed record from a matched parser is not unrecognized",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A failed record from a matched parser is not unrecognized",
+    "type": "scenario"
   },
   "rq-c7886a80": {
     "decl": "Scenario: An imaginary frequency keeps its sign",
@@ -2756,6 +3576,30 @@
     "title": "Absent observables are omitted, never null",
     "type": "scenario"
   },
+  "rq-cae3826b": {
+    "decl": "Scenario: A single-component name resolves",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A single-component name resolves",
+    "type": "scenario"
+  },
+  "rq-cb100db2": {
+    "decl": "Scenario: An empty name does not resolve",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An empty name does not resolve",
+    "type": "scenario"
+  },
   "rq-cb5c083c": {
     "decl": "Scenario: Blank lines are ignored",
     "file": "database",
@@ -2779,6 +3623,18 @@
     ],
     "title": "Feature: XTB Parser",
     "type": "file"
+  },
+  "rq-cdf88b68": {
+    "decl": "Scenario: Mixed inputs are refused",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Mixed inputs are refused",
+    "type": "scenario"
   },
   "rq-ce1b9305": {
     "decl": "Scenario: A run without its end marker is truncated",
@@ -2848,6 +3704,18 @@
     "refs": [],
     "title": "detect",
     "type": "api-item"
+  },
+  "rq-d431309b": {
+    "decl": "Scenario: A corrupt line in a merged input is skipped and reported",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A corrupt line in a merged input is skipped and reported",
+    "type": "scenario"
   },
   "rq-d519cff6": {
     "decl": "## Gherkin Scenarios",
@@ -2941,6 +3809,18 @@
     "title": "An opt+freq log yields the final job's observables",
     "type": "scenario"
   },
+  "rq-d99aaa73": {
+    "decl": "- `CollectOutcome` — what a completed run did:",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "CollectOutcome",
+    "type": "api-item"
+  },
   "rq-d9b83cf2": {
     "decl": "Scenario: validate rejects an empty geometry",
     "file": "record",
@@ -2984,6 +3864,18 @@
     "title": "A parser record that fails validation is replaced",
     "type": "scenario"
   },
+  "rq-dcf4a545": {
+    "decl": "Scenario: A count beyond u32::MAX makes the name unresolvable",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A count beyond u32::MAX makes the name unresolvable",
+    "type": "scenario"
+  },
   "rq-de12aef8": {
     "decl": "Scenario: A normally terminated run yields the observable set",
     "file": "parsers/mrcc",
@@ -3009,7 +3901,7 @@
     "type": "section"
   },
   "rq-e003541d": {
-    "decl": "Scenario: JKQC-style invocations are usage errors until domain flags exist",
+    "decl": "Scenario: Unknown JKQC flags are usage errors",
     "file": "scaffolding",
     "refs": [
       {
@@ -3017,7 +3909,7 @@
         "kind": "code"
       }
     ],
-    "title": "JKQC-style invocations are usage errors until domain flags exist",
+    "title": "Unknown JKQC flags are usage errors",
     "type": "scenario"
   },
   "rq-e17eea18": {
@@ -3051,6 +3943,18 @@
     "title": "tests",
     "type": "api-item"
   },
+  "rq-e2843432": {
+    "decl": "Scenario: A repeated invocation replaces the database with a warning",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A repeated invocation replaces the database with a warning",
+    "type": "scenario"
+  },
   "rq-e2eda6d5": {
     "decl": "Scenario: A JKQC-style comment yields the electronic energy",
     "file": "parsers/xyz",
@@ -3074,6 +3978,18 @@
     "title": "charge",
     "type": "api-item"
   },
+  "rq-e487b172": {
+    "decl": "Scenario: Merge preserves unknown fields in copied lines",
+    "file": "database",
+    "refs": [
+      {
+        "file": "tests/db.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge preserves unknown fields in copied lines",
+    "type": "scenario"
+  },
   "rq-e4a815f2": {
     "decl": "## Record Assembly",
     "file": "parser-framework",
@@ -3091,6 +4007,18 @@
     "title": "Record Assembly",
     "type": "section"
   },
+  "rq-e4f87293": {
+    "decl": "Scenario: A truncated output is stored as a truncated record",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A truncated output is stored as a truncated record",
+    "type": "scenario"
+  },
   "rq-e4fad868": {
     "decl": "Scenario: Append creates a missing database",
     "file": "database",
@@ -3101,6 +4029,18 @@
       }
     ],
     "title": "Append creates a missing database",
+    "type": "scenario"
+  },
+  "rq-e50ec596": {
+    "decl": "Scenario: An empty input file aborts the run and writes nothing",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An empty input file aborts the run and writes nothing",
     "type": "scenario"
   },
   "rq-e61c2633": {
@@ -3216,6 +4156,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-eabf1669": {
+    "decl": "- `parse_jkqc_name(name: &str) -> Option<Components>`",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "src/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_jkqc_name",
+    "type": "api-item"
+  },
   "rq-eb256ed1": {
     "decl": "- `geometry` — the table under the header line",
     "file": "parsers/mrcc",
@@ -3307,6 +4259,26 @@
     "title": "Fortran float parsing accepts E, e, D, and d exponents",
     "type": "scenario"
   },
+  "rq-f00ebeae": {
+    "decl": "### Types",
+    "file": "composition",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
+  "rq-f0785bb1": {
+    "decl": "Scenario: A missing --out is a usage error",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing --out is a usage error",
+    "type": "scenario"
+  },
   "rq-f0bf0879": {
     "decl": "Scenario: An empty database loads as zero records",
     "file": "database",
@@ -3385,6 +4357,14 @@
     "title": "ok",
     "type": "api-item"
   },
+  "rq-f832a4fa": {
+    "decl": "## Merge Mode",
+    "file": "collection",
+    "level": 2,
+    "refs": [],
+    "title": "Merge Mode",
+    "type": "section"
+  },
   "rq-f8505d7b": {
     "decl": "- `RecordStatus` — enum with variants `Ok`, `Failed`, `Truncated`, serialized",
     "file": "record",
@@ -3428,6 +4408,14 @@
     "title": "A missing status key reads as ok",
     "type": "scenario"
   },
+  "rq-f94ef108": {
+    "decl": "## Out of Scope",
+    "file": "composition",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
   "rq-f9547ca9": {
     "decl": "Scenario: validate rejects a failed record without an error message",
     "file": "record",
@@ -3452,6 +4440,14 @@
     "title": "--help prints usage",
     "type": "scenario"
   },
+  "rq-fa218770": {
+    "decl": "## Feature API",
+    "file": "composition",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
   "rq-fa8178d7": {
     "decl": "## Gherkin Scenarios",
     "file": "parsers/conformance",
@@ -3471,6 +4467,30 @@
     ],
     "title": "first_line_where falls back to the tail",
     "type": "scenario"
+  },
+  "rq-fb64102b": {
+    "decl": "Scenario: A chemical formula does not resolve",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A chemical formula does not resolve",
+    "type": "scenario"
+  },
+  "rq-fcb0174f": {
+    "decl": "- `src/collect.rs` holds classification and the two pipelines; the library",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "src",
+    "type": "api-item"
   },
   "rq-fd767996": {
     "decl": "Scenario: A hidden geometry table leaves geometry absent",
@@ -3496,6 +4516,31 @@
     "title": "Detection",
     "type": "section"
   },
+  "rq-fdd7be52": {
+    "decl": "Scenario: Repeated codes sum",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Repeated codes sum",
+    "type": "scenario"
+  },
+  "rq-fe2700dc": {
+    "decl": "### Crate Layout",
+    "file": "composition",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Crate Layout",
+    "type": "section"
+  },
   "rq-ffaf4e5b": {
     "decl": "Scenario: A signature anywhere in a covered file is detected",
     "file": "parser-framework",
@@ -3507,6 +4552,18 @@
     ],
     "title": "A signature anywhere in a covered file is detected",
     "type": "scenario"
+  },
+  "rq-ffc1bde0": {
+    "decl": "- `Components` — the record field's type: a `BTreeMap<String, u32>` mapping",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Components",
+    "type": "api-item"
   },
   "rq-ffeb5456": {
     "decl": "Scenario: validate accepts a gradient without a geometry",

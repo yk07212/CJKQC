@@ -9,8 +9,11 @@ use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::record::{Record, RecordInvalidity};
+
+static TEMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// The outcome of loading a database: valid records in file order, plus a
 /// problem for every skipped line.
@@ -82,10 +85,10 @@ pub enum DbError {
 }
 
 impl DbError {
-    fn from_io(error: std::io::Error) -> Self {
+    fn from_io(path: &Path, error: std::io::Error) -> Self {
         Self::Io {
             kind: error.kind(),
-            reason: error.to_string(),
+            reason: format!("{}: {error}", path.display()),
         }
     }
 }
@@ -117,10 +120,10 @@ impl std::error::Error for DbError {
 ///
 /// (rq-2cc9076e)
 pub fn load_database(path: &Path) -> Result<LoadOutcome, DbError> {
-    let bytes = fs::read(path).map_err(DbError::from_io)?;
-    let (records, problems) = parse_lines(&bytes);
+    let bytes = fs::read(path).map_err(|error| DbError::from_io(path, error))?;
+    let (lines, problems) = parse_lines(&bytes);
     Ok(LoadOutcome {
-        records,
+        records: lines.into_iter().map(|line| line.record).collect(),
         problems: problems
             .into_iter()
             .map(|(line, reason)| LoadProblem { line, reason })
@@ -148,31 +151,99 @@ pub fn append_records(path: &Path, records: &[Record]) -> Result<(), DbError> {
         .create(true)
         .append(true)
         .open(path)
-        .map_err(DbError::from_io)?;
+        .map_err(|error| DbError::from_io(path, error))?;
     let mut writer = BufWriter::new(file);
     if seal {
-        writer.write_all(b"\n").map_err(DbError::from_io)?;
+        writer
+            .write_all(b"\n")
+            .map_err(|error| DbError::from_io(path, error))?;
     }
     for record in records {
-        write_line(&mut writer, record)?;
+        write_line(&mut writer, record, path)?;
     }
-    writer.flush().map_err(DbError::from_io)?;
+    writer
+        .flush()
+        .map_err(|error| DbError::from_io(path, error))?;
     Ok(())
 }
 
+/// Writes `lines` as the complete new content of a database, atomically.
+/// The content lands in a temporary file in `path`'s parent directory, is
+/// flushed and synced, then renamed over `path`, replacing any existing
+/// file. Any failure before the rename leaves the previous content (if
+/// any) intact and removes the temporary file. Zero lines produce an empty
+/// file; the parent directory must already exist. Callers hand in lines
+/// they have already validated — the write neither validates nor
+/// re-serializes.
+///
+/// (rq-96595784)
+pub fn write_database(path: &Path, lines: &[String]) -> Result<(), DbError> {
+    let file_name = path.file_name().ok_or_else(|| DbError::Io {
+        kind: std::io::ErrorKind::InvalidInput,
+        reason: format!("{}: not a database file path", path.display()),
+    })?;
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let temp = parent.join(format!(
+        ".{}.tmp-{}-{}",
+        file_name.to_string_lossy(),
+        std::process::id(),
+        TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
+    match write_and_rename(&temp, lines, path) {
+        Ok(()) => {
+            // Persist the rename itself (the directory entry) where the
+            // platform allows syncing a directory; best effort.
+            #[cfg(unix)]
+            if let Ok(directory) = File::open(parent) {
+                let _ = directory.sync_all();
+            }
+            Ok(())
+        }
+        Err(error) => {
+            let _ = fs::remove_file(&temp);
+            Err(error)
+        }
+    }
+}
+
+fn write_and_rename(temp: &Path, lines: &[String], path: &Path) -> Result<(), DbError> {
+    let file = File::create(temp).map_err(|error| DbError::from_io(path, error))?;
+    let mut writer = BufWriter::new(file);
+    for line in lines {
+        writer
+            .write_all(line.as_bytes())
+            .and_then(|()| writer.write_all(b"\n"))
+            .map_err(|error| DbError::from_io(path, error))?;
+    }
+    writer
+        .flush()
+        .map_err(|error| DbError::from_io(path, error))?;
+    let file = writer
+        .into_inner()
+        .map_err(|error| DbError::from_io(path, error.into()))?;
+    file.sync_all()
+        .map_err(|error| DbError::from_io(path, error))?;
+    fs::rename(temp, path).map_err(|error| DbError::from_io(path, error))
+}
+
 /// Merges databases: loads every input in the given order with the same
-/// per-line rules as `load_database` (skip and report), then writes every
-/// loaded record to `output` in input order. A missing or unreadable input
-/// is an error and nothing is written. `output` is created or truncated and
-/// may be the same path as one of the inputs (all inputs are read before
-/// `output` is opened). Zero inputs produce an empty output file.
+/// per-line rules as `load_database` (skip and report), then copies every
+/// line that loaded as a valid record **verbatim** — original line text,
+/// byte for byte — to `output` in input order, so unknown keys survive.
+/// A missing or unreadable input is an error and nothing is written.
+/// `output` is replaced atomically via `write_database` and may be the
+/// same path as one of the inputs (all inputs are read before `output` is
+/// replaced). Zero inputs produce an empty output file.
 ///
 /// (rq-13bcad95)
 pub fn merge_databases(inputs: &[&Path], output: &Path) -> Result<MergeOutcome, DbError> {
-    let mut records = Vec::new();
+    let mut lines: Vec<String> = Vec::new();
     let mut problems = Vec::new();
     for input in inputs {
-        let bytes = fs::read(input).map_err(DbError::from_io)?;
+        let bytes = fs::read(input).map_err(|error| DbError::from_io(input, error))?;
         let (loaded, errors) = parse_lines(&bytes);
         for (line, reason) in errors {
             problems.push(MergeProblem {
@@ -181,23 +252,25 @@ pub fn merge_databases(inputs: &[&Path], output: &Path) -> Result<MergeOutcome, 
                 reason,
             });
         }
-        records.extend(loaded);
+        lines.extend(loaded.into_iter().map(|valid| valid.text));
     }
-    let count = records.len();
-    let file = File::create(output).map_err(DbError::from_io)?;
-    let mut writer = BufWriter::new(file);
-    for record in &records {
-        write_line(&mut writer, record)?;
-    }
-    writer.flush().map_err(DbError::from_io)?;
+    let count = lines.len();
+    write_database(output, &lines)?;
     Ok(MergeOutcome {
         records: count,
         problems,
     })
 }
 
+/// A database line that loaded, validated, and decoded as UTF-8, kept
+/// together with its original text so merge can copy it verbatim.
+struct ValidLine {
+    text: String,
+    record: Record,
+}
+
 // rq-2cc9076e rq-1d1a1d61
-fn parse_lines(bytes: &[u8]) -> (Vec<Record>, Vec<(usize, String)>) {
+fn parse_lines(bytes: &[u8]) -> (Vec<ValidLine>, Vec<(usize, String)>) {
     let mut records = Vec::new();
     let mut problems = Vec::new();
     for (index, line) in physical_lines(bytes).into_iter().enumerate() {
@@ -220,7 +293,10 @@ fn parse_lines(bytes: &[u8]) -> (Vec<Record>, Vec<(usize, String)>) {
             }
         };
         match record.validate() {
-            Ok(()) => records.push(record),
+            Ok(()) => records.push(ValidLine {
+                text: text.to_string(),
+                record,
+            }),
             Err(error) => problems.push((number, format!("invalid record: {error}"))),
         }
     }
@@ -244,26 +320,29 @@ fn missing_final_newline(path: &Path) -> Result<bool, DbError> {
     let mut file = match File::open(path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(error) => return Err(DbError::from_io(error)),
+        Err(error) => return Err(DbError::from_io(path, error)),
     };
-    let length = file.seek(SeekFrom::End(0)).map_err(DbError::from_io)?;
+    let length = file
+        .seek(SeekFrom::End(0))
+        .map_err(|error| DbError::from_io(path, error))?;
     if length == 0 {
         return Ok(false);
     }
     file.seek(SeekFrom::Start(length - 1))
-        .map_err(DbError::from_io)?;
+        .map_err(|error| DbError::from_io(path, error))?;
     let mut last = [0];
-    file.read_exact(&mut last).map_err(DbError::from_io)?;
+    file.read_exact(&mut last)
+        .map_err(|error| DbError::from_io(path, error))?;
     Ok(last[0] != b'\n')
 }
 
 // rq-13bcad95 rq-aeb0d510 rq-125f5313
-fn write_line<W: Write>(writer: &mut W, record: &Record) -> Result<(), DbError> {
+fn write_line<W: Write>(writer: &mut W, record: &Record, path: &Path) -> Result<(), DbError> {
     let mut line =
         serde_json::to_string(record).map_err(|error| DbError::Serialize(error.to_string()))?;
     line.push('\n');
     writer
         .write_all(line.as_bytes())
-        .map_err(DbError::from_io)?;
+        .map_err(|error| DbError::from_io(path, error))?;
     Ok(())
 }

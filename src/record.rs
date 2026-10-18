@@ -7,7 +7,16 @@
 //!
 //! (rq-0ae95856 rq-72f50fe8)
 
+use std::collections::BTreeMap;
 use std::fmt;
+
+/// A resolved composition: component code to count. Keys are non-empty ASCII
+/// letter strings, matched case-sensitively (`Am` and `am` are distinct
+/// codes); counts are at least 1; iteration (and therefore JSON) order is
+/// alphabetical.
+///
+/// (rq-ffc1bde0)
+pub type Components = BTreeMap<String, u32>;
 
 /// A structure as parallel arrays: element symbols and their positions.
 ///
@@ -58,6 +67,9 @@ pub enum RecordInvalidity {
     MissingError,
     /// `multiplicity` or `rotational_symmetry_number` below 1.
     InvalidScalar { field: &'static str, reason: String },
+    /// The components map is empty, a component code is empty or holds
+    /// anything but ASCII letters, or a count is below 1.
+    InvalidComponents,
 }
 
 impl fmt::Display for RecordInvalidity {
@@ -87,6 +99,12 @@ impl fmt::Display for RecordInvalidity {
             }
             RecordInvalidity::InvalidScalar { field, reason } => {
                 write!(f, "field `{field}` is invalid: {reason}")
+            }
+            RecordInvalidity::InvalidComponents => {
+                write!(
+                    f,
+                    "components must be non-empty with letter-only codes and counts of at least 1"
+                )
             }
         }
     }
@@ -156,6 +174,13 @@ pub struct Record {
     /// Point-group rotational symmetry number, at least 1.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rotational_symmetry_number: Option<u32>,
+    /// The resolved composition: component code to count. Not an observable:
+    /// the parser never fills it — composition resolution and CLI overrides
+    /// populate it.
+    ///
+    /// (rq-43be8f79 rq-ffc1bde0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub components: Option<Components>,
 }
 
 impl Record {
@@ -164,7 +189,8 @@ impl Record {
     /// formed; per-atom arrays agree with the geometry's atom count when a
     /// geometry is present; a `failed` record carries a non-empty error
     /// message; `multiplicity` and `rotational_symmetry_number` are at
-    /// least 1.
+    /// least 1; a present components map is non-empty with valid codes and
+    /// counts.
     ///
     /// (rq-1d31610c)
     pub fn validate(&self) -> Result<(), RecordInvalidity> {
@@ -261,6 +287,27 @@ impl Record {
                 });
             }
         }
+        if let Some(components) = &self.components {
+            if components.is_empty() {
+                return Err(RecordInvalidity::InvalidComponents);
+            }
+            for (code, count) in components {
+                let valid_code =
+                    !code.is_empty() && code.bytes().all(|byte| byte.is_ascii_alphabetic());
+                if !valid_code || *count < 1 {
+                    return Err(RecordInvalidity::InvalidComponents);
+                }
+            }
+        }
         Ok(())
+    }
+
+    /// True when status is `failed` and `program` is absent — the parser
+    /// framework's signature for a file that matched no parser or was
+    /// empty. Collection aborts on such records instead of storing them.
+    ///
+    /// (rq-8ebc6467)
+    pub fn is_unrecognized(&self) -> bool {
+        matches!(self.status, RecordStatus::Failed) && self.program.is_none()
     }
 }

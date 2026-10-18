@@ -10,14 +10,37 @@ use complied_jkqc::{Record, RecordInvalidity};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-fn temp_dir() -> PathBuf {
+/// A temporary directory deleted when the owning test ends.
+struct TempDir(PathBuf);
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+impl AsRef<Path> for TempDir {
+    fn as_ref(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TempDir {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        &self.0
+    }
+}
+
+fn temp_dir() -> TempDir {
     let dir = std::env::temp_dir().join(format!(
         "cjkqc-db-{}-{}",
         std::process::id(),
         COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
     fs::create_dir_all(&dir).expect("create temp dir");
-    dir
+    TempDir(dir)
 }
 
 fn sample_record(name: &str, energy: f64) -> Record {
@@ -415,4 +438,56 @@ fn merging_zero_inputs_creates_empty_output() {
     let metadata = fs::metadata(&c).expect("output exists");
     assert_eq!(metadata.len(), 0);
     fs::remove_dir_all(&dir).ok();
+}
+
+#[test] // rq-e487b172
+fn merge_preserves_unknown_fields_in_copied_lines() {
+    let dir = temp_dir();
+    let a = dir.join("a.jsonl");
+    let c = dir.join("c.jsonl");
+    let line = r#"{"status":"ok","name":"A1","future_field":42}"#;
+    fs::write(&a, format!("{line}\n")).expect("write input");
+    let outcome = merge_databases(&[a.as_path()], &c).expect("merge");
+    assert_eq!(outcome.records, 1);
+    assert_eq!(fs::read_to_string(&c).expect("read"), format!("{line}\n"));
+}
+
+#[test] // rq-abf80ccb
+fn merge_copies_lines_without_re_serializing() {
+    let dir = temp_dir();
+    let a = dir.join("a.jsonl");
+    let c = dir.join("c.jsonl");
+    let line = r#"{"electronic_energy":-1.5}"#;
+    fs::write(&a, format!("{line}\n")).expect("write input");
+    let outcome = merge_databases(&[a.as_path()], &c).expect("merge");
+    assert_eq!(outcome.records, 1);
+    let copied = fs::read_to_string(&c).expect("read");
+    assert_eq!(copied, format!("{line}\n"));
+    assert!(!copied.contains("status"));
+}
+
+#[test] // rq-3ace0885
+fn a_failed_replacement_leaves_the_existing_target_intact() {
+    let dir = temp_dir();
+    let out = dir.join("out");
+    fs::create_dir(&out).expect("create output directory");
+    let keep = out.join("keep.txt");
+    fs::write(&keep, "keep").expect("write keep");
+    let a = dir.join("a.jsonl");
+    write_jsonl(&a, &[sample_record("A1", -1.0)]);
+    let result = merge_databases(&[a.as_path()], &out);
+    assert!(matches!(result, Err(DbError::Io { .. })), "{result:?}");
+    assert_eq!(fs::read_to_string(&keep).expect("keep intact"), "keep");
+    let leftovers: Vec<String> = fs::read_dir(&dir)
+        .expect("read parent")
+        .map(|entry| {
+            entry
+                .expect("entry")
+                .file_name()
+                .to_string_lossy()
+                .into_owned()
+        })
+        .filter(|name| name.starts_with(".out.tmp-"))
+        .collect();
+    assert!(leftovers.is_empty(), "leftover temp files: {leftovers:?}");
 }

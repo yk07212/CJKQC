@@ -24,7 +24,7 @@ else", `rqm/ARCHITECTURE.md`).
     source file name (e.g. `2am3sa-1conf` from `2am3sa-1conf.log`), carried
     verbatim; the key that matches the same structure across databases
     (single-point corrections, monomer references) and the input to
-    composition resolution (milestone 4).
+    composition resolution (`rqm/composition.md`).
   - `source_path: Option<String>` — path of the QC output file the record was
     parsed from, verbatim as given to the tool.
   - `program: Option<String>` — lowercase program token (`"xtb"`, `"gaussian"`,
@@ -49,7 +49,16 @@ else", `rqm/ARCHITECTURE.md`).
     elementary charges, in geometry atom order.
   - `rotational_symmetry_number: Option<u32>` — point-group rotational
     symmetry number, at least 1; an input to rotational entropy.
-  - The default record has status `ok` and every observable absent.
+  - `components: Option<Components>` — the resolved composition: component
+    code to count. `Components` is a `BTreeMap<String, u32>`
+    (`rqm/composition.md`): keys are non-empty ASCII letter strings, matched
+    case-sensitively (`Am` and `am` are distinct codes), counts are at
+    least 1, and iteration (and therefore JSON) order is
+    alphabetical. It is not an observable: the parser never fills it —
+    composition resolution and CLI overrides populate it, and downstream
+    logic reads it instead of re-parsing names.
+  - The default record has status `ok`, every observable absent, and no
+    components.
   - An absent observable means "not extracted or not applicable"; it is omitted
     from the JSON line, never written as `null`.
 
@@ -77,6 +86,8 @@ else", `rqm/ARCHITECTURE.md`).
   - `MissingError` — status is `failed` without an error message.
   - `InvalidScalar { field, reason }` — `multiplicity` or
     `rotational_symmetry_number` below 1.
+  - `InvalidComponents` — the components map is empty, a component code is
+    empty or holds anything but ASCII letters, or a count is below 1.
 
 ### Functions <!-- rq-340e4add -->
 
@@ -85,8 +96,15 @@ else", `rqm/ARCHITECTURE.md`).
     finite; the geometry shape is well formed; per-atom arrays agree with the
     geometry's atom count when a geometry is present; a `failed` record
     carries a non-empty error message; `multiplicity` and
-    `rotational_symmetry_number` are at least 1.
+    `rotational_symmetry_number` are at least 1; a present components map is
+    non-empty with valid codes and counts.
   - Per-atom array lengths are not checked when no geometry is present.
+
+- `Record::is_unrecognized(&self) -> bool` <!-- rq-8ebc6467 -->
+  - True when status is `failed` and `program` is absent — the parser
+    framework's signature for a file that matched no parser or was empty
+    (`rqm/parser-framework.md`). Collection aborts on such records
+    (`rqm/collection.md`) instead of storing them.
 
 ### Crate Layout <!-- rq-9a96e81c -->
 
@@ -116,10 +134,13 @@ records and databases always carry the canonical units above.
 - The writer emits keys in a fixed order — `status`, `error`, `name`,
   `source_path`, `program`, `program_version`, `method`, `electronic_energy`,
   `charge`, `multiplicity`, `geometry`, `vibrational_frequencies`, `gradient`,
-  `dipole_moment`, `mulliken_charges`, `rotational_symmetry_number` — with
-  absent observables omitted. The reader accepts keys in any order.
+  `dipole_moment`, `mulliken_charges`, `rotational_symmetry_number`,
+  `components` — with absent observables omitted. The reader accepts keys in
+  any order.
 - `geometry` serializes as nested parallel arrays:
   `{"symbols": [...], "coordinates": [...]}`.
+- `components` serializes as a JSON object, keys in alphabetical order:
+  `"components":{"am":2,"sa":3}`.
 - Unknown keys in an incoming JSON object are ignored on read. The schema is
   additive-only: later versions add optional fields and never rename or
   repurpose existing ones, so databases written by older versions of CJKQC
@@ -129,13 +150,14 @@ records and databases always carry the canonical units above.
 Example line:
 
 ```json
-{"status":"ok","name":"1dma","source_path":"xtb/1dma.log","program":"xtb","method":"GFN2-xTB","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1,1689.7,1023.4,3600.2,1490.3,1100.9]}
+{"status":"ok","name":"1dma","source_path":"xtb/1dma.log","program":"xtb","method":"GFN2-xTB","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1,1689.7,1023.4,3600.2,1490.3,1100.9],"components":{"dma":1}}
 ```
 
 ## Out of Scope <!-- rq-bed9e94b -->
 
-- Composition fields (resolved component counts, cluster labels) — milestone
-  4 of the implementation plan; they extend this schema additively.
+- Producing the `components` value — the JKQC-name grammar and resolution
+  rules live in `rqm/composition.md`; this file defines only how the field
+  stores, validates, and serializes.
 - Any derived quantity (ZPE, enthalpy, entropy, free energy, formation or
   binding energies, corrections) — computed on demand, milestone 6.
 - Reading and writing sequences of records (databases) — `rqm/database.md`.
@@ -175,7 +197,7 @@ Feature: Record schema
 
   @rq-d5e85a47
   Scenario: Unknown keys are ignored on read
-    Given a JSON line {"status":"ok","electronic_energy":-1.5,"components":{"am":2}}
+    Given a JSON line {"status":"ok","electronic_energy":-1.5,"zpe":0.42}
     When the line is deserialized into a record
     Then the record has status "ok" and electronic_energy -1.5
     And no error is reported
@@ -253,4 +275,63 @@ Feature: Record schema
     Given a record with multiplicity 0
     When validate is called
     Then it returns Err(RecordInvalidity::InvalidScalar { field: "multiplicity" })
+
+  # --- Components ---
+
+  @rq-b37a708d
+  Scenario: A components map round-trips
+    Given a record whose components are am = 2 and sa = 3
+    When the record is serialized to JSON and deserialized back
+    Then the result equals the original record
+
+  @rq-4501ef81
+  Scenario: Components serialize alphabetically regardless of insertion order
+    Given a record whose components were built by inserting sa = 3 before am = 2
+    When the record is serialized
+    Then the output contains "components":{"am":2,"sa":3}
+
+  @rq-2e483977
+  Scenario: Components read from a JSON object
+    Given a JSON line {"status":"ok","components":{"am":2,"sa":3}}
+    When the line is deserialized into a record
+    Then the record has components am = 2 and sa = 3
+    And no error is reported
+
+  @rq-2d06ae4a
+  Scenario: validate rejects an empty components map
+    Given a record whose components is an empty map
+    When validate is called
+    Then it returns Err(RecordInvalidity::InvalidComponents)
+
+  @rq-219c9bd9
+  Scenario: validate rejects a component code holding a digit
+    Given a record whose components map holds the code "a1"
+    When validate is called
+    Then it returns Err(RecordInvalidity::InvalidComponents)
+
+  @rq-819d16cd
+  Scenario: validate rejects a component count below one
+    Given a record whose components map holds am = 0
+    When validate is called
+    Then it returns Err(RecordInvalidity::InvalidComponents)
+
+  # --- is_unrecognized ---
+
+  @rq-19cf3c0b
+  Scenario: A failed record without a program is unrecognized
+    Given a record with status "failed", an error, and no program
+    When is_unrecognized is called on it
+    Then it returns true
+
+  @rq-c7356b3e
+  Scenario: A failed record from a matched parser is not unrecognized
+    Given a record with status "failed", an error, and program "xtb"
+    When is_unrecognized is called on it
+    Then it returns false
+
+  @rq-5aa5a715
+  Scenario: An ok record is not unrecognized
+    Given a record with status "ok" and no program
+    When is_unrecognized is called on it
+    Then it returns false
 ```

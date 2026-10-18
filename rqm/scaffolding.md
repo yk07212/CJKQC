@@ -3,9 +3,11 @@
 The crate compiles to a single executable `CJKQC` — a clap-based command-line
 shell in the JKQC tradition (one command, many flags; see
 `rqm/ARCHITECTURE.md` for the eventual CLI style). The scaffold fixes the
-executable's name, its `--help`/`--version` behavior, and its error behavior
-for the period in which no domain functionality exists. The crate provides a
-library target for unit and integration tests alongside the binary.
+executable's name, its `--help`/`--version` behavior, and its exit-2 usage-error
+policy. Domain inputs, flags, and the behavior of valid invocations belong to
+the feature requirements that introduce them; `rqm/collection.md` defines the
+command surface. The crate provides a library target for unit and integration
+tests alongside the binary.
 
 ## Feature API <!-- rq-56514e37 -->
 
@@ -22,20 +24,22 @@ library target for unit and integration tests alongside the binary.
   - An invocation containing `--help` or `-h` (respectively `--version` or
     `-V`) prints the help text (respectively the version) and exits 0, even
     when other arguments are present.
-  - Every other invocation — no arguments, positional file arguments, or
-    unknown flags — exits with code 2 and prints one uniform error message
-    to stderr stating that no functionality is implemented yet and pointing
-    to `--help`; clap's own parse diagnostics are not shown.
-  - The scaffold declares no domain flags and no positional arguments; help
-    output advertises only the built-in `--help`/`--version`. No JKQC flag
-    (e.g. `-el`) or file argument (`*.log`, `*.pkl`, `*.xyz`) is recognized
-    yet; they arrive with the milestones that implement them.
+  - An invalid invocation — no input files, a missing `--out`, or unknown
+    flags (including JKQC flags that no feature has adopted, such as `-el`)
+    — exits with code 2 and prints clap's parse diagnostics to stderr, which
+    point to `--help`.
+  - Domain arguments are declared by the feature requirements that introduce
+    them. The current surface is `CJKQC <inputs>… --out <path>`
+    (`rqm/collection.md`); help output advertises the positional inputs and
+    `--out` alongside the built-ins. JKQC flags that no feature has adopted
+    remain unrecognized and are usage errors.
 
 ### Crate Layout <!-- rq-0e05c3af -->
 
 - `Cargo.toml` declares the package `complied-jkqc`, the `CJKQC` binary <!-- rq-2072b6c4 -->
   target, and the dependencies `clap`, `serde`, and `serde_json`.
-- `src/main.rs` holds the clap CLI definition and the stub error path. <!-- rq-c3792c41 -->
+- `src/main.rs` holds the clap CLI definition and the dispatch to the <!-- rq-8fb6fccc -->
+  collection pipeline (`rqm/collection.md`). <!-- rq-c3792c41 -->
 - `src/lib.rs` is the library target: crate-level documentation, module <!-- rq-8c5e4002 -->
   declarations for the domain modules, and re-exports of the record types.
   No placeholder functions from the project template exist anywhere in the
@@ -99,26 +103,26 @@ Feature: CJKQC command scaffold
   Scenario: No arguments is a usage error
     When CJKQC is invoked with no arguments
     Then the exit code is 2
-    And stderr contains "no functionality is implemented yet"
+    And stderr is clap's usage diagnostic containing "Usage: CJKQC"
 
   @rq-be35a7b3
-  Scenario: Positional arguments are a usage error
+  Scenario: Positional arguments without --out are a usage error
     When CJKQC is invoked with "output.log output2.out"
     Then the exit code is 2
-    And stderr contains "no functionality is implemented yet"
+    And stderr is clap's usage diagnostic naming "--out"
 
   @rq-e003541d
-  Scenario: JKQC-style invocations are usage errors until domain flags exist
+  Scenario: Unknown JKQC flags are usage errors
     When CJKQC is invoked with "output.log -el"
     Then the exit code is 2
-    And an error message is printed to stderr
+    And stderr is clap's diagnostic reporting the unknown flag
 
   @rq-bd59ba92
-  Scenario: Help output advertises no domain flags
+  Scenario: Help output advertises the collection surface
     When CJKQC is invoked with "--help"
     Then the exit code is 0
-    And the help text does not list any domain flags or positional file
-    arguments
+    And the help text lists the "--out" option and a positional input
+    argument alongside "--help" and "--version"
 
   @rq-2486bcc8
   Scenario: The build produces the exact executable name

@@ -19,14 +19,37 @@ use complied_jkqc::{
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-fn temp_dir() -> PathBuf {
+/// A temporary directory deleted when the owning test ends.
+struct TempDir(std::path::PathBuf);
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+impl AsRef<std::path::Path> for TempDir {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TempDir {
+    type Target = std::path::Path;
+
+    fn deref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+fn temp_dir() -> TempDir {
     let dir = std::env::temp_dir().join(format!(
         "cjkqc-parser-{}-{}",
         std::process::id(),
         COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
     fs::create_dir_all(&dir).expect("create temp dir");
-    dir
+    TempDir(dir)
 }
 
 fn write_file(dir: &Path, name: &str, content: impl AsRef<[u8]>) -> PathBuf {

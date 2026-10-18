@@ -1,0 +1,250 @@
+//! The collection pipeline behind the `CJKQC` command line (see
+//! `rqm/collection.md`). Inputs are classified by content — a database
+//! input's first non-blank line begins with `{`, a program output's does
+//! not — and an invocation is either all databases (merge, records copied
+//! verbatim) or all program outputs (build, parsed through the standard
+//! registry with compositions resolved). The output database is replaced.
+//!
+//! (rq-c1056d55)
+
+use std::fmt;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
+
+use crate::composition::resolve_components;
+use crate::db::{self, DbError, MergeProblem};
+use crate::parser::{ParseError, ParserRegistry};
+use crate::record::RecordStatus;
+
+/// Which operation the inputs call for.
+///
+/// (rq-4293ca31)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollectionMode {
+    /// All inputs are QC program outputs.
+    Build,
+    /// All inputs are record databases.
+    Merge,
+}
+
+/// What a completed run did.
+///
+/// (rq-d99aaa73)
+#[derive(Debug, Clone, PartialEq)]
+pub enum CollectOutcome {
+    /// Build: record counts by status; `written` is the total.
+    Build {
+        written: usize,
+        failed: usize,
+        truncated: usize,
+    },
+    /// Merge: records written and the corrupt lines skipped.
+    Merge {
+        written: usize,
+        problems: Vec<MergeProblem>,
+    },
+}
+
+/// Why a run wrote nothing.
+///
+/// (rq-989e6417)
+#[derive(Debug, Clone, PartialEq)]
+pub enum CollectError {
+    /// Both input kinds were given — a usage error (exit 2).
+    Mixed {
+        databases: Vec<PathBuf>,
+        outputs: Vec<PathBuf>,
+    },
+    /// A build input carried no recognizable program output (unrecognized
+    /// format or empty file).
+    Unrecognized { path: PathBuf, reason: String },
+    /// An input could not be read or the output could not be written.
+    Io {
+        kind: std::io::ErrorKind,
+        reason: String,
+    },
+    /// The database layer failed for a non-Io reason while writing.
+    Db(DbError),
+}
+
+impl CollectError {
+    fn from_io(path: &Path, error: std::io::Error) -> Self {
+        Self::Io {
+            kind: error.kind(),
+            reason: format!("{}: {error}", path.display()),
+        }
+    }
+
+    fn io_from_parse(path: &Path, error: ParseError) -> Self {
+        let ParseError::Io { kind, reason } = error;
+        Self::Io {
+            kind,
+            reason: format!("{}: {reason}", path.display()),
+        }
+    }
+}
+
+impl fmt::Display for CollectError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CollectError::Mixed { databases, outputs } => {
+                write!(
+                    f,
+                    "cannot mix database inputs [{}] with program outputs [{}]",
+                    list_paths(databases),
+                    list_paths(outputs)
+                )
+            }
+            CollectError::Unrecognized { path, reason } => {
+                write!(f, "{}: {reason}", path.display())
+            }
+            CollectError::Io { reason, .. } => write!(f, "I/O failure: {reason}"),
+            CollectError::Db(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for CollectError {}
+
+fn list_paths(paths: &[PathBuf]) -> String {
+    paths
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Classifies every input (opening each file and reading up to its first
+/// non-blank line): unanimous kinds yield the mode, a mixture yields
+/// `Mixed` listing the inputs of each kind, a read failure yields `Io`.
+///
+/// (rq-550ff715)
+pub fn classify_inputs(inputs: &[&Path]) -> Result<CollectionMode, CollectError> {
+    let mut databases = Vec::new();
+    let mut outputs = Vec::new();
+    for path in inputs {
+        if is_database_input(path)? {
+            databases.push(path.to_path_buf());
+        } else {
+            outputs.push(path.to_path_buf());
+        }
+    }
+    match (databases.is_empty(), outputs.is_empty()) {
+        (false, false) => Err(CollectError::Mixed { databases, outputs }),
+        (false, true) => Ok(CollectionMode::Merge),
+        _ => Ok(CollectionMode::Build),
+    }
+}
+
+/// The classification rule: the first non-blank line, leading whitespace
+/// trimmed, begins with `{`. A file with no non-blank line is a program
+/// output.
+fn is_database_input(path: &Path) -> Result<bool, CollectError> {
+    let file = File::open(path).map_err(|error| CollectError::from_io(path, error))?;
+    let mut reader = BufReader::new(file);
+    let mut line = Vec::new();
+    loop {
+        line.clear();
+        let read = reader
+            .read_until(b'\n', &mut line)
+            .map_err(|error| CollectError::from_io(path, error))?;
+        if read == 0 {
+            return Ok(false);
+        }
+        if !line.iter().all(|byte| byte.is_ascii_whitespace()) {
+            let trimmed = line
+                .iter()
+                .position(|byte| !byte.is_ascii_whitespace())
+                .unwrap_or(line.len());
+            return Ok(line[trimmed..].first() == Some(&b'{'));
+        }
+    }
+}
+
+/// Classifies, then performs the selected mode in full. Nothing is ever
+/// written when an error is returned: in build mode every input is read and
+/// every record produced before the output is opened. Whether a warning
+/// precedes the replacement of an existing output is a CLI concern
+/// (`--fout`); this function never warns.
+///
+/// (rq-9d8725d5)
+pub fn collect_inputs(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
+    match classify_inputs(inputs)? {
+        CollectionMode::Build => build_database(inputs, output),
+        CollectionMode::Merge => merge_databases(inputs, output),
+    }
+}
+
+/// Parse every input with the standard registry, abort on any record the
+/// framework marked unrecognized or empty (status `failed` with no
+/// program), resolve compositions, then write the collected records as the
+/// complete new content of the output.
+fn build_database(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
+    let registry = ParserRegistry::standard();
+    let mut records = Vec::with_capacity(inputs.len());
+    for path in inputs {
+        let mut record = registry
+            .parse_file(path)
+            .map_err(|error| CollectError::io_from_parse(path, error))?;
+        if record.is_unrecognized() {
+            return Err(CollectError::Unrecognized {
+                path: path.to_path_buf(),
+                reason: record
+                    .error
+                    .unwrap_or_else(|| "no recognizable program output".to_string()),
+            });
+        }
+        resolve_components(&mut record);
+        records.push(record);
+    }
+
+    // Every input is read, validated, and serialized before the output is
+    // touched; write_database then replaces it atomically, so a failure
+    // anywhere above leaves any existing database intact.
+    let mut lines = Vec::with_capacity(records.len());
+    for record in &records {
+        record
+            .validate()
+            .map_err(|invalidity| CollectError::Db(DbError::InvalidRecord(invalidity)))?;
+        lines.push(
+            serde_json::to_string(record)
+                .map_err(|error| CollectError::Db(DbError::Serialize(error.to_string())))?,
+        );
+    }
+    db::write_database(output, &lines).map_err(from_db)?;
+
+    let failed = records
+        .iter()
+        .filter(|record| record.status == RecordStatus::Failed)
+        .count();
+    let truncated = records
+        .iter()
+        .filter(|record| record.status == RecordStatus::Truncated)
+        .count();
+    Ok(CollectOutcome::Build {
+        written: records.len(),
+        failed,
+        truncated,
+    })
+}
+
+/// One `merge_databases` call: inputs read in order, their validated lines
+/// copied verbatim into the atomically replaced output; `DbError::Io`
+/// surfaces as `CollectError::Io`.
+fn merge_databases(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
+    let outcome = db::merge_databases(inputs, output).map_err(from_db)?;
+    Ok(CollectOutcome::Merge {
+        written: outcome.records,
+        problems: outcome.problems,
+    })
+}
+
+/// `DbError::Io` surfaces as `CollectError::Io`; other database failures
+/// pass through as `Db`.
+fn from_db(error: DbError) -> CollectError {
+    match error {
+        DbError::Io { kind, reason } => CollectError::Io { kind, reason },
+        other => CollectError::Db(other),
+    }
+}
