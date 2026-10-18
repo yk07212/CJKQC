@@ -9,10 +9,12 @@ pub mod collect;
 pub mod composition;
 pub mod db;
 pub mod filter;
+pub mod formation;
 pub mod metrics;
 pub mod parser;
 pub mod reacted;
 pub mod record;
+pub mod thermo;
 
 // rq-8c5e4002
 pub use record::{Components, Geometry, Record, RecordInvalidity, RecordStatus};
@@ -36,11 +38,22 @@ pub use metrics::{
 // rq-83c62ce0 detection surface (rqm/detection.md)
 pub use reacted::{are_bonded, filter_reacted, fragment_signature, ReactedMode};
 
+// rq-3345a07b thermochemistry surface (rqm/thermo.md)
+pub use thermo::{
+    classify_species, derived_value, rotational_constants, thermochemistry, SpeciesClass, Thermo,
+    ThermoConditions, ThermoMemo, KCAL_MOL_PER_HARTREE,
+};
+
+// rq-f8ebbc84 formation surface (rqm/formation.md)
+pub use formation::{
+    collect_monomers, formation_values, print_formation_section, Formation, MonomerReferences,
+};
+
 // rq-bf062c8f filtering surface (rqm/filtering.md)
 pub use filter::{
     apply_filters, extract_matches, parse_extract_query, print_table, property_value, CmpOp,
     Column, Cutoff, ExtractError, ExtractMode, ExtractPattern, FilterSpec, Grouping, Mode,
-    Property, SortKey, Wildcard, KCAL_MOL_PER_HARTREE,
+    Property, SortKey, Unit, Wildcard,
 };
 
 // rq-15f15563

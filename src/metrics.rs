@@ -1,14 +1,15 @@
 //! Derived geometric metrics and property-based uniqueness (see
-//! `rqm/uniqueness.md`). Total mass, mass-weighted radius of gyration, and
-//! dipole magnitude are computed on demand from the stored observables and
-//! never stored. Uniqueness drops records whose name repeats (`Dup`) or
-//! whose rounded metric signature was already seen in the current order
-//! (`Keys`).
+//! `rqm/uniqueness.md`). Total mass, mass-weighted radius of gyration,
+//! dipole magnitude, and Gibbs free energy are computed on demand from the
+//! stored observables and never stored. Uniqueness drops records whose
+//! name repeats (`Dup`) or whose rounded metric signature was already seen
+//! in the current order (`Keys`).
 
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashSet};
 
 use crate::record::Record;
+use crate::thermo::ThermoMemo;
 
 /// Standard atomic weights in unified atomic mass units (u) for element
 /// symbols H through Og (Z = 1–118), title-case keys; radioactive elements
@@ -206,12 +207,16 @@ pub fn metric_dipole_magnitude(record: &Record) -> Option<f64> {
     Some((x * x + y * y + z * z).sqrt())
 }
 
-/// The metric a uniqueness key rounds: `el` the electronic energy, `rg` the
-/// radius of gyration, `mass` the total mass, `dip` the dipole magnitude.
+/// The metric a uniqueness key rounds: `el` the electronic energy, `g` the
+/// Gibbs free energy, `rg` the radius of gyration, `mass` the total mass,
+/// `dip` the dipole magnitude.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UniqMetric {
     /// `electronic_energy` (hartree).
     El,
+    /// Gibbs free energy under the run's thermochemistry conditions
+    /// (`rqm/thermo.md`), hartree.
+    G,
     /// Radius of gyration (Å).
     Rg,
     /// Total mass (u).
@@ -222,19 +227,23 @@ pub enum UniqMetric {
 
 impl UniqMetric {
     /// The default decimal count when the key string omits one: `el` 3,
-    /// `rg` 2, `mass` 2, `dip` 1.
+    /// `g` 3, `rg` 2, `mass` 2, `dip` 1.
     fn default_decimals(self) -> f64 {
         match self {
             UniqMetric::El => 3.0,
+            UniqMetric::G => 3.0,
             UniqMetric::Rg => 2.0,
             UniqMetric::Mass => 2.0,
             UniqMetric::Dip => 1.0,
         }
     }
 
-    fn value(self, record: &Record) -> Option<f64> {
+    fn value(self, record: &Record, memo: &ThermoMemo) -> Option<f64> {
         match self {
-            UniqMetric::El => record.electronic_energy,
+            // The energy metrics resolve through the derived-property
+            // registry on the run's memo (rq-8f6da1c2).
+            UniqMetric::El => memo.value("el", record),
+            UniqMetric::G => memo.value("g", record),
             UniqMetric::Rg => metric_radius_of_gyration(record),
             UniqMetric::Mass => metric_total_mass(record),
             UniqMetric::Dip => metric_dipole_magnitude(record),
@@ -258,9 +267,9 @@ impl UniqKey {
     /// The rounded signature component of a record: `floor(v · 10^d)`
     /// toward −∞, NaN for an undefined metric (NaN-like components compare
     /// equal to each other).
-    fn component(&self, record: &Record) -> OrderedF64 {
+    fn component(&self, record: &Record, memo: &ThermoMemo) -> OrderedF64 {
         let factor = 10f64.powf(self.decimals);
-        match self.metric.value(record) {
+        match self.metric.value(record, memo) {
             Some(value) => OrderedF64(norm_zero((value * factor).floor())),
             None => OrderedF64(f64::NAN),
         }
@@ -312,6 +321,7 @@ pub fn parse_uniq_keys(list: &str) -> Result<Vec<UniqKey>, String> {
         let (name, decimals) = token.split_at(split);
         let metric = match name {
             "el" => UniqMetric::El,
+            "g" => UniqMetric::G,
             "rg" => UniqMetric::Rg,
             "mass" => UniqMetric::Mass,
             "dip" => UniqMetric::Dip,
@@ -366,26 +376,37 @@ pub(crate) fn dedup_names_mask(records: &[&Record]) -> Vec<bool> {
 
 /// Stable first-wins selection on rounded signature tuples over the whole
 /// slice; signatures with undefined metrics are mutually equal in those
-/// components (grouping is the caller's concern, `rqm/filtering.md`).
+/// components (grouping is the caller's concern, `rqm/filtering.md`). The
+/// memo carries the run's thermochemistry conditions (`rqm/thermo.md`)
+/// and feeds the Gibbs metric; the other metrics ignore it.
 ///
 /// (rq-7650a23d)
-pub fn unique_by_properties(records: &[Record], keys: &[UniqKey]) -> Vec<Record> {
+pub fn unique_by_properties(
+    records: &[Record],
+    keys: &[UniqKey],
+    memo: &ThermoMemo,
+) -> Vec<Record> {
     let refs: Vec<&Record> = records.iter().collect();
     records
         .iter()
-        .zip(uniqueness_mask(&refs, keys))
+        .zip(uniqueness_mask(&refs, keys, memo))
         .filter(|(_, keep)| *keep)
         .map(|(record, _)| record.clone())
         .collect()
 }
 
 /// First-wins rounded-signature flags over the slice order.
-pub(crate) fn uniqueness_mask(records: &[&Record], keys: &[UniqKey]) -> Vec<bool> {
+pub(crate) fn uniqueness_mask(
+    records: &[&Record],
+    keys: &[UniqKey],
+    memo: &ThermoMemo,
+) -> Vec<bool> {
     let mut seen: BTreeSet<Vec<OrderedF64>> = BTreeSet::new();
     records
         .iter()
         .map(|record| {
-            let signature: Vec<OrderedF64> = keys.iter().map(|key| key.component(record)).collect();
+            let signature: Vec<OrderedF64> =
+                keys.iter().map(|key| key.component(record, memo)).collect();
             seen.insert(signature)
         })
         .collect()

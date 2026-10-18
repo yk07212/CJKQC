@@ -1,10 +1,13 @@
 # Feature: Geometric Metrics and Property Uniqueness <!-- rq-21d1d450 -->
 
-Three scalar metrics summarize a record's structure — total mass,
-mass-weighted radius of gyration, and dipole magnitude — computed on demand
-from the stored observables and never stored ("store observables, derive
-everything else", `rqm/ARCHITECTURE.md`). They are inputs to filtering and
-uniqueness (`rqm/filtering.md`). Uniqueness removes redundant structures:
+Four scalar metrics summarize a record — total mass, mass-weighted
+radius of gyration, dipole magnitude, and Gibbs free energy — computed on
+demand from the stored observables and never stored ("store observables,
+derive everything else", `rqm/ARCHITECTURE.md`). The Gibbs metric derives
+through the thermochemistry model (`rqm/thermo.md`) and follows the run's
+`--temp`, `--fc`, `--fscale`, and `--makereal` settings. The metrics are inputs to filtering
+and uniqueness (`rqm/filtering.md`). Uniqueness removes redundant
+structures:
 records whose name repeats (`dup` mode) or records that share a rounded
 property signature with an earlier record of the same composition group
 (`keys` mode). RMSD/structure-alignment uniqueness is not supported
@@ -22,9 +25,13 @@ property signature with an earlier record of the same composition group
 - **Dipole magnitude** — `sqrt(x² + y² + z²)` of the record's
   `dipole_moment` vector, in atomic units (e·a₀); conversion to Debye is a
   presentation concern (`rqm/ARCHITECTURE.md`).
+- **Gibbs free energy (g)** — the record's Gibbs free energy under the
+  run's thermochemistry conditions (`rqm/thermo.md`), in hartree; like
+  every quantity there it is derived, never stored.
 
 A metric is **undefined** for a record when its inputs are absent (no
-geometry, no dipole) or when a geometry symbol is not in the mass table.
+geometry, no dipole, undefined thermochemistry) or when a geometry symbol
+is not in the mass table.
 An undefined metric flows through comparisons like NaN: cutoff comparisons
 `<`, `<=`, `>`, `>=`, `==` drop such records, `!=` keeps them
 (`rqm/filtering.md`), and uniqueness treats undefined values as equal to
@@ -61,7 +68,7 @@ first — the CLI does exactly that when `--uniq` is used without `--sort`
   from zero).
 - Keys are written `metric[decimals]` in a comma list (e.g.
   `el2.4,rg`); the decimal count is optional and defaults per metric:
-  `el` 3, `rg` 2, `mass` 2, `dip` 1. Decimals are decimal numbers ≥ 0
+  `el` 3, `g` 3, `rg` 2, `mass` 2, `dip` 1. Decimals are decimal numbers ≥ 0
   and may be fractional — `el2.4` is valid and rounding then uses the
   floating-point factor 10^2.4 (the original accepted this); a negative
   or malformed decimal count is a usage error (exit 2).
@@ -73,7 +80,7 @@ first — the CLI does exactly that when `--uniq` is used without `--sort`
 
 ### Types <!-- rq-db938553 -->
 
-- `UniqKey` — a metric `El | Rg | Mass | Dip` with an explicit decimal <!-- rq-159da4d1 -->
+- `UniqKey` — a metric `El | G | Rg | Mass | Dip` with an explicit decimal <!-- rq-159da4d1 -->
   count (`f64`, at least 0); the metric's default applies when the CLI
   key string omits one.
 - `UniqMode` — `Dup` or `Keys(Vec<UniqKey>)` (non-empty, identical <!-- rq-990dde7d -->
@@ -92,10 +99,12 @@ first — the CLI does exactly that when `--uniq` is used without `--sort`
 - `dedup_names(records: &[Record]) -> Vec<Record>` <!-- rq-a7757bca -->
   - Keeps the first record for each distinct present `name`; nameless
     records always kept; input order preserved.
-- `unique_by_properties(records: &[Record], keys: &[UniqKey]) -> Vec<Record>` <!-- rq-7650a23d -->
+- `unique_by_properties(records: &[Record], keys: &[UniqKey], memo: &ThermoMemo) -> Vec<Record>` <!-- rq-7650a23d -->
   - Stable first-wins selection on the rounded signature tuples, over the
     whole slice (grouping is the caller's concern,
-    `rqm/filtering.md`).
+    `rqm/filtering.md`). The memo carries the run's thermochemistry
+    conditions (`rqm/thermo.md`) and feeds the Gibbs metric; the other
+    metrics ignore it.
   - Signatures including undefined metrics are mutually equal in those
     components.
 - `parse_uniq_mode(value: &str) -> Result<UniqMode, String>` <!-- rq-07f5aebd -->
@@ -238,4 +247,22 @@ Feature: Geometric metrics and property uniqueness
   Scenario: A negative decimal count is rejected
     When parse_uniq_keys is called with "el-1"
     Then it returns Err
+
+  @rq-8237e2b7
+  Scenario: Gibbs values within the rounding agree and collapse
+    Given two ok records with gibbs values -100.0012 and -100.0013 Eh and the key G
+    When unique_by_properties is called with default conditions
+    Then only the first record is kept
+
+  @rq-ad851478
+  Scenario: The Gibbs metric follows the run's conditions
+    Given two ok records whose gibbs values agree at 3 decimals at 298.15 K but disagree at 273.15 K
+    When unique_by_properties is called with the key G at 273.15 K
+    Then both records are kept, unlike the 298.15 K run
+
+  @rq-96a03a44
+  Scenario: Undefined Gibbs metrics are mutually equal
+    Given two ok records with no electronic energy and the key G
+    When unique_by_properties is called with default conditions
+    Then only the first record is kept
 ```

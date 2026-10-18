@@ -8,7 +8,7 @@ mutates its input. The flag surface mirrors JKQC's filtering commands,
 spelled with `--` because clap does not support single-dash long flags.
 
 ```text
-CJKQC <inputs>… [--manipulation flags] [print flags…] [--out <path>]
+CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [--out <path>]
 ```
 
 - `<inputs>…` are classified exactly as in collection (`rqm/collection.md`
@@ -18,9 +18,12 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [--out <path>]
   `--cutr`, `--pass`, `--passr`, `--is`, `--isnot`, `--filter-lt`,
   `--filter-ge`, `--rel-filter-lt`, `--rel-filter-ge`, `--uniq`,
   `--reacted`, `--reacted2`, `--sort`, `--reverse`, `--select`,
-  `--shuffle`, `--seed`, `--noname`. **Print flags** (`--name`, `--el`,
-  … — see Printing) select table columns; they print and manipulate
-  nothing.
+  `--glob`, `--shuffle`, `--seed`, `--noname`. **Print flags** (`--name`,
+  `--el`, … — see Printing) select table columns; they print and
+  manipulate nothing. **Settings flags** — `--temp`, `--fc`, `--fscale`,
+  `--makereal` (`rqm/thermo.md`) and `--unit` — configure derivations and
+  the energy unit at printing; they never manipulate, print, or satisfy
+  the visible-outcome rule on their own.
 - A run must have a visible outcome. With neither manipulation nor print
   flags, `--out` is required and behavior is exactly collection's.
   `--out` writes the final records (atomic replacement and the `--fout`
@@ -44,7 +47,8 @@ group as defined below:
 5. `--reacted` / `--reacted2` (`rqm/detection.md`)
 6. `--sort` (then `--reverse`)
 7. `--select`
-8. `--shuffle`
+8. `--glob`
+9. `--shuffle`
 
 Implicit sort: when `--uniq` (keys mode) or `--select` is present but
 `--sort` is not, records sort by `el` ascending first. `--uniq dup` does
@@ -118,7 +122,8 @@ the property set and units:
 
 | Property | Value | Absolute units | Relative units |
 |---|---|---|---|
-| `el` | `electronic_energy` | hartree | kcal/mol (× 627.50947) |
+| `el` | `electronic_energy` | hartree | kcal/mol (× the Eh→kcal/mol constant of `rqm/thermo.md` Constants) |
+| `g` | Gibbs free energy (`rqm/thermo.md`) | hartree | kcal/mol (× the Eh→kcal/mol constant of `rqm/thermo.md` Constants) |
 | `rg` | radius of gyration (`rqm/uniqueness.md`) | Å | Å |
 | `lf` | lowest (minimum) vibrational frequency | cm⁻¹ | cm⁻¹ |
 | `dip` | dipole magnitude (`rqm/uniqueness.md`) | atomic units | atomic units |
@@ -140,8 +145,8 @@ the property set and units:
 
 ## Sort, Select, Shuffle <!-- rq-17ea1903 -->
 
-- `--sort <key>` with keys `el`, `rg`, `mass`, `name` (energy/gibbs sort
-  arrives with thermochemistry, `rqm/ARCHITECTURE.md` milestone 6).
+- `--sort <key>` with keys `el`, `g` (Gibbs free energy derived at the
+  run's conditions, `rqm/thermo.md`), `rg`, `mass`, `name`.
   Ascending unless `--reverse`. A record whose sort key is undefined sorts
   last ascending, first descending; records without a `name` sort first
   ascending under `name`. `--reverse` only orients a sort (explicit
@@ -149,6 +154,12 @@ the property set and units:
   nothing, though it still counts the run as a manipulation.
 - `--select <n>` keeps the first `n` records of each group (after the
   sort); groups shorter than `n` pass whole.
+- `--glob` keeps, per composition group, the record with the lowest
+  Gibbs free energy at the run's conditions (`rqm/thermo.md`); ties keep
+  the first in order. Records with undefined Gibbs are dropped; a group
+  whose records all lack Gibbs contributes nothing. Under `--noname` the
+  single group keeps the one global minimum. `--glob` does not trigger
+  the implicit sort.
 - `--shuffle` randomly permutes the final result with Fisher–Yates driven
   by a splitmix64 PRNG seeded from `--seed <u64>` (default 0), making any
   run reproducible.
@@ -156,10 +167,13 @@ the property set and units:
 ## Printing <!-- rq-4ea8ca35 -->
 
 - Printing follows JKQC: every printable column has its own flag —
-  `--name`, `--status`, `--program`, `--method`, `--el`, `--rg`,
-  `--mass`, `--dip`, `--charge`, `--multiplicity`, `--natoms`,
-  `--nfreq`, `--nimag`, `--components`. There is no default selection:
-  no print flag means no table is printed at all.
+  `--name`, `--status`, `--program`, `--method`, `--el`, `--zpe`, `--h`,
+  `--s`, `--g`, `--rg`, `--mass`, `--dip`, `--charge`, `--multiplicity`,
+  `--natoms`, `--nfreq`, `--nimag`, `--components`. There is no default
+  selection: no print flag means no table is printed at all. The
+  `--formation` flag (`rqm/formation.md`) prints a section after the
+  table; it selects no column and counts as a print flag for the
+  visible-outcome rule.
 - Columns always appear in the canonical order of that list, regardless
   of the order the flags were given. `--charge` and `--multiplicity`
   denote printing here; the composition-override flags of the hybrid
@@ -167,10 +181,18 @@ the property set and units:
   arrive.
 - The table is text: a header row of column names, then one row per
   record in run order, values separated by a single space. `el` prints
-  in hartree with 10 decimals; `rg`, `mass`, `dip` with 3; integer
-  fields plainly; `components` as `2am+3sa`-style alphabetical pairs; an
-  undefined or absent value prints `-`. Unit conversion at this
-  boundary arrives with milestone 6; until then energies are hartree.
+  in hartree with 10 decimals; the thermochemistry columns `zpe`, `h`,
+  `s`, `g` (`rqm/thermo.md`; `s` is the T·S entropy term) print like
+  `el`; `rg`, `mass`, `dip` with 3; integer fields plainly; `components`
+  as `2am+3sa`-style alphabetical pairs; an undefined or absent value
+  prints `-`.
+- `--unit` converts every Hartree-valued print quantity — the energy
+  columns (`el`, `zpe`, `h`, `s`, `g`) and the `--formation` section's
+  values (`rqm/formation.md`) — from hartree to kcal/mol at this
+  boundary: kcal/mol prints with 4 decimals. The flag is a plain
+  boolean: it takes no value, and without it energies print in hartree.
+  The relative-cutoff kcal/mol conversion above is unaffected by
+  `--unit`.
 - A run that manipulates prints the pipeline survivors (all status
   `ok`); a run with print flags but no manipulation flag prints every
   record as loaded, in file order — printing alone is not an operation
@@ -189,18 +211,20 @@ the property set and units:
   ExtractMode)>` with `ExtractMode::{Keep, Drop}`, `cutoffs:
   Vec<Cutoff>`, `uniq: Option<UniqMode>` (`rqm/uniqueness.md`), `reacted:
   Option<ReactedMode>` (`rqm/detection.md`), `sort: Option<SortKey>`,
-  `reverse: bool`, `select: Option<usize>`, `shuffle: bool`, `seed: u64`,
-  `grouping: Grouping` (`Grouping::{Composition, Unit}`).
+  `reverse: bool`, `select: Option<usize>`, `glob: bool`, `shuffle: bool`,
+  `seed: u64`, `grouping: Grouping` (`Grouping::{Composition, Unit}`).
 - `ExtractMode` — `Keep` (`--extract`) or `Drop` (`--nextract`). <!-- rq-b0d6f2f5 -->
 - `ExtractPattern` — a parsed pattern: pairs `(count, code)` (zero allowed) <!-- rq-0186810c -->
   and a wildcard `Wildcard::{None, Any, Exactly(u32), Only(Vec<String>),
   OnlyExactly(u32, Vec<String>)}`.
 - `Cutoff` — `op: CmpOp` (`Lt, Le, Gt, Ge, Eq, Ne`), `mode: Mode` <!-- rq-8ad5e95a -->
   (`Absolute, Relative`), `property: Property`, `value: f64`.
-- `Property` — `El, Rg, Lf, Dip, Mass, Charge, Multiplicity, Natoms, <!-- rq-d157ebb2 -->
-  Nfreq, Nimag`.
-- `SortKey` — `El | Rg | Mass | Name`. <!-- rq-953da4ce -->
-- `Column` — the print columns above. <!-- rq-38b619ff -->
+- `Property` — `El, G, Rg, Lf, Dip, Mass, Charge, Multiplicity, Natoms, <!-- rq-d157ebb2 -->
+  Nfreq, Nimag`; `G` derives via `rqm/thermo.md`.
+- `SortKey` — `El | G | Rg | Mass | Name`. <!-- rq-953da4ce -->
+- `Column` — the print columns above, `Zpe | H | S | G` included. <!-- rq-38b619ff -->
+- `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the <!-- rq-8718aee5 -->
+  `--unit` flag is present, `Au` (hartree) otherwise.
 - `ExtractError` — parse failure detail for usage reporting. <!-- rq-881749dc -->
 
 ### Functions <!-- rq-d6e00bdf -->
@@ -208,16 +232,22 @@ the property set and units:
 - `parse_extract_query(query: &str) -> Result<Vec<ExtractPattern>, ExtractError>` <!-- rq-2bc9762e -->
   — commas, ranges, choices, zeros, label comments, wildcards as above.
 - `extract_matches(pattern: &ExtractPattern, components: Option<&Components>) -> bool` <!-- rq-1e1f9c11 -->
-- `property_value(record: &Record, property: Property) -> Option<f64>` <!-- rq-b76b0761 -->
-  — derived per the table (`rg`, `mass`, `dip` via `rqm/uniqueness.md`).
-- `apply_filters(records: &[Record], spec: &FilterSpec) -> Result<Vec<Record>, <!-- rq-bc3e1482 -->
+- `property_value(record: &Record, property: Property, memo: &ThermoMemo) -> Option<f64>` <!-- rq-b76b0761 -->
+  — derived per the table (`rg`, `mass`, `dip` via `rqm/uniqueness.md`;
+  `el` and `g` through the derived-property registry on the run's memo,
+  `rqm/thermo.md`).
+- `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<Vec<Record>, <!-- rq-bc3e1482 -->
   ExtractError>` — the full pipeline including the ok-only pre-filter and
-  grouping; never mutates the input. In composition grouping it parses the
+  grouping; never mutates the input. The memo carries the run's
+  thermochemistry conditions (`rqm/thermo.md`) and feeds every
+  Gibbs-valued stage — the `g` cutoff, the `g` sort key, the `g`
+  uniqueness metric, and `--glob` — deriving each record at most once
+  (`rqm/thermo.md` Performance). In composition grouping it parses the
   `extract` query strings and propagates an `ExtractError` rather than
   silently dropping records (the CLI pre-validates, so callers see `Ok`);
   under `Unit` grouping extract compares names verbatim and cannot fail to
   parse.
-- `print_table(records: &[Record], columns: &[Column]) -> String` <!-- rq-8420b870 -->
+- `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit) -> String` <!-- rq-8420b870 -->
 
 ### Crate Layout <!-- rq-bf062c8f -->
 
@@ -235,12 +265,13 @@ the property set and units:
 - RMSD/structure-alignment uniqueness (`--arbalign`, `--MWarbalign`): not
   supported; the flags are unknown flags and stay usage errors
   (`rqm/uniqueness.md`).
-- Gibbs/free-energy keys (`g`, `gout`, `elout`) in sort, cutoffs, and
-  uniq, and `-glob`: thermochemistry, milestone 6.
+- Single-point-corrected energies (`gout`, `elout`): re-deriving
+  thermochemistry from a higher-level single-point energy is a future
+  milestone (`rqm/thermo.md` Out of Scope).
 - Adaptive sampling (`-sample`), the JKQC `bonded` cutoff property,
-  `-dropimg`/`-makereal` frequency edits.
-- Unit selection at the print boundary (hartree/kcal/mol choice):
-  milestone 6.
+  `-dropimg` (deleting imaginary modes — `--makereal`
+  (`rqm/thermo.md`) is the supported way to fold imaginary frequencies
+  into a derivation).
 - `-xyz`, `-movie`, spreadsheet output: milestone 7.
 - stdin input (`rqm/collection.md`).
 
@@ -438,6 +469,12 @@ Feature: Filtering, sorting, and printing
     Given a database whose extract leaves 2 records and whose cutoff leaves 1 of those
     When both flags are given in either order on the command line
     Then the result is the same single record
+
+  @rq-658aba8c
+  Scenario: --glob keeps each group's Gibbs minimum among the selected
+    Given a group with three records of differing gibbs and a group with one
+    When --select 2 applies (after the sort) and then --glob
+    Then the first group contributes its lowest-gibbs record among the two selected and the second its only record
 
   # --- CLI and printing ---
 

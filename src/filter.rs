@@ -1,7 +1,7 @@
 //! The manipulation pipeline behind the filtering command line (see
 //! `rqm/filtering.md`): extract, cutoffs, uniqueness, reacted detection,
-//! sort, select, and shuffle, all pure functions over records, plus the
-//! JKQC-style per-column printing.
+//! sort, select, glob, and shuffle, all pure functions over records, plus
+//! the JKQC-style per-column printing.
 
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -13,11 +13,7 @@ use crate::metrics::{
 };
 use crate::reacted::{reacted_mask, ReactedMode};
 use crate::record::{Components, Record, RecordStatus};
-
-/// Hartree to kcal/mol conversion for relative energy cutoffs.
-///
-/// (rq-5dc8fe52)
-pub const KCAL_MOL_PER_HARTREE: f64 = 627.50947;
+use crate::thermo::{ThermoMemo, KCAL_MOL_PER_HARTREE};
 
 /// Whether `--extract` keeps matches (`Keep`) or `--nextract` drops them
 /// (`Drop`).
@@ -83,14 +79,17 @@ pub enum Mode {
     Relative,
 }
 
-/// A record property a cutoff can compare: `el`, `rg`, `lf`, `dip`, `mass`,
-/// `charge`, `multiplicity`, `natoms`, `nfreq`, `nimag`.
+/// A record property a cutoff can compare: `el`, `g`, `rg`, `lf`, `dip`,
+/// `mass`, `charge`, `multiplicity`, `natoms`, `nfreq`, `nimag`.
 ///
 /// (rq-d157ebb2)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Property {
     /// `electronic_energy` in hartree (kcal/mol in relative mode).
     El,
+    /// Gibbs free energy under the run's thermochemistry conditions
+    /// (`rqm/thermo.md`), hartree (kcal/mol in relative mode).
+    G,
     /// Mass-weighted radius of gyration in Å.
     Rg,
     /// Lowest vibrational frequency in cm⁻¹.
@@ -116,6 +115,7 @@ impl Property {
     pub fn parse(name: &str) -> Option<Property> {
         match name {
             "el" => Some(Property::El),
+            "g" => Some(Property::G),
             "rg" => Some(Property::Rg),
             "lf" => Some(Property::Lf),
             "dip" => Some(Property::Dip),
@@ -145,13 +145,16 @@ pub struct Cutoff {
     pub value: f64,
 }
 
-/// A sort key: `el`, `rg`, `mass`, `name`.
+/// A sort key: `el`, `g`, `rg`, `mass`, `name`.
 ///
 /// (rq-953da4ce)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortKey {
     /// `electronic_energy`.
     El,
+    /// Gibbs free energy under the run's thermochemistry conditions
+    /// (`rqm/thermo.md`).
+    G,
     /// Radius of gyration.
     Rg,
     /// Total mass.
@@ -165,6 +168,7 @@ impl SortKey {
     pub fn parse(name: &str) -> Option<SortKey> {
         match name {
             "el" => Some(SortKey::El),
+            "g" => Some(SortKey::G),
             "rg" => Some(SortKey::Rg),
             "mass" => Some(SortKey::Mass),
             "name" => Some(SortKey::Name),
@@ -235,12 +239,27 @@ pub struct FilterSpec {
     pub reverse: bool,
     /// `--select` count.
     pub select: Option<usize>,
+    /// `--glob`: keep each group's lowest-Gibbs record.
+    pub glob: bool,
     /// `--shuffle`.
     pub shuffle: bool,
     /// `--seed`.
     pub seed: u64,
     /// `--noname` grouping.
     pub grouping: Grouping,
+}
+
+/// The print-boundary energy unit: `Kcal` when the `--unit` flag is
+/// present, `Au` (hartree) otherwise.
+///
+/// (rq-8718aee5)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Unit {
+    /// Hartree (the default).
+    #[default]
+    Au,
+    /// kcal/mol (`--unit`).
+    Kcal,
 }
 
 /// A printable column; the canonical print order is the order of
@@ -259,6 +278,14 @@ pub enum Column {
     Method,
     /// Electronic energy, hartree, 10 decimals.
     El,
+    /// Zero-point energy (`rqm/thermo.md`), like `el`.
+    Zpe,
+    /// Enthalpy (`rqm/thermo.md`), like `el`.
+    H,
+    /// T·S entropy term (`rqm/thermo.md`), like `el`.
+    S,
+    /// Gibbs free energy (`rqm/thermo.md`), like `el`.
+    G,
     /// Radius of gyration, 3 decimals.
     Rg,
     /// Total mass, 3 decimals.
@@ -281,12 +308,16 @@ pub enum Column {
 
 impl Column {
     /// All columns in canonical print order.
-    pub const ALL: [Column; 14] = [
+    pub const ALL: [Column; 18] = [
         Column::Name,
         Column::Status,
         Column::Program,
         Column::Method,
         Column::El,
+        Column::Zpe,
+        Column::H,
+        Column::S,
+        Column::G,
         Column::Rg,
         Column::Mass,
         Column::Dip,
@@ -298,6 +329,23 @@ impl Column {
         Column::Components,
     ];
 
+    /// The derived-property registry key of an energy column
+    /// (`rqm/thermo.md` Feature API), `None` for every other column.
+    /// Energy cells all resolve through the registry — no column arm
+    /// hand-wires a derivation.
+    ///
+    /// (rq-8f6da1c2)
+    pub fn registry_key(&self) -> Option<&'static str> {
+        match self {
+            Column::El => Some("el"),
+            Column::Zpe => Some("zpe"),
+            Column::H => Some("h"),
+            Column::S => Some("s"),
+            Column::G => Some("g"),
+            _ => None,
+        }
+    }
+
     /// Header label (also the print flag's long name).
     pub fn label(&self) -> &'static str {
         match self {
@@ -306,6 +354,10 @@ impl Column {
             Column::Program => "program",
             Column::Method => "method",
             Column::El => "el",
+            Column::Zpe => "zpe",
+            Column::H => "h",
+            Column::S => "s",
+            Column::G => "g",
             Column::Rg => "rg",
             Column::Mass => "mass",
             Column::Dip => "dip",
@@ -320,12 +372,16 @@ impl Column {
 }
 
 /// The record's defined value for a cutoff property; `None` marks it
-/// undefined (absent observable, or unknown element for mass metrics).
+/// undefined (absent observable, unknown element for mass metrics, or —
+/// for `g` — undefined thermochemistry at the run's conditions,
+/// `rqm/thermo.md`). The energy keys `el` and `g` resolve through the
+/// derived-property registry on the run's memo.
 ///
-/// (rq-b76b0761)
-pub fn property_value(record: &Record, property: Property) -> Option<f64> {
+/// (rq-b76b0761 rq-8f6da1c2)
+pub fn property_value(record: &Record, property: Property, memo: &ThermoMemo) -> Option<f64> {
     match property {
-        Property::El => record.electronic_energy,
+        Property::El => memo.value("el", record),
+        Property::G => memo.value("g", record),
         Property::Rg => metric_radius_of_gyration(record),
         Property::Lf => record
             .vibrational_frequencies
@@ -427,10 +483,18 @@ pub fn extract_matches(pattern: &ExtractPattern, components: Option<&Components>
 /// Runs the full manipulation pipeline, including the ok-only pre-filter,
 /// grouping, and the implicit `el` sort; never mutates the input. Extract
 /// queries are parsed here (composition grouping) and an unparsable query
-/// is reported instead of silently matching nothing.
+/// is reported instead of silently matching nothing. The memo carries the
+/// run's thermochemistry conditions (`rqm/thermo.md`) and derives each
+/// record at most once across every Gibbs-valued stage: the `g` cutoff,
+/// the `g` sort key, the `g` uniqueness metric, and `--glob`
+/// (`rqm/thermo.md` Performance).
 ///
-/// (rq-bc3e1482 rq-0137b5f9)
-pub fn apply_filters(records: &[Record], spec: &FilterSpec) -> Result<Vec<Record>, ExtractError> {
+/// (rq-bc3e1482 rq-0137b5f9 rq-8b44ad8d)
+pub fn apply_filters(
+    records: &[Record],
+    spec: &FilterSpec,
+    memo: &ThermoMemo,
+) -> Result<Vec<Record>, ExtractError> {
     let mut current: Vec<Record> = records
         .iter()
         .filter(|record| record.status == RecordStatus::Ok)
@@ -441,25 +505,28 @@ pub fn apply_filters(records: &[Record], spec: &FilterSpec) -> Result<Vec<Record
         apply_extract(&mut current, queries, *mode, spec.grouping)?;
     }
     for cutoff in &spec.cutoffs {
-        apply_cutoff(&mut current, cutoff, spec.grouping);
+        apply_cutoff(&mut current, cutoff, spec.grouping, memo);
     }
 
     let implicit_sort = spec.sort.is_none()
         && (matches!(spec.uniq, Some(UniqMode::Keys(_))) || spec.select.is_some());
     if implicit_sort {
-        sort_records(&mut current, SortKey::El, spec.reverse);
+        sort_records(&mut current, SortKey::El, spec.reverse, memo);
     }
     if let Some(uniq) = &spec.uniq {
-        apply_uniq(&mut current, uniq, spec.grouping);
+        apply_uniq(&mut current, uniq, spec.grouping, memo);
     }
     if let Some(reacted) = &spec.reacted {
         apply_reacted(&mut current, *reacted, spec.grouping);
     }
     if let Some(key) = spec.sort {
-        sort_records(&mut current, key, spec.reverse);
+        sort_records(&mut current, key, spec.reverse, memo);
     }
     if let Some(count) = spec.select {
         apply_select(&mut current, count, spec.grouping);
+    }
+    if spec.glob {
+        apply_glob(&mut current, spec.grouping, memo);
     }
     if spec.shuffle {
         shuffle(&mut current, spec.seed);
@@ -468,10 +535,19 @@ pub fn apply_filters(records: &[Record], spec: &FilterSpec) -> Result<Vec<Record
 }
 
 /// A text table: a header row of column names, then one row per record in
-/// order, single-space separated; undefined values print `-`.
+/// order, single-space separated; undefined values print `-`. The energy
+/// columns resolve through the derived-property registry on the run's
+/// memo, which derives each record's thermochemistry once across all
+/// thermo columns (`rqm/thermo.md` Performance); `unit` converts every
+/// energy column (`el`, `zpe`, `h`, `s`, `g`) to kcal/mol.
 ///
-/// (rq-8420b870 rq-4ea8ca35)
-pub fn print_table(records: &[Record], columns: &[Column]) -> String {
+/// (rq-8420b870 rq-4ea8ca35 rq-8b44ad8d)
+pub fn print_table(
+    records: &[Record],
+    columns: &[Column],
+    memo: &ThermoMemo,
+    unit: Unit,
+) -> String {
     let mut lines = Vec::with_capacity(records.len() + 1);
     lines.push(
         columns
@@ -484,7 +560,7 @@ pub fn print_table(records: &[Record], columns: &[Column]) -> String {
         lines.push(
             columns
                 .iter()
-                .map(|column| format_cell(record, *column))
+                .map(|column| format_cell(record, *column, memo, unit))
                 .collect::<Vec<_>>()
                 .join(" "),
         );
@@ -492,9 +568,24 @@ pub fn print_table(records: &[Record], columns: &[Column]) -> String {
     lines.join("\n")
 }
 
-fn format_cell(record: &Record, column: Column) -> String {
+/// One energy cell: hartree with 10 decimals, or kcal/mol with 4 under
+/// `--unit` (rqm/filtering.md Printing). Shared with the formation
+/// section so the table and the section cannot drift on precision.
+pub(crate) fn format_energy(value: f64, unit: Unit) -> String {
+    match unit {
+        Unit::Au => format!("{value:.10}"),
+        Unit::Kcal => format!("{:.4}", value * KCAL_MOL_PER_HARTREE),
+    }
+}
+
+fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -> String {
     let undefined = || "-".to_string();
     match column {
+        // The five registry columns share one dispatch (rq-8f6da1c2).
+        Column::El | Column::Zpe | Column::H | Column::S | Column::G => column
+            .registry_key()
+            .and_then(|key| memo.value(key, record))
+            .map_or_else(undefined, |value| format_energy(value, unit)),
         Column::Name => record.name.clone().unwrap_or_else(undefined),
         Column::Status => match record.status {
             RecordStatus::Ok => "ok",
@@ -504,10 +595,6 @@ fn format_cell(record: &Record, column: Column) -> String {
         .to_string(),
         Column::Program => record.program.clone().unwrap_or_else(undefined),
         Column::Method => record.method.clone().unwrap_or_else(undefined),
-        Column::El => match record.electronic_energy {
-            Some(value) => format!("{value:.10}"),
-            None => undefined(),
-        },
         Column::Rg => match metric_radius_of_gyration(record) {
             Some(value) => format!("{value:.3}"),
             None => undefined(),
@@ -607,12 +694,12 @@ fn apply_extract(
     Ok(())
 }
 
-fn apply_cutoff(records: &mut Vec<Record>, cutoff: &Cutoff, grouping: Grouping) {
+fn apply_cutoff(records: &mut Vec<Record>, cutoff: &Cutoff, grouping: Grouping, memo: &ThermoMemo) {
     let mut keep = vec![false; records.len()];
     for members in group_indices(records, grouping) {
         let values: Vec<Option<f64>> = members
             .iter()
-            .map(|&index| property_value(&records[index], cutoff.property))
+            .map(|&index| property_value(&records[index], cutoff.property, memo))
             .collect();
         let minimum: Option<f64> = match cutoff.mode {
             Mode::Absolute => Some(0.0),
@@ -635,23 +722,23 @@ fn apply_cutoff(records: &mut Vec<Record>, cutoff: &Cutoff, grouping: Grouping) 
     retain(records, &keep);
 }
 
-/// Relative `el` comparisons run in kcal/mol; every other property keeps
-/// its native units.
+/// Relative `el` and `g` comparisons run in kcal/mol; every other property
+/// keeps its native units.
 fn scale_relative(value: f64, cutoff: &Cutoff) -> f64 {
-    if cutoff.mode == Mode::Relative && cutoff.property == Property::El {
+    if cutoff.mode == Mode::Relative && matches!(cutoff.property, Property::El | Property::G) {
         value * KCAL_MOL_PER_HARTREE
     } else {
         value
     }
 }
 
-fn apply_uniq(records: &mut Vec<Record>, mode: &UniqMode, grouping: Grouping) {
+fn apply_uniq(records: &mut Vec<Record>, mode: &UniqMode, grouping: Grouping, memo: &ThermoMemo) {
     let mut keep = vec![false; records.len()];
     for members in group_indices(records, grouping) {
         let group: Vec<&Record> = members.iter().map(|&index| &records[index]).collect();
         let mask = match mode {
             UniqMode::Dup => dedup_names_mask(&group),
-            UniqMode::Keys(keys) => uniqueness_mask(&group, keys),
+            UniqMode::Keys(keys) => uniqueness_mask(&group, keys, memo),
         };
         for (position, &index) in members.iter().enumerate() {
             keep[index] = mask[position];
@@ -682,23 +769,63 @@ fn apply_select(records: &mut Vec<Record>, count: usize, grouping: Grouping) {
     retain(records, &keep);
 }
 
+/// `--glob`: per group keep the record with the lowest Gibbs free energy
+/// at the run's conditions; ties keep the first in order, and records with
+/// undefined Gibbs drop (`rqm/filtering.md`). The Gibbs values come from
+/// the run's memo (`rqm/thermo.md` Performance).
+// rq-17ea1903 rq-8b44ad8d
+fn apply_glob(records: &mut Vec<Record>, grouping: Grouping, memo: &ThermoMemo) {
+    let mut keep = vec![false; records.len()];
+    for members in group_indices(records, grouping) {
+        let mut lowest: Option<(usize, f64)> = None;
+        for &index in &members {
+            if let Some(gibbs) = memo.value("g", &records[index]) {
+                if lowest.is_none_or(|(_, best)| gibbs < best) {
+                    lowest = Some((index, gibbs));
+                }
+            }
+        }
+        if let Some((index, _)) = lowest {
+            keep[index] = true;
+        }
+    }
+    retain(records, &keep);
+}
+
 /// Ascending by default; undefined keys sort last ascending and first
 /// descending; nameless records sort first ascending under `name`.
-fn sort_records(records: &mut [Record], key: SortKey, reverse: bool) {
-    records.sort_by(|a, b| {
-        let ordering = match key {
-            SortKey::Name => match (a.name.as_deref(), b.name.as_deref()) {
+/// Numeric keys are decorated (the sort key is resolved once per record
+/// through the memo), sorted, and undecorated — one derivation per record
+/// for the `g` key, not one per comparison (`rqm/thermo.md` Performance).
+/// The sort is stable, so equal keys keep their relative order.
+// rq-8b44ad8d
+fn sort_records(records: &mut Vec<Record>, key: SortKey, reverse: bool, memo: &ThermoMemo) {
+    if key == SortKey::Name {
+        records.sort_by(|a, b| {
+            let ordering = match (a.name.as_deref(), b.name.as_deref()) {
                 (Some(x), Some(y)) => x.cmp(y),
-                (Some(_), None) => Ordering::Less,
-                (None, Some(_)) => Ordering::Greater,
+                (None, Some(_)) => Ordering::Less,
+                (Some(_), None) => Ordering::Greater,
                 (None, None) => Ordering::Equal,
-            },
-            _ => match (sort_value(a, key), sort_value(b, key)) {
-                (Some(x), Some(y)) => x.total_cmp(&y),
-                (Some(_), None) => Ordering::Less,
-                (None, Some(_)) => Ordering::Greater,
-                (None, None) => Ordering::Equal,
-            },
+            };
+            if reverse {
+                ordering.reverse()
+            } else {
+                ordering
+            }
+        });
+        return;
+    }
+    let mut decorated: Vec<(Option<f64>, Record)> = records
+        .drain(..)
+        .map(|record| (sort_value_for(&record, key, memo), record))
+        .collect();
+    decorated.sort_by(|(left, _), (right, _)| {
+        let ordering = match (left, right) {
+            (Some(x), Some(y)) => x.total_cmp(y),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
         };
         if reverse {
             ordering.reverse()
@@ -706,13 +833,18 @@ fn sort_records(records: &mut [Record], key: SortKey, reverse: bool) {
             ordering
         }
     });
+    records.extend(decorated.into_iter().map(|(_, record)| record));
 }
 
-fn sort_value(record: &Record, key: SortKey) -> Option<f64> {
+/// The numeric value of a record's sort key; `None` marks it undefined.
+/// `el` and `g` resolve through the derived-property registry on the
+/// run's memo.
+pub(crate) fn sort_value_for(record: &Record, key: SortKey, memo: &ThermoMemo) -> Option<f64> {
     match key {
-        SortKey::El => property_value(record, Property::El),
-        SortKey::Rg => property_value(record, Property::Rg),
-        SortKey::Mass => property_value(record, Property::Mass),
+        SortKey::El => property_value(record, Property::El, memo),
+        SortKey::G => property_value(record, Property::G, memo),
+        SortKey::Rg => property_value(record, Property::Rg, memo),
+        SortKey::Mass => property_value(record, Property::Mass, memo),
         SortKey::Name => None,
     }
 }

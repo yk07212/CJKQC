@@ -118,6 +118,18 @@
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
+  "rq-043c29fe": {
+    "decl": "Scenario: Undefined levels print as dashes",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined levels print as dashes",
+    "type": "scenario"
+  },
   "rq-04bf58f3": {
     "decl": "Scenario: Nameless records are never duplicates",
     "file": "uniqueness",
@@ -128,6 +140,38 @@
       }
     ],
     "title": "Nameless records are never duplicates",
+    "type": "scenario"
+  },
+  "rq-0585b2ea": {
+    "decl": "Scenario: Settings flags alone do not make a visible outcome",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Settings flags alone do not make a visible outcome",
+    "type": "scenario"
+  },
+  "rq-05e6abe2": {
+    "decl": "## Gherkin Scenarios",
+    "file": "thermo",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
+  "rq-06cfcbfe": {
+    "decl": "Scenario: An absurd temperature leaves thermochemistry undefined",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An absurd temperature leaves thermochemistry undefined",
     "type": "scenario"
   },
   "rq-071ab7e7": {
@@ -145,6 +189,14 @@
     ],
     "title": "An underscore in a pattern is a usage error",
     "type": "scenario"
+  },
+  "rq-077d9eed": {
+    "decl": "## Gherkin Scenarios",
+    "file": "formation",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
   },
   "rq-07f351b5": {
     "decl": "- `detect(head)` claims the content when: the first line is a positive",
@@ -235,6 +287,18 @@
       }
     ],
     "title": "An unrelated head is not claimed",
+    "type": "scenario"
+  },
+  "rq-0bcbeeb1": {
+    "decl": "Scenario: --makereal leaves the raw observables alone",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--makereal leaves the raw observables alone",
     "type": "scenario"
   },
   "rq-0bd419c3": {
@@ -329,6 +393,18 @@
     "title": "parse_uniq_keys",
     "type": "api-item"
   },
+  "rq-0f78a33b": {
+    "decl": "Scenario: --formation alone is a visible outcome",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--formation alone is a visible outcome",
+    "type": "scenario"
+  },
   "rq-0f8ebb73": {
     "decl": "Scenario: A recorded failed run is classified failed",
     "file": "parsers/orca",
@@ -344,6 +420,18 @@
     ],
     "title": "A recorded failed run is classified failed",
     "type": "scenario"
+  },
+  "rq-103447d2": {
+    "decl": "- `Formation` — a record's two derived levels:",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Formation",
+    "type": "api-item"
   },
   "rq-117fdecb": {
     "decl": "### Types",
@@ -422,6 +510,19 @@
     "title": "merge_databases",
     "type": "api-item"
   },
+  "rq-142ac35d": {
+    "decl": "### Conditions",
+    "file": "thermo",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Conditions",
+    "type": "section"
+  },
   "rq-1475e428": {
     "decl": "Scenario: The ORCA corpus fixture reproduces the JKQC ground truth",
     "file": "parsers/conformance",
@@ -442,7 +543,7 @@
     "type": "api-item"
   },
   "rq-159da4d1": {
-    "decl": "- `UniqKey` — a metric `El | Rg | Mass | Dip` with an explicit decimal",
+    "decl": "- `UniqKey` — a metric `El | G | Rg | Mass | Dip` with an explicit decimal",
     "file": "uniqueness",
     "refs": [
       {
@@ -502,6 +603,18 @@
     "title": "A zero count makes the name unresolvable",
     "type": "scenario"
   },
+  "rq-162b0bbe": {
+    "decl": "- `Thermo` — one record's derivation at one condition set, all fields f64",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Thermo",
+    "type": "api-item"
+  },
   "rq-16630511": {
     "decl": "- `FileWindows` — the head and tail view of one file's content.",
     "file": "parser-framework",
@@ -513,6 +626,18 @@
     ],
     "title": "FileWindows",
     "type": "api-item"
+  },
+  "rq-16a6fe88": {
+    "decl": "Scenario: Electronic entropy carries the spin degeneracy",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Electronic entropy carries the spin degeneracy",
+    "type": "scenario"
   },
   "rq-1736b3f9": {
     "decl": "Scenario: A record that fails validation is skipped and reported",
@@ -540,6 +665,10 @@
     "refs": [
       {
         "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
         "kind": "code"
       }
     ],
@@ -602,6 +731,18 @@
     "title": "Bohr coordinates are converted to Ångström",
     "type": "scenario"
   },
+  "rq-18e4b628": {
+    "decl": "Scenario: The reference frequency shifts the interpolation",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The reference frequency shifts the interpolation",
+    "type": "scenario"
+  },
   "rq-19b11795": {
     "decl": "## Gherkin Scenarios",
     "file": "composition",
@@ -642,6 +783,19 @@
     "title": "An implicit count does not resolve",
     "type": "scenario"
   },
+  "rq-1b571f91": {
+    "decl": "## Monomer References",
+    "file": "formation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Monomer References",
+    "type": "section"
+  },
   "rq-1b5c13f5": {
     "decl": "## Gherkin Scenarios",
     "file": "detection",
@@ -649,6 +803,30 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-1b5e6c7a": {
+    "decl": "Scenario: A missing code reference leaves that level undefined",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing code reference leaves that level undefined",
+    "type": "scenario"
+  },
+  "rq-1b6b5757": {
+    "decl": "Scenario: The formation section follows the table and precedes the summary",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The formation section follows the table and precedes the summary",
+    "type": "scenario"
   },
   "rq-1b84a43e": {
     "decl": "### Crate Layout",
@@ -668,6 +846,18 @@
       }
     ],
     "title": "--version prints the crate version",
+    "type": "scenario"
+  },
+  "rq-1c86c6f3": {
+    "decl": "Scenario: Quasi-harmonic entropy never exceeds harmonic entropy",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Quasi-harmonic entropy never exceeds harmonic entropy",
     "type": "scenario"
   },
   "rq-1d1a1d61": {
@@ -738,6 +928,13 @@
     ],
     "title": "extract_matches",
     "type": "api-item"
+  },
+  "rq-1ec71bfc": {
+    "decl": "- `tests/thermo.rs` tests the derivation as pure functions against",
+    "file": "thermo",
+    "refs": [],
+    "title": "- `tests/thermo.rs` tests the derivation as pure functions against",
+    "type": "anchor"
   },
   "rq-1fb0a352": {
     "decl": "Scenario: Method flags map to method names",
@@ -840,6 +1037,14 @@
     "title": "Feature: Geometric Metrics and Property Uniqueness",
     "type": "file"
   },
+  "rq-22e7999c": {
+    "decl": "### Crate Layout",
+    "file": "formation",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
   "rq-22fd07a1": {
     "decl": "Scenario: The test suite passes on the scaffolded crate",
     "file": "scaffolding",
@@ -938,6 +1143,30 @@
       }
     ],
     "title": "validate accepts a failed record with only status and error",
+    "type": "scenario"
+  },
+  "rq-273399bb": {
+    "decl": "Scenario: A monatomic record has defined thermochemistry without frequencies",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A monatomic record has defined thermochemistry without frequencies",
+    "type": "scenario"
+  },
+  "rq-274f8c7e": {
+    "decl": "Scenario: A linear species uses the linear rotational terms",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A linear species uses the linear rotational terms",
     "type": "scenario"
   },
   "rq-276adb9e": {
@@ -1246,6 +1475,18 @@
     "title": "A large file yields disjoint line-aligned windows",
     "type": "scenario"
   },
+  "rq-31a55ccc": {
+    "decl": "Scenario: Filtered-away monomers serve as no references",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Filtered-away monomers serve as no references",
+    "type": "scenario"
+  },
   "rq-31d988e1": {
     "decl": "Scenario: Multiple inputs are written in argument order",
     "file": "collection",
@@ -1351,6 +1592,18 @@
     "title": "Every fixture file is declared exactly once",
     "type": "scenario"
   },
+  "rq-3315a51c": {
+    "decl": "- `ThermoConditions` — `temperature: f64`, `freq_cutoff: f64`,",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ThermoConditions",
+    "type": "api-item"
+  },
   "rq-3340c63d": {
     "decl": "Scenario: A window-hidden frame is honest, never half-read",
     "file": "parsers/xyz",
@@ -1362,6 +1615,18 @@
     ],
     "title": "A window-hidden frame is honest, never half-read",
     "type": "scenario"
+  },
+  "rq-3345a07b": {
+    "decl": "# Feature: Thermochemistry on Demand",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Thermochemistry on Demand",
+    "type": "file"
   },
   "rq-336152ed": {
     "decl": "### Crate Layout",
@@ -1415,6 +1680,18 @@
     "title": "Merge truncates an existing output",
     "type": "scenario"
   },
+  "rq-34845056": {
+    "decl": "Scenario: A single-component count-one record is a monomer",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A single-component count-one record is a monomer",
+    "type": "scenario"
+  },
   "rq-34b49160": {
     "decl": "### Extraction",
     "file": "parsers/orca",
@@ -1466,6 +1743,19 @@
     "title": "Extraction",
     "type": "section"
   },
+  "rq-361306ea": {
+    "decl": "## Constants",
+    "file": "thermo",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Constants",
+    "type": "section"
+  },
   "rq-363a8a65": {
     "decl": "- `vibrational_frequencies` — every value on every",
     "file": "parsers/gaussian",
@@ -1481,6 +1771,18 @@
     ],
     "title": "vibrational_frequencies",
     "type": "api-item"
+  },
+  "rq-36de901e": {
+    "decl": "Scenario: A monomer's own formation energy is zero",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A monomer's own formation energy is zero",
+    "type": "scenario"
   },
   "rq-373378e9": {
     "decl": "- `charge` / `multiplicity` — the values of the last",
@@ -1502,7 +1804,7 @@
     "type": "scenario"
   },
   "rq-38b619ff": {
-    "decl": "- `Column` — the print columns above.",
+    "decl": "- `Column` — the print columns above, `Zpe | H | S | G` included.",
     "file": "filtering",
     "refs": [
       {
@@ -1548,6 +1850,14 @@
     ],
     "title": "Atomic numbers outside 1 to 118 map to nothing",
     "type": "scenario"
+  },
+  "rq-39f86935": {
+    "decl": "## Out of Scope",
+    "file": "formation",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
   },
   "rq-3a147f99": {
     "decl": "- `MergeOutcome` — `records: usize` (count written) and",
@@ -1652,6 +1962,22 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-3e2a7cc5": {
+    "decl": "Scenario: Rotational constants recompute from the stored geometry",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Rotational constants recompute from the stored geometry",
+    "type": "scenario"
+  },
   "rq-3e2c966b": {
     "decl": "- `atomic_mass(symbol: &str) -> Option<f64>`",
     "file": "uniqueness",
@@ -1663,6 +1989,31 @@
     ],
     "title": "atomic_mass",
     "type": "api-item"
+  },
+  "rq-3f95d2bc": {
+    "decl": "Scenario: An imaginary frequency leaves thermochemistry undefined",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An imaginary frequency leaves thermochemistry undefined",
+    "type": "scenario"
+  },
+  "rq-41528ecc": {
+    "decl": "## ORCA Reference Values",
+    "file": "thermo",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ORCA Reference Values",
+    "type": "section"
   },
   "rq-41e77e57": {
     "decl": "- `Cargo.toml` declares the `serde` and `serde_json` dependencies; no other",
@@ -1767,6 +2118,18 @@
     "title": "A missing file is an Io error",
     "type": "scenario"
   },
+  "rq-44b86475": {
+    "decl": "Scenario: A 2am1sa cluster forms from its stoichiometric monomers",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A 2am1sa cluster forms from its stoichiometric monomers",
+    "type": "scenario"
+  },
   "rq-44ba9967": {
     "decl": "Scenario: A dangling energy label is not an error",
     "file": "parsers/xyz",
@@ -1853,6 +2216,18 @@
     "title": "Feature: Project Scaffold and CJKQC Command Shell",
     "type": "file"
   },
+  "rq-48b6dd65": {
+    "decl": "Scenario: A value passed to --unit is a usage error",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A value passed to --unit is a usage error",
+    "type": "scenario"
+  },
   "rq-48bb5800": {
     "decl": "Scenario: A single-frame file yields its geometry",
     "file": "parsers/xyz",
@@ -1908,6 +2283,18 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-4cd891c1": {
+    "decl": "Scenario: Uniqueness rounds Gibbs like any metric",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Uniqueness rounds Gibbs like any metric",
+    "type": "scenario"
   },
   "rq-4da7b314": {
     "decl": "- `tests/parser.rs` exercises the framework through small in-test parser",
@@ -1968,6 +2355,10 @@
     "refs": [
       {
         "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/filter.rs",
         "kind": "code"
       }
     ],
@@ -2102,6 +2493,18 @@
     "title": "Detection requires the xyz shape",
     "type": "scenario"
   },
+  "rq-536786ea": {
+    "decl": "Scenario: Failed monomer records never qualify",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Failed monomer records never qualify",
+    "type": "scenario"
+  },
   "rq-54536800": {
     "decl": "Scenario: A dash argument is an ordinary path, not stdin",
     "file": "collection",
@@ -2150,6 +2553,18 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-56585302": {
+    "decl": "Scenario: Multi-component and multi-count records are not monomers",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Multi-component and multi-count records are not monomers",
+    "type": "scenario"
+  },
   "rq-57329ad4": {
     "decl": "Scenario: Detection ignores name and extension",
     "file": "parsers/xyz",
@@ -2160,6 +2575,18 @@
       }
     ],
     "title": "Detection ignores name and extension",
+    "type": "scenario"
+  },
+  "rq-573f5674": {
+    "decl": "Scenario: --glob keeps each group's lowest Gibbs record",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--glob keeps each group's lowest Gibbs record",
     "type": "scenario"
   },
   "rq-5825f5e3": {
@@ -2179,6 +2606,22 @@
       }
     ],
     "title": "A row count below expected_rows yields None",
+    "type": "scenario"
+  },
+  "rq-58808413": {
+    "decl": "Scenario: --glob drops records with undefined Gibbs",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--glob drops records with undefined Gibbs",
     "type": "scenario"
   },
   "rq-5882d984": {
@@ -2245,6 +2688,14 @@
     "title": "Load returns all records in file order",
     "type": "scenario"
   },
+  "rq-596e8ecd": {
+    "decl": "### Inputs and Mode Selection",
+    "file": "thermo",
+    "level": 3,
+    "refs": [],
+    "title": "Inputs and Mode Selection",
+    "type": "section"
+  },
   "rq-597bef47": {
     "decl": "- `XtbParser` — unit struct implementing the framework `Parser` trait with",
     "file": "parsers/xtb",
@@ -2292,6 +2743,19 @@
     ],
     "title": "A file within the window sizes is read whole",
     "type": "scenario"
+  },
+  "rq-5b33312a": {
+    "decl": "### Terms",
+    "file": "thermo",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Terms",
+    "type": "section"
   },
   "rq-5b9c015a": {
     "decl": "Scenario: The ASCII-art banner is detected",
@@ -2368,13 +2832,16 @@
     "decl": "## Cutoffs",
     "file": "filtering",
     "level": 2,
-    "refs": [
-      {
-        "file": "src/filter.rs",
-        "kind": "code"
-      }
-    ],
+    "refs": [],
     "title": "Cutoffs",
+    "type": "section"
+  },
+  "rq-5e08c8be": {
+    "decl": "## Model",
+    "file": "thermo",
+    "level": 2,
+    "refs": [],
+    "title": "Model",
     "type": "section"
   },
   "rq-5e237eee": {
@@ -2438,6 +2905,14 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-60671cab": {
+    "decl": "### Crate Layout",
+    "file": "thermo",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
   "rq-60c7278b": {
     "decl": "Scenario: A count-star-code wildcard combines both restrictions",
     "file": "filtering",
@@ -2448,6 +2923,18 @@
       }
     ],
     "title": "A count-star-code wildcard combines both restrictions",
+    "type": "scenario"
+  },
+  "rq-60d713bc": {
+    "decl": "Scenario: A relative Gibbs cutoff window works per group in kcal/mol",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A relative Gibbs cutoff window works per group in kcal/mol",
     "type": "scenario"
   },
   "rq-610cdd9d": {
@@ -2533,6 +3020,30 @@
     "title": "Round-trip a record with every observable set",
     "type": "scenario"
   },
+  "rq-64526ba5": {
+    "decl": "Scenario: Without --sort the lowest-energy conformer is the reference",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Without --sort the lowest-energy conformer is the reference",
+    "type": "scenario"
+  },
+  "rq-64567efa": {
+    "decl": "Scenario: Absurd-temperature records print dashes and drop out of --glob",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Absurd-temperature records print dashes and drop out of --glob",
+    "type": "scenario"
+  },
   "rq-646cd2be": {
     "decl": "Scenario: The MRCC corpus fixture reproduces the JKQC ground truth",
     "file": "parsers/conformance",
@@ -2543,6 +3054,18 @@
       }
     ],
     "title": "The MRCC corpus fixture reproduces the JKQC ground truth",
+    "type": "scenario"
+  },
+  "rq-64a72e10": {
+    "decl": "Scenario: --sort g makes the lowest-gibbs conformer the reference for both levels",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--sort g makes the lowest-gibbs conformer the reference for both levels",
     "type": "scenario"
   },
   "rq-64d42f21": {
@@ -2560,6 +3083,42 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-650192f2": {
+    "decl": "Scenario: The two levels are independently undefined",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The two levels are independently undefined",
+    "type": "scenario"
+  },
+  "rq-658aba8c": {
+    "decl": "Scenario: --glob keeps each group's Gibbs minimum among the selected",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--glob keeps each group's Gibbs minimum among the selected",
+    "type": "scenario"
+  },
+  "rq-65b1e3cd": {
+    "decl": "Scenario: A single mode above the cutoff carries the thermochemistry",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A single mode above the cutoff carries the thermochemistry",
+    "type": "scenario"
+  },
   "rq-662d12db": {
     "decl": "Scenario: parse_windows stamps the program but not the identity",
     "file": "parser-framework",
@@ -2570,6 +3129,18 @@
       }
     ],
     "title": "parse_windows stamps the program but not the identity",
+    "type": "scenario"
+  },
+  "rq-66b6ca1d": {
+    "decl": "Scenario: An unknown element symbol is undefined",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unknown element symbol is undefined",
     "type": "scenario"
   },
   "rq-6702f697": {
@@ -2739,6 +3310,18 @@
     "title": "Window Contract",
     "type": "section"
   },
+  "rq-6ffbf9aa": {
+    "decl": "- `formation_values(record: &Record, references: &MonomerReferences, memo: &ThermoMemo) -> Formation`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "formation_values",
+    "type": "api-item"
+  },
   "rq-70fc34c2": {
     "decl": "- `src/main.rs` holds the clap definition (inputs positional, `--out`",
     "file": "collection",
@@ -2823,7 +3406,7 @@
     "type": "api-item"
   },
   "rq-7650a23d": {
-    "decl": "- `unique_by_properties(records: &[Record], keys: &[UniqKey]) -> Vec<Record>`",
+    "decl": "- `unique_by_properties(records: &[Record], keys: &[UniqKey], memo: &ThermoMemo) -> Vec<Record>`",
     "file": "uniqueness",
     "refs": [
       {
@@ -2947,6 +3530,18 @@
     "title": "Extract and Nextract",
     "type": "section"
   },
+  "rq-7be2650a": {
+    "decl": "Scenario: A non-monatomic record without frequencies is undefined",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-monatomic record without frequencies is undefined",
+    "type": "scenario"
+  },
   "rq-7c34ac9b": {
     "decl": "- `charge` — the value of `Charge:           <n>`.",
     "file": "parsers/mrcc",
@@ -2969,12 +3564,40 @@
     "title": "ok",
     "type": "api-item"
   },
+  "rq-7da16174": {
+    "decl": "## Feature API",
+    "file": "thermo",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
+  "rq-7da88087": {
+    "decl": "Scenario: The reference's undefined level leaves that level undefined",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The reference's undefined level leaves that level undefined",
+    "type": "scenario"
+  },
   "rq-7dbde5b0": {
     "decl": "- `failed` — the content carries `Error termination` after the final job's",
     "file": "parsers/gaussian",
     "refs": [],
     "title": "failed",
     "type": "api-item"
+  },
+  "rq-7dc8ebb4": {
+    "decl": "### Numerics",
+    "file": "thermo",
+    "level": 3,
+    "refs": [],
+    "title": "Numerics",
+    "type": "section"
   },
   "rq-7e73da19": {
     "decl": "## Fragment Signature",
@@ -2988,6 +3611,30 @@
     ],
     "title": "Fragment Signature",
     "type": "section"
+  },
+  "rq-7f65572f": {
+    "decl": "Scenario: The --unit flag converts the energy columns to kcal/mol",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The --unit flag converts the energy columns to kcal/mol",
+    "type": "scenario"
+  },
+  "rq-7fe12cf9": {
+    "decl": "Scenario: A missing electronic energy leaves thermochemistry undefined",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing electronic energy leaves thermochemistry undefined",
+    "type": "scenario"
   },
   "rq-7fe408ee": {
     "decl": "Scenario: A bare star matches everything",
@@ -3083,6 +3730,18 @@
     "title": "validate rejects a component count below one",
     "type": "scenario"
   },
+  "rq-8237e2b7": {
+    "decl": "Scenario: Gibbs values within the rounding agree and collapse",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Gibbs values within the rounding agree and collapse",
+    "type": "scenario"
+  },
   "rq-82900eac": {
     "decl": "Scenario: Append seals a missing final newline",
     "file": "database",
@@ -3121,7 +3780,7 @@
     "type": "scenario"
   },
   "rq-8420b870": {
-    "decl": "- `print_table(records: &[Record], columns: &[Column]) -> String`",
+    "decl": "- `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit) -> String`",
     "file": "filtering",
     "refs": [
       {
@@ -3150,6 +3809,14 @@
     "level": 2,
     "refs": [],
     "title": "Uniqueness Model",
+    "type": "section"
+  },
+  "rq-85b79495": {
+    "decl": "### Types",
+    "file": "formation",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
     "type": "section"
   },
   "rq-85ba0ac2": {
@@ -3186,6 +3853,30 @@
       }
     ],
     "title": "Comments without the energy label carry no energy",
+    "type": "scenario"
+  },
+  "rq-8718aee5": {
+    "decl": "- `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Unit",
+    "type": "api-item"
+  },
+  "rq-87c46fa4": {
+    "decl": "Scenario: A negative reference frequency is a usage error",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A negative reference frequency is a usage error",
     "type": "scenario"
   },
   "rq-881749dc": {
@@ -3279,6 +3970,47 @@
     "title": "Status Classification",
     "type": "section"
   },
+  "rq-8b44ad8d": {
+    "decl": "## Performance",
+    "file": "thermo",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Performance",
+    "type": "section"
+  },
+  "rq-8b4b5dc5": {
+    "decl": "Scenario: Without --unit the energies remain hartree",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Without --unit the energies remain hartree",
+    "type": "scenario"
+  },
   "rq-8c38a83e": {
     "decl": "## Out of Scope",
     "file": "parsers/mrcc",
@@ -3305,6 +4037,19 @@
     "refs": [],
     "title": "geometry",
     "type": "api-item"
+  },
+  "rq-8dee4f4e": {
+    "decl": "## Printing",
+    "file": "formation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Printing",
+    "type": "section"
   },
   "rq-8e661b0d": {
     "decl": "## Filename Grammar",
@@ -3351,6 +4096,30 @@
     "title": "Loading a directory is an error",
     "type": "scenario"
   },
+  "rq-8f6da1c2": {
+    "decl": "- `derived_value(key: &str, record: &Record, conditions: &ThermoConditions) -> Option<f64>`",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "derived_value",
+    "type": "api-item"
+  },
   "rq-8f9a701f": {
     "decl": "Scenario: Merge can write onto one of its inputs",
     "file": "collection",
@@ -3369,6 +4138,30 @@
     "refs": [],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-9063d573": {
+    "decl": "Scenario: A monomer without thermochemistry has no Gibbs reference",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A monomer without thermochemistry has no Gibbs reference",
+    "type": "scenario"
+  },
+  "rq-90e2ea3e": {
+    "decl": "Scenario: --sort name takes the nameless monomer as the reference",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--sort name takes the nameless monomer as the reference",
+    "type": "scenario"
   },
   "rq-91435a73": {
     "decl": "Scenario: A recorded failed run is classified failed",
@@ -3394,6 +4187,18 @@
     "title": "Detection",
     "type": "section"
   },
+  "rq-91d514c5": {
+    "decl": "Scenario: A zero frequency scale is a usage error",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A zero frequency scale is a usage error",
+    "type": "scenario"
+  },
   "rq-9215f506": {
     "decl": "Scenario: A record-carried composition wins over the name",
     "file": "composition",
@@ -3404,6 +4209,18 @@
       }
     ],
     "title": "A record-carried composition wins over the name",
+    "type": "scenario"
+  },
+  "rq-927eb1c6": {
+    "decl": "Scenario: A mode at the reference frequency weighs half",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A mode at the reference frequency weighs half",
     "type": "scenario"
   },
   "rq-92e3f3e9": {
@@ -3422,6 +4239,18 @@
     "title": "Detection",
     "type": "section"
   },
+  "rq-9503bcb2": {
+    "decl": "- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit) -> String`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "print_formation_section",
+    "type": "api-item"
+  },
   "rq-953a8521": {
     "decl": "Scenario: Version takes precedence over extra arguments",
     "file": "scaffolding",
@@ -3435,7 +4264,7 @@
     "type": "scenario"
   },
   "rq-953da4ce": {
-    "decl": "- `SortKey` — `El | Rg | Mass | Name`.",
+    "decl": "- `SortKey` — `El | G | Rg | Mass | Name`.",
     "file": "filtering",
     "refs": [
       {
@@ -3465,6 +4294,14 @@
     "title": "truncated",
     "type": "api-item"
   },
+  "rq-9613ceb9": {
+    "decl": "## Out of Scope",
+    "file": "thermo",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
   "rq-96595784": {
     "decl": "- `write_database(path: &Path, lines: &[String]) -> Result<(), DbError>`",
     "file": "database",
@@ -3476,6 +4313,18 @@
     ],
     "title": "write_database",
     "type": "api-item"
+  },
+  "rq-96a03a44": {
+    "decl": "Scenario: Undefined Gibbs metrics are mutually equal",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined Gibbs metrics are mutually equal",
+    "type": "scenario"
   },
   "rq-96b8c74d": {
     "decl": "- `MergeProblem` — `input: PathBuf`, `line: usize` (1-based), and",
@@ -3564,12 +4413,36 @@
     "title": "A declared fixture conforms",
     "type": "scenario"
   },
+  "rq-9936f168": {
+    "decl": "Scenario: The ORCA 6 fixture reproduces ORCA's quasi-RRHO thermochemistry",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The ORCA 6 fixture reproduces ORCA's quasi-RRHO thermochemistry",
+    "type": "scenario"
+  },
   "rq-99a2e2ce": {
     "decl": "- `geometry` — the `final structure:` block: an xyz-style table",
     "file": "parsers/xtb",
     "refs": [],
     "title": "geometry",
     "type": "api-item"
+  },
+  "rq-9a4270bc": {
+    "decl": "Scenario: --makereal prints the saddle point's thermochemistry",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--makereal prints the saddle point's thermochemistry",
+    "type": "scenario"
   },
   "rq-9a96e81c": {
     "decl": "### Crate Layout",
@@ -3645,6 +4518,18 @@
     "title": "An unknown status value fails deserialization",
     "type": "scenario"
   },
+  "rq-9c5b3a40": {
+    "decl": "Scenario: The section obeys the unit setting",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The section obeys the unit setting",
+    "type": "scenario"
+  },
   "rq-9d155d29": {
     "decl": "Scenario: Leading zeros in a count are accepted",
     "file": "composition",
@@ -3705,6 +4590,18 @@
     "title": "Functions",
     "type": "section"
   },
+  "rq-9dc99217": {
+    "decl": "Scenario: Undefined thermochemistry prints as a dash",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined thermochemistry prints as a dash",
+    "type": "scenario"
+  },
   "rq-9e36a525": {
     "decl": "### Functions",
     "file": "detection",
@@ -3712,6 +4609,18 @@
     "refs": [],
     "title": "Functions",
     "type": "section"
+  },
+  "rq-9e898298": {
+    "decl": "- `collect_monomers(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> MonomerReferences`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "collect_monomers",
+    "type": "api-item"
   },
   "rq-9ea7dfb5": {
     "decl": "Scenario: Rounding is floor-based for negative values",
@@ -3817,6 +4726,18 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-a14c7897": {
+    "decl": "- `MonomerReferences` — the per-code references in Eh:",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "MonomerReferences",
+    "type": "api-item"
+  },
   "rq-a1b00922": {
     "decl": "Scenario: A digit-only name does not resolve",
     "file": "composition",
@@ -3855,6 +4776,18 @@
     ],
     "title": "Reporting and Exit Codes",
     "type": "section"
+  },
+  "rq-a2ed39c8": {
+    "decl": "Scenario: A slightly bent triatomic is nonlinear",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A slightly bent triatomic is nonlinear",
+    "type": "scenario"
   },
   "rq-a37342d6": {
     "decl": "Scenario: The tail keeps the file's final unterminated line",
@@ -4025,6 +4958,19 @@
     "title": "Merge copies lines without re-serializing them",
     "type": "scenario"
   },
+  "rq-ac683d6d": {
+    "decl": "### Definedness",
+    "file": "thermo",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Definedness",
+    "type": "section"
+  },
   "rq-acd8f4f9": {
     "decl": "### Functions",
     "file": "collection",
@@ -4032,6 +4978,18 @@
     "refs": [],
     "title": "Functions",
     "type": "section"
+  },
+  "rq-aceaf96d": {
+    "decl": "Scenario: A degenerate geometry is undefined",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A degenerate geometry is undefined",
+    "type": "scenario"
   },
   "rq-acf714ae": {
     "decl": "Scenario: Print columns follow canonical order regardless of flag order",
@@ -4052,6 +5010,18 @@
     "refs": [],
     "title": "Detection",
     "type": "section"
+  },
+  "rq-ad851478": {
+    "decl": "Scenario: The Gibbs metric follows the run's conditions",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The Gibbs metric follows the run's conditions",
+    "type": "scenario"
   },
   "rq-ad88b915": {
     "decl": "## Gherkin Scenarios",
@@ -4111,6 +5081,18 @@
       }
     ],
     "title": "A hidden final structure leaves geometry absent",
+    "type": "scenario"
+  },
+  "rq-b02bcba1": {
+    "decl": "Scenario: Records without components form at neither level",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Records without components form at neither level",
     "type": "scenario"
   },
   "rq-b032b41c": {
@@ -4239,6 +5221,18 @@
     "title": "Status Classification",
     "type": "section"
   },
+  "rq-b46a6e05": {
+    "decl": "Scenario: A print-only run sees every loaded monomer",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A print-only run sees every loaded monomer",
+    "type": "scenario"
+  },
   "rq-b47001c1": {
     "decl": "- `ok` — the tail carries `Normal termination of Gaussian`.",
     "file": "parsers/gaussian",
@@ -4335,7 +5329,7 @@
     "type": "section"
   },
   "rq-b76b0761": {
-    "decl": "- `property_value(record: &Record, property: Property) -> Option<f64>`",
+    "decl": "- `property_value(record: &Record, property: Property, memo: &ThermoMemo) -> Option<f64>`",
     "file": "filtering",
     "refs": [
       {
@@ -4445,7 +5439,7 @@
     "type": "section"
   },
   "rq-bc3e1482": {
-    "decl": "- `apply_filters(records: &[Record], spec: &FilterSpec) -> Result<Vec<Record>,",
+    "decl": "- `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<Vec<Record>,",
     "file": "filtering",
     "refs": [
       {
@@ -4491,6 +5485,18 @@
     ],
     "title": "Lines in the elided middle are invisible",
     "type": "scenario"
+  },
+  "rq-bdd59f53": {
+    "decl": "- `thermochemistry(record: &Record, conditions: &ThermoConditions) -> Option<Thermo>`",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "thermochemistry",
+    "type": "api-item"
   },
   "rq-bdd60556": {
     "decl": "Scenario: Merge skips and reports corrupt lines in inputs",
@@ -4593,6 +5599,18 @@
     "title": "The last SCF Done wins",
     "type": "scenario"
   },
+  "rq-bf8fdacc": {
+    "decl": "Scenario: A saddle point's thermochemistry columns print dashes",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A saddle point's thermochemistry columns print dashes",
+    "type": "scenario"
+  },
   "rq-bfac850d": {
     "decl": "# Feature: Plain xyz Parser",
     "file": "parsers/xyz",
@@ -4635,6 +5653,27 @@
     ],
     "title": "Feature: Collection Command Line",
     "type": "file"
+  },
+  "rq-c32bf4fa": {
+    "decl": "### Functions",
+    "file": "thermo",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
+  "rq-c3425396": {
+    "decl": "## Formation Values",
+    "file": "formation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Formation Values",
+    "type": "section"
   },
   "rq-c3792c41": {
     "decl": "collection pipeline (`rqm/collection.md`).",
@@ -4728,6 +5767,18 @@
     "title": "An imaginary frequency keeps its sign",
     "type": "scenario"
   },
+  "rq-c879d42f": {
+    "decl": "Scenario: Sorting by Gibbs with undefined values last",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Sorting by Gibbs with undefined values last",
+    "type": "scenario"
+  },
   "rq-c8bfb90d": {
     "decl": "Scenario: Absent observables are omitted, never null",
     "file": "record",
@@ -4776,6 +5827,18 @@
     "title": "An empty name does not resolve",
     "type": "scenario"
   },
+  "rq-cb57c609": {
+    "decl": "Scenario: The frequency scale multiplies ZPE linearly",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The frequency scale multiplies ZPE linearly",
+    "type": "scenario"
+  },
   "rq-cb5c083c": {
     "decl": "Scenario: Blank lines are ignored",
     "file": "database",
@@ -4798,6 +5861,18 @@
       }
     ],
     "title": "A geometryless record survives only with a none-consensus",
+    "type": "scenario"
+  },
+  "rq-cc73801c": {
+    "decl": "Scenario: --makereal applies the participation test after flipping",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--makereal applies the participation test after flipping",
     "type": "scenario"
   },
   "rq-cd33a3de": {
@@ -4859,6 +5934,18 @@
     "title": "program_version",
     "type": "api-item"
   },
+  "rq-d04cc134": {
+    "decl": "Scenario: A degenerate geometry prints dashes, not infinities",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A degenerate geometry prints dashes, not infinities",
+    "type": "scenario"
+  },
   "rq-d0ee2621": {
     "decl": "### Types",
     "file": "parser-framework",
@@ -4875,7 +5962,7 @@
     "type": "api-item"
   },
   "rq-d157ebb2": {
-    "decl": "- `Property` — `El, Rg, Lf, Dip, Mass, Charge, Multiplicity, Natoms,",
+    "decl": "- `Property` — `El, G, Rg, Lf, Dip, Mass, Charge, Multiplicity, Natoms,",
     "file": "filtering",
     "refs": [
       {
@@ -5180,6 +6267,26 @@
     "title": "A normally terminated run yields the observable set",
     "type": "scenario"
   },
+  "rq-ded51dfb": {
+    "decl": "### Functions",
+    "file": "formation",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
+  "rq-df4e27e8": {
+    "decl": "Scenario: The registry exposes the five energy keys",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The registry exposes the five energy keys",
+    "type": "scenario"
+  },
   "rq-dfae85df": {
     "decl": "## Out of Scope",
     "file": "database",
@@ -5224,6 +6331,18 @@
     "title": "Geometry",
     "type": "api-item"
   },
+  "rq-e1c07994": {
+    "decl": "Scenario: Near-zero modes do not participate",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Near-zero modes do not participate",
+    "type": "scenario"
+  },
   "rq-e1c51ff7": {
     "decl": "Scenario: Short help flag behaves like --help",
     "file": "scaffolding",
@@ -5247,6 +6366,18 @@
     ],
     "title": "A pathological count range is a usage error",
     "type": "scenario"
+  },
+  "rq-e1e88e58": {
+    "decl": "- `classify_species(record: &Record) -> Option<SpeciesClass>` — the",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "classify_species",
+    "type": "api-item"
   },
   "rq-e21fcb88": {
     "decl": "- `tests/fixtures/manifest.json` — the fixture manifest (below).",
@@ -5457,6 +6588,26 @@
     "title": "mulliken_charges",
     "type": "api-item"
   },
+  "rq-e7f0ef7b": {
+    "decl": "Scenario: The g level follows the run's temperature",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The g level follows the run's temperature",
+    "type": "scenario"
+  },
+  "rq-e814b912": {
+    "decl": "## Feature API",
+    "file": "formation",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
   "rq-e8bb37c3": {
     "decl": "Scenario: Invalid UTF-8 bytes become replacement characters",
     "file": "parser-framework",
@@ -5524,6 +6675,14 @@
     "title": "parse_jkqc_name",
     "type": "api-item"
   },
+  "rq-eaee0fc4": {
+    "decl": "### Types",
+    "file": "thermo",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-eb256ed1": {
     "decl": "- `geometry` — the table under the header line",
     "file": "parsers/mrcc",
@@ -5558,6 +6717,13 @@
     ],
     "title": "A normally terminated opt+freq run yields the full observable set",
     "type": "scenario"
+  },
+  "rq-eb7da353": {
+    "decl": "- `tests/formation.rs` tests the scan and the values as pure functions",
+    "file": "formation",
+    "refs": [],
+    "title": "tests",
+    "type": "api-item"
   },
   "rq-ebaddd9d": {
     "decl": "Scenario: The last complete frame of a multi-frame file wins",
@@ -5627,6 +6793,18 @@
     "title": "Fortran float parsing accepts E, e, D, and d exponents",
     "type": "scenario"
   },
+  "rq-ed4da76f": {
+    "decl": "Scenario: Temperature changes every thermal term but not zpe",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Temperature changes every thermal term but not zpe",
+    "type": "scenario"
+  },
   "rq-ef146284": {
     "decl": "- `ReactedMode` — `Consensus` (`--reacted`, keep the majority pattern) or",
     "file": "detection",
@@ -5646,6 +6824,18 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-f03f140d": {
+    "decl": "Scenario: The symmetry number divides the rotational partition function",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The symmetry number divides the rotational partition function",
+    "type": "scenario"
   },
   "rq-f0785bb1": {
     "decl": "Scenario: A missing --out is a usage error",
@@ -5772,6 +6962,18 @@
     "title": "ok",
     "type": "api-item"
   },
+  "rq-f6d24cca": {
+    "decl": "Scenario: --makereal flips imaginary modes into the sums",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--makereal flips imaginary modes into the sums",
+    "type": "scenario"
+  },
   "rq-f832a4fa": {
     "decl": "## Merge Mode",
     "file": "collection",
@@ -5823,6 +7025,30 @@
     "title": "A missing status key reads as ok",
     "type": "scenario"
   },
+  "rq-f8ebbc84": {
+    "decl": "# Feature: Formation Energies from Monomer References",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Formation Energies from Monomer References",
+    "type": "file"
+  },
+  "rq-f9178b9d": {
+    "decl": "- `ThermoMemo` — the per-run derivation memo of the Performance section:",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ThermoMemo",
+    "type": "api-item"
+  },
   "rq-f94ef108": {
     "decl": "## Out of Scope",
     "file": "composition",
@@ -5855,6 +7081,18 @@
     "title": "--help prints usage",
     "type": "scenario"
   },
+  "rq-f9e49657": {
+    "decl": "Scenario: Zero temperature is a usage error",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Zero temperature is a usage error",
+    "type": "scenario"
+  },
   "rq-fa218770": {
     "decl": "## Feature API",
     "file": "composition",
@@ -5882,6 +7120,18 @@
     ],
     "title": "first_line_where falls back to the tail",
     "type": "scenario"
+  },
+  "rq-fb4ef102": {
+    "decl": "- `SpeciesClass` — `Monatomic | Linear | Nonlinear`.",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "SpeciesClass",
+    "type": "api-item"
   },
   "rq-fb64102b": {
     "decl": "Scenario: A chemical formula does not resolve",
@@ -5979,6 +7229,18 @@
     ],
     "title": "tests",
     "type": "api-item"
+  },
+  "rq-feddee4c": {
+    "decl": "Scenario: --reverse does not change the reference",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--reverse does not change the reference",
+    "type": "scenario"
   },
   "rq-ffaf4e5b": {
     "decl": "Scenario: A signature anywhere in a covered file is detected",

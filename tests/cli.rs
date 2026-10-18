@@ -1055,6 +1055,36 @@ fn cli_sort_keys_cover_rg_mass_and_name() {
     assert_eq!(stdout(&by_mass).trim(), "name\nhydrogen\ncarbon");
 }
 
+#[test] // rq-17ea1903
+fn cli_sort_name_puts_nameless_records_first() {
+    let dir = temp_dir();
+    let nameless = Record {
+        electronic_energy: Some(-1.0),
+        components: Some(
+            [("am", 1u32)]
+                .into_iter()
+                .map(|(code, count)| (code.to_string(), count))
+                .collect(),
+        ),
+        ..Record::default()
+    };
+    let db = database_in(
+        &dir,
+        &[
+            serde_json::to_string(&nameless).expect("nameless serializes"),
+            geom_line(
+                "named",
+                &[("am", 1)],
+                &["N", "N"],
+                &[0.0, 0.0, 0.0, 1.4, 0.0, 0.0],
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "name", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name\n-\nnamed");
+}
+
 #[test]
 fn mixed_inputs_with_print_flags_is_a_usage_error_once() {
     let dir = temp_dir();
@@ -1088,7 +1118,8 @@ fn every_cutoff_flag_wires_its_operator() {
         ],
     );
     // Relative: one group with minimum "deep"; "zero" sits exactly
-    // 0.62750947 kcal/mol above it (0.001 hartree), on the boundary.
+    // 0.6275094740631 kcal/mol above it (0.001 hartree), on the boundary —
+    // the threshold is the exact conversion so the boundary is bit-exact.
     let rel_path = dir.join("rel.jsonl");
     write_jsonl(
         &rel_path,
@@ -1098,6 +1129,7 @@ fn every_cutoff_flag_wires_its_operator() {
         ],
     );
     let rel_db = rel_path.to_string_lossy().into_owned();
+    let boundary = format!("{}", 0.001 * complied_jkqc::KCAL_MOL_PER_HARTREE);
     // (flag, database, threshold, expected names in file order)
     let cases: &[(&str, &str, &str, &str)] = &[
         ("--cut", "abs", "-0.5", "low\nat"),
@@ -1106,10 +1138,10 @@ fn every_cutoff_flag_wires_its_operator() {
         ("--filter-ge", "abs", "-0.5", "at\nhigh"),
         ("--is", "abs", "-0.5", "at"),
         ("--isnot", "abs", "-0.5", "low\nhigh"),
-        ("--cutr", "rel", "0.62750947", "zero\ndeep"),
-        ("--rel-filter-lt", "rel", "0.62750947", "deep"),
-        ("--passr", "rel", "0.62750947", ""),
-        ("--rel-filter-ge", "rel", "0.62750947", "zero"),
+        ("--cutr", "rel", &boundary, "zero\ndeep"),
+        ("--rel-filter-lt", "rel", &boundary, "deep"),
+        ("--passr", "rel", &boundary, ""),
+        ("--rel-filter-ge", "rel", &boundary, "zero"),
     ];
     for (flag, db_kind, threshold, expected) in cases {
         let db = if *db_kind == "abs" { &abs_db } else { &rel_db };
@@ -1122,4 +1154,688 @@ fn every_cutoff_flag_wires_its_operator() {
         };
         assert_eq!(stdout(&run).trim(), want, "{flag} {threshold}");
     }
+}
+
+// ---------------------------------------------------------------------------
+// Milestone 6: thermochemistry and formation scenarios from
+// `rqm/thermo.md` and `rqm/formation.md` that are CLI-shaped.
+// ---------------------------------------------------------------------------
+
+use complied_jkqc::filter::SortKey;
+use complied_jkqc::formation::{collect_monomers, formation_values};
+use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo};
+use complied_jkqc::Geometry;
+
+/// A serialized water-like record with geometry, optional frequencies and
+/// components, and an explicit electronic energy.
+fn thermo_record_json(
+    name: &str,
+    electronic_energy: Option<f64>,
+    comps: &[(&str, u32)],
+    frequencies: Option<&[f64]>,
+) -> String {
+    let mut record = Record {
+        name: Some(name.to_string()),
+        electronic_energy,
+        geometry: Some(Geometry {
+            symbols: ["O", "H", "H"]
+                .iter()
+                .map(|symbol| symbol.to_string())
+                .collect(),
+            coordinates: vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.9572, 0.9259, 0.0, -0.2423],
+        }),
+        vibrational_frequencies: frequencies.map(|values| values.to_vec()),
+        ..Record::default()
+    };
+    if !comps.is_empty() {
+        record.components = Some(
+            comps
+                .iter()
+                .map(|(code, count)| (code.to_string(), *count))
+                .collect(),
+        );
+    }
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// A record whose Gibbs free energy hits `target` exactly at the default
+/// conditions (the electronic energy absorbs the correction).
+fn gibbs_record(name: &str, target: f64, comps: &[(&str, u32)]) -> Record {
+    let mut record: Record = serde_json::from_str(&thermo_record_json(
+        name,
+        Some(0.0),
+        comps,
+        Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+    ))
+    .expect("template deserializes");
+    let correction = thermochemistry(&record, &ThermoConditions::default())
+        .expect("template defined")
+        .gibbs;
+    record.electronic_energy = Some(target - correction);
+    record
+}
+
+fn gibbs_json(name: &str, target: f64, comps: &[(&str, u32)]) -> String {
+    serde_json::to_string(&gibbs_record(name, target, comps)).expect("serialization")
+}
+
+fn db_with(dir: &TempDir, filename: &str, lines: &[String]) -> String {
+    let path = dir.join(filename);
+    let owned: Vec<&str> = lines.iter().map(String::as_str).collect();
+    write_jsonl(&path, &owned);
+    path.to_string_lossy().into_owned()
+}
+
+fn formation_row(stdout_text: &str, name: &str) -> Vec<String> {
+    for line in stdout_text.lines().skip(1) {
+        let cells: Vec<&str> = line.split(' ').collect();
+        if cells.first() == Some(&name) {
+            return cells.iter().map(|cell| cell.to_string()).collect();
+        }
+    }
+    panic!("no formation row for {name} in:\n{stdout_text}");
+}
+
+#[test] // rq-bf8fdacc
+fn a_saddle_point_s_thermochemistry_columns_print_dashes() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_record_json(
+            "saddle",
+            Some(-76.0),
+            &[("am", 2)],
+            Some(&[1000.0, -300.0]),
+        )],
+    );
+    let run = cjkqc(&[&db, "--name", "--zpe", "--h", "--s", "--g"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name zpe h s g\nsaddle - - - -");
+}
+
+#[test] // rq-d04cc134
+fn a_degenerate_geometry_prints_dashes_not_infinities() {
+    let dir = temp_dir();
+    let collapsed = Record {
+        name: Some("collapsed".to_string()),
+        electronic_energy: Some(-75.99),
+        geometry: Some(complied_jkqc::Geometry {
+            symbols: vec!["O".to_string(), "O".to_string()],
+            coordinates: vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        }),
+        vibrational_frequencies: Some(vec![1000.0, 2000.0]),
+        ..Record::default()
+    };
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&collapsed).expect("collapses serializes")],
+    );
+    let run = cjkqc(&[&db, "--name", "--zpe", "--h", "--s", "--g"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name zpe h s g\ncollapsed - - - -");
+}
+
+#[test] // rq-64567efa
+fn absurd_temperature_records_drop_out_of_glob() {
+    // A participating mode just above the cutoff diverges the vibrational
+    // sums at 1e17 K, so every record's Gibbs is undefined (not a
+    // comparable number): --glob treats the group as contributing nothing
+    // and the table is only its header (rqm/thermo.md Definedness,
+    // rqm/filtering.md).
+    let dir = temp_dir();
+    let line = |name: &str, energy: f64| {
+        let record = Record {
+            name: Some(name.to_string()),
+            electronic_energy: Some(energy),
+            geometry: Some(complied_jkqc::Geometry {
+                symbols: vec!["O".to_string(), "H".to_string(), "H".to_string()],
+                coordinates: vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.9572, 0.9259, 0.0, -0.2423],
+            }),
+            vibrational_frequencies: Some(vec![1.001, 1600.0, 3700.0]),
+            components: Some(
+                [("am", 2u32)]
+                    .into_iter()
+                    .map(|(code, count)| (code.to_string(), count))
+                    .collect(),
+            ),
+            ..Record::default()
+        };
+        serde_json::to_string(&record).expect("record serializes")
+    };
+    let db = database_in(&dir, &[line("hot", -75.99), line("cooler", -75.98)]);
+    let run = cjkqc(&[&db, "--temp", "1e17", "--glob", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name");
+    // The same records also print - for g, like any undefined value.
+    let printed = cjkqc(&[&db, "--temp", "1e17", "--name", "--g"]);
+    assert_eq!(printed.status.code(), Some(0), "{}", stderr(&printed));
+    assert_eq!(stdout(&printed).trim(), "name g\nhot -\ncooler -");
+}
+
+#[test] // rq-9a4270bc
+fn makereal_prints_the_saddle_point_s_thermochemistry() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_record_json(
+            "saddle",
+            Some(-76.0),
+            &[("am", 2)],
+            Some(&[1000.0, -300.0]),
+        )],
+    );
+    let run = cjkqc(&[&db, "--name", "--g", "--makereal"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let row: Vec<&str> = text.trim().lines().nth(1).unwrap().split(' ').collect();
+    assert_eq!(row[0], "saddle");
+    assert_ne!(row[1], "-", "the g cell must be defined: {}", row[1]);
+    assert!(row[1].parse::<f64>().is_ok());
+}
+
+#[test] // rq-0bcbeeb1
+fn makereal_leaves_the_raw_observables_alone() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_record_json(
+            "saddle",
+            Some(-76.0),
+            &[("am", 2)],
+            Some(&[1000.0, -300.0]),
+        )],
+    );
+    let run = cjkqc(&[&db, "--name", "--nimag", "--g", "--makereal"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let row: Vec<&str> = text.trim().lines().nth(1).unwrap().split(' ').collect();
+    assert_eq!(row[0], "saddle");
+    assert_ne!(row[1], "-", "g derives under --makereal");
+    assert!(row[1].parse::<f64>().is_ok());
+    assert_eq!(row[2], "1", "nimag still counts the imaginary mode");
+    // The lf cutoff property still sees the raw -300.0, so a window that
+    // only admits values below -200 keeps the record.
+    let kept = cjkqc(&[&db, "--name", "--filter-lt", "lf", "-200", "--makereal"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&kept));
+    assert_eq!(stdout(&kept).trim(), "name\nsaddle");
+}
+
+#[test] // rq-f9e49657
+fn a_nonpositive_temperature_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
+    let run = cjkqc(&[&db, "--temp", "0", "--name"]);
+    assert_eq!(run.status.code(), Some(2));
+    assert!(stderr(&run).contains("--temp"), "{}", stderr(&run));
+}
+
+#[test] // rq-87c46fa4
+fn a_negative_reference_frequency_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
+    let run = cjkqc(&[&db, "--fc", "-100", "--name"]);
+    assert_eq!(run.status.code(), Some(2));
+    assert!(stderr(&run).contains("--fc"), "{}", stderr(&run));
+}
+
+#[test] // rq-91d514c5
+fn a_zero_frequency_scale_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
+    let run = cjkqc(&[&db, "--fscale", "0", "--name"]);
+    assert_eq!(run.status.code(), Some(2));
+    assert!(stderr(&run).contains("--fscale"), "{}", stderr(&run));
+}
+
+#[test] // rq-0585b2ea
+fn settings_flags_alone_do_not_make_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
+    let run = cjkqc(&[&db, "--temp", "300"]);
+    assert_eq!(run.status.code(), Some(2));
+    assert!(stderr(&run).contains("--out"), "{}", stderr(&run));
+}
+
+#[test] // rq-9dc99217
+fn undefined_thermochemistry_prints_as_a_dash() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_record_json("undef", Some(-76.0), &[("am", 2)], None)],
+    );
+    let run = cjkqc(&[&db, "--name", "--g"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name g\nundef -");
+}
+
+#[test] // rq-c879d42f
+fn sorting_by_gibbs_orders_undefined_values_last() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            gibbs_json("warm", -100.0, &[("am", 1)]),
+            gibbs_json("cold", -100.5, &[("am", 1)]),
+            thermo_record_json("empty", None, &[("am", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "g", "--name", "--g"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let text = text.trim();
+    assert_eq!(
+        text, "name g\ncold -100.5000000000\nwarm -100.0000000000\nempty -",
+        "{text}"
+    );
+}
+
+#[test] // rq-573f5674
+fn glob_keeps_each_group_s_lowest_gibbs_record() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            gibbs_json("mid", 0.0, &[("am", 2)]),
+            gibbs_json("low", -1.0, &[("am", 2)]),
+            gibbs_json("high", 1.0, &[("am", 2)]),
+            gibbs_json("alone", 5.0, &[("sa", 1)]),
+        ],
+    );
+    let run = cjkqc(&[&db, "--glob", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name\nlow\nalone");
+}
+
+#[test] // rq-58808413
+fn glob_drops_a_group_whose_gibbs_is_all_undefined() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_record_json("bare", None, &[("am", 2)], None)],
+    );
+    let run = cjkqc(&[&db, "--glob", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "name");
+}
+
+#[test] // rq-4cd891c1
+fn uniqueness_rounds_gibbs_like_any_metric() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            gibbs_json("agree1", -100.0013, &[("am", 1)]),
+            gibbs_json("agree2", -100.0012, &[("am", 1)]),
+            gibbs_json("differs", -100.005, &[("am", 1)]),
+        ],
+    );
+    let run = cjkqc(&[&db, "--uniq", "g", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // The implicit el sort orders the records before the collapse; the
+    // first of the agreeing pair survives, the second drops.
+    assert_eq!(stdout(&run).trim(), "name\ndiffers\nagree1");
+}
+
+#[test] // rq-7f65572f
+fn the_unit_flag_converts_the_energy_columns_to_kcal_mol() {
+    let dir = temp_dir();
+    let line = thermo_record_json(
+        "warm",
+        Some(-1.5),
+        &[("am", 1)],
+        Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+    );
+    let db = db_with(&dir, "db.jsonl", &[line]);
+    let run = cjkqc(&[&db, "--el", "--zpe", "--h", "--s", "--g", "--unit"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let record: Record = serde_json::from_str(&db_line(&db, 0)).expect("record deserializes");
+    let thermo = thermochemistry(&record, &ThermoConditions::default()).unwrap();
+    let per_hartree = complied_jkqc::KCAL_MOL_PER_HARTREE;
+    let expected = format!(
+        "el zpe h s g\n{:.4} {:.4} {:.4} {:.4} {:.4}",
+        -1.5 * per_hartree,
+        thermo.zpe * per_hartree,
+        thermo.enthalpy * per_hartree,
+        thermo.entropy_term * per_hartree,
+        thermo.gibbs * per_hartree
+    );
+    assert_eq!(stdout(&run).trim(), expected);
+}
+
+#[test] // rq-8b4b5dc5
+fn without_unit_the_energies_remain_hartree() {
+    let dir = temp_dir();
+    let record = gibbs_record("warm", -1.0, &[("am", 1)]);
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[serde_json::to_string(&record).expect("serialization")],
+    );
+    let run = cjkqc(&[&db, "--g"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let thermo = thermochemistry(&record, &ThermoConditions::default()).unwrap();
+    let expected = format!("g\n{:.10}", thermo.gibbs);
+    assert_eq!(stdout(&run).trim(), expected);
+}
+
+#[test] // rq-48b6dd65
+fn a_value_passed_to_unit_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
+    let run = cjkqc(&[&db, "--unit", "kcal", "--name"]);
+    assert_eq!(run.status.code(), Some(2));
+}
+
+// --- formation scenarios (rqm/formation.md) ---
+
+#[test] // rq-feddee4c
+fn reverse_does_not_change_the_reference() {
+    let dir = temp_dir();
+    let cluster = gibbs_record("cluster", -49.0, &[("am", 1)]);
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            serde_json::to_string(&cluster).expect("serialization"),
+            gibbs_json("higher", -50.0, &[("am", 1)]),
+            gibbs_json("lower", -50.5, &[("am", 1)]),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "g", "--reverse", "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // The reference is the minimum-gibbs monomer (-50.5) regardless of
+    // --reverse.
+    let expected = format!("{:.10}", -49.0 - -50.5);
+    let row = formation_row(&stdout(&run), "cluster");
+    assert_eq!(row[2], expected, "{:?}", row);
+}
+
+#[test] // rq-1b6b5757
+fn the_formation_section_follows_the_table_and_precedes_the_summary() {
+    let dir = temp_dir();
+    let out = dir.join("kept.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-141.0),
+                &[("am", 2)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "sa1",
+                Some(-40.0),
+                &[("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--sort",
+        "el",
+        "--name",
+        "--el",
+        "--formation",
+        "--out",
+        &out_text,
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines[0], "name el", "the table comes first");
+    assert_eq!(lines[4], "name el g", "the section follows the table");
+    let _ = &out;
+    assert!(
+        lines.last().unwrap().contains("filtered 3 records into"),
+        "the summary closes the output: {text}"
+    );
+}
+
+#[test] // rq-0f78a33b
+fn formation_alone_is_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-90.0),
+                &[("am", 1), ("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stdout(&run).starts_with("name el g"), "{}", stdout(&run));
+    // No database file is written: the only file in the directory is the
+    // input itself.
+    let entries: Vec<_> = fs::read_dir(&dir)
+        .expect("read dir")
+        .map(|entry| {
+            entry
+                .expect("entry")
+                .file_name()
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect();
+    assert_eq!(entries, ["db.jsonl"], "{entries:?}");
+}
+
+#[test] // rq-043c29fe
+fn undefined_formation_levels_print_as_dashes() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-90.0),
+                &[("am", 1), ("na", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let row = formation_row(&stdout(&run), "cluster");
+    assert_eq!(row[1], "-", "{:?}: the na reference is missing", row);
+    assert_eq!(row[2], "-", "{:?}", row);
+}
+
+#[test] // rq-31a55ccc
+fn filtered_away_monomers_serve_as_no_references() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-90.0),
+                &[("am", 1), ("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "sa1",
+                Some(-40.0),
+                &[("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--extract", "1am1sa", "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let text = text.trim();
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 2, "only the cluster row prints: {text}");
+    assert_eq!(lines[1], "cluster - -", "{text}");
+}
+
+#[test] // rq-b46a6e05
+fn a_print_only_run_sees_every_loaded_monomer() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-90.0),
+                &[("am", 1), ("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "sa1",
+                Some(-40.0),
+                &[("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let row = formation_row(&stdout(&run), "cluster");
+    assert_ne!(row[1], "-", "{:?}: both references are loaded", row);
+    assert_ne!(row[2], "-", "{:?}", row);
+    // And the values are the stoichiometric ones.
+    let record: Record = serde_json::from_str(&db_line(&db, 0)).expect("record deserializes");
+    let references = collect_monomers(&loaded_records(&db), &ThermoMemo::default(), SortKey::El);
+    let formation = formation_values(&record, &references, &ThermoMemo::default());
+    assert_eq!(row[1], format!("{:.10}", formation.electronic.unwrap()));
+    assert_eq!(row[2], format!("{:.10}", formation.gibbs.unwrap()));
+}
+
+#[test] // rq-9c5b3a40
+fn the_section_obeys_the_unit_setting() {
+    let dir = temp_dir();
+    // A 1am1sa cluster whose formation energy is exactly -0.01 Eh.
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-90.01),
+                &[("am", 1), ("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "sa1",
+                Some(-40.0),
+                &[("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--unit"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let row = formation_row(&stdout(&run), "cluster");
+    let expected = format!("{:.4}", -0.01 * complied_jkqc::KCAL_MOL_PER_HARTREE);
+    assert_eq!(row[1], expected, "{:?}", row);
+}
+
+#[test] // rq-e7f0ef7b
+fn the_g_level_follows_the_run_s_temperature() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-90.0),
+                &[("am", 1), ("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "sa1",
+                Some(-40.0),
+                &[("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let warm = cjkqc(&[&db, "--formation", "--temp", "298.15"]);
+    let hot = cjkqc(&[&db, "--formation", "--temp", "350"]);
+    assert_eq!(warm.status.code(), Some(0), "{}", stderr(&warm));
+    assert_eq!(hot.status.code(), Some(0), "{}", stderr(&hot));
+    let warm_row = formation_row(&stdout(&warm), "cluster");
+    let hot_row = formation_row(&stdout(&hot), "cluster");
+    assert_eq!(
+        warm_row[1], hot_row[1],
+        "the el level ignores the temperature"
+    );
+    assert_ne!(warm_row[2], hot_row[2], "the g level follows it");
+}
+
+/// The record JSON line at `index` of a database file.
+fn db_line(path: &str, index: usize) -> String {
+    let records = fs::read_to_string(path).expect("read database");
+    records.lines().nth(index).expect("line exists").to_string()
+}
+
+/// Every record of a database file, in file order.
+fn loaded_records(path: &str) -> Vec<Record> {
+    load_database(std::path::Path::new(path))
+        .expect("load database")
+        .records
 }

@@ -14,11 +14,13 @@ use complied_jkqc::collect::{gather_inputs, CollectError, CollectOutcome, Gather
 use complied_jkqc::db;
 use complied_jkqc::filter::{
     apply_filters, parse_extract_query, print_table, CmpOp, Column, Cutoff, ExtractMode,
-    FilterSpec, Grouping, Mode, Property, SortKey,
+    FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
+use complied_jkqc::formation::{collect_monomers, print_formation_section};
 use complied_jkqc::metrics::parse_uniq_mode;
 use complied_jkqc::reacted::ReactedMode;
 use complied_jkqc::record::RecordStatus;
+use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
 
 /// The cutoff flags: clap arg id, comparison, and mode
 /// (`rqm/filtering.md`).
@@ -84,6 +86,10 @@ struct Cli {
     #[arg(long = "select")]
     select: Option<usize>,
 
+    /// Keep each group's lowest Gibbs free energy record.
+    #[arg(long = "glob")]
+    glob: bool,
+
     /// Shuffle the final result.
     #[arg(long = "shuffle")]
     shuffle: bool,
@@ -95,6 +101,31 @@ struct Cli {
     /// Treat the whole database as one group; extract compares names.
     #[arg(long = "noname")]
     noname: bool,
+
+    // --- settings flags: configure derivations and units (rqm/thermo.md) ---
+    /// Temperature in K for thermochemistry (default 298.15).
+    #[arg(long = "temp", allow_hyphen_values = true)]
+    temp: Option<f64>,
+
+    /// Quasi-harmonic reference frequency in cm^-1 (default 100; 0 = harmonic).
+    #[arg(long = "fc", allow_hyphen_values = true)]
+    fc: Option<f64>,
+
+    /// Vibrational frequency scale factor (default 1.0).
+    #[arg(long = "fscale", allow_hyphen_values = true)]
+    fscale: Option<f64>,
+
+    /// Flip imaginary frequencies to real inside the thermochemistry.
+    #[arg(long = "makereal")]
+    makereal: bool,
+
+    /// Print energies in kcal/mol instead of hartree; takes no value.
+    #[arg(long = "unit", num_args = 0..=1)]
+    unit: Option<Option<String>>,
+
+    /// Print the formation-energy section after the table.
+    #[arg(long = "formation")]
+    formation: bool,
 
     // --- cutoff flags: `--<flag> PROPERTY VALUE` (repeatable) ---
     #[arg(long = "cut", num_args = 2, value_names = ["PROPERTY", "VALUE"], allow_hyphen_values = true)]
@@ -129,6 +160,14 @@ struct Cli {
     method: bool,
     #[arg(long = "el")]
     el: bool,
+    #[arg(long = "zpe")]
+    zpe: bool,
+    #[arg(long = "h")]
+    h: bool,
+    #[arg(long = "s")]
+    s: bool,
+    #[arg(long = "g")]
+    g: bool,
     #[arg(long = "rg")]
     rg: bool,
     #[arg(long = "mass")]
@@ -232,6 +271,43 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         return usage("cannot combine --reacted with --reacted2");
     }
 
+    // Settings flags configure the derivations; invalid values are usage
+    // errors (`rqm/thermo.md`).
+    let temperature = cli.temp.unwrap_or(298.15);
+    if !temperature.is_finite() || temperature <= 0.0 {
+        return usage("--temp must be a temperature above 0 K");
+    }
+    let freq_cutoff = cli.fc.unwrap_or(100.0);
+    if !freq_cutoff.is_finite() || freq_cutoff < 0.0 {
+        return usage("--fc must be a reference frequency of at least 0 cm^-1");
+    }
+    let freq_scale = cli.fscale.unwrap_or(1.0);
+    if !freq_scale.is_finite() || freq_scale <= 0.0 {
+        return usage("--fscale must be a scale factor above 0");
+    }
+    let conditions = ThermoConditions {
+        temperature,
+        freq_cutoff,
+        freq_scale,
+        makereal: cli.makereal,
+    };
+    // One derivation memo for the whole run: every Gibbs-valued stage and
+    // every energy column shares it, so each record's thermochemistry is
+    // derived at most once (`rqm/thermo.md` Performance).
+    // rq-8b44ad8d
+    let memo = ThermoMemo::new(conditions);
+    // A plain `--unit` selects kcal/mol; a value after it is a usage error
+    // (the flag takes none, `rqm/thermo.md`).
+    let unit = match cli.unit {
+        None => Unit::Au,
+        Some(None) => Unit::Kcal,
+        Some(Some(value)) => {
+            return usage(&format!(
+                "--unit takes no value (got `{value}`); add it alone for kcal/mol"
+            ));
+        }
+    };
+
     let extract = if !cli.extract.is_empty() {
         Some((cli.extract.clone(), ExtractMode::Keep))
     } else if !cli.nextract.is_empty() {
@@ -251,6 +327,10 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         Column::Program => cli.program,
         Column::Method => cli.method,
         Column::El => cli.el,
+        Column::Zpe => cli.zpe,
+        Column::H => cli.h,
+        Column::S => cli.s,
+        Column::G => cli.g,
         Column::Rg => cli.rg,
         Column::Mass => cli.mass,
         Column::Dip => cli.dip,
@@ -266,7 +346,9 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         .copied()
         .filter(|column| set_print(*column))
         .collect();
-    let has_print = !columns.is_empty();
+    // `--formation` prints a section instead of a column but still counts
+    // as a print flag for the visible-outcome rule (`rqm/formation.md`).
+    let has_print = !columns.is_empty() || cli.formation;
 
     // A run must have a visible outcome (`rqm/filtering.md`); `has_manipulation`
     // and `has_print` are the single source of truth for the rule.
@@ -297,7 +379,19 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 Gathered::Build { records } => records,
                 Gathered::Merge { records, .. } => records,
             };
-            println!("{}", print_table(&records, &columns));
+            if !columns.is_empty() {
+                println!("{}", print_table(&records, &columns, &memo, unit));
+            }
+            // A print-only run has no --sort (that would be a
+            // manipulation), so the references use the el ordering
+            // (rqm/formation.md).
+            if cli.formation {
+                let references = collect_monomers(&records, &memo, SortKey::El);
+                println!(
+                    "{}",
+                    print_formation_section(&records, &references, &memo, unit)
+                );
+            }
         }
         return match &cli.out {
             Some(out) => run_collection(&inputs, out, cli.fout),
@@ -343,6 +437,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         sort,
         reverse: cli.reverse,
         select: cli.select,
+        glob: cli.glob,
         shuffle: cli.shuffle,
         seed: cli.seed.unwrap_or(0),
         grouping: if cli.noname {
@@ -351,7 +446,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             Grouping::Composition
         },
     };
-    records = match apply_filters(&records, &spec) {
+    records = match apply_filters(&records, &spec, &memo) {
         Ok(records) => records,
         Err(error) => {
             eprintln!("error: extract query: {error}");
@@ -359,8 +454,18 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         }
     };
 
-    if has_print {
-        println!("{}", print_table(&records, &columns));
+    if !columns.is_empty() {
+        println!("{}", print_table(&records, &columns, &memo, unit));
+    }
+    // The formation section prints after the table, before the summary,
+    // over the pipeline survivors (rqm/formation.md).
+    if cli.formation {
+        let sort_key = spec.sort.unwrap_or(SortKey::El);
+        let references = collect_monomers(&records, &memo, sort_key);
+        println!(
+            "{}",
+            print_formation_section(&records, &references, &memo, unit)
+        );
     }
 
     if let Some(out) = &cli.out {
@@ -465,6 +570,7 @@ fn manipulation_ids(cli: &Cli) -> Vec<&'static str> {
         ("sort", cli.sort.is_some()),
         ("reverse", cli.reverse),
         ("select", cli.select.is_some()),
+        ("glob", cli.glob),
         ("shuffle", cli.shuffle),
         ("noname", cli.noname),
     ] {
@@ -499,8 +605,22 @@ fn missing_out_usage() -> ExitCode {
 mod tests {
     use super::*;
 
-    /// Flags exempt from the manipulation/print accounting.
-    const EXEMPT_IDS: &[&str] = &["out", "fout", "seed", "help", "version"];
+    /// Flags exempt from the manipulation/print accounting: settings flags
+    /// are read into the conditions and unit, `--formation` into the
+    /// formation section, and the rest never affect the outcome rule.
+    const EXEMPT_IDS: &[&str] = &[
+        "out",
+        "fout",
+        "seed",
+        "help",
+        "version",
+        "temp",
+        "fc",
+        "fscale",
+        "makereal",
+        "unit",
+        "formation",
+    ];
 
     /// Every flag on `Cli` must be wired into `run`: a cutoff flag, a print
     /// column, or a manipulation flag reported by `manipulation_ids` (the
@@ -525,6 +645,7 @@ mod tests {
             "--reverse",
             "--select",
             "1",
+            "--glob",
             "--shuffle",
             "--noname",
         ]);

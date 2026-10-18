@@ -9,6 +9,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
 /// A resolved composition: component code to count. Keys are non-empty ASCII
 /// letter strings, matched case-sensitively (`Am` and `am` are distinct
@@ -30,11 +31,46 @@ pub struct Geometry {
     pub coordinates: Vec<f64>,
 }
 
+// ---------------------------------------------------------------------------
+// Hashing support for memo keys (`rqm/thermo.md` Performance).
+//
+// `Eq` on the float fields is unsound only for NaN, which record
+// validation rejects (`RecordInvalidity::NonFiniteFloat`). Floats hash by
+// canonical bit pattern — ±0.0 agree because `Eq` holds them equal — so
+// equal records always hash alike.
+// ---------------------------------------------------------------------------
+
+impl Eq for Geometry {}
+
+fn hash_f64<H: Hasher>(value: f64, state: &mut H) {
+    if value == 0.0 {
+        0u64.hash(state);
+    } else {
+        value.to_bits().hash(state);
+    }
+}
+
+fn hash_f64_slice<H: Hasher>(values: &[f64], state: &mut H) {
+    state.write_usize(values.len());
+    for value in values {
+        hash_f64(*value, state);
+    }
+}
+
+impl Hash for Geometry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.symbols.hash(state);
+        hash_f64_slice(&self.coordinates, state);
+    }
+}
+
 /// The outcome of a quantum-chemistry job, serialized as `"ok"`, `"failed"`,
 /// or `"truncated"`.
 ///
 /// (rq-f8505d7b)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum RecordStatus {
     /// The job converged; its observables are final.
@@ -181,6 +217,43 @@ pub struct Record {
     /// (rq-43be8f79 rq-ffc1bde0)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub components: Option<Components>,
+}
+
+// See the `Geometry` note: validation rejects the only reflexivity gap
+// (NaN), making the `Hash`/`Eq` pair sound for memo keys
+// (`rqm/thermo.md` Performance).
+impl Eq for Record {}
+
+impl Hash for Record {
+    /// A Hash over a subset of `Eq`'s fields: equal records hash alike,
+    /// and hashing the fewest fields keeps memo probes cheap. The subset
+    /// is hash-only — a cache hit is still confirmed by `Eq` over every
+    /// field (`rqm/thermo.md` Performance).
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self.electronic_energy {
+            Some(value) => {
+                1u8.hash(state);
+                hash_f64(value, state);
+            }
+            None => 0u8.hash(state),
+        }
+        match &self.geometry {
+            Some(geometry) => {
+                1u8.hash(state);
+                Hash::hash(geometry, state);
+            }
+            None => 0u8.hash(state),
+        }
+        match &self.vibrational_frequencies {
+            Some(values) => {
+                1u8.hash(state);
+                hash_f64_slice(values, state);
+            }
+            None => 0u8.hash(state),
+        }
+        self.multiplicity.hash(state);
+        self.rotational_symmetry_number.hash(state);
+    }
 }
 
 impl Record {

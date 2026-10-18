@@ -6,6 +6,7 @@ use complied_jkqc::filter::{
     apply_filters, extract_matches, parse_extract_query, property_value, CmpOp, Cutoff,
     ExtractMode, FilterSpec, Mode, Property, SortKey,
 };
+use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
 use complied_jkqc::{Components, Geometry, Record, RecordStatus, UniqKey, UniqMetric, UniqMode};
 
 fn components(pairs: &[(&str, u32)]) -> Components {
@@ -52,7 +53,7 @@ fn names(records: &[Record]) -> Vec<String> {
 }
 
 fn run(records: &[Record], spec: &FilterSpec) -> Vec<Record> {
-    apply_filters(records, spec).expect("pipeline")
+    apply_filters(records, spec, &ThermoMemo::default()).expect("pipeline")
 }
 
 #[test] // rq-9fa28264
@@ -222,7 +223,7 @@ fn apply_filters_reports_unparsable_queries_instead_of_dropping_records() {
         extract: Some((vec!["2am$".to_string()], ExtractMode::Keep)),
         ..FilterSpec::default()
     };
-    assert!(apply_filters(&records, &spec).is_err());
+    assert!(apply_filters(&records, &spec, &ThermoMemo::default()).is_err());
 }
 
 #[test] // rq-f43b5dbf
@@ -452,12 +453,195 @@ fn property_values_cover_the_cutoff_properties() {
         coordinates: vec![0.0, 0.0, 0.0, 0.74, 0.0, 0.0],
     });
     record.vibrational_frequencies = Some(vec![-50.0, 100.0, 200.0]);
-    assert_eq!(property_value(&record, Property::El), Some(-38.0));
-    assert_eq!(property_value(&record, Property::Lf), Some(-50.0));
-    assert_eq!(property_value(&record, Property::Charge), Some(-1.0));
-    assert_eq!(property_value(&record, Property::Multiplicity), Some(2.0));
-    assert_eq!(property_value(&record, Property::Natoms), Some(2.0));
-    assert_eq!(property_value(&record, Property::Nfreq), Some(3.0));
-    assert_eq!(property_value(&record, Property::Nimag), Some(1.0));
-    assert_eq!(property_value(&record, Property::Dip), None);
+    assert_eq!(
+        property_value(&record, Property::El, &ThermoMemo::default()),
+        Some(-38.0)
+    );
+    assert_eq!(
+        property_value(&record, Property::Lf, &ThermoMemo::default()),
+        Some(-50.0)
+    );
+    assert_eq!(
+        property_value(&record, Property::Charge, &ThermoMemo::default()),
+        Some(-1.0)
+    );
+    assert_eq!(
+        property_value(&record, Property::Multiplicity, &ThermoMemo::default()),
+        Some(2.0)
+    );
+    assert_eq!(
+        property_value(&record, Property::Natoms, &ThermoMemo::default()),
+        Some(2.0)
+    );
+    assert_eq!(
+        property_value(&record, Property::Nfreq, &ThermoMemo::default()),
+        Some(3.0)
+    );
+    assert_eq!(
+        property_value(&record, Property::Nimag, &ThermoMemo::default()),
+        Some(1.0)
+    );
+    assert_eq!(
+        property_value(&record, Property::Dip, &ThermoMemo::default()),
+        None
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Milestone 6: Gibbs-valued stages (rqm/thermo.md, rqm/filtering.md).
+// ---------------------------------------------------------------------------
+
+use complied_jkqc::filter::print_table;
+use complied_jkqc::filter::Column;
+use complied_jkqc::filter::Unit;
+use complied_jkqc::thermo::thermochemistry;
+
+fn default_conditions() -> ThermoConditions {
+    ThermoConditions::default()
+}
+
+/// A nonlinear water-like record with `components` whose Gibbs free energy
+/// hits `target` exactly.
+fn gibbs_record(name: &str, target: f64, comps: Option<Components>) -> Record {
+    let mut record = Record {
+        name: Some(name.to_string()),
+        electronic_energy: Some(0.0),
+        geometry: Some(Geometry {
+            symbols: ["O", "H", "H"].iter().map(|s| s.to_string()).collect(),
+            coordinates: vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.9572, 0.9259, 0.0, -0.2423],
+        }),
+        vibrational_frequencies: Some(vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+        components: comps,
+        ..Record::default()
+    };
+    let correction = thermochemistry(&record, &default_conditions())
+        .expect("template defined")
+        .gibbs;
+    record.electronic_energy = Some(target - correction);
+    record
+}
+
+#[test] // rq-60d713bc
+fn a_relative_gibbs_cutoff_window_works_per_group_in_kcal_mol() {
+    let am = Some(components(&[("am", 2)]));
+    let sa = Some(components(&[("sa", 1)]));
+    let records = vec![
+        gibbs_record("at-min", 0.0, am.clone()),
+        gibbs_record("above", 0.02, am),
+        gibbs_record("other-group", -5.0, sa),
+    ];
+    let spec = FilterSpec {
+        cutoffs: vec![cutoff(CmpOp::Le, Mode::Relative, Property::G, 5.0)],
+        ..FilterSpec::default()
+    };
+    // The 0.02 Eh record sits 12.6 kcal/mol above its group minimum and
+    // drops; the other group's minimum is its own reference and survives.
+    assert_eq!(names(&run(&records, &spec)), ["at-min", "other-group"]);
+}
+
+/// A planar ring of `atoms` carbons: a nonlinear geometry with 3N−6 modes.
+fn ring_record(name: &str, atoms: usize, mode_value: f64, comps: Option<Components>) -> Record {
+    let mut coordinates = Vec::new();
+    for atom in 0..atoms {
+        let angle = atom as f64 * 2.0 * std::f64::consts::PI / atoms as f64;
+        coordinates.extend([(atom % 7) as f64, angle.cos() * 3.0, angle.sin() * 3.0]);
+    }
+    let modes = 3 * atoms - 6;
+    let mut frequencies = vec![0.0; 6];
+    frequencies.resize(6 + modes, mode_value);
+    Record {
+        name: Some(name.to_string()),
+        electronic_energy: Some(0.0),
+        geometry: Some(Geometry {
+            symbols: vec!["C".to_string(); atoms],
+            coordinates,
+        }),
+        vibrational_frequencies: Some(frequencies),
+        components: comps,
+        ..Record::default()
+    }
+}
+
+#[test] // rq-658aba8c
+fn glob_keeps_each_group_s_gibbs_minimum_among_the_selected() {
+    // Group A: two stiff rings plus one very soft ring holding the group's
+    // lowest gibbs — but its electronic energy sorts it last, so --select 2
+    // (after the implicit el sort) excludes it before --glob runs.
+    let am = Some(components(&[("am", 2)]));
+    let sa = Some(components(&[("sa", 1)]));
+    let correction = |record: &Record| {
+        thermochemistry(record, &default_conditions())
+            .expect("ring thermochemistry defined")
+            .gibbs
+    };
+    let mut a = ring_record("a", 6, 2000.0, am.clone());
+    let mut b = ring_record("b", 6, 2000.0, am.clone());
+    let mut soft = ring_record("soft", 24, 2.0, am.clone());
+    let alone = ring_record("alone", 6, 2000.0, sa);
+    let soft_correction = correction(&soft); // with el = 0: gibbs == correction
+    a.electronic_energy = Some(-50.05);
+    b.electronic_energy = Some(-50.02);
+    soft.electronic_energy = Some(-50.10 - soft_correction); // gibbs = -50.10
+                                                             // Invariants the pipeline relies on, asserted for the record.
+    assert!(
+        soft.electronic_energy.unwrap() > b.electronic_energy.unwrap(),
+        "the soft ring must sort last by el"
+    );
+    let (g_a, g_b, g_soft) = (correction(&a), correction(&b), correction(&soft));
+    assert!(g_a < g_b, "the first selected ring holds the lower gibbs");
+    assert!(g_soft < g_a, "the excluded ring holds the group minimum");
+
+    let records = vec![a, b, soft, alone];
+    let spec = FilterSpec {
+        select: Some(2),
+        glob: true,
+        ..FilterSpec::default()
+    };
+    assert_eq!(names(&run(&records, &spec)), ["a", "alone"]);
+}
+
+#[test] // rq-58808413
+fn glob_drops_records_with_undefined_gibbs() {
+    // No electronic energy: undefined gibbs, so the group contributes
+    // nothing.
+    let mut bare = record("bare", None, Some(components(&[("am", 2)])));
+    bare.geometry = Some(Geometry {
+        symbols: vec!["H".to_string(), "H".to_string()],
+        coordinates: vec![0.0, 0.0, 0.0, 0.74, 0.0, 0.0],
+    });
+    let spec = FilterSpec {
+        glob: true,
+        ..FilterSpec::default()
+    };
+    assert_eq!(names(&run(&[bare], &spec)), Vec::<String>::new());
+}
+
+#[test] // rq-4ea8ca35
+fn energy_columns_print_kcal_mol_under_unit() {
+    let record = gibbs_record("warm", -1.0, Some(components(&[("am", 1)])));
+    let columns = [
+        Column::Name,
+        Column::El,
+        Column::Zpe,
+        Column::H,
+        Column::S,
+        Column::G,
+    ];
+    let kcal = print_table(
+        std::slice::from_ref(&record),
+        &columns,
+        &ThermoMemo::default(),
+        Unit::Kcal,
+    );
+    let thermo = thermochemistry(&record, &default_conditions()).unwrap();
+    let per_hartree = complied_jkqc::KCAL_MOL_PER_HARTREE;
+    let expected = format!(
+        "name el zpe h s g\nwarm {:.4} {:.4} {:.4} {:.4} {:.4}",
+        record.electronic_energy.unwrap() * per_hartree,
+        thermo.zpe * per_hartree,
+        thermo.enthalpy * per_hartree,
+        thermo.entropy_term * per_hartree,
+        thermo.gibbs * per_hartree
+    );
+    assert_eq!(kcal, expected);
 }
