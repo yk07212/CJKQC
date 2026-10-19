@@ -201,7 +201,10 @@ impl ParserRegistry {
 
     /// Reads the file with the default window sizes (seekable), then
     /// behaves as `parse_windows`, stamping `name` with the file stem and
-    /// `source_path` with the path verbatim as given. Filesystem-level
+    /// `source_path` with the file's canonical absolute path (symlinks and
+    /// `.`/`..` segments resolved, the Windows `\\?\` verbatim prefix
+    /// stripped); a path that cannot be canonicalized keeps `source_path`
+    /// verbatim as given — stamping never fails a parse. Filesystem-level
     /// failures — a missing file, an unreadable file, a directory —
     /// return `Err`; every content-level outcome is `Ok` with one
     /// record.
@@ -209,13 +212,23 @@ impl ParserRegistry {
     /// (rq-b28b6e69 rq-e4a815f2)
     pub fn parse_file(&self, path: &Path) -> Result<Record, ParseError> {
         let mut file = File::open(path).map_err(ParseError::from_io)?;
+        // Some filesystems report a directory's length as zero, where a
+        // directory read would otherwise slip through the window reader
+        // as an empty file; the metadata check makes a directory an `Err`
+        // everywhere.
+        if file.metadata().map_err(ParseError::from_io)?.is_dir() {
+            return Err(ParseError::Io {
+                kind: std::io::ErrorKind::IsADirectory,
+                reason: "is a directory".to_string(),
+            });
+        }
         let windows = FileWindows::from_seekable(&mut file, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES)
             .map_err(ParseError::from_io)?;
         let mut record = self.assemble(&windows);
         record.name = path
             .file_stem()
             .map(|stem| stem.to_string_lossy().into_owned());
-        record.source_path = Some(path.to_string_lossy().into_owned());
+        record.source_path = Some(source_path_of(path));
         Ok(record)
     }
 
@@ -282,6 +295,46 @@ fn failed_record(message: &str) -> Record {
     }
 }
 
+/// The value `parse_file` stamps into `Record::source_path`: the file's
+/// canonical absolute path — symlinks and `.`/`..` segments resolved, the
+/// Windows `\\?\` verbatim prefix stripped — so the record locates its
+/// source independently of the working directory and argument spelling of
+/// the invocation. A path that cannot be canonicalized keeps the path as
+/// given, verbatim: stamping never fails a parse.
+///
+/// (rq-e4a815f2)
+fn source_path_of(path: &Path) -> String {
+    match path.canonicalize() {
+        Ok(resolved) => strip_verbatim_prefix(&resolved)
+            .to_string_lossy()
+            .into_owned(),
+        Err(_) => path.to_string_lossy().into_owned(),
+    }
+}
+
+/// Strips the `\\?\` verbatim prefix (and folds the `\\?\UNC\` form back
+/// to `\\server\share`) that `Path::canonicalize` yields on Windows, so
+/// stored paths stay human-inspectable (`rqm/ARCHITECTURE.md`).
+///
+/// (rq-e4a815f2)
+#[cfg(windows)]
+fn strip_verbatim_prefix(path: &Path) -> std::path::PathBuf {
+    let text = path.as_os_str().to_string_lossy();
+    let stripped = match text.strip_prefix(r"\\?\") {
+        Some(rest) => rest,
+        None => &text,
+    };
+    match stripped.strip_prefix(r"UNC\") {
+        Some(unc) => std::path::PathBuf::from(format!(r"\\{unc}")),
+        None => std::path::PathBuf::from(stripped.to_string()),
+    }
+}
+
+#[cfg(not(windows))]
+fn strip_verbatim_prefix(path: &Path) -> &Path {
+    path
+}
+
 /// The lines following the last visible line satisfying `header`: every
 /// line from the first row-shaped one (`row` on its whitespace fields)
 /// through the last consecutive row-shaped one. Leading non-row lines
@@ -339,4 +392,48 @@ pub(crate) fn parse_vector3(fields: [&str; 3]) -> Option<[f64; 3]> {
         *slot = crate::parser::extract::parse_fortran_f64(field)?;
     }
     Some(vector)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::source_path_of;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    /// Restores the process working directory when dropped.
+    struct CwdGuard(PathBuf);
+
+    impl Drop for CwdGuard {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.0);
+        }
+    }
+
+    #[test] // rq-f7dd8d6f
+    #[cfg(unix)]
+    fn an_uncanonicalizable_path_falls_back_to_the_path_as_given() {
+        // Deleting the process's working directory orphans its inode:
+        // the directory keeps resolving as the root of a relative path
+        // while the filesystem can no longer name it, so canonicalizing
+        // any relative path fails and stamping falls back to the path as
+        // given. (An end-to-end `parse_file` run cannot reach this state:
+        // Linux refuses to create a file inside an unlinked directory,
+        // and canonicalization of an openable absolute path cannot fail.)
+        let base = std::env::temp_dir().join(format!(
+            "cjkqc-source-path-{}-{}",
+            std::process::id(),
+            COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        let inside = base.join("inside");
+        fs::create_dir_all(&inside).expect("create temp directories");
+        let _cwd = CwdGuard(std::env::current_dir().expect("current directory"));
+        std::env::set_current_dir(&inside).expect("enter the temp directory");
+        fs::remove_dir_all(&base).expect("delete the working directory");
+        let stamped = source_path_of(Path::new("job.log"));
+        drop(_cwd);
+        assert_eq!(stamped, "job.log");
+    }
 }

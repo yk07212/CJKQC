@@ -141,8 +141,31 @@ fn error_of(record: &Record) -> &str {
     record.error.as_deref().expect("error present")
 }
 
+/// The source_path the framework stamps for `path`: its canonical
+/// absolute path with the Windows verbatim prefix stripped, mirroring
+/// `rqm/parser-framework.md`.
+///
+/// (rq-e4a815f2)
 fn source_path_of(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
+    let canonical = path.canonicalize().expect("canonical source path");
+    let text = canonical.to_string_lossy();
+    let stripped = match text.strip_prefix(r"\\?\") {
+        Some(rest) => match rest.strip_prefix(r"UNC\") {
+            Some(unc) => format!(r"\\{unc}"),
+            None => rest.to_string(),
+        },
+        None => text.into_owned(),
+    };
+    stripped
+}
+
+/// Restores the process working directory when dropped.
+struct CwdGuard(PathBuf);
+
+impl Drop for CwdGuard {
+    fn drop(&mut self) {
+        let _ = std::env::set_current_dir(&self.0);
+    }
 }
 
 // --- Detection and routing ---
@@ -463,6 +486,61 @@ fn parse_windows_strips_identity_furnished_by_the_parser() {
     assert_eq!(record.program.as_deref(), Some("xyz"));
     assert_eq!(record.name, None);
     assert_eq!(record.source_path, None);
+}
+
+#[test] // rq-c5a229be
+fn a_relative_path_is_stamped_as_the_canonical_absolute_path() {
+    let dir = temp_dir();
+    write_file(&dir, "job.log", "MAGIC\nbody\n");
+    fs::create_dir(dir.join("elsewhere")).expect("create detour directory");
+    let canonical = source_path_of(&dir.join("job.log"));
+    let mut registry = ParserRegistry::new();
+    register_stub(&mut registry, Program::XTB, "MAGIC", Record::default());
+
+    // The only relative spelling resolves against the process working
+    // directory, which every other test here reaches only through
+    // absolute paths.
+    let _cwd = CwdGuard(std::env::current_dir().expect("current directory"));
+    std::env::set_current_dir(&dir).expect("enter the temp directory");
+    let record = registry
+        .parse_file(Path::new("./elsewhere/../job.log"))
+        .expect("parse file");
+    drop(_cwd);
+
+    assert_eq!(record.source_path, Some(canonical));
+    let segments: Vec<&str> = record
+        .source_path
+        .as_deref()
+        .expect("source path")
+        .split(std::path::MAIN_SEPARATOR)
+        .collect();
+    assert!(
+        !segments
+            .iter()
+            .any(|segment| *segment == "." || *segment == ".."),
+        "dot segments survived: {:?}",
+        record.source_path
+    );
+}
+
+#[test] // rq-75f85412
+#[cfg(unix)]
+fn a_symlinked_path_is_stamped_with_the_resolved_target() {
+    use std::os::unix::fs::symlink;
+
+    let dir = temp_dir();
+    let real = write_file(&dir, "real.log", "MAGIC\nbody\n");
+    let link = dir.join("link.log");
+    symlink(&real, &link).expect("create symlink");
+    let mut registry = ParserRegistry::new();
+    register_stub(&mut registry, Program::XTB, "MAGIC", Record::default());
+
+    let record = registry.parse_file(&link).expect("parse file");
+
+    // The identity names the file as given; the source locates the
+    // resolved target.
+    assert_eq!(record.name.as_deref(), Some("link"));
+    assert_eq!(record.source_path, Some(source_path_of(&real)));
 }
 
 #[test] // rq-219164a5

@@ -3496,6 +3496,18 @@
     "title": "Energies within the rounding agree and collapse",
     "type": "scenario"
   },
+  "rq-75f85412": {
+    "decl": "Scenario: A symlinked path is stamped with the resolved target",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A symlinked path is stamped with the resolved target",
+    "type": "scenario"
+  },
   "rq-761f2b95": {
     "decl": "Scenario: Detection ignores the file name and extension",
     "file": "parser-framework",
@@ -5908,6 +5920,18 @@
     "title": "validate rejects a geometry whose coordinates are not three per atom",
     "type": "scenario"
   },
+  "rq-c5a229be": {
+    "decl": "Scenario: A relative path is stamped as the canonical absolute path",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A relative path is stamped as the canonical absolute path",
+    "type": "scenario"
+  },
   "rq-c6367ec2": {
     "decl": "## Gherkin Scenarios",
     "file": "database",
@@ -7234,6 +7258,18 @@
       }
     ],
     "title": "--makereal flips imaginary modes into the sums",
+    "type": "scenario"
+  },
+  "rq-f7dd8d6f": {
+    "decl": "Scenario: An uncanonicalizable path falls back to the path as given",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An uncanonicalizable path falls back to the path as given",
     "type": "scenario"
   },
   "rq-f832a4fa": {

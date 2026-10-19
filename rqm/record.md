@@ -26,7 +26,11 @@ else", `rqm/ARCHITECTURE.md`).
     (single-point corrections, monomer references) and the input to
     composition resolution (`rqm/composition.md`).
   - `source_path: Option<String>` — path of the QC output file the record was
-    parsed from, verbatim as given to the tool.
+    parsed from: the file's canonical absolute path (symlinks and `.`/`..`
+    segments resolved, and on Windows the `\\?\` verbatim prefix stripped),
+    so a record locates its source independently of the directory and spelling
+    the tool was invoked with. When the path cannot be canonicalized, the
+    path as given to the tool is kept verbatim.
   - `program: Option<String>` — lowercase program token (`"xtb"`, `"gaussian"`,
     `"orca"`, `"mrcc"`, `"xyz"`); the parser framework owns the exact
     vocabulary.
@@ -155,7 +159,7 @@ records and databases always carry the canonical units above.
 Example line:
 
 ```json
-{"status":"ok","name":"1dma","source_path":"xtb/1dma.log","program":"xtb","method":"GFN2-xTB","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1],"components":{"dma":1}}
+{"status":"ok","name":"1dma","source_path":"/scratch/runs/xtb/1dma.log","program":"xtb","method":"GFN2-xTB","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1],"components":{"dma":1}}
 ```
 
 ## Out of Scope <!-- rq-bed9e94b -->

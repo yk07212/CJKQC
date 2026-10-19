@@ -100,7 +100,9 @@ runs (`rqm/ARCHITECTURE.md`).
     streams combine `FileWindows::from_stream` with this entry.
   - `parse_file(&self, path: &Path) -> Result<Record, ParseError>` — reads
     the file with the default window sizes (seekable), then behaves as
-    `parse_windows`. Filesystem-level failures — a missing file, an
+    `parse_windows`, stamping `name` with the file stem and `source_path`
+    with the file's canonical absolute path (verbatim as given when
+    canonicalization fails). Filesystem-level failures — a missing file, an
     unreadable file, a directory — return `Err`; every content-level
     outcome is `Ok` with one record.
 
@@ -226,7 +228,12 @@ module:
 - The parser fills the observables, `status`, and `error`; the framework
   then stamps `program` with the matched parser's token (authoritative),
   and — for `parse_file` only — `name` with the file stem and
-  `source_path` with the path verbatim as given. `parse_windows` leaves
+  `source_path` with the file's canonical absolute path: symlinks and
+  `.`/`..` segments resolved against the filesystem, and on Windows the
+  `\\?\` verbatim prefix stripped, so the record locates its source
+  independently of the invocation's working directory and argument
+  spelling. A path that cannot be canonicalized keeps `source_path` as
+  given, verbatim; stamping never fails a parse. `parse_windows` leaves
   `name` and `source_path` absent.
 - A non-empty file whose head matches no registered parser yields a record
   with status `failed`, an error mentioning the unrecognized output format,
@@ -291,7 +298,7 @@ Feature: Format detection and parser framework
     Then Ok is returned with exactly one record
     And the record has status failed
     And the record's error mentions the unrecognized output format
-    And the record has name "job" and source_path "job.log"
+    And the record has name "job" and source_path equal to the canonical absolute path of "job.log"
     And the record has no program
 
   @rq-033ff671
@@ -302,7 +309,7 @@ Feature: Format detection and parser framework
     And a file "run.out" whose first line is "MAGIC"
     When parse_file is called on "run.out"
     Then the record has program "xtb"
-    And the record has name "run" and source_path "run.out"
+    And the record has name "run" and source_path equal to the canonical absolute path of "run.out"
     And the record has electronic_energy -19.3
 
   @rq-761f2b95
@@ -417,6 +424,27 @@ Feature: Format detection and parser framework
     Then the record has program "xyz"
     And the record has no name and no source_path
 
+  @rq-c5a229be
+  Scenario: A relative path is stamped as the canonical absolute path
+    Given a file "job.log" in the current working directory
+    When parse_file is called on "./elsewhere/../job.log"
+    Then the record's source_path is the file's canonical absolute path
+    And source_path contains no "." or ".." segments
+
+  @rq-75f85412
+  Scenario: A symlinked path is stamped with the resolved target
+    Given a file "real.log" in the current working directory
+    And a symlink "link.log" pointing at "real.log"
+    When parse_file is called on "link.log"
+    Then the record's source_path equals the canonical absolute path of "real.log"
+
+  @rq-f7dd8d6f
+  Scenario: An uncanonicalizable path falls back to the path as given
+    Given a source path whose canonicalization fails
+    When the source_path stamping is applied to "job.log"
+    Then the stamped source_path is "job.log", verbatim
+    And stamping fails nothing
+
   @rq-219164a5
   Scenario: The parser's status and error are preserved verbatim
     Given the registry contains a parser that returns a record with
@@ -433,7 +461,7 @@ Feature: Format detection and parser framework
     When parse_file is called on "bad.log"
     Then the record has status failed
     And the record's error mentions the invalid record
-    And the record has name "bad", source_path "bad.log", and the parser's program
+    And the record has name "bad", source_path equal to the canonical absolute path of "bad.log", and the parser's program
 
   @rq-58b86d07
   Scenario: An empty file yields a failed record
@@ -442,7 +470,7 @@ Feature: Format detection and parser framework
     When parse_file is called on "empty.log"
     Then the record has status failed
     And the record's error mentions that the file is empty
-    And the record has name "empty" and source_path "empty.log"
+    And the record has name "empty" and source_path equal to the canonical absolute path of "empty.log"
 
   @rq-447f650f
   Scenario: A missing file is an Io error
