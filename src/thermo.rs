@@ -30,7 +30,11 @@ pub const KCAL_MOL_PER_HARTREE: f64 = 627.5094740631;
 
 /// A frequency at or below this value (cm⁻¹) never participates in the
 /// vibrational sums: programs print near-zero translational and rotational
-/// contaminant modes there (ORCA's "Cut-Off Frequency 1.00 cm⁻¹").
+/// contaminant modes there (ORCA's "Cut-Off Frequency 1.00 cm⁻¹"). This
+/// participation cut is independent of the parser's `TRIVIAL_MODE_CUTOFF`
+/// (`src/parser/extract.rs`): the record archives every mode above that
+/// printed-zero recognizer, and the derivation re-filters soft modes below
+/// 1.0 cm⁻¹ here.
 const FREQ_PARTICIPATION_CUTOFF: f64 = 1.0;
 
 /// The run's thermochemistry settings: temperature (`--temp`),

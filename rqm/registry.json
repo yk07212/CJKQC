@@ -114,7 +114,12 @@
   "rq-03fd1a40": {
     "decl": "- `vibrational_frequencies` — the values of every `eigval :` line following",
     "file": "parsers/xtb",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      }
+    ],
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
@@ -670,7 +675,12 @@
   "rq-17559f33": {
     "decl": "- `vibrational_frequencies` — the entries of the last `VIBRATIONAL",
     "file": "parsers/orca",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      }
+    ],
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
@@ -1219,6 +1229,18 @@
       }
     ],
     "title": "A missing input is fatal and writes nothing",
+    "type": "scenario"
+  },
+  "rq-27c965f2": {
+    "decl": "Scenario: A list of only trivial modes filters to empty",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A list of only trivial modes filters to empty",
     "type": "scenario"
   },
   "rq-28fce0b1": {
@@ -2271,6 +2293,18 @@
       }
     ],
     "title": "Fractional decimal counts are accepted",
+    "type": "scenario"
+  },
+  "rq-48469bb2": {
+    "decl": "Scenario: A frequency section of only trivial modes leaves the field absent",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A frequency section of only trivial modes leaves the field absent",
     "type": "scenario"
   },
   "rq-486289b7": {
@@ -5243,6 +5277,18 @@
     "title": "ExtractMode",
     "type": "api-item"
   },
+  "rq-b0fc2983": {
+    "decl": "Scenario: Near-zero trivial modes are dropped and real modes are kept",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Near-zero trivial modes are dropped and real modes are kept",
+    "type": "scenario"
+  },
   "rq-b177c1e4": {
     "decl": "Scenario: Appending zero records to a missing file creates nothing",
     "file": "database",
@@ -5782,6 +5828,18 @@
     "title": "Feature: Collection Command Line",
     "type": "file"
   },
+  "rq-c2963543": {
+    "decl": "Scenario: A leading imaginary mode survives the trivial-mode drop",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A leading imaginary mode survives the trivial-mode drop",
+    "type": "scenario"
+  },
   "rq-c32bf4fa": {
     "decl": "### Functions",
     "file": "thermo",
@@ -5802,6 +5860,34 @@
     ],
     "title": "Formation Values",
     "type": "section"
+  },
+  "rq-c37111b1": {
+    "decl": "- `vibrational_modes(values: &[f64]) -> Vec<f64>` — keeps the genuine",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/extract.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "vibrational_modes",
+    "type": "api-item"
   },
   "rq-c3792c41": {
     "decl": "collection pipeline (`rqm/collection.md`).",
@@ -5929,6 +6015,18 @@
       }
     ],
     "title": "Undefined metrics are mutually equal",
+    "type": "scenario"
+  },
+  "rq-caa759ba": {
+    "decl": "Scenario: A magnitude at or below the cutoff never survives",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A magnitude at or below the cutoff never survives",
     "type": "scenario"
   },
   "rq-cae3826b": {
@@ -6143,6 +6241,18 @@
     "refs": [],
     "title": "detect",
     "type": "api-item"
+  },
+  "rq-d2e47781": {
+    "decl": "Scenario: A block of only trivial eigenvalues leaves the field absent",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A block of only trivial eigenvalues leaves the field absent",
+    "type": "scenario"
   },
   "rq-d431309b": {
     "decl": "Scenario: A corrupt line in a merged input is skipped and reported",
@@ -7006,6 +7116,18 @@
       }
     ],
     "title": "An empty database loads as zero records",
+    "type": "scenario"
+  },
+  "rq-f11e09b1": {
+    "decl": "Scenario: Trivial modes are dropped and a genuine imaginary mode is kept",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Trivial modes are dropped and a genuine imaginary mode is kept",
     "type": "scenario"
   },
   "rq-f1754e10": {

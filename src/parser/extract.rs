@@ -1,7 +1,9 @@
 //! Shared extraction helpers: every per-format parser composes from these
 //! rather than duplicating logic — the Fortran-style float parser, the
-//! atomic-number-to-symbol map, and the columnar geometry-table reader
-//! shared by the plain-xyz, Gaussian, ORCA, and MRCC layouts.
+//! atomic-number-to-symbol map, the columnar geometry-table reader shared
+//! by the plain-xyz, Gaussian, ORCA, and MRCC layouts, and the
+//! vibrational-mode filter that keeps genuine modes and drops the
+//! translational/rotational trivial ones.
 //!
 //! (rq-d59dac72)
 
@@ -12,6 +14,19 @@ use crate::record::Geometry;
 ///
 /// (rq-0a70b97d)
 pub const BOHR_TO_ANGSTROM: f64 = 0.529177210903;
+
+/// The magnitude boundary that recognizes the printed translational and
+/// rotational trivial modes of a full Cartesian Hessian: an entry survives
+/// `vibrational_modes` exactly when its absolute value exceeds it. Programs
+/// print those modes as `0.00` or `-0.00` (magnitude below 0.005), so a cut
+/// of 0.01 cm⁻¹ drops them while keeping any genuine soft or imaginary
+/// mode. This is a printed-zero recognizer, deliberately distinct from the
+/// derivation's 1.0 cm⁻¹ participation test in `src/thermo.rs`: the record
+/// archives every mode above this cut and the derivation re-filters at its
+/// own boundary.
+///
+/// (rq-c37111b1)
+pub const TRIVIAL_MODE_CUTOFF: f64 = 0.01;
 
 /// Title-case element symbols for atomic numbers 1–118, in order.
 ///
@@ -202,4 +217,25 @@ where
         symbols,
         coordinates,
     })
+}
+
+/// Keeps the genuine vibrational modes of a parsed frequency list and
+/// drops the translational and rotational trivial modes: an entry
+/// survives exactly when its absolute value exceeds
+/// `TRIVIAL_MODE_CUTOFF`, in input order and with the sign preserved.
+/// Programs print the trivial modes as `0.00` or `-0.00`, so they fall to
+/// the cut whatever their printed sign or position; a genuine soft or
+/// imaginary mode is never dropped, and no ordering assumption is needed —
+/// which matters because xtb sorts eigenvalues ascending and prints
+/// imaginary modes before the zeros. The Gaussian, ORCA, and XTB parsers
+/// pass their parsed frequency lists through it before storing, so the
+/// convention holds program-independently.
+///
+/// (rq-c37111b1)
+pub fn vibrational_modes(values: &[f64]) -> Vec<f64> {
+    values
+        .iter()
+        .filter(|value| value.abs() > TRIVIAL_MODE_CUTOFF)
+        .copied()
+        .collect()
 }

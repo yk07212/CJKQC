@@ -1,13 +1,14 @@
 //! ORCA output files: chained driver jobs whose final job governs the
 //! record — the last `FINAL SINGLE POINT ENERGY`, the final Cartesian
-//! geometry, the canonical `VIBRATIONAL FREQUENCIES` section (all 3N
-//! modes, minus sign on imaginary ones), and the final population, dipole,
-//! and point-group analyses. Detection is the ASCII-art banner.
+//! geometry, the genuine vibrational modes of the canonical
+//! `VIBRATIONAL FREQUENCIES` section (trivial modes dropped, minus sign
+//! on imaginary ones), and the final population, dipole, and point-group
+//! analyses. Detection is the ASCII-art banner.
 //!
 //! (rq-0aab8d11)
 
 use crate::parser::extract::{
-    parse_fortran_f64, read_geometry_table, LengthUnits, SymbolColumn, TableSpec,
+    parse_fortran_f64, read_geometry_table, vibrational_modes, LengthUnits, SymbolColumn, TableSpec,
 };
 use crate::parser::{
     first_line_offset, parse_vector3, rows_after_last, FileWindows, Parser, Program,
@@ -126,21 +127,27 @@ impl Parser for OrcaParser {
             },
         );
 
-        // All 3N modes of the canonical frequency section, as printed —
-        // the near-zero translational modes included, imaginary modes
-        // negative. The section ends at the rule before the IR table.
-        // rq-eb7784d8 rq-9d9e798e rq-69c48453
-        let mut frequencies: Vec<f64> = Vec::new();
+        // The genuine vibrational modes of the canonical frequency
+        // section: the printed values pass through the shared trivial-mode
+        // filter (near-zero translational/rotational entries dropped,
+        // imaginary modes negative). The section ends at the rule before
+        // the IR table.
+        // rq-eb7784d8 rq-9d9e798e rq-69c48453 rq-17559f33
+        let mut parsed_frequencies: Vec<f64> = Vec::new();
         let mut started = false;
         for line in windows.after_last_line_where(|line| line.trim() == "VIBRATIONAL FREQUENCIES") {
             let fields: Vec<&str> = line.split_whitespace().collect();
             if is_frequency_row(&fields) {
-                frequencies.push(frequency_value(fields[1]).unwrap_or_default());
+                // `is_frequency_row` has already proven the value parses.
+                parsed_frequencies
+                    .push(frequency_value(fields[1]).expect("frequency row checked parseable"));
                 started = true;
             } else if started {
                 break;
             }
         }
+        // rq-c37111b1
+        let frequencies = vibrational_modes(&parsed_frequencies);
 
         // The dipole vector in atomic units, unchanged.
         // rq-ec125e27

@@ -158,6 +158,26 @@ module:
     constant `BOHR_TO_ANGSTROM = 0.529177210903` (CODATA 2018), defined
     once in the extract module.
 
+- `vibrational_modes(values: &[f64]) -> Vec<f64>` — keeps the genuine <!-- rq-c37111b1 -->
+  vibrational modes of a parsed frequency list and drops the translational
+  and rotational trivial modes: an entry survives exactly when its absolute
+  value exceeds `TRIVIAL_MODE_CUTOFF = 0.01` cm⁻¹, in input order and with
+  the sign preserved. Programs print the trivial modes of a full Cartesian
+  Hessian as `0.00` or `-0.00` — magnitudes below 0.005, so they fall to
+  the cut whatever their printed sign or position; a genuine soft mode
+  (a weakly bound or floppy system legitimately printing, say, 0.5) or
+  imaginary mode is kept, and — because programs such as xtb sort
+  eigenvalues ascending and print imaginary modes before the zeros — no
+  ordering assumption is needed. The cut is a printed-zero recognizer,
+  deliberately distinct from the derivation's 1.0 cm⁻¹ participation test
+  (`rqm/thermo.md`): the record archives every mode above 0.01 and the
+  derivation re-filters at its own boundary, so a soft mode below 1.0 is
+  stored and simply does not participate. The Gaussian, ORCA, and XTB
+  parsers pass their parsed frequency lists through it before storing, so
+  the record's vibrational-mode convention holds program-independently
+  (`rqm/parsers/gaussian.md`, `rqm/parsers/orca.md`,
+  `rqm/parsers/xtb.md`).
+
 ### Crate Layout <!-- rq-15f15563 -->
 
 - The framework lives in `src/parser/`: `mod.rs` (the `Parser` trait,
@@ -550,6 +570,23 @@ Feature: Format detection and parser framework
   Scenario: Atomic numbers outside 1 to 118 map to nothing
     When element_symbol is called on 0 and 119
     Then it returns None for both
+
+  # --- Vibrational mode filtering ---
+
+  @rq-b0fc2983
+  Scenario: Near-zero trivial modes are dropped and real modes are kept
+    When vibrational_modes is called on [0.0, -0.0, 0.0, 0.5, -57.3, 3831.6]
+    Then it returns [0.5, -57.3, 3831.6]
+
+  @rq-caa759ba
+  Scenario: A magnitude at or below the cutoff never survives
+    When vibrational_modes is called on [0.01, -0.01, 0.004, -0.004]
+    Then it returns an empty list
+
+  @rq-27c965f2
+  Scenario: A list of only trivial modes filters to empty
+    When vibrational_modes is called on six printed zeros including -0.0
+    Then it returns an empty list
 
   # --- Window honesty over the fixture corpus ---
 

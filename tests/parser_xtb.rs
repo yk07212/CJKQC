@@ -101,8 +101,7 @@ fn completed_run_yields_full_observable_set() {
     assert_eq!(geometry.symbols, ["O", "H", "H"]);
     assert_eq!(geometry.coordinates[0], 0.1);
     let frequencies = record.vibrational_frequencies.expect("frequencies");
-    assert_eq!(frequencies.len(), 9);
-    assert_eq!(frequencies[6], 232.39);
+    assert_eq!(frequencies, vec![232.39, 273.07, -57.3]);
     assert_eq!(record.dipole_moment, Some([-0.546489, -0.297958, -0.0]));
     assert_eq!(record.mulliken_charges, Some(vec![-0.5, 0.25, 0.25]));
     assert_eq!(record.rotational_symmetry_number, None);
@@ -145,6 +144,34 @@ fn negative_frequencies_keep_their_sign() {
     let record = parse(&completed_log());
     let frequencies = record.vibrational_frequencies.expect("frequencies");
     assert!(frequencies.contains(&-57.3));
+    assert!(!frequencies.contains(&0.0));
+}
+
+// rq-c2963543
+#[test]
+fn a_leading_imaginary_mode_survives_the_trivial_mode_drop() {
+    let content = completed_log()
+        .replace(
+            "-0.00    -0.00     0.00     0.00     0.00     0.00",
+            "-57.30     -0.00     -0.00     0.00     0.00",
+        )
+        .replace(
+            "232.39   273.07   -57.30",
+            "0.00     0.00   232.39   273.07",
+        );
+    let record = parse(&content);
+    assert_eq!(
+        record.vibrational_frequencies,
+        Some(vec![-57.3, 232.39, 273.07])
+    );
+}
+
+// rq-d2e47781
+#[test]
+fn a_block_of_only_trivial_eigenvalues_leaves_the_field_absent() {
+    let content = completed_log().replace("232.39   273.07   -57.30", "0.00     0.00");
+    let record = parse(&content);
+    assert_eq!(record.vibrational_frequencies, None);
 }
 
 // rq-ce1b9305

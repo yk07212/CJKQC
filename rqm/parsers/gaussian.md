@@ -58,6 +58,11 @@ in an elided window yields an absent observable, never a guess.
 - `vibrational_frequencies` — every value on every <!-- rq-363a8a65 -->
   `Frequencies --` line of the last frequency job, in printed order
   (up to three values per line); a leading minus marks an imaginary mode.
+  The parsed values pass through `vibrational_modes`
+  (`rqm/parser-framework.md`) like every other program's: Gaussian
+  prints no translational/rotational modes, so the filter is inert on
+  its tables, but the record's vibrational-mode convention holds
+  program-independently.
 - `dipole_moment` — the `X= <x> Y= <y> Z= <z>` values of the last <!-- rq-d5dd0577 -->
   `Dipole moment (field-independent basis, Debye):` line, converted from
   Debye to e·a₀ by dividing by `DEBYE_PER_E_A0`.
@@ -83,8 +88,7 @@ in an elided window yields an absent observable, never a guess.
 - Route parsing into separate functional/basis fields — `method` is the
   route text; normalization is a reporting concern.
 - Link-0 echo sections (`$D`, `23\0\\` lines) and basis-set dumps.
-- Translational/rotational frequency filtering and thermochemistry
-  recomputation — downstream (`rqm/ARCHITECTURE.md`).
+- Thermochemistry recomputation — downstream (`rqm/ARCHITECTURE.md`).
 
 ## Gherkin Scenarios <!-- rq-7a42c9fb -->
 

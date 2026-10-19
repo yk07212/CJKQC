@@ -63,6 +63,6 @@ pub use parser::{
 };
 // rq-15f15563
 pub use parser::extract::{
-    element_symbol, parse_fortran_f64, read_geometry_table, LengthUnits, SymbolColumn, TableSpec,
-    BOHR_TO_ANGSTROM,
+    element_symbol, parse_fortran_f64, read_geometry_table, vibrational_modes, LengthUnits,
+    SymbolColumn, TableSpec, BOHR_TO_ANGSTROM, TRIVIAL_MODE_CUTOFF,
 };

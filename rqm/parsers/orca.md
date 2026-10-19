@@ -18,8 +18,11 @@ units, and frequencies in cm⁻¹, so extraction is unit-preserving.
 
 The frequency list is the `VIBRATIONAL FREQUENCIES` section, not the
 thermochemistry summary tables: that section carries all 3N modes with an
-explicit minus sign on imaginary modes, and near-zero translational/
-rotational entries are filtered downstream, not in the parser.
+explicit minus sign on imaginary modes. The record stores only genuine
+vibrational modes — the six near-zero translational/rotational entries
+are dropped by the shared `vibrational_modes` extractor at extraction
+time (`rqm/parser-framework.md`), the same convention as the Gaussian
+table, which prints no trivial modes at all.
 
 ## Feature API <!-- rq-45c63967 -->
 
@@ -56,8 +59,11 @@ in an elided window yields an absent observable, never a guess.
 - `vibrational_frequencies` — the entries of the last `VIBRATIONAL <!-- rq-17559f33 -->
   FREQUENCIES` section: lines `<mode>: <value> cm**-1` (an optional
   trailing `i` on the value also marks an imaginary mode and is stored as
-  the negative value); the section ends at its trailing rule. All 3N
-  entries are stored as printed, the six near-zero modes included.
+  the negative value); the section ends at its trailing rule. The parsed
+  values pass through `vibrational_modes`: near-zero translational/
+  rotational entries are dropped, every genuine mode — imaginary included
+  — is stored as printed, and a section whose visible modes are all
+  trivial leaves the field absent.
 - `dipole_moment` — the `Total Dipole Moment    :     <x> <y> <z>` line of <!-- rq-21041eac -->
   the last `DIPOLE MOMENT` block, in atomic units, stored unchanged.
 - `mulliken_charges` — the values of the rows `<idx> <El> : <q>` under the <!-- rq-80fdb0f3 -->
@@ -120,9 +126,22 @@ Feature: ORCA parser
     And the record has program_version "6.0.0" and method "wB97x-3c"
     And the record has charge 0 and multiplicity 1
     And the record has electronic_energy equal to the last FINAL SINGLE POINT ENERGY
-    And the record has the final geometry, all frequencies including the six near-zeros,
-    Mulliken charges, and dipole
+    And the record has the final geometry, every vibrational frequency
+    except the six near-zeros, Mulliken charges, and dipole
     And the record has rotational_symmetry_number 1
+
+  @rq-f11e09b1
+  Scenario: Trivial modes are dropped and a genuine imaginary mode is kept
+    Given a VIBRATIONAL FREQUENCIES section with six 0.00 modes followed by
+    a -42.13 imaginary mode and real modes 38.55 and 3641.12
+    When the content is parsed
+    Then the stored frequencies are -42.13, 38.55, and 3641.12
+
+  @rq-48469bb2
+  Scenario: A frequency section of only trivial modes leaves the field absent
+    Given a VIBRATIONAL FREQUENCIES section holding only 0.00 modes
+    When the content is parsed
+    Then the record has no vibrational_frequencies
 
   @rq-b7387503
   Scenario: A single-point-only run reports the last job's values

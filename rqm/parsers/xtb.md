@@ -52,8 +52,11 @@ in an elided window yields an absent observable, never a guess.
   (count, comment, symbol/Å rows) read with `read_geometry_table`.
 - `vibrational_frequencies` — the values of every `eigval :` line following <!-- rq-03fd1a40 -->
   the last `projected vibrational frequencies` header, up to the first
-  non-`eigval` line; values are stored as printed (a leading minus marks an
-  imaginary mode).
+  non-`eigval` line; the parsed values pass through `vibrational_modes`,
+  so the near-zero translational/rotational eigenvalues (printed `-0.00`
+  or `0.00`) are dropped and every genuine mode keeps its printed sign (a
+  leading minus marks an imaginary mode); a block whose visible
+  eigenvalues are all trivial leaves the field absent.
 - `dipole_moment` — the `total` row of the last `Atomic dipole moments` <!-- rq-f4c1072b -->
   block, `(x, y, z)` in atomic units (e·a₀), stored unchanged.
 - `mulliken_charges` — the charge column (`q`) of the last `Atomic charges <!-- rq-e7bbca13 -->
@@ -136,6 +139,20 @@ Feature: XTB parser
     Given an eigval line containing -0.00 and -57.3
     When the content is parsed
     Then the stored frequencies include -57.3
+    And the stored frequencies exclude the -0.0 entry
+
+  @rq-c2963543
+  Scenario: A leading imaginary mode survives the trivial-mode drop
+    Given eigval lines holding, in ascending order, -57.3 then six
+    near-zero eigenvalues then real modes
+    When the content is parsed
+    Then the stored frequencies start with -57.3 and hold no near-zero value
+
+  @rq-d2e47781
+  Scenario: A block of only trivial eigenvalues leaves the field absent
+    Given an eigval block holding only -0.00 and 0.00 values
+    When the content is parsed
+    Then the record has no vibrational_frequencies
 
   @rq-ce1b9305
   Scenario: A run without its end marker is truncated

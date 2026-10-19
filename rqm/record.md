@@ -40,7 +40,12 @@ else", `rqm/ARCHITECTURE.md`).
   - `multiplicity: Option<u32>` — spin multiplicity, at least 1.
   - `geometry: Option<Geometry>` — the structure (see `Geometry`).
   - `vibrational_frequencies: Option<Vec<f64>>` — harmonic frequencies in
-    cm⁻¹, sign preserved (a negative value marks an imaginary mode).
+    cm⁻¹, sign preserved (a negative value marks an imaginary mode). Only
+    genuine vibrational modes: the translational and rotational trivial
+    modes some programs print at near-zero magnitude are dropped during
+    extraction (`rqm/parser-framework.md`). A frequency section whose
+    visible modes are all trivial leaves the field `None`, like any other
+    observable an elided or absent section yields.
   - `gradient: Option<Vec<f64>>` — Cartesian energy gradient in hartree/Å,
     row-major: exactly three values per atom, in geometry atom order.
   - `dipole_moment: Option<[f64; 3]>` — dipole moment vector in atomic units
@@ -150,7 +155,7 @@ records and databases always carry the canonical units above.
 Example line:
 
 ```json
-{"status":"ok","name":"1dma","source_path":"xtb/1dma.log","program":"xtb","method":"GFN2-xTB","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1,1689.7,1023.4,3600.2,1490.3,1100.9],"components":{"dma":1}}
+{"status":"ok","name":"1dma","source_path":"xtb/1dma.log","program":"xtb","method":"GFN2-xTB","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1],"components":{"dma":1}}
 ```
 
 ## Out of Scope <!-- rq-bed9e94b -->

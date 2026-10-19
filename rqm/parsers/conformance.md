@@ -22,7 +22,11 @@ that both opens xyz-shaped and bears a program banner is claimed by xyz.
 The expected values in the manifest come from the JKQC ground-truth tables
 checked into the corpus as `examples.pkl` (one per program directory); the
 manifest is the machine-readable encoding of those tables, and the pickles
-remain as provenance. A fixture with no `examples.pkl` row — one added after
+remain as provenance. A `vibrational_frequencies` expectation is stated in
+the record's vibrational-mode convention: near-zero
+translational/rotational entries in the raw tables or in the program's own
+printing are not part of the expected list (`rqm/parser-framework.md`).
+A fixture with no `examples.pkl` row — one added after
 the tables were cut, such as an extra corpus case — carries expectations
 hand-verified against the program's own printed values in the file. The
 framework's window contract and record assembly

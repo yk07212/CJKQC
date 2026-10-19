@@ -1,13 +1,14 @@
 //! xtb (GFN-xTB family) stdout logs: the run's final `TOTAL ENERGY`, the
-//! optimized structure, the Hessian frequencies, and the population and
-//! dipole analysis of the last single point. Detection is the version
-//! banner; every observable comes from the last visible occurrence of its
-//! marker block. The normal-exit banner governs status.
+//! optimized structure, the genuine Hessian frequencies (trivial modes
+//! dropped), and the population and dipole analysis of the last single
+//! point. Detection is the version banner; every observable comes from
+//! the last visible occurrence of its marker block. The normal-exit
+//! banner governs status.
 //!
 //! (rq-cd5bd6c0)
 
 use crate::parser::extract::{
-    parse_fortran_f64, read_geometry_table, LengthUnits, SymbolColumn, TableSpec,
+    parse_fortran_f64, read_geometry_table, vibrational_modes, LengthUnits, SymbolColumn, TableSpec,
 };
 use crate::parser::{
     first_line_offset, is_integer, parse_vector3, rows_after_last, FileWindows, Parser, Program,
@@ -142,10 +143,12 @@ impl Parser for XtbParser {
             },
         );
 
-        // The projected frequencies printed after the numerical Hessian;
-        // values keep their printed sign (a minus marks imaginary).
-        // rq-68850338 rq-5882d984
-        let mut frequencies: Vec<f64> = Vec::new();
+        // The projected frequencies printed after the numerical Hessian:
+        // the parsed values pass through the shared trivial-mode filter
+        // (near-zero translational/rotational eigenvalues dropped); every
+        // genuine mode keeps its printed sign (a minus marks imaginary).
+        // rq-68850338 rq-5882d984 rq-03fd1a40
+        let mut parsed_frequencies: Vec<f64> = Vec::new();
         let mut started = false;
         for line in windows.after_last_line_where(|line| {
             line.trim_start()
@@ -153,7 +156,7 @@ impl Parser for XtbParser {
         }) {
             let fields: Vec<&str> = line.split_whitespace().collect();
             if fields.first() == Some(&"eigval") {
-                frequencies.extend(
+                parsed_frequencies.extend(
                     fields
                         .iter()
                         .skip(2)
@@ -164,6 +167,8 @@ impl Parser for XtbParser {
                 break;
             }
         }
+        // rq-c37111b1
+        let frequencies = vibrational_modes(&parsed_frequencies);
 
         // The molecule's dipole from the last property printout, already
         // in atomic units.

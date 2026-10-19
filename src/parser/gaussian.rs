@@ -7,7 +7,7 @@
 //! (rq-33106344)
 
 use crate::parser::extract::{
-    parse_fortran_f64, read_geometry_table, LengthUnits, SymbolColumn, TableSpec,
+    parse_fortran_f64, read_geometry_table, vibrational_modes, LengthUnits, SymbolColumn, TableSpec,
 };
 use crate::parser::{
     first_line_offset, is_integer, parse_vector3, rows_after_last, FileWindows, Parser, Program,
@@ -167,27 +167,33 @@ impl Parser for GaussianParser {
             )
         };
 
-        // Every printed frequency of the final frequency job; a leading
-        // minus marks an imaginary mode. The final job is delimited by
-        // the last geometry table in the tail, so a chained run with more
-        // than one frequency job contributes only its last one.
-        // rq-d8a0968b rq-c7886a80 rq-2d633569 rq-363a8a65
+        // Every printed frequency of the final frequency job, passed
+        // through the shared trivial-mode filter like every other program
+        // so the record's vibrational-mode convention holds
+        // program-independently; Gaussian prints no trivial modes, so the
+        // filter is inert on its tables. A leading minus marks an imaginary
+        // mode. The final job is delimited by the last geometry table in
+        // the tail, so a chained run with more than one frequency job
+        // contributes only its last one.
+        // rq-d8a0968b rq-c7886a80 rq-2d633569 rq-363a8a65 rq-c37111b1
         let tail_lines: Vec<&str> = windows.tail.lines().collect();
         let job_start = tail_lines
             .iter()
             .rposition(|line| line.trim_start().starts_with("Standard orientation:"))
             .map_or(0, |position| position + 1);
-        let mut frequencies: Vec<f64> = Vec::new();
+        let mut parsed_frequencies: Vec<f64> = Vec::new();
         for line in &tail_lines[job_start..] {
             let fields: Vec<&str> = line.split_whitespace().collect();
             if fields.len() >= 3 && fields[0] == "Frequencies" && fields[1] == "--" {
-                frequencies.extend(
+                parsed_frequencies.extend(
                     fields[2..]
                         .iter()
                         .filter_map(|value| parse_fortran_f64(value)),
                 );
             }
         }
+        // rq-c37111b1
+        let frequencies = vibrational_modes(&parsed_frequencies);
 
         // The ground-state dipole, converted from Debye to e·a₀.
         // rq-d8a0968b rq-58995f44

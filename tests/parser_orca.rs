@@ -45,9 +45,12 @@ const FREQUENCIES: &str = "VIBRATIONAL FREQUENCIES\n\
      \x20  0:       0.00 cm**-1\n\
      \x20  1:       0.00 cm**-1\n\
      \x20  2:       0.00 cm**-1\n\
-     \x20  3:    1595.77 cm**-1\n\
-     \x20  4:    1650.33 cm**-1\n\
-     \x20  5:    3831.60 cm**-1\n\
+     \x20  3:       0.00 cm**-1\n\
+     \x20  4:       0.00 cm**-1\n\
+     \x20  5:       0.00 cm**-1\n\
+     \x20  6:    1595.77 cm**-1\n\
+     \x20  7:    1650.33 cm**-1\n\
+     \x20  8:    3831.60 cm**-1\n\
      -----------------------\n\
      IR SPECTRUM\n\n";
 
@@ -114,7 +117,7 @@ fn terminated_opt_freq_run_yields_full_observable_set() {
     assert_eq!(geometry.coordinates[2], 0.11779);
     assert_eq!(
         record.vibrational_frequencies,
-        Some(vec![0.0, 0.0, 0.0, 1595.77, 1650.33, 3831.6])
+        Some(vec![1595.77, 1650.33, 3831.6])
     );
     assert_eq!(record.dipole_moment, Some([0.0, 0.0, 0.733977]));
     assert_eq!(
@@ -155,10 +158,52 @@ fn last_single_point_energy_line_wins() {
 // rq-9d9e798e
 #[test]
 fn imaginary_modes_keep_their_sign() {
-    let content = completed_log().replace("   3:    1595.77 cm**-1", "   6:     -42.13 cm**-1");
+    let content = completed_log().replace("   6:    1595.77 cm**-1", "   6:     -42.13 cm**-1");
     let record = parse(&content);
     let frequencies = record.vibrational_frequencies.expect("frequencies");
     assert!(frequencies.contains(&-42.13), "{frequencies:?}");
+}
+
+// rq-f11e09b1
+#[test]
+fn trivial_modes_are_dropped_and_a_genuine_imaginary_mode_is_kept() {
+    let section = "VIBRATIONAL FREQUENCIES\n\
+         -----------------------\n\
+         \x20  0:       0.00 cm**-1\n\
+         \x20  1:       0.00 cm**-1\n\
+         \x20  2:       0.00 cm**-1\n\
+         \x20  3:       0.00 cm**-1\n\
+         \x20  4:       0.00 cm**-1\n\
+         \x20  5:       0.00 cm**-1\n\
+         \x20  6:     -42.13 cm**-1\n\
+         \x20  7:      38.55 cm**-1\n\
+         \x20  8:    3641.12 cm**-1\n\
+         -----------------------\n\
+         IR SPECTRUM\n\n";
+    let content = completed_log().replace(FREQUENCIES, section);
+    let record = parse(&content);
+    assert_eq!(
+        record.vibrational_frequencies,
+        Some(vec![-42.13, 38.55, 3641.12])
+    );
+}
+
+// rq-48469bb2
+#[test]
+fn a_frequency_section_of_only_trivial_modes_leaves_the_field_absent() {
+    let section = "VIBRATIONAL FREQUENCIES\n\
+         -----------------------\n\
+         \x20  0:       0.00 cm**-1\n\
+         \x20  1:       0.00 cm**-1\n\
+         \x20  2:       0.00 cm**-1\n\
+         \x20  3:       0.00 cm**-1\n\
+         \x20  4:       0.00 cm**-1\n\
+         \x20  5:       0.00 cm**-1\n\
+         -----------------------\n\
+         IR SPECTRUM\n\n";
+    let content = completed_log().replace(FREQUENCIES, section);
+    let record = parse(&content);
+    assert_eq!(record.vibrational_frequencies, None);
 }
 
 // rq-a5fee06d
@@ -243,7 +288,7 @@ fn corpus_fixture_conforms() {
     assert_eq!(record.geometry.expect("geometry").symbols.len(), 34);
     assert_eq!(
         record.vibrational_frequencies.expect("frequencies").len(),
-        102
+        96
     );
     assert_eq!(record.rotational_symmetry_number, Some(1));
 }

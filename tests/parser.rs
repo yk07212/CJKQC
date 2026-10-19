@@ -12,9 +12,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use complied_jkqc::{
-    element_symbol, first_line_offset, parse_fortran_f64, read_geometry_table, FileWindows,
-    LengthUnits, ParseError, Parser, ParserRegistry, Program, Record, RecordStatus, SymbolColumn,
-    TableSpec, BOHR_TO_ANGSTROM, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES,
+    element_symbol, first_line_offset, parse_fortran_f64, read_geometry_table, vibrational_modes,
+    FileWindows, LengthUnits, ParseError, Parser, ParserRegistry, Program, Record, RecordStatus,
+    SymbolColumn, TableSpec, BOHR_TO_ANGSTROM, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES,
 };
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -868,6 +868,32 @@ fn atomic_numbers_map_to_title_case_element_symbols() {
 fn atomic_numbers_outside_1_to_118_map_to_nothing() {
     assert_eq!(element_symbol(0), None);
     assert_eq!(element_symbol(119), None);
+}
+
+// --- Vibrational mode filtering ---
+
+#[test] // rq-b0fc2983
+fn near_zero_trivial_modes_are_dropped_and_real_modes_are_kept() {
+    assert_eq!(
+        vibrational_modes(&[0.0, -0.0, 0.0, 0.5, -57.3, 3831.6]),
+        vec![0.5, -57.3, 3831.6]
+    );
+}
+
+#[test] // rq-caa759ba
+fn a_magnitude_at_or_below_the_cutoff_never_survives() {
+    assert_eq!(
+        vibrational_modes(&[0.01, -0.01, 0.004, -0.004]),
+        Vec::<f64>::new()
+    );
+}
+
+#[test] // rq-27c965f2
+fn a_list_of_only_trivial_modes_filters_to_empty() {
+    assert_eq!(
+        vibrational_modes(&[-0.0, -0.0, 0.0, 0.0, 0.0, 0.0]),
+        Vec::<f64>::new()
+    );
 }
 
 // --- Window honesty over the fixture corpus ---

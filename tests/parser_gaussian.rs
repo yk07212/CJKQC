@@ -118,6 +118,31 @@ fn imaginary_frequency_keeps_its_sign() {
     assert_eq!(&frequencies[..3], &[-105.2345, 46.2953, 54.2757]);
 }
 
+// rq-363a8a65 rq-c37111b1
+#[test]
+fn printed_trivial_modes_are_dropped_from_the_table() {
+    let content = completed_log().replace(
+        "Frequencies --     30.7923                46.2953                54.2757",
+        "Frequencies --       0.0000                -0.0000               54.2757",
+    );
+    let record = parse(&content);
+    assert_eq!(
+        record.vibrational_frequencies,
+        Some(vec![54.2757, 1650.33, 3831.6, 4000.01])
+    );
+}
+
+// rq-363a8a65 rq-c37111b1
+#[test]
+fn a_frequency_table_of_only_trivial_modes_leaves_the_field_absent() {
+    let content = completed_log().replace(
+        FREQUENCIES.trim_end(),
+        "Frequencies --       0.0000                -0.0000                0.0000",
+    );
+    let record = parse(&content);
+    assert_eq!(record.vibrational_frequencies, None);
+}
+
 // rq-363a8a65
 #[test]
 fn only_the_last_frequency_job_is_stored() {
