@@ -1,4 +1,4 @@
-//! MRCC energy-program outputs: the echoed input deck (version, method,
+//! MRCC energy-program outputs: the echoed input deck (version, command,
 //! charge, spin), the canonical bohr-unit geometry table, and the final
 //! energy summary whose last total-energy line — the program's best
 //! answer, MP2 corrections included for local-correlation runs — is the
@@ -17,29 +17,34 @@ use crate::record::{Record, RecordStatus};
 /// (rq-d72bb4c5)
 pub struct MrccParser;
 
-/// `calc=<x>` with optional `/basis=<y>`, from the original-case input
-/// echo (the lowercased `Keywords:` block comes later).
-// rq-b8a853f8
-fn method_from_echo(head: &str) -> Option<String> {
-    let mut calc: Option<String> = None;
-    let mut basis: Option<String> = None;
-    for line in head.lines() {
-        if line.trim() == "Keywords:" {
+/// The command: the echoed `Input file:` deck's keyword lines (original
+/// case), joined with single spaces, ending before the first `mem=`,
+/// `charge=`, `mult=`, or `geom=` line; charge and multiplicity live in
+/// their own record fields. An empty block or a missing echo leaves the
+/// command absent.
+// rq-b2af2117 rq-b8a853f8
+fn command_from_echo(head: &str) -> Option<String> {
+    const STOP_KEYS: [&str; 4] = ["mem=", "charge=", "mult=", "geom="];
+    let (_, deck) = head.split_once("Input file:")?;
+    let mut keywords: Vec<&str> = Vec::new();
+    for line in deck.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if STOP_KEYS.iter().any(|key| trimmed.starts_with(key)) {
             break;
         }
-        let trimmed = line.trim();
-        if calc.is_none() && trimmed.starts_with("calc=") {
-            calc = Some(trimmed["calc=".len()..].to_string());
-        }
-        if basis.is_none() && trimmed.starts_with("basis=") {
-            basis = Some(trimmed["basis=".len()..].to_string());
+        match trimmed.split_once('=') {
+            Some((key, value))
+                if !key.is_empty() && !key.contains(char::is_whitespace) && !value.is_empty() =>
+            {
+                keywords.push(trimmed);
+            }
+            _ => break,
         }
     }
-    let calc = calc?;
-    match basis.filter(|value| value != "none") {
-        Some(basis) => Some(format!("{calc}/{basis}")),
-        None => Some(calc),
-    }
+    (!keywords.is_empty()).then(|| keywords.join(" "))
 }
 
 /// A final-total-energy line of the energy summary: a `Total … energy …
@@ -74,7 +79,7 @@ impl Parser for MrccParser {
             .and_then(|line| line.split_whitespace().nth(1).map(String::from));
 
         // rq-de12aef8
-        let method = method_from_echo(&windows.head);
+        let command = command_from_echo(&windows.head);
 
         let charge = windows
             .first_line_where(|line| {
@@ -162,7 +167,7 @@ impl Parser for MrccParser {
             status,
             error,
             program_version,
-            method,
+            command,
             charge,
             multiplicity,
             electronic_energy,

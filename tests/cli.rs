@@ -782,6 +782,61 @@ fn ct_column_is_undefined_without_components() {
     assert_eq!(stdout(&run).trim(), "ct\n-");
 }
 
+#[test] // rq-f9ccc35c
+fn program_column_prints_the_program_and_its_version() {
+    let dir = temp_dir();
+    let record = Record {
+        program: Some("xtb".to_string()),
+        program_version: Some("6.7.1".to_string()),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--program"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "program\nxtb 6.7.1");
+}
+
+#[test] // rq-6decd555
+fn program_column_prints_only_the_name_without_a_version() {
+    let dir = temp_dir();
+    let record = Record {
+        program: Some("xyz".to_string()),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--program"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "program\nxyz");
+}
+
+#[test] // rq-777c8582
+fn command_column_quotes_its_value() {
+    let dir = temp_dir();
+    let record = Record {
+        command: Some("xtb 1dma.xyz --gxtb --acc 0.01".to_string()),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--command"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(
+        stdout(&run).trim(),
+        "command\n\"xtb 1dma.xyz --gxtb --acc 0.01\""
+    );
+}
+
+#[test] // rq-804a53e2
+fn command_column_is_undefined_without_a_command() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--command"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "command\n-");
+}
+
 #[test] // rq-b81cce20
 fn a_manipulation_without_out_or_print_flags_is_a_usage_error() {
     let dir = temp_dir();

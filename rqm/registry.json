@@ -975,7 +975,7 @@
     "type": "scenario"
   },
   "rq-1fb0a352": {
-    "decl": "Scenario: Method flags map to method names",
+    "decl": "Scenario: The program call is stored with the executable path stripped",
     "file": "parsers/xtb",
     "refs": [
       {
@@ -987,7 +987,7 @@
         "kind": "code"
       }
     ],
-    "title": "Method flags map to method names",
+    "title": "The program call is stored with the executable path stripped",
     "type": "scenario"
   },
   "rq-1fd7e03d": {
@@ -2548,7 +2548,7 @@
     "type": "scenario"
   },
   "rq-527a66db": {
-    "decl": "- `method` — the first keyword after `!` in the echoed input block (the",
+    "decl": "- `command` — all text after `!` in the echoed keyword line of the input",
     "file": "parsers/orca",
     "refs": [
       {
@@ -2560,7 +2560,7 @@
         "kind": "code"
       }
     ],
-    "title": "method",
+    "title": "command",
     "type": "api-item"
   },
   "rq-53463f17": {
@@ -3294,10 +3294,15 @@
     "type": "scenario"
   },
   "rq-6aa61c29": {
-    "decl": "- `method` — the route section: the content of the `# …` line and its",
+    "decl": "- `command` — the route section: the content of the `# …` line and its",
     "file": "parsers/gaussian",
-    "refs": [],
-    "title": "method",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "command",
     "type": "api-item"
   },
   "rq-6b872f89": {
@@ -3358,6 +3363,22 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-6decd555": {
+    "decl": "Scenario: The program column prints only the name without a version",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The program column prints only the name without a version",
+    "type": "scenario"
   },
   "rq-6e0398ec": {
     "decl": "Scenario: An Rg cutoff uses angstroms",
@@ -3575,6 +3596,22 @@
     "title": "Groups vote independently",
     "type": "scenario"
   },
+  "rq-777c8582": {
+    "decl": "Scenario: The command column quotes its value",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The command column quotes its value",
+    "type": "scenario"
+  },
   "rq-77c19ef4": {
     "decl": "Scenario: A line with invalid UTF-8 is skipped and reported",
     "file": "database",
@@ -3789,6 +3826,22 @@
     "refs": [],
     "title": "Fixture Corpus and Manifest",
     "type": "section"
+  },
+  "rq-804a53e2": {
+    "decl": "Scenario: The command column is undefined without a command",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The command column is undefined without a command",
+    "type": "scenario"
   },
   "rq-80b74fa7": {
     "decl": "Scenario: An exact pattern rejects extras",
@@ -5350,10 +5403,15 @@
     "type": "api-item"
   },
   "rq-b2af2117": {
-    "decl": "- `method` — from the echoed input deck: the values of `calc=<x>` and",
+    "decl": "- `command` — from the echoed `Input file:` deck: the keyword lines from",
     "file": "parsers/mrcc",
-    "refs": [],
-    "title": "method",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "command",
     "type": "api-item"
   },
   "rq-b2bab408": {
@@ -5562,7 +5620,7 @@
     "type": "api-item"
   },
   "rq-b8a853f8": {
-    "decl": "Scenario: A method without a basis keyword omits the basis",
+    "decl": "Scenario: The command block stops at the first resource or geometry key",
     "file": "parsers/mrcc",
     "refs": [
       {
@@ -5574,7 +5632,7 @@
         "kind": "code"
       }
     ],
-    "title": "A method without a basis keyword omits the basis",
+    "title": "The command block stops at the first resource or geometry key",
     "type": "scenario"
   },
   "rq-b90c3497": {
@@ -5822,10 +5880,15 @@
     "type": "scenario"
   },
   "rq-c01ba326": {
-    "decl": "- `method` — from the `program call` line, mapping the method flag:",
+    "decl": "- `command` — the invocation echoed on the `program call` line: the",
     "file": "parsers/xtb",
-    "refs": [],
-    "title": "method",
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "command",
     "type": "api-item"
   },
   "rq-c1056d55": {
@@ -7377,6 +7440,22 @@
       }
     ],
     "title": "--help prints usage",
+    "type": "scenario"
+  },
+  "rq-f9ccc35c": {
+    "decl": "Scenario: The program column prints the program and its version",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The program column prints the program and its version",
     "type": "scenario"
   },
   "rq-f9e49657": {

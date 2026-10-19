@@ -5,10 +5,10 @@ correlated wavefunction calculation: an echoed input deck, a canonical
 geometry printout, an energy build-up ending in the run's total energy, and
 a normal/error termination banner. The MRCC parser reads such a file into
 exactly one record for the run: the final total energy in hartree, the
-printed geometry, and the run's identity (version, method, charge, spin).
+printed geometry, and the run's identity (version, command, charge, spin).
 
 Detection is the opening banner `MRCC program system`. The version and
-method come from the head (banner line and echoed input); the energy comes
+command come from the head (banner line and echoed input); the energy comes
 from the tail, where the program prints its final energy summary. The
 canonical energy is the **last** total-energy line of that summary: for
 local-correlation runs MRCC prints the canonical-method total and then the
@@ -37,11 +37,13 @@ shared `BOHR_TO_ANGSTROM` constant at extraction time
 ### Extraction <!-- rq-85ba0ac2 -->
 
 - `program_version` — the token in `Version: <v>`. <!-- rq-a7d9edb9 -->
-- `method` — from the echoed input deck: the values of `calc=<x>` and <!-- rq-b2af2117 -->
-  `basis=<y>` (original case, taken from the `Input file:` echo rather
-  than the lowercased `Keywords:` block), joined as `"<calc>/<basis>"`;
-  the `/basis` part is dropped when `basis` is absent or `none`. Neither
-  key present → absent.
+- `command` — from the echoed `Input file:` deck: the keyword lines from <!-- rq-b2af2117 -->
+  the start of the deck (original case, taken from the echo rather than
+  the lowercased `Keywords:` block) joined with single spaces, ending
+  before the first of the `mem=`, `charge=`, `mult=`, or `geom=` lines
+  (charge and multiplicity live in their own record fields); an empty
+  block or a missing echo leaves the field absent
+  (`"calc=LCCSD(T) basis=aug'-cc-pVTZ scfalg=direct"`).
 - `charge` — the value of `Charge:           <n>`. <!-- rq-7c34ac9b -->
 - `multiplicity` — the value of `Spin multiplicity:  <n>`. <!-- rq-a849a9cc -->
 - `geometry` — the table under the header line <!-- rq-eb256ed1 -->
@@ -95,12 +97,14 @@ Feature: MRCC parser
   @rq-de12aef8
   Scenario: A normally terminated run yields the observable set
     Given MRCC output with the banner, "Version: 25.1.2", an input echo containing
-    "calc=LCCSD(T)" and "basis=aug'-cc-pVTZ", "Charge: 0", "Spin multiplicity: 1",
+    "calc=LCCSD(T)", "basis=aug'-cc-pVTZ", "scfalg=direct", "mem=86GB", "charge=0",
+    and "mult=1", "Charge: 0", "Spin multiplicity: 1",
     a "Cartesian coordinates [bohr]" table for 10 atoms, an energy summary, and
     "Normal termination of mrcc."
     When the content is parsed
     Then the record has status ok
-    And the record has program_version "25.1.2" and method "LCCSD(T)/aug'-cc-pVTZ"
+    And the record has program_version "25.1.2"
+    And the record has command "calc=LCCSD(T) basis=aug'-cc-pVTZ scfalg=direct"
     And the record has charge 0 and multiplicity 1
     And the record's geometry equals the table multiplied by BOHR_TO_ANGSTROM
 
@@ -120,10 +124,10 @@ Feature: MRCC parser
     Then the record has electronic_energy -134.934017249766
 
   @rq-b8a853f8
-  Scenario: A method without a basis keyword omits the basis
-    Given an input echo with "calc=MP2" and no basis line
+  Scenario: The command block stops at the first resource or geometry key
+    Given an input echo with "calc=MP2" and "scfalg=direct" followed by "charge=0"
     When the content is parsed
-    Then the record has method "MP2"
+    Then the record has command "calc=MP2 scfalg=direct"
 
   @rq-91435a73
   Scenario: A recorded failed run is classified failed

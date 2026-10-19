@@ -44,10 +44,11 @@ Each observable is taken from the **last visible** match; a marker hidden
 in an elided window yields an absent observable, never a guess.
 
 - `program_version` — the token in `Program Version <v> - ... RELEASE`. <!-- rq-64d42f21 -->
-- `method` — the first keyword after `!` in the echoed input block (the <!-- rq-527a66db -->
-  `INPUT FILE` section, line `| 1> ! <method> <drivers...>`): the method or
-  compound-method keyword (`"wB97x-3c"` from `! wB97x-3c Opt Freq`). No
-  input echo → absent.
+- `command` — all text after `!` in the echoed keyword line of the input <!-- rq-527a66db -->
+  block (the `INPUT FILE` section, line `| 1> ! <keywords...>`),
+  whitespace-trimmed and stored verbatim with method and drivers alike
+  (`"wB97x-3c Opt Freq"` from `! wB97x-3c Opt Freq`). No echoed `!`
+  line → absent.
 - `charge` — `Total Charge           Charge          .... <n>` value. <!-- rq-b846e66c -->
 - `multiplicity` — `Multiplicity           Mult            .... <n>` value <!-- rq-b5b01447 -->
   (the summary form; the per-cycle `Multiplicity assumed :` lines are not
@@ -87,8 +88,9 @@ in an elided window yields an absent observable, never a guess.
 
 - Reading the thermodynamics blocks (`Final Gibbs free energy`, enthalpy,
   QRRHO tables): derived quantities are never stored.
-- Basis-set and ECP citation extraction into `method` (the keyword line is
-  the method of record).
+- Basis-set and ECP citation extraction, and parsing the keyword line into
+  separate method and driver fields — `command` is the verbatim keyword
+  text; normalization is a reporting concern.
 - Input-deck-only files and `****END OF INPUT****` stubs with no job output
   — such content is an unrecognized or truncated outcome by the rules
   above, not a special case.
@@ -123,7 +125,7 @@ Feature: ORCA parser
     and "****ORCA TERMINATED NORMALLY****"
     When the content is parsed
     Then the record has status ok
-    And the record has program_version "6.0.0" and method "wB97x-3c"
+    And the record has program_version "6.0.0" and command "wB97x-3c Opt Freq"
     And the record has charge 0 and multiplicity 1
     And the record has electronic_energy equal to the last FINAL SINGLE POINT ENERGY
     And the record has the final geometry, every vibrational frequency

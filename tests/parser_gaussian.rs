@@ -74,7 +74,7 @@ fn opt_freq_log_yields_final_job_observables() {
         record.program_version.as_deref(),
         Some("Gaussian 16 Rev. B.01")
     );
-    assert_eq!(record.method.as_deref(), Some("wb97xd 6-31++g** opt freq"));
+    assert_eq!(record.command.as_deref(), Some("wb97xd 6-31++g** opt freq"));
     assert_eq!(record.charge, Some(0));
     assert_eq!(record.multiplicity, Some(1));
     assert_eq!(record.electronic_energy, Some(-1526.66937796));
@@ -238,7 +238,7 @@ fn corpus_fixture_conforms() {
         Some("Gaussian 16 Rev. B.01")
     );
     assert_eq!(
-        record.method.as_deref(),
+        record.command.as_deref(),
         Some("wb97xd 6-31++g** opt freq gfinput IOP(6/7=1)")
     );
     assert_eq!(record.electronic_energy, Some(-1526.66937796));

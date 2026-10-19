@@ -177,9 +177,10 @@ pub struct Record {
     /// Version string as printed by the program.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub program_version: Option<String>,
-    /// Level of theory or Hamiltonian as reported by the program.
+    /// The run's command line as echoed by the program; each program's
+    /// extraction rule lives in `rqm/parsers/`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub method: Option<String>,
+    pub command: Option<String>,
     /// Total electronic energy of the final structure, in hartree.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub electronic_energy: Option<f64>,

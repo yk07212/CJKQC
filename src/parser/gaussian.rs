@@ -115,7 +115,8 @@ impl Parser for GaussianParser {
             .first_line_where(|line| version_from_banner(line).is_some())
             .and_then(version_from_banner);
 
-        let method = route_section(&windows.head);
+        // rq-6aa61c29
+        let command = route_section(&windows.head);
 
         // rq-d8a0968b
         let (charge, multiplicity) = windows
@@ -268,7 +269,7 @@ impl Parser for GaussianParser {
             status,
             error: error_text,
             program_version,
-            method,
+            command,
             charge,
             multiplicity,
             electronic_energy,

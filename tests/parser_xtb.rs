@@ -93,7 +93,10 @@ fn completed_run_yields_full_observable_set() {
     let record = parse(&completed_log());
     assert_eq!(record.status, RecordStatus::Ok);
     assert_eq!(record.program_version.as_deref(), Some("6.7.1"));
-    assert_eq!(record.method.as_deref(), Some("g-xTB"));
+    assert_eq!(
+        record.command.as_deref(),
+        Some("xtb mol.xyz --gxtb --acc 0.01")
+    );
     assert_eq!(record.charge, Some(0));
     assert_eq!(record.multiplicity, Some(1));
     assert_eq!(record.electronic_energy, Some(-10.5));
@@ -122,20 +125,19 @@ fn last_total_energy_line_wins() {
 
 // rq-1fb0a352
 #[test]
-fn method_flags_map_to_method_names() {
-    for (flag, expected) in [
-        ("--gfnn", "GFN2-xTB"),
-        ("--gfno", "GFN0-xTB"),
-        ("--gxtb", "g-xTB"),
-        ("", "GFN2-xTB"),
-    ] {
-        let content = completed_log().replace(
-            "/opt/xtb mol.xyz --gxtb --acc 0.01",
-            format!("/opt/xtb mol.xyz {flag}").trim(),
-        );
-        let record = parse(&content);
-        assert_eq!(record.method.as_deref(), Some(expected), "flag {flag:?}");
-    }
+fn program_call_is_stored_with_the_executable_path_stripped() {
+    let content = completed_log().replace(
+        "/opt/xtb mol.xyz --gxtb --acc 0.01",
+        "/opt/xtb 1dma.xyz --gfnn -c 4",
+    );
+    let record = parse(&content);
+    assert_eq!(record.command.as_deref(), Some("xtb 1dma.xyz --gfnn -c 4"));
+
+    let without_call = completed_log().replace(
+        "program call               : /opt/xtb mol.xyz --gxtb --acc 0.01",
+        "",
+    );
+    assert_eq!(parse(&without_call).command, None);
 }
 
 // rq-5882d984
@@ -231,7 +233,10 @@ fn corpus_fixture_conforms() {
         .expect("parse");
     assert_eq!(record.status, RecordStatus::Ok);
     assert_eq!(record.electronic_energy, Some(-135.137949826927));
-    assert_eq!(record.method.as_deref(), Some("g-xTB"));
+    assert_eq!(
+        record.command.as_deref(),
+        Some("xtb 1dma.xyz --gxtb --acc 0.01 -ohess")
+    );
     assert_eq!(record.program.as_deref(), Some("xtb"));
     assert_eq!(record.geometry.expect("geometry").symbols.len(), 10);
 }

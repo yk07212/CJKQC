@@ -177,12 +177,13 @@ struct Cli {
     /// Print the job status column (ok, failed, truncated).
     #[arg(long = "status")]
     status: bool,
-    /// Print the program token column (orca, gaussian, xtb, mrcc, xyz).
+    /// Print the program token and version column (orca, gaussian, xtb,
+    /// mrcc, xyz).
     #[arg(long = "program")]
     program: bool,
-    /// Print the method / level-of-theory column.
-    #[arg(long = "method")]
-    method: bool,
+    /// Print the quoted command line column.
+    #[arg(long = "command")]
+    command: bool,
     /// Print the electronic energy (hartree; kcal/mol with --unit).
     #[arg(long = "el")]
     el: bool,
@@ -372,7 +373,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         Column::Name => cli.name,
         Column::Status => cli.status,
         Column::Program => cli.program,
-        Column::Method => cli.method,
+        Column::Command => cli.command,
         Column::El => cli.el,
         Column::Zpe => cli.zpe,
         Column::H => cli.h,

@@ -73,7 +73,7 @@ observable vocabulary of `rqm/record.md`.
   - `status` — the expected `Record::status` (`"ok"`, `"failed"`, or
     `"truncated"`).
   - `expect` — an object whose keys mirror the record keys
-    (`electronic_energy`, `charge`, `multiplicity`, `method`,
+    (`electronic_energy`, `charge`, `multiplicity`, `command`,
     `program_version`, `vibrational_frequencies`, `gradient`,
     `dipole_moment`, `mulliken_charges`, `rotational_symmetry_number`,
     `geometry`). Absent keys are not asserted; a key the record must leave

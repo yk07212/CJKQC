@@ -153,13 +153,11 @@ fn check(entry: &Value) -> Record {
     assert_eq!(record.status, expected_status, "{file}: status");
 
     let expect = &entry["expect"];
-    for key in ["program_version", "method"] {
+    for (key, field) in [
+        ("program_version", record.program_version.as_ref()),
+        ("command", record.command.as_ref()),
+    ] {
         if let Some(expected) = expect.get(key) {
-            let field = if key == "program_version" {
-                record.program_version.as_ref()
-            } else {
-                record.method.as_ref()
-            };
             expect_text(field, expected, &format!("{file}: {key}"));
         }
     }

@@ -1,0 +1,72 @@
+PR Review: --method -> --command, --program prints version
+=========================================================
+
+Verification
+------------
+- cargo fmt --all --check: clean
+- cargo clippy --all-targets -- -D warnings: clean
+- cargo test: all pass (92 CLI tests, parser suites, conformance, thermo)
+- Registry refs match in-file rq- tags for every changed/new requirement ID
+- End-to-end run over the four real fixtures (xtb, mrcc, orca, gaussian)
+  reproduces the manifest expectations exactly
+- Rename is complete: no stray method / --method / Column::Method anywhere
+  in code, tests, docs, or fixtures
+
+Findings
+--------
+
+1. LOW - Traceability regression for rq-b8a853f8.
+   The scenario "The command block stops at the first resource or geometry
+   key" is implemented by the STOP_KEYS logic in command_from_echo
+   (src/parser/mrcc.rs:27), but the src/parser/mrcc.rs ref was dropped from
+   rqm/registry.json and the tag removed from the source. xtb's analogous
+   function carries both tags (// rq-c01ba326 rq-1fb0a352 at
+   src/parser/xtb.rs:35); mrcc's command_from_echo should similarly carry
+   // rq-b2af2117 rq-b8a853f8.
+
+2. LOW - Accidental whitespace change in rqm/parsers/conformance.md:75.
+   The `expect` bullet went from 2-space to 3-space indent (continuation
+   4 -> 5), misaligning it from its siblings file/program/status. Looks
+   like an editing slip, not intentional.
+
+3. LOW - Unrelated churn in tests/fixtures/manifest.json.
+   Only the 1sa1am entry was reformatted from compact to pretty-printed
+   arrays, and -28.322836452490 became -28.32283645249 (same f64,
+   harmless) - inconsistent with the compact style of every other entry.
+   Suggest reverting the reformat to keep the diff clean.
+
+4. LOW - Doc tension on "verbatim".
+   record.md says `command` is "the run's command line as echoed by the
+   program ... stored verbatim as echoed", but the MRCC value is neither a
+   command line nor verbatim - it is curated deck keywords with resource
+   keys dropped (src/parser/mrcc.rs:26-48), and the Gaussian route is a
+   route section, not an invocation. The per-parser docs are honest about
+   this; the record.md summary sentence overgeneralizes.
+   Also, MRCC's stop-key check is starts_with, so a mem= bundled mid-line
+   with another keyword would slip through, and resource-ish keys like
+   ccsdthreads= would be kept if they preceded mem= - fine for the real
+   corpus (one key per line), just noting the spec's four-key list is
+   narrower than "resource settings".
+
+5. NITS.
+   - command_from_call splits at the first ':' (src/parser/xtb.rs:37) -
+     a Windows-style path would be mangled.
+   - The format!("{name}{}", rest.trim_end()) join relies on rest's
+     leading whitespace for the separator (correct but subtle).
+   - --command quoting stays ambiguous if a command ever contains a double
+     quote (Gaussian routes can in principle).
+
+What's good
+-----------
+- The four parsers' extraction rules are precisely specified in the rqm
+  docs and implemented to match - verified against the raw fixture lines,
+  including the ORCA-nested .../orca/6.1.0//otool_xtb double-slash path
+  style (handled by rfind('/')).
+- Consistent absent-semantics everywhere: empty xtb value, empty ORCA
+  remainder, empty/missing MRCC deck all yield None, each pinned by a
+  test.
+- Four new CLI tests pin the new column behaviors; conformance harness,
+  manifest, registry (including 4 new IDs), and all parser tests updated
+  in lockstep.
+
+Verdict: solid, complete, well-tested change; findings are small cleanups.

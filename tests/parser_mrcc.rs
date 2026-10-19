@@ -22,9 +22,12 @@ const HEADER: &str = "                          ***********************\n\
      \x20                        ***********************\n\
      \x20                          Version: 25.1.2\n";
 
-const ECHO: &str = " INPUT:\n\
+const ECHO: &str = " Input file:\n\
      \x20calc=LCCSD(T)\n\
      \x20basis=aug'-cc-pVTZ\n\
+     \x20scfalg=direct\n\
+     \x20mem=86GB\n\
+     \x20charge=0\n\
      \x20Keywords:\n";
 
 const PROPERTIES: &str = " Charge:                           0\n\
@@ -77,7 +80,10 @@ fn terminated_run_yields_observable_set() {
     let record = parse(&completed_run());
     assert_eq!(record.status, RecordStatus::Ok);
     assert_eq!(record.program_version.as_deref(), Some("25.1.2"));
-    assert_eq!(record.method.as_deref(), Some("LCCSD(T)/aug'-cc-pVTZ"));
+    assert_eq!(
+        record.command.as_deref(),
+        Some("calc=LCCSD(T) basis=aug'-cc-pVTZ scfalg=direct")
+    );
     assert_eq!(record.charge, Some(0));
     assert_eq!(record.multiplicity, Some(1));
     let geometry = record.geometry.expect("geometry");
@@ -109,10 +115,13 @@ fn run_without_local_corrections_reports_plain_total() {
 
 // rq-b8a853f8
 #[test]
-fn method_without_basis_keyword_omits_basis() {
-    let content = completed_run().replace(" calc=LCCSD(T)\n basis=aug'-cc-pVTZ\n", " calc=MP2\n");
+fn command_block_stops_at_the_first_resource_or_geometry_key() {
+    let content = completed_run().replace(
+        " calc=LCCSD(T)\n basis=aug'-cc-pVTZ\n scfalg=direct\n mem=86GB\n charge=0\n",
+        " calc=MP2\n scfalg=direct\n charge=0\n",
+    );
     let record = parse(&content);
-    assert_eq!(record.method.as_deref(), Some("MP2"));
+    assert_eq!(record.command.as_deref(), Some("calc=MP2 scfalg=direct"));
 }
 
 // rq-91435a73
@@ -179,7 +188,10 @@ fn corpus_fixture_conforms() {
     assert_eq!(record.status, RecordStatus::Ok);
     assert_eq!(record.program.as_deref(), Some("mrcc"));
     assert_eq!(record.program_version.as_deref(), Some("25.1.2"));
-    assert_eq!(record.method.as_deref(), Some("LCCSD(T)/aug'-cc-pVTZ"));
+    assert_eq!(
+        record.command.as_deref(),
+        Some("calc=LCCSD(T) basis=aug'-cc-pVTZ scfalg=direct")
+    );
     assert_eq!(record.electronic_energy, Some(-134.936294839321));
     let geometry = record.geometry.expect("geometry");
     assert_eq!(geometry.symbols.len(), 10);

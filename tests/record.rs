@@ -26,7 +26,7 @@ fn round_trip_a_record_with_every_observable_set() {
         source_path: Some("xtb/2am3sa-1conf.log".to_string()),
         program: Some("xtb".to_string()),
         program_version: Some("6.7.1".to_string()),
-        method: Some("GFN2-xTB".to_string()),
+        command: Some("xtb 1dma.xyz --gxtb --acc 0.01".to_string()),
         electronic_energy: Some(-38.51),
         charge: Some(0),
         multiplicity: Some(1),

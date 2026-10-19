@@ -5,7 +5,7 @@
   "status": "ok",
   "expect": {
    "program_version": "6.7.1",
-   "method": "g-xTB",
+   "command": "xtb 1dma.xyz --gxtb --acc 0.01 -ohess",
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": -135.137949826927,
@@ -107,7 +107,7 @@
   "status": "ok",
   "expect": {
    "program_version": "6.0.0",
-   "method": "wB97x-3c",
+   "command": "wB97x-3c Opt Freq",
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": -199.642065483666,
@@ -401,7 +401,7 @@
   "status": "ok",
   "expect": {
    "program_version": "Gaussian 16 Rev. B.01",
-   "method": "wb97xd 6-31++g** opt freq gfinput IOP(6/7=1)",
+   "command": "wb97xd 6-31++g** opt freq gfinput IOP(6/7=1)",
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": -1526.66937796,
@@ -842,7 +842,7 @@
   "status": "ok",
   "expect": {
    "program_version": "25.1.2",
-   "method": "LCCSD(T)/aug'-cc-pVTZ",
+   "command": "calc=LCCSD(T) basis=aug'-cc-pVTZ scfalg=direct",
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": -134.936294839321,
@@ -907,7 +907,7 @@
   "status": "truncated",
   "expect": {
    "program_version": "6.7.1",
-   "method": "g-xTB",
+   "command": "xtb 1dma.xyz --gxtb --acc 0.01 -ohess",
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": null,
@@ -1023,7 +1023,7 @@
   "status": "truncated",
   "expect": {
    "program_version": "25.1.2",
-   "method": "LCCSD(T)/aug'-cc-pVTZ",
+   "command": "calc=LCCSD(T) basis=aug'-cc-pVTZ scfalg=direct",
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": null,
@@ -1110,7 +1110,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1144,7 +1144,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1170,7 +1170,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1196,7 +1196,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1426,7 +1426,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1488,7 +1488,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1646,7 +1646,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1708,7 +1708,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1725,7 +1725,7 @@
    "mulliken_charges": null,
    "rotational_symmetry_number": null,
    "program_version": null,
-   "method": null
+   "command": null
   }
  },
  {
@@ -1734,12 +1734,42 @@
   "status": "ok",
   "expect": {
    "program_version": "6.1.0",
-   "method": "XTB1",
-   "electronic_energy": -28.322836452490,
+   "command": "XTB1 Opt Anfreq ExtremeSCF VeryTightOPT",
+   "electronic_energy": -28.32283645249,
    "charge": null,
    "multiplicity": null,
-   "geometry": {"atoms": 11},
-   "vibrational_frequencies": [38.55, 96.58, 171.93, 186.34, 365.24, 367.13, 420.61, 453.14, 499.08, 543.18, 561.98, 685.85, 763.51, 907.29, 970.17, 1085.9, 1161.58, 1360.07, 1377.91, 1479.73, 1522.71, 1538.87, 1632.5, 3439.62, 3552.44, 3595.76, 3641.12],
+   "geometry": {
+    "atoms": 11
+   },
+   "vibrational_frequencies": [
+    38.55,
+    96.58,
+    171.93,
+    186.34,
+    365.24,
+    367.13,
+    420.61,
+    453.14,
+    499.08,
+    543.18,
+    561.98,
+    685.85,
+    763.51,
+    907.29,
+    970.17,
+    1085.9,
+    1161.58,
+    1360.07,
+    1377.91,
+    1479.73,
+    1522.71,
+    1538.87,
+    1632.5,
+    3439.62,
+    3552.44,
+    3595.76,
+    3641.12
+   ],
    "rotational_symmetry_number": 1
   }
  }

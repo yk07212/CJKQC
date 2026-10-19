@@ -167,7 +167,7 @@ the property set and units:
 ## Printing <!-- rq-4ea8ca35 -->
 
 - Printing follows JKQC: every printable column has its own flag —
-  `--name`, `--status`, `--program`, `--method`, `--el`, `--zpe`, `--h`,
+  `--name`, `--status`, `--program`, `--command`, `--el`, `--zpe`, `--h`,
   `--s`, `--g`, `--rg`, `--mass`, `--dip`, `--charge`, `--multiplicity`,
   `--natoms`, `--lf`, `--nfreq`, `--nimag`, `--components`, `--ct`.
   There is no default
@@ -191,7 +191,12 @@ the property set and units:
   as `2am+3sa`-style alphabetical pairs; `ct` as the same alphabetical
   pairs with the `+` separators dropped (`2am3sa`), undefined when the
   record has no components or an empty map; an undefined or absent value
-  prints `-`.
+  prints `-`. The `program` column prints the program token and the
+  version joined by one space (`xtb 6.7.1`), and the token alone when the
+  version is absent. The `command` column wraps the stored command line
+  in double quotes, since the value contains spaces and the table's
+  values are separated by single spaces; an absent command prints a bare
+  unquoted `-`.
 - `--unit` converts every Hartree-valued print quantity — the energy
   columns (`el`, `zpe`, `h`, `s`, `g`) and the `--formation` section's
   values (`rqm/formation.md`) — from hartree to kcal/mol at this
@@ -521,6 +526,30 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record without components
     When CJKQC is invoked with the database and "--ct" and no --out
     Then the ct column prints -
+
+  @rq-f9ccc35c
+  Scenario: The program column prints the program and its version
+    Given a database with one ok record whose program is "xtb" and program_version is "6.7.1"
+    When CJKQC is invoked with the database and "--program" and no --out
+    Then the program column prints xtb 6.7.1
+
+  @rq-6decd555
+  Scenario: The program column prints only the name without a version
+    Given a database with one ok record whose program is "xyz" and whose program_version is absent
+    When CJKQC is invoked with the database and "--program" and no --out
+    Then the program column prints xyz
+
+  @rq-777c8582
+  Scenario: The command column quotes its value
+    Given a database with one ok record whose command is "xtb 1dma.xyz --gxtb --acc 0.01"
+    When CJKQC is invoked with the database and "--command" and no --out
+    Then the command column prints "xtb 1dma.xyz --gxtb --acc 0.01" enclosed in double quotes
+
+  @rq-804a53e2
+  Scenario: The command column is undefined without a command
+    Given a database with one ok record with no command
+    When CJKQC is invoked with the database and "--command" and no --out
+    Then the command column prints a bare - without quotes
 
   @rq-b81cce20
   Scenario: A manipulation with neither --out nor a print flag is a usage error

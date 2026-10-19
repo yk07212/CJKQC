@@ -108,7 +108,7 @@ fn terminated_opt_freq_run_yields_full_observable_set() {
     let record = parse(&completed_log());
     assert_eq!(record.status, RecordStatus::Ok);
     assert_eq!(record.program_version.as_deref(), Some("6.0.0"));
-    assert_eq!(record.method.as_deref(), Some("wB97x-3c"));
+    assert_eq!(record.command.as_deref(), Some("wB97x-3c Opt Freq"));
     assert_eq!(record.charge, Some(0));
     assert_eq!(record.multiplicity, Some(1));
     assert_eq!(record.electronic_energy, Some(-76.402725158737));
@@ -129,19 +129,22 @@ fn terminated_opt_freq_run_yields_full_observable_set() {
 
 // rq-527a66db
 #[test]
-fn method_requires_an_echoed_input_line() {
+fn command_requires_an_echoed_input_line() {
     // Remove the real echo (`|  1> ! …`) and drop the `!` keyword onto a
-    // non-echo line: with no echoed input block the method must be absent,
-    // not scraped from the stray `!`.
+    // non-echo line: with no echoed input block the command must be
+    // absent, not scraped from the stray `!`.
     let with_stray =
         completed_log().replace("|  1> ! wB97x-3c Opt Freq\n", "! wB97x-3c Opt Freq\n");
     assert_eq!(
-        parse(&with_stray).method,
+        parse(&with_stray).command,
         None,
-        "a `!` outside the input echo must not yield a method"
+        "a `!` outside the input echo must not yield a command"
     );
-    // Control: the same keyword on an echo line is recognized.
-    assert_eq!(parse(&completed_log()).method.as_deref(), Some("wB97x-3c"));
+    // Control: the same keyword line on an echo line is recognized whole.
+    assert_eq!(
+        parse(&completed_log()).command.as_deref(),
+        Some("wB97x-3c Opt Freq")
+    );
 }
 
 // rq-b7387503
@@ -283,7 +286,7 @@ fn corpus_fixture_conforms() {
     assert_eq!(record.status, RecordStatus::Ok);
     assert_eq!(record.program.as_deref(), Some("orca"));
     assert_eq!(record.program_version.as_deref(), Some("6.0.0"));
-    assert_eq!(record.method.as_deref(), Some("wB97x-3c"));
+    assert_eq!(record.command.as_deref(), Some("wB97x-3c Opt Freq"));
     assert_eq!(record.electronic_energy, Some(-199.642065483666));
     assert_eq!(record.geometry.expect("geometry").symbols.len(), 34);
     assert_eq!(

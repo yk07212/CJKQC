@@ -272,10 +272,10 @@ pub enum Column {
     Name,
     /// Status (`ok`, `failed`, `truncated`).
     Status,
-    /// Program token.
+    /// Program token and version (`xtb 6.7.1`).
     Program,
-    /// Method string.
-    Method,
+    /// Command line, double-quoted.
+    Command,
     /// Electronic energy, hartree, 10 decimals.
     El,
     /// Zero-point energy (`rqm/thermo.md`), like `el`.
@@ -322,7 +322,7 @@ impl Column {
         Column::Name,
         Column::Status,
         Column::Program,
-        Column::Method,
+        Column::Command,
         Column::El,
         Column::Zpe,
         Column::H,
@@ -364,7 +364,7 @@ impl Column {
             Column::Name => "name",
             Column::Status => "status",
             Column::Program => "program",
-            Column::Method => "method",
+            Column::Command => "command",
             Column::El => "el",
             Column::Zpe => "zpe",
             Column::H => "h",
@@ -607,8 +607,21 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
             RecordStatus::Truncated => "truncated",
         }
         .to_string(),
-        Column::Program => record.program.clone().unwrap_or_else(undefined),
-        Column::Method => record.method.clone().unwrap_or_else(undefined),
+        // The program cell joins token and version with one space; the
+        // command cell quotes its value because the table separates
+        // values with single spaces.
+        // rq-f9ccc35c rq-6decd555 rq-777c8582 rq-804a53e2
+        Column::Program => match &record.program {
+            Some(program) => match &record.program_version {
+                Some(version) => format!("{program} {version}"),
+                None => program.clone(),
+            },
+            None => undefined(),
+        },
+        Column::Command => match &record.command {
+            Some(command) => format!("\"{command}\""),
+            None => undefined(),
+        },
         Column::Rg => match metric_radius_of_gyration(record) {
             Some(value) => format!("{value:.3}"),
             None => undefined(),

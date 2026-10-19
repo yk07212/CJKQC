@@ -28,23 +28,32 @@ fn version_token(line: &str) -> Option<String> {
     fields.get(position + 1).map(|token| (*token).to_string())
 }
 
-/// The method named by the program-call line's flags; no method flag is
-/// the xtb 6 default.
-// rq-1fb0a352
-fn method_from_call(line: &str) -> String {
-    for flag in [
-        ("--gxtb", "g-xTB"),
-        ("--gfno", "GFN0-xTB"),
-        ("--gfn1", "GFN1-xTB"),
-        ("--gfnff", "GFN-FF"),
-        ("--gfnn", "GFN2-xTB"),
-        ("--gfn2", "GFN2-xTB"),
-    ] {
-        if line.split_whitespace().any(|token| token == flag.0) {
-            return flag.1.to_string();
-        }
+/// The invocation echoed on the `program call` line: the label's value,
+/// whitespace-trimmed, with the directory part of the executable path
+/// stripped so the value starts at the executable name; an empty value
+/// leaves the command absent.
+// rq-c01ba326 rq-1fb0a352
+fn command_from_call(line: &str) -> Option<String> {
+    let value = match line.split_once(':') {
+        Some((_, value)) => value.trim(),
+        None => line
+            .trim()
+            .strip_prefix("program call")
+            .unwrap_or(line.trim())
+            .trim(),
+    };
+    if value.is_empty() {
+        return None;
     }
-    "GFN2-xTB".to_string()
+    let (executable, rest) = match value.find(char::is_whitespace) {
+        Some(position) => value.split_at(position),
+        None => (value, ""),
+    };
+    let name = match executable.rfind('/') {
+        Some(position) if position + 1 < executable.len() => &executable[position + 1..],
+        _ => executable,
+    };
+    Some(format!("{name}{}", rest.trim_end()))
 }
 
 /// The energy value of the boxed final `| TOTAL ENERGY <value> Eh |` line.
@@ -105,9 +114,10 @@ impl Parser for XtbParser {
             .first_line_where(|line| line.contains("xtb version"))
             .and_then(version_token);
 
-        let method = windows
+        // rq-c01ba326
+        let command = windows
             .last_line_where(|line| line.trim_start().starts_with("program call"))
-            .map(method_from_call);
+            .and_then(command_from_call);
 
         // rq-68850338
         let charge =
@@ -202,7 +212,7 @@ impl Parser for XtbParser {
             status,
             error,
             program_version,
-            method,
+            command,
             charge,
             multiplicity,
             electronic_energy,

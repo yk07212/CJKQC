@@ -30,12 +30,13 @@ fn is_banner(line: &str) -> bool {
         == "O R C A"
 }
 
-/// The method keyword: the first token after `!` in the echoed input line.
-// rq-eb7784d8
-fn method_from_echo(line: &str) -> Option<String> {
-    let fields: Vec<&str> = line.split_whitespace().collect();
-    let position = fields.iter().position(|field| *field == "!")?;
-    fields.get(position + 1).map(|token| (*token).to_string())
+/// The command: all text after `!` in the echoed keyword line,
+/// whitespace-trimmed; an empty remainder leaves the command absent.
+// rq-527a66db
+fn command_from_echo(line: &str) -> Option<String> {
+    let position = line.find('!')?;
+    let keywords = line[position + 1..].trim();
+    (!keywords.is_empty()).then(|| keywords.to_string())
 }
 
 /// A frequency value: a decimal, optionally signed, optionally written
@@ -76,15 +77,15 @@ impl Parser for OrcaParser {
             });
 
         // The echoed input line of the INPUT FILE section — `|  1> ! …`
-        // — carries the method; a stray `!` elsewhere is not an echo and
-        // leaves the method absent.
+        // — carries the command; a stray `!` elsewhere is not an echo and
+        // leaves the command absent.
         // rq-527a66db
-        let method = windows
+        let command = windows
             .first_line_where(|line| {
                 let trimmed = line.trim_start();
                 trimmed.starts_with('|') && trimmed.split_whitespace().any(|field| field == "!")
             })
-            .and_then(method_from_echo);
+            .and_then(command_from_echo);
 
         // rq-eb7784d8
         let charge = windows
@@ -204,7 +205,7 @@ impl Parser for OrcaParser {
             status,
             error,
             program_version,
-            method,
+            command,
             charge,
             multiplicity,
             electronic_energy,

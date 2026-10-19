@@ -41,7 +41,7 @@ in an elided window yields an absent observable, never a guess.
 - `program_version` — from the first banner line <!-- rq-e9a83a65 -->
   ` Gaussian <n>, Revision <rev>,` as `"Gaussian <n> Rev. <rev>"`; when no
   Revision line exists, `"Gaussian <n>"`.
-- `method` — the route section: the content of the `# …` line and its <!-- rq-6aa61c29 -->
+- `command` — the route section: the content of the `# …` line and its <!-- rq-6aa61c29 -->
   continuation lines (the echo wraps the route in all-dash rules, so a
   rule or a blank line ends the section), with `#` stripped and
   whitespace collapsed; stored verbatim as reported, including job
@@ -85,7 +85,7 @@ in an elided window yields an absent observable, never a guess.
 
 ## Out of Scope <!-- rq-e9a48d20 -->
 
-- Route parsing into separate functional/basis fields — `method` is the
+- Route parsing into separate functional/basis fields — `command` is the
   route text; normalization is a reporting concern.
 - Link-0 echo sections (`$D`, `23\0\\` lines) and basis-set dumps.
 - Thermochemistry recomputation — downstream (`rqm/ARCHITECTURE.md`).
@@ -120,7 +120,7 @@ Feature: Gaussian parser
     When the content is parsed
     Then the record has status ok
     And the record has program_version "Gaussian 16 Rev. B.01"
-    And the record has method "wb97xd 6-31++g** opt freq"
+    And the record has command "wb97xd 6-31++g** opt freq"
     And the record has charge 0 and multiplicity 1
     And the record has electronic_energy equal to the last SCF Done value
     And the record has the final geometry and the concatenated frequency list

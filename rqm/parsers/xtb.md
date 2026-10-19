@@ -39,10 +39,14 @@ in an elided window yields an absent observable, never a guess.
 
 - `program_version` — the version token from the banner: `xtb version <!-- rq-cec83ed0 -->
   (\S+) \(`.
-- `method` — from the `program call` line, mapping the method flag: <!-- rq-c01ba326 -->
-  `--gxtb` → `"g-xTB"`, `--gfno` → `"GFN0-xTB"`, `--gfn1` → `"GFN1-xTB"`,
-  `--gfnn` or `--gfn2` → `"GFN2-xTB"`, `--gfnff` → `"GFN-FF"`; no method
-  flag → `"GFN2-xTB"` (the xtb 6 default). No `program call` line → absent.
+- `command` — the invocation echoed on the `program call` line: the <!-- rq-c01ba326 -->
+  text after the `program call` label, whitespace-trimmed and stored
+  verbatim except that the directory part of the executable path is
+  stripped (everything up to and including the last `/` in the first
+  token), so the value starts at the executable name
+  (`"xtb 1dma.xyz --gxtb --acc 0.01 -ohess"` from
+  `/home/x/Applications/xtb-6.7.1/bin/xtb 1dma.xyz --gxtb --acc 0.01 -ohess`).
+  No `program call` line → absent.
 - `charge` — `molecular charge` value (e), rounded to an integer. <!-- rq-e3f9be75 -->
 - `multiplicity` — `number of unpaired electrons` value `u`, rounded, plus <!-- rq-02fde316 -->
   one.
@@ -107,14 +111,16 @@ Feature: XTB parser
 
   @rq-68850338
   Scenario: A completed run yields the full observable set
-    Given xtb log content with the banner, a "program call" line ending "--gxtb --acc 0.01 -ohess",
+    Given xtb log content with the banner, a "program call" line whose value is
+    "/home/y/Applications/xtb-6.7.1/bin/xtb 1dma.xyz --gxtb --acc 0.01 -ohess",
     "molecular charge" 0.0, "number of unpaired electrons" 0.0, a "final structure:" frame,
     a "projected vibrational frequencies" block with eigval lines, an "Atomic charges and
     shell populations" block, an "Atomic dipole moments" block with total row,
     a boxed "TOTAL ENERGY -135.137949826927 Eh" line, and "finished run"
     When the content is parsed
     Then the record has status ok
-    And the record has program_version "6.7.1" and method "g-xTB"
+    And the record has program_version "6.7.1" and command
+    "xtb 1dma.xyz --gxtb --acc 0.01 -ohess"
     And the record has charge 0 and multiplicity 1
     And the record has electronic_energy -135.137949826927
     And the record has the given geometry, frequencies, Mulliken charges, and dipole
@@ -126,13 +132,12 @@ Feature: XTB parser
     Then the record has electronic_energy -135.137949826927
 
   @rq-1fb0a352
-  Scenario: Method flags map to method names
-    When the program call line carries "--gfnn"
-    Then the record's method is "GFN2-xTB"
-    When it carries no method flag
-    Then the record's method is "GFN2-xTB"
-    When it carries "--gfno"
-    Then the record's method is "GFN0-xTB"
+  Scenario: The program call is stored with the executable path stripped
+    Given a program call line whose value is "/opt/xtb 1dma.xyz --gfnn -c 4"
+    When the content is parsed
+    Then the record's command is "xtb 1dma.xyz --gfnn -c 4"
+    When a log holds no program call line
+    Then the record has no command
 
   @rq-5882d984
   Scenario: Negative frequencies keep their sign

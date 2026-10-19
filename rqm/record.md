@@ -36,8 +36,11 @@ else", `rqm/ARCHITECTURE.md`).
     vocabulary.
   - `program_version: Option<String>` — version string as printed by the
     program (e.g. `"Gaussian 16 Rev. B.01"`, `"6.7.1"`).
-  - `method: Option<String>` — level of theory or Hamiltonian as reported by
-    the program (e.g. `"GFN2-xTB"`, `"wB97X-D/def2-TZVP"`).
+  - `command: Option<String>` — the run's command line as echoed by the
+    program: xtb's `program call` invocation with the executable path
+    stripped, ORCA's keyword line after `!`, Gaussian's route section, the
+    leading MRCC input-deck keywords; each program's exact extraction rule
+    lives in `rqm/parsers/`.
   - `electronic_energy: Option<f64>` — total electronic energy of the final
     structure, in hartree.
   - `charge: Option<i32>` — net charge in elementary charges.
@@ -141,7 +144,7 @@ records and databases always carry the canonical units above.
   newlines, keys in double quotes.
 - Field names are snake_case and stable.
 - The writer emits keys in a fixed order — `status`, `error`, `name`,
-  `source_path`, `program`, `program_version`, `method`, `electronic_energy`,
+  `source_path`, `program`, `program_version`, `command`, `electronic_energy`,
   `charge`, `multiplicity`, `geometry`, `vibrational_frequencies`, `gradient`,
   `dipole_moment`, `mulliken_charges`, `rotational_symmetry_number`,
   `components` — with absent observables omitted. The reader accepts keys in
@@ -159,7 +162,7 @@ records and databases always carry the canonical units above.
 Example line:
 
 ```json
-{"status":"ok","name":"1dma","source_path":"/scratch/runs/xtb/1dma.log","program":"xtb","method":"GFN2-xTB","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1],"components":{"dma":1}}
+{"status":"ok","name":"1dma","source_path":"/scratch/runs/xtb/1dma.log","program":"xtb","program_version":"6.7.1","command":"xtb 1dma.xyz --gxtb --acc 0.01 -ohess","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1],"components":{"dma":1}}
 ```
 
 ## Out of Scope <!-- rq-bed9e94b -->
