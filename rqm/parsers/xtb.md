@@ -61,6 +61,15 @@ in an elided window yields an absent observable, never a guess.
   or `0.00`) are dropped and every genuine mode keeps its printed sign (a
   leading minus marks an imaginary mode); a block whose visible
   eigenvalues are all trivial leaves the field absent.
+- The frequency span and seam honesty follow the Gaussian rule
+  (`rqm/parsers/gaussian.md`): with the last `projected vibrational
+  frequencies` header visible in the tail the block is whole inside the
+  windows; when it is not, the `eigval` lines visible after a head-window
+  header plus the `eigval` lines at the head of the tail are gathered,
+  and if the stored (post-filter) count then falls below 3N−6 while the
+  geometry shows N atoms, the record is demoted to `truncated` with an
+  error saying the frequency table may be incomplete and suggesting a
+  rerun with larger `--head-bytes`/`--tail-bytes` windows.
 - `dipole_moment` — the `total` row of the last `Atomic dipole moments` <!-- rq-f4c1072b -->
   block, `(x, y, z)` in atomic units (e·a₀), stored unchanged.
 - `mulliken_charges` — the charge column (`q`) of the last `Atomic charges <!-- rq-e7bbca13 -->
@@ -77,6 +86,10 @@ in an elided window yields an absent observable, never a guess.
   failed fixture (`rqm/parsers/conformance.md`), not by this document. The
   record's error text quotes the reported message.
 - `truncated` — neither marker present: the run never reached its end. <!-- rq-b3135fcd -->
+- A banner-`ok` record whose fallback-gathered frequency block fails the
+  3N−6 seam-honesty count is demoted to `truncated` (the frequency
+  section above); `failed` outcomes and header-delimited blocks are
+  never demoted.
 - Extracted observables are carried alongside `failed`/`truncated` statuses
   whenever visible (`rqm/record.md`).
 
@@ -179,6 +192,24 @@ Feature: XTB parser
     Given uncovered windows whose "final structure:" block lies in the elided middle
     When the windows are parsed
     Then the record has no geometry
+
+  @rq-12042004
+  Scenario: An elided frequency header falls back to the visible eigval lines
+    Given uncovered windows of a three-atom run whose last "projected vibrational
+    frequencies" header lies in the head with `eigval` lines visible below it and more
+    genuine `eigval` values opening the tail, and a "finished run" banner
+    When the windows are parsed
+    Then the record has status ok
+    And the record's frequencies hold every visible genuine eigenvalue in printed order
+
+  @rq-a5c79f09
+  Scenario: A seam-cut eigval block is stored truncated
+    Given uncovered windows of a three-atom run in which the projected-frequency
+    `eigval` values number fewer than 3N-6 genuine modes across the windows and the
+    header is not in the tail, and a "finished run" banner
+    When the windows are parsed
+    Then the record has status truncated
+    And the record's error says the frequency table may be incomplete
 
   @rq-ebeceeae
   Scenario: The corpus fixture conforms

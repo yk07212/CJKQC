@@ -13,8 +13,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use complied_jkqc::{
     element_symbol, first_line_offset, parse_fortran_f64, read_geometry_table, vibrational_modes,
-    FileWindows, LengthUnits, ParseError, Parser, ParserRegistry, Program, Record, RecordStatus,
-    SymbolColumn, TableSpec, BOHR_TO_ANGSTROM, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES,
+    FileWindows, LengthUnits, LinePattern, ParseError, Parser, ParserRegistry, Program, Record,
+    RecordStatus, SymbolColumn, TableSpec, WindowBudget, BOHR_TO_ANGSTROM, DEFAULT_HEAD_BYTES,
+    DEFAULT_TAIL_BYTES,
 };
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -391,6 +392,63 @@ fn a_large_file_yields_disjoint_line_aligned_windows() {
     assert_eq!(head_lines.len(), 4);
     assert_eq!(tail_lines.len(), 4);
     assert!(head_lines.iter().all(|line| !tail_lines.contains(line)));
+}
+
+/// A stub parser that records the tail's line count as the record's
+/// electronic energy, so window scenarios can observe which tail the
+/// parser was handed.
+struct TailCounter;
+
+impl Parser for TailCounter {
+    fn program(&self) -> Program {
+        Program::XTB
+    }
+
+    fn detect(&self, head: &str) -> Option<usize> {
+        first_line_offset(head, |line| line.contains("MAGIC"))
+    }
+
+    fn parse(&self, windows: &FileWindows) -> Record {
+        Record {
+            electronic_energy: Some(windows.tail.lines().count() as f64),
+            ..Record::default()
+        }
+    }
+}
+
+#[test] // rq-72479b94
+fn a_caller_supplied_budget_replaces_the_default_window_sizes() {
+    let dir = temp_dir();
+    let content = format!(
+        "MAGIC\n{}",
+        (1..20)
+            .map(|index| format!("line {index}\n"))
+            .collect::<String>()
+    );
+    let path = write_file(&dir, "run.out", &content);
+    let mut registry = ParserRegistry::new();
+    registry.register(Box::new(TailCounter));
+
+    // The default budget covers a 20-line file, so the parser is handed
+    // the whole content as the tail.
+    let whole = registry.parse_file(&path).expect("default budget parse");
+    assert_eq!(whole.electronic_energy, Some(20.0));
+
+    // The caller's budget reads the same file as four head lines and
+    // four tail lines, and the parser is handed only the four-line tail.
+    let lines: Vec<&str> = content.lines().collect();
+    let head_bytes: usize = lines[..4].iter().map(|line| line.len() + 1).sum();
+    let tail_bytes: usize = lines[16..].iter().map(|line| line.len() + 1).sum();
+    let seams = registry
+        .parse_file_with(
+            &path,
+            &WindowBudget {
+                head_bytes,
+                tail_bytes,
+            },
+        )
+        .expect("budget parse");
+    assert_eq!(seams.electronic_energy, Some(4.0));
 }
 
 #[test] // rq-a37342d6
@@ -816,6 +874,165 @@ fn after_last_line_where_stops_at_the_window_boundary() {
         .after_first_line_where(|line| line.contains("MARK"))
         .collect();
     assert_eq!(first_following, ["follows one", "follows two"]);
+}
+
+// --- Multi-marker locate ---
+
+#[test] // rq-a1bbe040
+fn locate_answers_every_pattern_from_one_call() {
+    let windows = seekable_windows("A x\nB y\nA z\n", 1 << 20, 1 << 20);
+    assert!(windows.covered());
+    let patterns = [LinePattern::Contains("A"), LinePattern::Contains("y")];
+
+    let matches = windows.locate(&patterns);
+
+    assert_eq!(matches.first(0), Some("A x"));
+    assert_eq!(matches.last(0), Some("A z"));
+    assert_eq!(matches.first(1), Some("B y"));
+    assert_eq!(matches.last(1), Some("B y"));
+}
+
+#[test] // rq-e03d12a0
+fn locate_prefers_the_head_for_first_and_the_tail_for_last() {
+    let lines = [
+        "MARK earliest",
+        "plain 01",
+        "plain 02",
+        "plain 03",
+        "plain 04",
+        "plain 05",
+        "plain 06",
+        "MARK middling",
+        "MARK latest",
+    ];
+    let (content, head_bytes, tail_bytes) = line_window_sizes(&lines, 2, 2);
+    let windows = seekable_windows(content, head_bytes, tail_bytes);
+    assert!(!windows.covered());
+    let patterns = [LinePattern::Contains("MARK")];
+
+    let matches = windows.locate(&patterns);
+
+    assert_eq!(matches.first(0), Some("MARK earliest"));
+    assert_eq!(matches.last(0), Some("MARK latest"));
+}
+
+#[test] // rq-1d792ead
+fn locate_after_last_stops_at_the_window_boundary_like_its_single_pattern_twin() {
+    let lines = [
+        "MARK anchor",
+        "follows one",
+        "follows two",
+        "plain 03",
+        "plain 04",
+        "plain 05",
+        "plain 06",
+        "plain 07",
+        "tail eight",
+        "tail nine",
+    ];
+    let (content, head_bytes, tail_bytes) = line_window_sizes(&lines, 3, 2);
+    let windows = seekable_windows(content, head_bytes, tail_bytes);
+    assert!(!windows.covered());
+    let patterns = [LinePattern::Contains("MARK")];
+
+    let matches = windows.locate(&patterns);
+    let following: Vec<&str> = matches.after_last(0).collect();
+    assert_eq!(following, ["follows one", "follows two"]);
+
+    let first_following: Vec<&str> = matches.after_first(0).collect();
+    assert_eq!(first_following, ["follows one", "follows two"]);
+}
+
+#[test] // rq-97b6a68f
+fn a_covered_window_is_walked_once_per_locate_call() {
+    let content: String = (0..12).map(|index| format!("line {index:02}\n")).collect();
+    let windows = seekable_windows(content, 1 << 20, 1 << 20);
+    assert!(windows.covered());
+
+    let first_calls = AtomicUsize::new(0);
+    let second_calls = AtomicUsize::new(0);
+    let first_test = |line: &str| {
+        first_calls.fetch_add(1, Ordering::Relaxed);
+        line.contains("never matches")
+    };
+    let second_test = |line: &str| {
+        second_calls.fetch_add(1, Ordering::Relaxed);
+        line.contains("never matches")
+    };
+    let patterns = [
+        LinePattern::Where(&first_test),
+        LinePattern::Where(&second_test),
+    ];
+
+    let _matches = windows.locate(&patterns);
+
+    assert_eq!(first_calls.load(Ordering::Relaxed), 12);
+    assert_eq!(second_calls.load(Ordering::Relaxed), 12);
+}
+
+#[test] // rq-7525d2fc
+fn a_pattern_absent_from_the_windows_matches_nothing() {
+    let lines = [
+        "plain 00", "plain 01", "plain 02", "plain 03", "plain 04", "plain 05", "plain 06",
+        "plain 07", "plain 08",
+    ];
+    let (content, head_bytes, tail_bytes) = line_window_sizes(&lines, 2, 2);
+    let windows = seekable_windows(content, head_bytes, tail_bytes);
+    let patterns = [LinePattern::Contains("ABSENT")];
+
+    let matches = windows.locate(&patterns);
+
+    assert_eq!(matches.first(0), None);
+    assert_eq!(matches.last(0), None);
+    assert_eq!(matches.last_in_tail(0), None);
+    assert_eq!(matches.after_first(0).count(), 0);
+    assert_eq!(matches.after_last(0).count(), 0);
+}
+
+#[test] // rq-abc3dfa6
+fn trimmed_equals_and_trimmed_starts_with_match_on_trimmed_lines() {
+    let content = "   VIBRATIONAL FREQUENCIES   \n  Mulliken charges:\n";
+    let windows = seekable_windows(content, 1 << 20, 1 << 20);
+
+    let equals = [LinePattern::TrimmedEquals("VIBRATIONAL FREQUENCIES")];
+    let matches = windows.locate(&equals);
+    assert_eq!(matches.first(0), Some("   VIBRATIONAL FREQUENCIES   "));
+    assert_eq!(matches.last(0), Some("   VIBRATIONAL FREQUENCIES   "));
+
+    let starts = [LinePattern::TrimmedStartsWith("Mulliken")];
+    let matches = windows.locate(&starts);
+    assert_eq!(matches.first(0), Some("  Mulliken charges:"));
+    assert_eq!(matches.last(0), Some("  Mulliken charges:"));
+}
+
+#[test] // rq-75876d4c
+fn last_in_tail_sees_only_tail_matches_and_reports_their_order() {
+    let lines = [
+        "END head early",
+        "HALT head only",
+        "plain 02",
+        "plain 03",
+        "plain 04",
+        "END tail one",
+        "END tail two",
+    ];
+    let (content, head_bytes, tail_bytes) = line_window_sizes(&lines, 2, 3);
+    let windows = seekable_windows(content, head_bytes, tail_bytes);
+    assert!(!windows.covered());
+    let patterns = [LinePattern::Contains("END"), LinePattern::Contains("HALT")];
+
+    let matches = windows.locate(&patterns);
+
+    let later = matches.last_in_tail(0).expect("a tail match");
+    assert_eq!(later.line, "END tail two");
+    // the tail window is exactly the last three lines, so "END tail two"
+    // is its third line, after "END tail one" at index 1
+    assert_eq!(later.index, 2);
+    assert_eq!(matches.after_last(0).count(), 0); // it is the tail's last line
+
+    assert_eq!(matches.last_in_tail(1), None);
+    assert_eq!(matches.last(1), Some("HALT head only"));
+    assert_eq!(matches.first(0), Some("END head early"));
 }
 
 // --- Geometry table extraction ---

@@ -10,7 +10,7 @@ use std::process::ExitCode;
 
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser};
 
-use complied_jkqc::collect::{gather_inputs, CollectError, CollectOutcome, Gathered};
+use complied_jkqc::collect::{gather_inputs_with, CollectError, CollectOutcome, Gathered};
 use complied_jkqc::db;
 use complied_jkqc::filter::{
     apply_filters, parse_extract_query, print_table, CmpOp, Column, Cutoff, ExtractMode,
@@ -18,6 +18,7 @@ use complied_jkqc::filter::{
 };
 use complied_jkqc::formation::{collect_monomers, print_formation_section};
 use complied_jkqc::metrics::parse_uniq_mode;
+use complied_jkqc::parser::WindowBudget;
 use complied_jkqc::reacted::ReactedMode;
 use complied_jkqc::record::RecordStatus;
 use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
@@ -120,6 +121,16 @@ struct Cli {
     /// Flip imaginary frequencies to real inside the thermochemistry.
     #[arg(long = "makereal")]
     makereal: bool,
+
+    /// Bytes of each input file's head window (default 262144). Raise
+    /// --head-bytes/--tail-bytes when a record's error says a table was
+    /// cut by the window seam.
+    #[arg(long = "head-bytes", value_name = "BYTES")]
+    head_bytes: Option<usize>,
+
+    /// Bytes of each input file's tail window (default 4194304).
+    #[arg(long = "tail-bytes", value_name = "BYTES")]
+    tail_bytes: Option<usize>,
 
     /// Skip imaginary frequencies in the thermochemistry (mutually
     /// exclusive with --makereal).
@@ -345,6 +356,16 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         makereal: cli.makereal,
         ignoreimag: cli.ignoreimag,
     };
+    // The window budget for reading build inputs: the defaults widened
+    // by --head-bytes/--tail-bytes; a zero window reads nothing and is a
+    // usage error.
+    let budget = WindowBudget {
+        head_bytes: cli.head_bytes.unwrap_or(complied_jkqc::DEFAULT_HEAD_BYTES),
+        tail_bytes: cli.tail_bytes.unwrap_or(complied_jkqc::DEFAULT_TAIL_BYTES),
+    };
+    if budget.head_bytes == 0 || budget.tail_bytes == 0 {
+        return usage("--head-bytes and --tail-bytes must be at least 1");
+    }
     // One derivation memo for the whole run: every Gibbs-valued stage and
     // every energy column shares it, so each record's thermochemistry is
     // derived at most once (`rqm/thermo.md` Performance).
@@ -424,7 +445,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     // write verbatim — until milestone 7 unifies the plumbing.)
     if !has_manipulation {
         if has_print {
-            let gathered = match gather_inputs(&inputs) {
+            let gathered = match gather_inputs_with(&inputs, &budget) {
                 Ok(gathered) => gathered,
                 Err(error) => {
                     eprintln!("error: {error}");
@@ -450,13 +471,13 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             }
         }
         return match &cli.out {
-            Some(out) => run_collection(&inputs, out, cli.fout),
+            Some(out) => run_collection(&inputs, out, cli.fout, &budget),
             None => ExitCode::SUCCESS,
         };
     }
 
     // Manipulation run: gather, filter, print, write.
-    let (mut records, problems) = match gather_inputs(&inputs) {
+    let (mut records, problems) = match gather_inputs_with(&inputs, &budget) {
         Ok(Gathered::Build { records }) => (records, Vec::new()),
         Ok(Gathered::Merge { records, problems }) => (records, problems),
         Err(error) => {
@@ -556,9 +577,9 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
 }
 
 // rq-a2681a7a — collection behaves exactly as `rqm/collection.md`.
-fn run_collection(inputs: &[&Path], out: &Path, fout: bool) -> ExitCode {
+fn run_collection(inputs: &[&Path], out: &Path, fout: bool, budget: &WindowBudget) -> ExitCode {
     let replacing = out.exists();
-    match complied_jkqc::collect_inputs(inputs, out) {
+    match complied_jkqc::collect_inputs_with(inputs, out, budget) {
         Ok(CollectOutcome::Build {
             written,
             failed,
@@ -662,8 +683,9 @@ mod tests {
     use super::*;
 
     /// Flags exempt from the manipulation/print accounting: settings flags
-    /// are read into the conditions and unit, `--formation` into the
-    /// formation section, and the rest never affect the outcome rule.
+    /// are read into the conditions, window budget, and unit,
+    /// `--formation` into the formation section, and the rest never
+    /// affect the outcome rule.
     const EXEMPT_IDS: &[&str] = &[
         "out",
         "fout",
@@ -675,6 +697,8 @@ mod tests {
         "fscale",
         "makereal",
         "ignoreimag",
+        "head_bytes",
+        "tail_bytes",
         "unit",
         "formation",
     ];

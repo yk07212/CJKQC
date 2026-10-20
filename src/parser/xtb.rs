@@ -11,7 +11,8 @@ use crate::parser::extract::{
     parse_fortran_f64, read_geometry_table, vibrational_modes, LengthUnits, SymbolColumn, TableSpec,
 };
 use crate::parser::{
-    first_line_offset, is_integer, parse_vector3, rows_after_last, FileWindows, Parser, Program,
+    first_line_offset, frequency_table_short, is_integer, parse_vector3, rows_following,
+    FileWindows, LinePattern, Parser, Program,
 };
 use crate::record::{Record, RecordStatus};
 
@@ -69,11 +70,59 @@ fn boxed_total_energy(fields: &[&str]) -> Option<f64> {
 /// charge <value> e`): the value field's position equals the number of
 /// words in the label phrase, so the caller passes the pinned label's own
 /// word count rather than an arbitrary column.
-fn last_numeric_line(windows: &FileWindows, marker: &str, words_in_label: usize) -> Option<f64> {
-    windows
-        .last_line_where(|line| line.contains(marker))
-        .and_then(|line| parse_fortran_f64(line.split_whitespace().nth(words_in_label)?))
+/// The eigenvalue columns of the `eigval ...` lines leading `lines`
+/// (the block ends at its first non-eigval line), appended to `values`.
+fn collect_eigenvalues<'a>(lines: impl Iterator<Item = &'a str>, values: &mut Vec<f64>) {
+    let mut started = false;
+    for line in lines {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.first() == Some(&"eigval") {
+            values.extend(
+                fields
+                    .iter()
+                    .skip(2)
+                    .filter_map(|value| parse_fortran_f64(value)),
+            );
+            started = true;
+        } else if started {
+            break;
+        }
+    }
 }
+
+fn numeric_field(line: &str, words_in_label: usize) -> Option<f64> {
+    parse_fortran_f64(line.split_whitespace().nth(words_in_label)?)
+}
+
+/// The locate-pattern indices of the markers xtb prints, in the order of
+/// the `PATTERNS` array below.
+///
+/// (rq-15b1763d)
+const VERSION: usize = 0;
+const PROGRAM_CALL: usize = 1;
+const CHARGE: usize = 2;
+const UNPAIRED: usize = 3;
+const TOTAL_ENERGY: usize = 4;
+const FINAL_STRUCTURE: usize = 5;
+const PROJECTED_FREQUENCIES: usize = 6;
+const DIPOLE_HEADER: usize = 7;
+const POPULATION_HEADER: usize = 8;
+const ERROR_LINE: usize = 9;
+
+/// Every marker line xtb's parse path needs, located in one walk of the
+/// windows.
+const PATTERNS: [LinePattern<'static>; 10] = [
+    LinePattern::Contains("xtb version"),
+    LinePattern::TrimmedStartsWith("program call"),
+    LinePattern::Contains("molecular charge"),
+    LinePattern::Contains("number of unpaired electrons"),
+    LinePattern::Contains("TOTAL ENERGY"),
+    LinePattern::TrimmedEquals("final structure:"),
+    LinePattern::TrimmedStartsWith("projected vibrational frequencies"),
+    LinePattern::TrimmedEquals("Atomic dipole moments (in atomic units):"),
+    LinePattern::TrimmedStartsWith("Atomic charges and shell populations"),
+    LinePattern::TrimmedStartsWith("ERROR"),
+];
 
 // rq-597bef47
 impl Parser for XtbParser {
@@ -81,21 +130,22 @@ impl Parser for XtbParser {
         Program::XTB
     }
 
-    // rq-35c8e2c9 rq-0bb4b64f
+    // rq-35c8e2c9 rq-0bb4b64f rq-15b1763d
     fn detect(&self, head: &str) -> Option<usize> {
+        memchr::memmem::find(head.as_bytes(), b"xtb version")?;
         first_line_offset(head, |line| line.contains("xtb version"))
     }
 
     fn parse(&self, windows: &FileWindows) -> Record {
+        // One identification walk finds every marker this format reads,
+        // status markers included (rq-15b1763d).
+        let matches = windows.locate(&PATTERNS);
+
         // Status: the run's own end and error reporting governs it.
-        // rq-ce1b9305 rq-62e1382e
+        // rq-ce1b9305 rq-62e1382e rq-9c076f14 rq-a652c946
         let (status, error) = if windows.tail.contains("finished run") {
             (RecordStatus::Ok, None)
-        } else if windows
-            .tail
-            .lines()
-            .any(|line| line.trim_start().starts_with("ERROR"))
-        {
+        } else if matches.last_in_tail(ERROR_LINE).is_some() {
             // Provisional error signal, pending the genuine failed
             // fixture that pins xtb's abort wording
             // (`rqm/parsers/conformance.md`).
@@ -110,39 +160,35 @@ impl Parser for XtbParser {
             )
         };
 
-        let program_version = windows
-            .first_line_where(|line| line.contains("xtb version"))
-            .and_then(version_token);
+        let program_version = matches.first(VERSION).and_then(version_token);
 
         // rq-c01ba326
-        let command = windows
-            .last_line_where(|line| line.trim_start().starts_with("program call"))
-            .and_then(command_from_call);
+        let command = matches.last(PROGRAM_CALL).and_then(command_from_call);
 
         // rq-68850338
-        let charge =
-            last_numeric_line(windows, "molecular charge", 2).map(|value| value.round() as i32);
-        let multiplicity = last_numeric_line(windows, "number of unpaired electrons", 4)
+        let charge = matches
+            .last(CHARGE)
+            .and_then(|line| numeric_field(line, 2))
+            .map(|value| value.round() as i32);
+        let multiplicity = matches
+            .last(UNPAIRED)
+            .and_then(|line| numeric_field(line, 4))
             .map(|value| value.round() as u32 + 1);
 
-        let electronic_energy = windows
-            .last_line_where(|line| line.contains("TOTAL ENERGY"))
+        let electronic_energy = matches
+            .last(TOTAL_ENERGY)
             .and_then(|line| boxed_total_energy(&line.split_whitespace().collect::<Vec<&str>>()));
 
         // The optimized structure: the `final structure:` block holds an
         // xyz-style table behind its rule and count lines.
         // rq-68850338 rq-afe58819
-        let structure_rows = rows_after_last(
-            windows,
-            |line| line.trim() == "final structure:",
-            |fields| {
-                fields.len() >= 4
-                    && fields[0].bytes().all(|byte| byte.is_ascii_alphabetic())
-                    && fields[1..4]
-                        .iter()
-                        .all(|field| parse_fortran_f64(field).is_some())
-            },
-        );
+        let structure_rows = rows_following(matches.after_last(FINAL_STRUCTURE), |fields| {
+            fields.len() >= 4
+                && fields[0].bytes().all(|byte| byte.is_ascii_alphabetic())
+                && fields[1..4]
+                    .iter()
+                    .all(|field| parse_fortran_f64(field).is_some())
+        });
         let geometry = read_geometry_table(
             structure_rows.iter().copied(),
             &TableSpec {
@@ -157,56 +203,57 @@ impl Parser for XtbParser {
         // the parsed values pass through the shared trivial-mode filter
         // (near-zero translational/rotational eigenvalues dropped); every
         // genuine mode keeps its printed sign (a minus marks imaginary).
+        // When the last header is not visible in the tail the block may
+        // straddle the elided middle, so the head remainder and the whole
+        // tail are both gathered.
         // rq-68850338 rq-5882d984 rq-03fd1a40
         let mut parsed_frequencies: Vec<f64> = Vec::new();
-        let mut started = false;
-        for line in windows.after_last_line_where(|line| {
-            line.trim_start()
-                .starts_with("projected vibrational frequencies")
-        }) {
-            let fields: Vec<&str> = line.split_whitespace().collect();
-            if fields.first() == Some(&"eigval") {
-                parsed_frequencies.extend(
-                    fields
-                        .iter()
-                        .skip(2)
-                        .filter_map(|value| parse_fortran_f64(value)),
-                );
-                started = true;
-            } else if started {
-                break;
-            }
+        let header_in_tail = matches.last_in_tail(PROJECTED_FREQUENCIES).is_some();
+        collect_eigenvalues(
+            matches.after_last(PROJECTED_FREQUENCIES),
+            &mut parsed_frequencies,
+        );
+        if !header_in_tail {
+            collect_eigenvalues(windows.tail.lines(), &mut parsed_frequencies);
         }
         // rq-c37111b1
         let frequencies = vibrational_modes(&parsed_frequencies);
 
         // The molecule's dipole from the last property printout, already
         // in atomic units.
-        let dipole_moment = windows
-            .after_last_line_where(|line| line.trim() == "Atomic dipole moments (in atomic units):")
-            .find_map(|line| {
-                let fields: Vec<&str> = line.split_whitespace().collect();
-                if fields.first() == Some(&"total") && fields.len() == 4 {
-                    parse_vector3([fields[1], fields[2], fields[3]])
-                } else {
-                    None
-                }
-            });
+        let dipole_moment = matches.after_last(DIPOLE_HEADER).find_map(|line| {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            if fields.first() == Some(&"total") && fields.len() == 4 {
+                parse_vector3([fields[1], fields[2], fields[3]])
+            } else {
+                None
+            }
+        });
 
         // The Mulliken charge column of the last population analysis.
-        let charge_rows = rows_after_last(
-            windows,
-            |line| {
-                line.trim_start()
-                    .starts_with("Atomic charges and shell populations")
-            },
-            |fields| {
-                fields.len() >= 4
-                    && is_integer(fields[0])
-                    && is_integer(fields[1])
-                    && parse_fortran_f64(fields[3]).is_some()
-            },
-        );
+        let charge_rows = rows_following(matches.after_last(POPULATION_HEADER), |fields| {
+            fields.len() >= 4
+                && is_integer(fields[0])
+                && is_integer(fields[1])
+                && parse_fortran_f64(fields[3]).is_some()
+        });
+
+        // Seam honesty: a banner-`ok` record whose eigenvalues came from
+        // the fallback and fall below the 3N-6 minimum was cut by the
+        // elided middle, so it is demoted to `truncated`; `failed`
+        // outcomes and header-delimited blocks are never demoted.
+        let atoms = geometry.as_ref().map(|geometry| geometry.symbols.len());
+        let (status, error) = match (
+            status,
+            error,
+            !header_in_tail && !frequencies.is_empty() && frequency_table_short(frequencies.len(), atoms),
+        ) {
+            (RecordStatus::Ok, _, true) => (
+                RecordStatus::Truncated,
+                Some("the xtb frequency table may be incomplete: fewer than 3N-6 modes are visible in the windows; rerun with a larger --head-bytes/--tail-bytes window".to_string()),
+            ),
+            (status, error, _) => (status, error),
+        };
 
         Record {
             status,
@@ -234,6 +281,54 @@ impl Parser for XtbParser {
                 )
             },
             ..Record::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    /// One line per `PATTERNS` entry, each matching exactly one pattern
+    /// of this format: the located answer for a constant must be the
+    /// line written for its entry, so a constant and a table entry that
+    /// drift apart fail here rather than silently misreading markers.
+    const MARKER_LINES: [(&str, usize); 10] = [
+        ("     * xtb version 6.7.1 (26dd68d)", VERSION),
+        (
+            "          program call               : /opt/xtb marker",
+            PROGRAM_CALL,
+        ),
+        ("molecular charge               0.0E+00 e", CHARGE),
+        ("number of unpaired electrons   0.0E+00 e", UNPAIRED),
+        ("| TOTAL ENERGY             -10.5 Eh    |", TOTAL_ENERGY),
+        (" final structure:", FINAL_STRUCTURE),
+        (
+            "projected vibrational frequencies (cm-1)",
+            PROJECTED_FREQUENCIES,
+        ),
+        ("Atomic dipole moments (in atomic units):", DIPOLE_HEADER),
+        (
+            "Atomic charges and shell populations (in atomic units):",
+            POPULATION_HEADER,
+        ),
+        ("ERROR: something went wrong", ERROR_LINE),
+    ];
+
+    #[test]
+    fn marker_constants_align_with_the_pattern_table() {
+        let content: String = MARKER_LINES
+            .iter()
+            .map(|(line, _)| format!("{line}\n"))
+            .collect();
+        let mut cursor = Cursor::new(content.as_bytes());
+        let windows =
+            FileWindows::from_seekable(&mut cursor, 1 << 20, 1 << 20).expect("covered windows");
+        let matches = windows.locate(&PATTERNS);
+        for (line, index) in MARKER_LINES {
+            assert_eq!(matches.first(index), Some(line), "pattern index {index}");
+            assert_eq!(matches.last(index), Some(line), "pattern index {index}");
         }
     }
 }

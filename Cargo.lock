@@ -103,6 +103,7 @@ name = "complied-jkqc"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "memchr",
  "serde",
  "serde_json",
 ]

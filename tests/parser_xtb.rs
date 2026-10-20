@@ -240,3 +240,64 @@ fn corpus_fixture_conforms() {
     assert_eq!(record.program.as_deref(), Some("xtb"));
     assert_eq!(record.geometry.expect("geometry").symbols.len(), 10);
 }
+
+// rq-12042004
+#[test]
+fn elided_frequency_header_falls_back_to_visible_eigval_lines() {
+    // Three-atom run whose last projected-frequencies header sits in
+    // the head window with the trivial and genuine eigenvalue lines
+    // visible below it; one more eigval line opens the tail window.
+    let body = log_body();
+    let head_end = body
+        .find(" reduced masses (amu)")
+        .expect("frequency section");
+    let (head, rest) = body.split_at(head_end);
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        "eigval :      431.00   432.00\n{rest}{}{}\n",
+        " filler line\n".repeat(50),
+        " * finished run on 2026-10-17 at 17:33:26.897"
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = XtbParser.parse(&windows);
+    assert_eq!(record.status, RecordStatus::Ok);
+    assert_eq!(record.geometry.expect("geometry").symbols.len(), 3);
+    assert_eq!(
+        record.vibrational_frequencies,
+        Some(vec![232.39, 273.07, -57.30, 431.0, 432.0])
+    );
+}
+
+// rq-a5c79f09
+#[test]
+fn seam_cut_eigval_block_is_stored_truncated() {
+    // Three-atom run: the head shows only the trivial eigenvalue line
+    // below the header and the tail opens with a single genuine mode —
+    // a post-filter count of one, short of the 3N-6 = 3 required.
+    let body = log_body();
+    let head_end = body
+        .find("eigval :      232.39")
+        .expect("genuine eigval line");
+    let (head, rest) = body.split_at(head_end);
+    let rest = &rest[rest.find('\n').expect("line end") + 1..];
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        "eigval :      232.39\n{rest}{}{}\n",
+        " filler line\n".repeat(50),
+        " * finished run on 2026-10-17 at 17:33:26.897"
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = XtbParser.parse(&windows);
+    assert_eq!(record.status, RecordStatus::Truncated);
+    assert!(record
+        .error
+        .as_deref()
+        .is_some_and(|error| error.contains("frequency table may be incomplete")));
+    assert_eq!(record.vibrational_frequencies, Some(vec![232.39]));
+}

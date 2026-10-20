@@ -161,6 +161,18 @@ CJKQC <inputs>… -o <path> [--fout]
   - `ParseError::Io` is reported as `CollectError::Io`; `DbError::Io` is
     reported as `CollectError::Io`; other database failures surface as `Db`.
 
+- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget) -> Result<CollectOutcome, CollectError>` — <!-- rq-3b5861a5 -->
+  `collect_inputs` with an explicit window budget: build-mode inputs are
+  read through windows of the budget's sizes (the CLI's
+  `--head-bytes`/`--tail-bytes`); merge mode reads record databases and
+  ignores the budget. `collect_inputs` is this function with the default
+  budget.
+
+- `gather_inputs_with(inputs: &[&Path], budget: &WindowBudget) -> Result<Gathered, CollectError>` — <!-- rq-024c9db0 -->
+  `gather_inputs` (classify and read records without writing) with the
+  same budget override and the same merge-mode indifference to it;
+  `gather_inputs` is this function with the default budget.
+
 ### Crate Layout <!-- rq-336152ed -->
 
 - `src/collect.rs` holds classification and the two pipelines; the library <!-- rq-fcb0174f -->
@@ -350,6 +362,12 @@ Feature: Collection command line
     When CJKQC is invoked with "tests/fixtures/xtb/1dma.log --out db.jsonl -el"
     Then the exit code is 2
     And stderr is clap's diagnostic reporting the unknown flag
+
+  @rq-bb4d61fb
+  Scenario: A zero window budget is a usage error
+    When CJKQC is invoked with "tests/fixtures/xtb/1dma.log --out db.jsonl --head-bytes 0"
+    Then the exit code is 2
+    And stderr reports that the window budget must be at least 1
 
   @rq-54536800
   Scenario: A dash argument is an ordinary path, not stdin

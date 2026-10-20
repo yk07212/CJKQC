@@ -295,3 +295,85 @@ fn corpus_fixture_conforms() {
     );
     assert_eq!(record.rotational_symmetry_number, Some(1));
 }
+
+// rq-82f9c544
+#[test]
+fn elided_frequency_header_falls_back_to_visible_rows() {
+    // Three-atom run whose last VIBRATIONAL FREQUENCIES header sits in
+    // the head window with six rows visible below it; the section's
+    // remaining rows open the tail window.
+    let head = format!(
+        "{}{ECHO}{SUMMARY}{GEOMETRY}{ENERGY}\
+         VIBRATIONAL FREQUENCIES\n\
+         \x20-----------------------\n\
+         \x20Scaling factor for frequencies =  1.000000000  (already applied!)\n\
+         \x20\n\
+         \x20  0:       0.00 cm**-1\n\
+         \x20  1:       0.00 cm**-1\n\
+         \x20  2:       0.00 cm**-1\n\
+         \x20  3:    1601.00 cm**-1\n\
+         \x20  4:    1602.00 cm**-1\n\
+         \x20  5:    1603.00 cm**-1\n",
+        banner()
+    );
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        "\x20  6:    1604.00 cm**-1\n\
+         \x20  7:    1605.00 cm**-1\n\
+         \x20  8:    1606.00 cm**-1\n\
+         \x20-----------------------\n\
+         IR SPECTRUM\n\
+         {}{}\n",
+        " filler line\n".repeat(50),
+        "                    ****ORCA TERMINATED NORMALLY****"
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = OrcaParser.parse(&windows);
+    assert_eq!(record.status, RecordStatus::Ok);
+    assert_eq!(record.geometry.expect("geometry").symbols.len(), 3);
+    assert_eq!(
+        record.vibrational_frequencies,
+        Some(vec![1601.0, 1602.0, 1603.0, 1604.0, 1605.0, 1606.0])
+    );
+}
+
+// rq-7ab0f27f
+#[test]
+fn seam_cut_frequency_section_is_stored_truncated() {
+    // Three-atom run: only trivial rows are visible in the head below
+    // the header and one genuine row opens the tail — a post-filter
+    // count of one, short of the 3N-6 = 3 the section must print.
+    let head = format!(
+        "{}{ECHO}{SUMMARY}{GEOMETRY}{ENERGY}\
+         VIBRATIONAL FREQUENCIES\n\
+         \x20-----------------------\n\
+         \x20Scaling factor for frequencies =  1.000000000  (already applied!)\n\
+         \x20\n\
+         \x20  0:       0.00 cm**-1\n\
+         \x20  1:       0.00 cm**-1\n\
+         \x20  2:       0.00 cm**-1\n",
+        banner()
+    );
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        "\x20  3:    1601.00 cm**-1\n\
+         \x20-----------------------\n\
+         {}{}\n",
+        " filler line\n".repeat(50),
+        "                    ****ORCA TERMINATED NORMALLY****"
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = OrcaParser.parse(&windows);
+    assert_eq!(record.status, RecordStatus::Truncated);
+    assert!(record
+        .error
+        .as_deref()
+        .is_some_and(|error| error.contains("frequency table may be incomplete")));
+    assert_eq!(record.vibrational_frequencies, Some(vec![1601.0]));
+}

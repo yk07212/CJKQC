@@ -68,6 +68,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-024c9db0": {
+    "decl": "- `gather_inputs_with(inputs: &[&Path], budget: &WindowBudget) -> Result<Gathered, CollectError>` —",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "gather_inputs_with",
+    "type": "api-item"
+  },
   "rq-02fde316": {
     "decl": "- `multiplicity` — `number of unpaired electrons` value `u`, rounded, plus",
     "file": "parsers/xtb",
@@ -446,6 +458,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-12042004": {
+    "decl": "Scenario: An elided frequency header falls back to the visible eigval lines",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An elided frequency header falls back to the visible eigval lines",
+    "type": "scenario"
+  },
   "rq-125f5313": {
     "decl": "- `DbError` — error type for database operations:",
     "file": "database",
@@ -570,6 +594,39 @@
     ],
     "title": "An absolute energy cutoff uses hartree",
     "type": "scenario"
+  },
+  "rq-15b1763d": {
+    "decl": "## Performance Constraints",
+    "file": "parser-framework",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/windows.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Performance Constraints",
+    "type": "section"
   },
   "rq-15bf030c": {
     "decl": "Scenario: Merge replaces an existing output",
@@ -930,6 +987,18 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-1d792ead": {
+    "decl": "Scenario: after_last stops at the window boundary like its single-pattern twin",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "after_last stops at the window boundary like its single-pattern twin",
+    "type": "scenario"
   },
   "rq-1db98ae8": {
     "decl": "- `src/parser/mod.rs` gains `ParserRegistry::standard` and the five parser",
@@ -1469,6 +1538,18 @@
     "title": "A single-point log reports no frequencies",
     "type": "scenario"
   },
+  "rq-2e39b369": {
+    "decl": "Scenario: A seam-cut frequency table is stored truncated",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A seam-cut frequency table is stored truncated",
+    "type": "scenario"
+  },
   "rq-2e483977": {
     "decl": "Scenario: Components read from a JSON object",
     "file": "record",
@@ -1842,6 +1923,18 @@
     "title": "Constants",
     "type": "section"
   },
+  "rq-362c1c7f": {
+    "decl": "- `ParserRegistry::parse_file_with(&self, path: &Path, budget: &WindowBudget) -> Result<Record, ParseError>` —",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ParserRegistry",
+    "type": "api-item"
+  },
   "rq-363a8a65": {
     "decl": "- `vibrational_frequencies` — every value on every",
     "file": "parsers/gaussian",
@@ -2000,6 +2093,18 @@
     "title": "A failed replacement leaves the existing target intact",
     "type": "scenario"
   },
+  "rq-3b5861a5": {
+    "decl": "- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget) -> Result<CollectOutcome, CollectError>` —",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "collect_inputs_with",
+    "type": "api-item"
+  },
   "rq-3b9e8002": {
     "decl": "Scenario: Collect one XTB output into a new database",
     "file": "collection",
@@ -2139,6 +2244,18 @@
     ],
     "title": "Feature: Format Detection and Parser Framework",
     "type": "file"
+  },
+  "rq-4311126f": {
+    "decl": "- `WindowBudget { head_bytes, tail_bytes }` — a pair of window sizes for",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/windows.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "WindowBudget",
+    "type": "api-item"
   },
   "rq-4319b627": {
     "decl": "Scenario: The lowest-frequency pass drops imaginary modes",
@@ -2702,7 +2819,12 @@
   "rq-5825f5e3": {
     "decl": "- `failed` — no normal marker and the tail carries MRCC's own error or",
     "file": "parsers/mrcc",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      }
+    ],
     "title": "failed",
     "type": "api-item"
   },
@@ -3312,6 +3434,10 @@
       {
         "file": "src/parser/gaussian.rs",
         "kind": "code"
+      },
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
       }
     ],
     "title": "command",
@@ -3404,6 +3530,18 @@
     "title": "An Rg cutoff uses angstroms",
     "type": "scenario"
   },
+  "rq-6e71ffd1": {
+    "decl": "- `TailLine<'w>` — the pair `last_in_tail` returns: `line` (the matched",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/windows.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "TailLine",
+    "type": "api-item"
+  },
   "rq-6e881115": {
     "decl": "Scenario: A print-only run prints the database without writing anything",
     "file": "filtering",
@@ -3484,6 +3622,18 @@
     "title": "A genuine failed record from a matched parser is collected",
     "type": "scenario"
   },
+  "rq-72479b94": {
+    "decl": "Scenario: A caller-supplied budget replaces the default window sizes",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A caller-supplied budget replaces the default window sizes",
+    "type": "scenario"
+  },
   "rq-72e0ded9": {
     "decl": "Scenario: Help takes precedence over extra arguments",
     "file": "scaffolding",
@@ -3527,6 +3677,30 @@
       }
     ],
     "title": "Energies within the rounding agree and collapse",
+    "type": "scenario"
+  },
+  "rq-7525d2fc": {
+    "decl": "Scenario: a pattern absent from the windows matches nothing",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "a pattern absent from the windows matches nothing",
+    "type": "scenario"
+  },
+  "rq-75876d4c": {
+    "decl": "Scenario: last_in_tail sees only tail matches and reports their order",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "last_in_tail sees only tail matches and reports their order",
     "type": "scenario"
   },
   "rq-75f85412": {
@@ -3671,6 +3845,18 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-7ab0f27f": {
+    "decl": "Scenario: A seam-cut frequency section is stored truncated",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A seam-cut frequency section is stored truncated",
+    "type": "scenario"
   },
   "rq-7b0d8978": {
     "decl": "Scenario: The ct column is undefined without components",
@@ -3882,7 +4068,12 @@
   "rq-80f193f5": {
     "decl": "- `failed` — no normal marker and the tail carries ORCA's own error or",
     "file": "parsers/orca",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      }
+    ],
     "title": "failed",
     "type": "api-item"
   },
@@ -3963,6 +4154,18 @@
       }
     ],
     "title": "Append seals a missing final newline",
+    "type": "scenario"
+  },
+  "rq-82f9c544": {
+    "decl": "Scenario: An elided frequency header falls back to the visible rows",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An elided frequency header falls back to the visible rows",
     "type": "scenario"
   },
   "rq-83c62ce0": {
@@ -4402,6 +4605,18 @@
     "title": "--sort name takes the nameless monomer as the reference",
     "type": "scenario"
   },
+  "rq-90ee6a06": {
+    "decl": "Scenario: An elided geometry header falls back to the visible frequency lines",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An elided geometry header falls back to the visible frequency lines",
+    "type": "scenario"
+  },
   "rq-91435a73": {
     "decl": "Scenario: A recorded failed run is classified failed",
     "file": "parsers/mrcc",
@@ -4580,7 +4795,12 @@
   "rq-97790ec7": {
     "decl": "- `ok` — the tail carries `Normal termination of mrcc`.",
     "file": "parsers/mrcc",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      }
+    ],
     "title": "ok",
     "type": "api-item"
   },
@@ -4591,6 +4811,18 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-97b6a68f": {
+    "decl": "Scenario: a covered window is walked once per locate call",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "a covered window is walked once per locate call",
+    "type": "scenario"
   },
   "rq-989e6417": {
     "decl": "- `CollectError` — why a run wrote nothing:",
@@ -4741,7 +4973,12 @@
   "rq-9c076f14": {
     "decl": "- `ok` — the tail carries `finished run` (xtb's normal-exit banner).",
     "file": "parsers/xtb",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      }
+    ],
     "title": "ok",
     "type": "api-item"
   },
@@ -4989,6 +5226,18 @@
     "title": "A digit-only name does not resolve",
     "type": "scenario"
   },
+  "rq-a1bbe040": {
+    "decl": "Scenario: locate answers every pattern from one call",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "locate answers every pattern from one call",
+    "type": "scenario"
+  },
   "rq-a1f4c207": {
     "decl": "- `tests/conformance.rs` — the manifest-driven suite; it builds",
     "file": "parsers/conformance",
@@ -5077,6 +5326,18 @@
     "title": "Command Line",
     "type": "section"
   },
+  "rq-a5c79f09": {
+    "decl": "Scenario: A seam-cut eigval block is stored truncated",
+    "file": "parsers/xtb",
+    "refs": [
+      {
+        "file": "tests/parser_xtb.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A seam-cut eigval block is stored truncated",
+    "type": "scenario"
+  },
   "rq-a5fee06d": {
     "decl": "Scenario: A frequency calculation without a terminated run is truncated",
     "file": "parsers/orca",
@@ -5112,7 +5373,12 @@
   "rq-a652c946": {
     "decl": "- `failed` — no normal marker and the tail carries xtb's own error report.",
     "file": "parsers/xtb",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/xtb.rs",
+        "kind": "code"
+      }
+    ],
     "title": "failed",
     "type": "api-item"
   },
@@ -5183,6 +5449,18 @@
       }
     ],
     "title": "An unresolvable name leaves components absent",
+    "type": "scenario"
+  },
+  "rq-abc3dfa6": {
+    "decl": "Scenario: TrimmedEquals and TrimmedStartsWith match on trimmed lines",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "TrimmedEquals and TrimmedStartsWith match on trimmed lines",
     "type": "scenario"
   },
   "rq-abf80ccb": {
@@ -5492,7 +5770,12 @@
   "rq-b47001c1": {
     "decl": "- `ok` — the tail carries `Normal termination of Gaussian`.",
     "file": "parsers/gaussian",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      }
+    ],
     "title": "ok",
     "type": "api-item"
   },
@@ -5697,6 +5980,18 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-bb4d61fb": {
+    "decl": "Scenario: A zero window budget is a usage error",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A zero window budget is a usage error",
+    "type": "scenario"
   },
   "rq-bb72c241": {
     "decl": "## Resolution Model",
@@ -6051,6 +6346,18 @@
     ],
     "title": "Consensus Rule",
     "type": "section"
+  },
+  "rq-c6dcf9fc": {
+    "decl": "- `LineMatches<'w>` — the located lines of one `locate` call, borrowed from",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/windows.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "LineMatches",
+    "type": "api-item"
   },
   "rq-c7356b3e": {
     "decl": "Scenario: A failed record from a matched parser is not unrecognized",
@@ -6678,6 +6985,18 @@
       }
     ],
     "title": "Unknown JKQC flags are usage errors",
+    "type": "scenario"
+  },
+  "rq-e03d12a0": {
+    "decl": "Scenario: locate prefers the head for first and the tail for last",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "locate prefers the head for first and the tail for last",
     "type": "scenario"
   },
   "rq-e17eea18": {
@@ -7379,7 +7698,12 @@
   "rq-f6a569e1": {
     "decl": "- `ok` — the tail carries `****ORCA TERMINATED NORMALLY****`.",
     "file": "parsers/orca",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      }
+    ],
     "title": "ok",
     "type": "api-item"
   },
@@ -7690,6 +8014,18 @@
     ],
     "title": "--reverse does not change the reference",
     "type": "scenario"
+  },
+  "rq-fefddb16": {
+    "decl": "- `LinePattern` — a pattern a `locate` walk tests against each line.",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "src/parser/windows.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "LinePattern",
+    "type": "api-item"
   },
   "rq-ffaf4e5b": {
     "decl": "Scenario: A signature anywhere in a covered file is detected",

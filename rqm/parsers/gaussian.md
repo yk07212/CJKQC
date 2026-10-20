@@ -44,7 +44,9 @@ in an elided window yields an absent observable, never a guess.
 - `command` — the route section: the content of the `# …` line and its <!-- rq-6aa61c29 -->
   continuation lines (the echo wraps the route in all-dash rules, so a
   rule or a blank line ends the section), with `#` stripped and
-  whitespace collapsed; stored verbatim as reported, including job
+  whitespace collapsed; read only from the head window — the route echo
+  always lives at the top of the job, and a `#` line in an uncovered
+  file's tail never becomes the command; stored verbatim as reported, including job
   keywords (`"wb97xd 6-31++g** opt freq gfinput IOP(6/7=1)"`). No route
   section → absent.
 - `charge` / `multiplicity` — the values of the last <!-- rq-373378e9 -->
@@ -63,6 +65,26 @@ in an elided window yields an absent observable, never a guess.
   prints no translational/rotational modes, so the filter is inert on
   its tables, but the record's vibrational-mode convention holds
   program-independently.
+- The frequency span. Values are gathered after the last visible
+  `Standard orientation:` header. When that header lies in the tail
+  window, the scan follows it to the window end and the final job's
+  table is whole inside the windows. When no geometry header is visible
+  in the tail — a long frequency job whose table begins before the tail
+  window — the scan gathers the head's remainder past the header and
+  every visible `Frequencies --` line of the tail in addition, which
+  recovers the table whenever none of it fell in the elided middle.
+- Seam honesty in the fallback case. A genuine Gaussian frequency table
+  prints every normal mode: 3N−6 values, or 3N−5 for a linear molecule
+  (N the atom count of the visible geometry, or of the last `NAtoms=`
+  line when no geometry is visible). When the fallback supplied the
+  values, the atom count is visible, and the collected count falls below
+  3N−6, the table was cut by the window seam: the record is stored with
+  status `truncated` and an error saying the frequency table may be
+  incomplete and suggesting a rerun with larger `--head-bytes`/
+  `--tail-bytes` windows. The rule is best-effort — a frequency job with frozen
+  coordinates legitimately prints fewer modes and can be flagged by it.
+  When the last header is visible in the tail the table is provably
+  whole and no count rule applies.
 - `dipole_moment` — the `X= <x> Y= <y> Z= <z>` values of the last <!-- rq-d5dd0577 -->
   `Dipole moment (field-independent basis, Debye):` line, converted from
   Debye to e·a₀ by dividing by `DEBYE_PER_E_A0`.
@@ -79,6 +101,10 @@ in an elided window yields an absent observable, never a guess.
   data; the error text quotes the reported message.
 - `truncated` — neither marker present: the final job never printed its <!-- rq-b90c3497 -->
   end.
+- A banner-`ok` record whose fallback-gathered frequency table fails the
+  3N−6 seam-honesty count is demoted to `truncated` (the frequency
+  section above); `failed` outcomes and header-delimited tables are
+  never demoted.
 - Earlier jobs' `Normal termination` lines are irrelevant to the record;
   the final job's marker governs status because its data is what the
   parser extracted.
@@ -165,6 +191,28 @@ Feature: Gaussian parser
     Given uncovered windows whose final dipole section lies in the elided middle
     When the windows are parsed
     Then the record has no dipole_moment
+
+  @rq-90ee6a06
+  Scenario: An elided geometry header falls back to the visible frequency lines
+    Given uncovered windows of a five-atom run whose final "Standard orientation:"
+    header lies in the head, three "Frequencies --" lines are visible below it before
+    the head ends, two more "Frequencies --" lines open the tail, and the tail ends
+    with "Normal termination of Gaussian 16"
+    When the windows are parsed
+    Then the record has status ok
+    And the record's frequency list holds every visible "Frequencies --" value, the
+    head-window values first, in printed order
+
+  @rq-2e39b369
+  Scenario: A seam-cut frequency table is stored truncated
+    Given uncovered windows of a five-atom run whose "Frequencies --" table straddles
+    the elided middle: one line visible after the header in the head and one line at
+    the head of the tail — fewer than 3N-6 values in all — and the tail ends with
+    "Normal termination of Gaussian 16"
+    When the windows are parsed
+    Then the record has status truncated
+    And the record's error says the frequency table may be incomplete
+    And the visible frequency values are still carried
 
   @rq-5e5adfe9
   Scenario: The corpus fixture conforms

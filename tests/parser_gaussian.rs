@@ -260,3 +260,120 @@ fn corpus_fixture_conforms() {
         );
     }
 }
+
+// rq-90ee6a06
+#[test]
+fn elided_geometry_header_falls_back_to_visible_frequency_lines() {
+    // Five-atom run whose final "Standard orientation:" header sits at
+    // the end of the head window with three frequency lines visible
+    // below it; two more frequency lines open the tail window.
+    let head = format!(
+        "{BANNER}{ROUTE}{CHARGE} NAtoms=    5 NActive=    5 NUniq=    5 SFac= 1.00D+00\n\
+         {}\
+         Frequencies --     101.0000                102.0000                103.0000\n\
+         Frequencies --     104.0000                105.0000                106.0000\n\
+         Frequencies --     107.0000                108.0000                109.0000\n",
+        (1..=5).fold(
+            String::from(
+                "                         Standard orientation:\n ---------------------------------------------------------------------\n Center     Atomic      Atomic             Coordinates (Angstroms)\n Number     Number       Type             X           Y           Z\n ---------------------------------------------------------------------\n",
+            ),
+            |mut table, index| {
+                table.push_str(&format!(
+                    "      {index}          6           0       -4.061711   -1.017734   -1.010761\n"
+                ));
+                table
+            },
+        )
+    );
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        " Frequencies --     201.0000                202.0000                203.0000\n\
+         Frequencies --     204.0000                205.0000                206.0000\n\
+         {}{NORMAL_2}",
+        " filler line\n".repeat(50)
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = GaussianParser.parse(&windows);
+    assert_eq!(record.status, RecordStatus::Ok);
+    assert_eq!(record.geometry.expect("geometry").symbols.len(), 5);
+    assert_eq!(
+        record.vibrational_frequencies,
+        Some(vec![
+            101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0, 108.0, 109.0, 201.0, 202.0, 203.0,
+            204.0, 205.0, 206.0,
+        ])
+    );
+}
+
+// rq-2e39b369
+#[test]
+fn seam_cut_frequency_table_is_stored_truncated() {
+    // Five-atom run: one frequency line visible in the head below the
+    // header and one line at the head of the tail — six values, short
+    // of the 3N-6 = 9 the table must print.
+    let head = format!(
+        "{BANNER}{ROUTE}{CHARGE} NAtoms=    5 NActive=    5 NUniq=    5 SFac= 1.00D+00\n\
+         {}\
+         Frequencies --     101.0000                102.0000                103.0000\n",
+        (1..=5).fold(
+            String::from(
+                "                         Standard orientation:\n ---------------------------------------------------------------------\n Center     Atomic      Atomic             Coordinates (Angstroms)\n Number     Number       Type             X           Y           Z\n ---------------------------------------------------------------------\n",
+            ),
+            |mut table, index| {
+                table.push_str(&format!(
+                    "      {index}          6           0       -4.061711   -1.017734   -1.010761\n"
+                ));
+                table
+            },
+        )
+    );
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        " Frequencies --     201.0000                202.0000                203.0000\n\
+         {}{NORMAL_2}",
+        " filler line\n".repeat(50)
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = GaussianParser.parse(&windows);
+    assert_eq!(record.status, RecordStatus::Truncated);
+    assert!(record
+        .error
+        .as_deref()
+        .is_some_and(|error| error.contains("frequency table may be incomplete")));
+    assert_eq!(
+        record.vibrational_frequencies,
+        Some(vec![101.0, 102.0, 103.0, 201.0, 202.0, 203.0])
+    );
+}
+
+// rq-6aa61c29
+#[test]
+fn a_route_line_only_in_the_tail_never_becomes_the_command() {
+    // Uncovered windows whose head carries no `#` line (the echo was
+    // elided away) and whose tail holds a `#`-leading line: the route
+    // is head-window-only, so the command stays absent rather than
+    // being fabricated from the tail.
+    let head = format!("{BANNER}{CHARGE} no route line here\n");
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        " # pbe0 fabricated route\n -------------------\n\
+         {}{SCF_2}{NORMAL_2}",
+        " filler line\n".repeat(50)
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = GaussianParser.parse(&windows);
+    assert_eq!(record.command, None);
+    // The rest of the parse still works: the final job's energy and
+    // termination are visible in the tail.
+    assert_eq!(record.electronic_energy, Some(-1526.66937796));
+    assert_eq!(record.status, RecordStatus::Ok);
+}

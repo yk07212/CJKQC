@@ -170,8 +170,23 @@ fn is_database_input(path: &Path) -> Result<bool, CollectError> {
 ///
 /// (rq-9d8725d5)
 pub fn collect_inputs(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
+    collect_inputs_with(inputs, output, &crate::parser::WindowBudget::default())
+}
+
+/// `collect_inputs` with an explicit window budget (the CLI's
+/// `--head-bytes`/`--tail-bytes`): every build-mode input is read through
+/// windows of the given sizes, so a wider budget can recover data an
+/// elided seam cut. Merge mode reads record databases and ignores the
+/// budget.
+///
+/// (rq-3b5861a5)
+pub fn collect_inputs_with(
+    inputs: &[&Path],
+    output: &Path,
+    budget: &crate::parser::WindowBudget,
+) -> Result<CollectOutcome, CollectError> {
     match classify_inputs(inputs)? {
-        CollectionMode::Build => build_database(inputs, output),
+        CollectionMode::Build => build_database(inputs, output, budget),
         CollectionMode::Merge => merge_databases(inputs, output),
     }
 }
@@ -179,12 +194,15 @@ pub fn collect_inputs(inputs: &[&Path], output: &Path) -> Result<CollectOutcome,
 /// Parse every input with the standard registry, abort on any record the
 /// framework marked unrecognized or empty (status `failed` with no
 /// program), and resolve compositions.
-fn parse_records(inputs: &[&Path]) -> Result<Vec<Record>, CollectError> {
+fn parse_records(
+    inputs: &[&Path],
+    budget: &crate::parser::WindowBudget,
+) -> Result<Vec<Record>, CollectError> {
     let registry = ParserRegistry::standard();
     let mut records = Vec::with_capacity(inputs.len());
     for path in inputs {
         let mut record = registry
-            .parse_file(path)
+            .parse_file_with(path, budget)
             .map_err(|error| CollectError::io_from_parse(path, error))?;
         if record.is_unrecognized() {
             return Err(CollectError::Unrecognized {
@@ -204,8 +222,12 @@ fn parse_records(inputs: &[&Path]) -> Result<Vec<Record>, CollectError> {
 /// framework marked unrecognized or empty (status `failed` with no
 /// program), resolve compositions, then write the collected records as the
 /// complete new content of the output.
-fn build_database(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
-    let records = parse_records(inputs)?;
+fn build_database(
+    inputs: &[&Path],
+    output: &Path,
+    budget: &crate::parser::WindowBudget,
+) -> Result<CollectOutcome, CollectError> {
+    let records = parse_records(inputs, budget)?;
 
     // Every input is read, validated, and serialized before the output is
     // touched; write_database then replaces it atomically, so a failure
@@ -279,9 +301,22 @@ pub enum Gathered {
 ///
 /// (rq-9b4dda85)
 pub fn gather_inputs(inputs: &[&Path]) -> Result<Gathered, CollectError> {
+    gather_inputs_with(inputs, &crate::parser::WindowBudget::default())
+}
+
+/// `gather_inputs` with an explicit window budget (the CLI's
+/// `--head-bytes`/`--tail-bytes`): build-mode inputs are read through
+/// windows of the given sizes. Merge mode reads record databases and
+/// ignores the budget.
+///
+/// (rq-024c9db0)
+pub fn gather_inputs_with(
+    inputs: &[&Path],
+    budget: &crate::parser::WindowBudget,
+) -> Result<Gathered, CollectError> {
     match classify_inputs(inputs)? {
         CollectionMode::Build => Ok(Gathered::Build {
-            records: parse_records(inputs)?,
+            records: parse_records(inputs, budget)?,
         }),
         CollectionMode::Merge => {
             let mut records = Vec::new();
