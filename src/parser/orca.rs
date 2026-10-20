@@ -11,7 +11,8 @@ use crate::parser::extract::{
     parse_fortran_f64, read_geometry_table, vibrational_modes, LengthUnits, SymbolColumn, TableSpec,
 };
 use crate::parser::{
-    first_line_offset, parse_vector3, rows_after_last, FileWindows, Parser, Program,
+    first_line_offset, frequency_table_short, parse_vector3, rows_following, FileWindows,
+    LinePattern, Parser, Program,
 };
 use crate::record::{Record, RecordStatus};
 
@@ -21,14 +22,73 @@ use crate::record::{Record, RecordStatus};
 pub struct OrcaParser;
 
 /// The ASCII-art title line: the letters `O R C A` spaced apart between
-/// asterisks.
+/// asterisks. The test is allocation-free and rejects a non-candidate
+/// line at its first field (`rq-15b1763d`).
 fn is_banner(line: &str) -> bool {
-    line.replace('*', " ")
-        .split_whitespace()
-        .collect::<Vec<&str>>()
-        .join(" ")
-        == "O R C A"
+    let mut tokens = line
+        .split(|character: char| character == '*' || character.is_whitespace())
+        .filter(|token| !token.is_empty());
+    tokens.next() == Some("O")
+        && tokens.next() == Some("R")
+        && tokens.next() == Some("C")
+        && tokens.next() == Some("A")
+        && tokens.next().is_none()
 }
+
+/// The echoed input line of the INPUT FILE section: a `|`-led line whose
+/// fields include the `!` keyword marker.
+fn is_input_echo(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with('|') && trimmed.split_whitespace().any(|field| field == "!")
+}
+
+/// The `Multiplicity Mult …` echo line.
+fn is_multiplicity_line(line: &str) -> bool {
+    let mut fields = line.split_whitespace();
+    fields.next() == Some("Multiplicity") && fields.next() == Some("Mult")
+}
+
+/// The thermodynamics point-group line carrying the symmetry number.
+fn is_point_group_line(line: &str) -> bool {
+    line.contains("Point Group:") && line.contains("Symmetry Number:")
+}
+
+/// An ORCA error termination or reported error line.
+fn is_orca_abort(line: &str) -> bool {
+    line.contains("ORCA TERMINATED DUE TO") || line.trim_start().starts_with("ERROR")
+}
+
+/// The locate-pattern indices of the markers ORCA prints.
+///
+/// (rq-15b1763d)
+const VERSION: usize = 0;
+const INPUT_ECHO: usize = 1;
+const TOTAL_CHARGE: usize = 2;
+const MULTIPLICITY: usize = 3;
+const SINGLE_POINT_ENERGY: usize = 4;
+const GEOMETRY_HEADER: usize = 5;
+const FREQUENCIES_HEADER: usize = 6;
+const DIPOLE_HEADER: usize = 7;
+const MULLIKEN_HEADER: usize = 8;
+const POINT_GROUP: usize = 9;
+const ABORT: usize = 10;
+
+/// Every marker line ORCA's parse path needs, located in one walk of
+/// the windows. The index constants above key this table by position;
+/// the alignment unit test pins each constant to its entry.
+const PATTERNS: [LinePattern<'static>; 11] = [
+    LinePattern::Contains("Program Version"),
+    LinePattern::Where(&is_input_echo),
+    LinePattern::Contains("Total Charge"),
+    LinePattern::Where(&is_multiplicity_line),
+    LinePattern::Contains("FINAL SINGLE POINT ENERGY"),
+    LinePattern::TrimmedEquals("CARTESIAN COORDINATES (ANGSTROEM)"),
+    LinePattern::TrimmedEquals("VIBRATIONAL FREQUENCIES"),
+    LinePattern::TrimmedEquals("DIPOLE MOMENT"),
+    LinePattern::TrimmedEquals("MULLIKEN ATOMIC CHARGES"),
+    LinePattern::Where(&is_point_group_line),
+    LinePattern::Where(&is_orca_abort),
+];
 
 /// The command: all text after `!` in the echoed keyword line,
 /// whitespace-trimmed; an empty remainder leaves the command absent.
@@ -56,68 +116,78 @@ fn is_frequency_row(fields: &[&str]) -> bool {
         && frequency_value(fields[1]).is_some()
 }
 
+/// The genuine mode values of the frequency rows leading `lines` (rows
+/// stop the section at its first non-row), appended to `values`.
+fn collect_frequency_rows<'a>(lines: impl Iterator<Item = &'a str>, values: &mut Vec<f64>) {
+    let mut started = false;
+    for line in lines {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if is_frequency_row(&fields) {
+            // `is_frequency_row` has already proven the value parses.
+            values.push(frequency_value(fields[1]).expect("frequency row checked parseable"));
+            started = true;
+        } else if started {
+            break;
+        }
+    }
+}
+
 // rq-1831b7fb
 impl Parser for OrcaParser {
     fn program(&self) -> Program {
         Program::ORCA
     }
 
-    // rq-5b9c015a rq-5f31c98f
+    // rq-5b9c015a rq-5f31c98f rq-15b1763d
     fn detect(&self, head: &str) -> Option<usize> {
+        memchr::memchr(b'*', head.as_bytes())?;
         first_line_offset(head, is_banner)
     }
 
     fn parse(&self, windows: &FileWindows) -> Record {
-        let program_version = windows
-            .first_line_where(|line| line.contains("Program Version"))
-            .and_then(|line| {
-                let fields: Vec<&str> = line.split_whitespace().collect();
-                let position = fields.iter().position(|field| *field == "Version")?;
-                Some((*fields.get(position + 1)?).to_string())
-            });
+        // One identification walk finds every marker this format reads,
+        // status markers included (rq-15b1763d).
+        let matches = windows.locate(&PATTERNS);
+
+        let program_version = matches.first(VERSION).and_then(|line| {
+            let mut following_version = false;
+            for field in line.split_whitespace() {
+                if following_version {
+                    return Some(field.to_string());
+                }
+                following_version = field == "Version";
+            }
+            None
+        });
 
         // The echoed input line of the INPUT FILE section — `|  1> ! …`
         // — carries the command; a stray `!` elsewhere is not an echo and
         // leaves the command absent.
         // rq-527a66db
-        let command = windows
-            .first_line_where(|line| {
-                let trimmed = line.trim_start();
-                trimmed.starts_with('|') && trimmed.split_whitespace().any(|field| field == "!")
-            })
-            .and_then(command_from_echo);
+        let command = matches.first(INPUT_ECHO).and_then(command_from_echo);
 
         // rq-eb7784d8
-        let charge = windows
-            .last_line_where(|line| line.contains("Total Charge"))
-            .and_then(|line| {
-                parse_fortran_f64(line.split_whitespace().last()?).map(|value| value.round() as i32)
-            });
-        let multiplicity = windows
-            .last_line_where(|line| {
-                let fields: Vec<&str> = line.split_whitespace().collect();
-                fields.first() == Some(&"Multiplicity") && fields.get(1) == Some(&"Mult")
-            })
+        let charge = matches.last(TOTAL_CHARGE).and_then(|line| {
+            parse_fortran_f64(line.split_whitespace().last()?).map(|value| value.round() as i32)
+        });
+        let multiplicity = matches
+            .last(MULTIPLICITY)
             .and_then(|line| line.split_whitespace().last()?.parse::<u32>().ok());
 
         // The final job's energy: the last single-point value printed.
         // rq-eb7784d8 rq-b7387503
-        let electronic_energy = windows
-            .last_line_where(|line| line.contains("FINAL SINGLE POINT ENERGY"))
+        let electronic_energy = matches
+            .last(SINGLE_POINT_ENERGY)
             .and_then(|line| parse_fortran_f64(line.split_whitespace().last()?));
 
         // The final geometry: the last Ångström coordinate table.
-        let geometry_rows = rows_after_last(
-            windows,
-            |line| line.trim() == "CARTESIAN COORDINATES (ANGSTROEM)",
-            |fields| {
-                fields.len() == 4
-                    && fields[0].bytes().all(|byte| byte.is_ascii_alphabetic())
-                    && fields[1..4]
-                        .iter()
-                        .all(|field| parse_fortran_f64(field).is_some())
-            },
-        );
+        let geometry_rows = rows_following(matches.after_last(GEOMETRY_HEADER), |fields| {
+            fields.len() == 4
+                && fields[0].bytes().all(|byte| byte.is_ascii_alphabetic())
+                && fields[1..4]
+                    .iter()
+                    .all(|field| parse_fortran_f64(field).is_some())
+        });
         let geometry = read_geometry_table(
             geometry_rows.iter().copied(),
             &TableSpec {
@@ -132,61 +202,49 @@ impl Parser for OrcaParser {
         // section: the printed values pass through the shared trivial-mode
         // filter (near-zero translational/rotational entries dropped,
         // imaginary modes negative). The section ends at the rule before
-        // the IR table.
+        // the IR table. When the last header is not visible in the tail
+        // the section may straddle the elided middle, so the head
+        // remainder and the whole tail are both gathered.
         // rq-eb7784d8 rq-9d9e798e rq-69c48453 rq-17559f33
         let mut parsed_frequencies: Vec<f64> = Vec::new();
-        let mut started = false;
-        for line in windows.after_last_line_where(|line| line.trim() == "VIBRATIONAL FREQUENCIES") {
-            let fields: Vec<&str> = line.split_whitespace().collect();
-            if is_frequency_row(&fields) {
-                // `is_frequency_row` has already proven the value parses.
-                parsed_frequencies
-                    .push(frequency_value(fields[1]).expect("frequency row checked parseable"));
-                started = true;
-            } else if started {
-                break;
-            }
+        let header_in_tail = matches.last_in_tail(FREQUENCIES_HEADER).is_some();
+        collect_frequency_rows(
+            matches.after_last(FREQUENCIES_HEADER),
+            &mut parsed_frequencies,
+        );
+        if !header_in_tail {
+            collect_frequency_rows(windows.tail.lines(), &mut parsed_frequencies);
         }
         // rq-c37111b1
         let frequencies = vibrational_modes(&parsed_frequencies);
 
         // The dipole vector in atomic units, unchanged.
         // rq-ec125e27
-        let dipole_moment = windows
-            .after_last_line_where(|line| line.trim() == "DIPOLE MOMENT")
-            .find_map(|line| {
-                let fields: Vec<&str> = line.split_whitespace().collect();
-                if fields.len() == 7 && fields[0] == "Total" && fields[1] == "Dipole" {
-                    parse_vector3([fields[4], fields[5], fields[6]])
-                } else {
-                    None
-                }
-            });
+        let dipole_moment = matches.after_last(DIPOLE_HEADER).find_map(|line| {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            if fields.len() == 7 && fields[0] == "Total" && fields[1] == "Dipole" {
+                parse_vector3([fields[4], fields[5], fields[6]])
+            } else {
+                None
+            }
+        });
 
         // The Mulliken charges of the last population analysis.
-        let charge_rows = rows_after_last(
-            windows,
-            |line| line.trim() == "MULLIKEN ATOMIC CHARGES",
-            |fields| {
-                fields.len() == 4 && fields[2] == ":" && parse_fortran_f64(fields[3]).is_some()
-            },
-        );
+        let charge_rows = rows_following(matches.after_last(MULLIKEN_HEADER), |fields| {
+            fields.len() == 4 && fields[2] == ":" && parse_fortran_f64(fields[3]).is_some()
+        });
 
         // The rotational symmetry number from the thermodynamics block.
         // rq-eb7784d8 rq-69c48453
-        let rotational_symmetry_number = windows
-            .last_line_where(|line| {
-                line.contains("Point Group:") && line.contains("Symmetry Number:")
-            })
+        let rotational_symmetry_number = matches
+            .last(POINT_GROUP)
             .and_then(|line| line.split_whitespace().last()?.parse::<u32>().ok());
 
         // Status: the run's own termination banner governs it.
-        // rq-a5fee06d rq-0f8ebb73
+        // rq-a5fee06d rq-0f8ebb73 rq-f6a569e1 rq-80f193f5
         let (status, error) = if windows.tail.contains("ORCA TERMINATED NORMALLY") {
             (RecordStatus::Ok, None)
-        } else if windows.tail.lines().any(|line| {
-            line.contains("ORCA TERMINATED DUE TO") || line.trim_start().starts_with("ERROR")
-        }) {
+        } else if matches.last_in_tail(ABORT).is_some() {
             // Provisional error signal, pending the genuine failed
             // fixture that pins ORCA's abort wording
             // (`rqm/parsers/conformance.md`).
@@ -200,6 +258,20 @@ impl Parser for OrcaParser {
                 Some("the ORCA run ends before its termination banner".to_string()),
             )
         };
+
+        // Seam honesty: a banner-`ok` record whose frequency rows came
+        // from the fallback and fall below the 3N-6 minimum was cut by
+        // the elided middle, so it is demoted to `truncated`; `failed`
+        // outcomes and header-delimited sections are never demoted.
+        let atoms = geometry.as_ref().map(|geometry| geometry.symbols.len());
+        let (status, error) =
+            match (status, error, !header_in_tail && !frequencies.is_empty() && frequency_table_short(frequencies.len(), atoms)) {
+                (RecordStatus::Ok, _, true) => (
+                    RecordStatus::Truncated,
+                    Some("the ORCA frequency table may be incomplete: fewer than 3N-6 modes are visible in the windows; rerun with a larger --head-bytes/--tail-bytes window".to_string()),
+                ),
+                (status, error, _) => (status, error),
+            };
 
         Record {
             status,
@@ -228,6 +300,55 @@ impl Parser for OrcaParser {
             },
             rotational_symmetry_number,
             ..Record::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    /// One line per `PATTERNS` entry, each matching exactly one pattern
+    /// of this format: the located answer for a constant must be the
+    /// line written for its entry, so a constant and a table entry that
+    /// drift apart fail here rather than silently misreading markers.
+    const MARKER_LINES: [(&str, usize); 11] = [
+        ("Program Version 6.0.0  -   RELEASE  -", VERSION),
+        ("|  1> ! wB97x-3c marker", INPUT_ECHO),
+        (
+            " Total Charge           Charge          ....    0",
+            TOTAL_CHARGE,
+        ),
+        (
+            " Multiplicity           Mult            ....    1",
+            MULTIPLICITY,
+        ),
+        (
+            "FINAL SINGLE POINT ENERGY       -76.402725",
+            SINGLE_POINT_ENERGY,
+        ),
+        ("CARTESIAN COORDINATES (ANGSTROEM)", GEOMETRY_HEADER),
+        ("VIBRATIONAL FREQUENCIES", FREQUENCIES_HEADER),
+        ("DIPOLE MOMENT", DIPOLE_HEADER),
+        ("MULLIKEN ATOMIC CHARGES", MULLIKEN_HEADER),
+        ("Point Group:  C1, Symmetry Number:   1", POINT_GROUP),
+        ("ORCA TERMINATED DUE TO AN ERROR", ABORT),
+    ];
+
+    #[test]
+    fn marker_constants_align_with_the_pattern_table() {
+        let content: String = MARKER_LINES
+            .iter()
+            .map(|(line, _)| format!("{line}\n"))
+            .collect();
+        let mut cursor = Cursor::new(content.as_bytes());
+        let windows =
+            FileWindows::from_seekable(&mut cursor, 1 << 20, 1 << 20).expect("covered windows");
+        let matches = windows.locate(&PATTERNS);
+        for (line, index) in MARKER_LINES {
+            assert_eq!(matches.first(index), Some(line), "pattern index {index}");
+            assert_eq!(matches.last(index), Some(line), "pattern index {index}");
         }
     }
 }

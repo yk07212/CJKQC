@@ -2068,3 +2068,18 @@ fn loaded_records(path: &str) -> Vec<Record> {
         .expect("load database")
         .records
 }
+
+#[test] // rq-bb4d61fb
+fn a_zero_window_budget_is_a_usage_error() {
+    let dir = temp_dir();
+    let run = cjkqc(&[
+        &fixture("xtb/1dma.log"),
+        "--out",
+        &dir.join("db.jsonl").to_string_lossy(),
+        "--head-bytes",
+        "0",
+    ]);
+    assert_eq!(run.status.code(), Some(2));
+    assert!(stderr(&run).contains("at least 1"), "{}", stderr(&run));
+    assert!(!dir.join("db.jsonl").exists());
+}

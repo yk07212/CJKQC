@@ -64,6 +64,52 @@ runs (`rqm/ARCHITECTURE.md`).
     Iteration never crosses a window boundary: when the matched line lies in
     the head window of an uncovered file, iteration ends where the head
     window ends.
+  - `locate(&self, patterns: &[LinePattern]) -> LineMatches` — the
+    multi-pattern search: identifies every pattern at once — literal
+    patterns by whole-window byte scans, structural (`Where`) patterns by
+    one shared line walk — evaluating each pattern against each line at
+    most once and never re-walking a window per marker. For any single
+    pattern its answers are identical to the corresponding single-pattern
+    method (`first` to `first_line_where`, `last` to `last_line_where`,
+    `after_first` and `after_last` to their `…_line_where` counterparts,
+    boundary rules included). The per-format parse paths use `locate`; the
+    single-pattern methods are the one-pattern conveniences.
+
+- `WindowBudget { head_bytes, tail_bytes }` — a pair of window sizes for <!-- rq-4311126f -->
+  one reader call; `Default` is the framework's `DEFAULT_HEAD_BYTES` and
+  `DEFAULT_TAIL_BYTES`. The CLI's `--head-bytes`/`--tail-bytes` flags
+  build one, and `parse_file_with`, `collect_inputs_with`, and
+  `gather_inputs_with` carry it, so a caller widens (or narrows) the
+  windows past a seam a record's error names.
+
+- `LinePattern` — a pattern a `locate` walk tests against each line. <!-- rq-fefddb16 -->
+  - `Contains(&str)` — the line contains the substring.
+  - `TrimmedEquals(&str)` — the whitespace-trimmed line equals the text.
+  - `TrimmedStartsWith(&str)` — the leading-trimmed line starts with the text.
+  - `Where(&dyn Fn(&str) -> bool)` — a structural predicate for signatures
+    no literal text expresses (an ASCII-art banner, a column-shaped row).
+    Its test allocates nothing before admitting a candidate line
+    (`Performance Constraints`).
+
+- `LineMatches<'w>` — the located lines of one `locate` call, borrowed from <!-- rq-c6dcf9fc -->
+  the windows. `first(pattern)`, `last(pattern)`, `after_first(pattern)`,
+  and `after_last(pattern)` take the pattern's index and answer exactly as
+  the matching single-pattern method of `FileWindows` would.
+  `first_in_head(pattern)` answers head-scoped queries — the "the route
+  echo lives at the top of the job" rule of `rqm/parsers/gaussian.md` —
+  returning the first matching line of the head window or `None` when no
+  head line matches; a match confined to the tail is not a match in the
+  head.
+  `last_in_tail(pattern)` answers tail-scoped queries instead — the "the
+  tail carries" status rules of the per-format parser documents — returning
+  the last matching line of the tail window (its line index included, so
+  several markers can be ordered without another walk) or `None` when no
+  tail line matches; a match confined to the head is not a match in the
+  tail.
+
+- `TailLine<'w>` — the pair `last_in_tail` returns: `line` (the matched <!-- rq-6e71ffd1 -->
+  text) and `index` (its zero-based line number within the tail window,
+  usable to order two located markers).
 
 - `Program` — a program token: a wrapper over a `&'static str` lowercase <!-- rq-0cc3c80f -->
   token — the value stamped into `Record::program`. Two `Program` values
@@ -83,7 +129,11 @@ runs (`rqm/ARCHITECTURE.md`).
   - `detect(&self, head: &str) -> Option<usize>` — the byte offset, into
     `head`, of the earliest line that carries this format's signature, or
     `None` when the head carries none. A parser claims the file exactly when
-    it returns `Some`.
+    it returns `Some`. A head without the signature is rejected at bounded
+    cost — a constant number of whole-head substring searches, or a line
+    walk whose per-line test is allocation-free and bounded by a small
+    number of substring scans, with a leading-bytes reject where the
+    signature's shape allows one (*Performance Constraints*).
   - `parse(&self, windows: &FileWindows) -> Record` — turns the windows into
     exactly one record. A parser never panics on any content; content-level
     failures are returned as records with status `failed` or `truncated` and
@@ -105,6 +155,12 @@ runs (`rqm/ARCHITECTURE.md`).
     canonicalization fails). Filesystem-level failures — a missing file, an
     unreadable file, a directory — return `Err`; every content-level
     outcome is `Ok` with one record.
+
+- `ParserRegistry::parse_file_with(&self, path: &Path, budget: &WindowBudget) -> Result<Record, ParseError>` — <!-- rq-362c1c7f -->
+  `parse_file` with an explicit window budget: the same read (seekable),
+  detection, and assembly with the budget's window sizes; the API behind
+  the CLI's `--head-bytes`/`--tail-bytes` flags. `parse_file` is this
+  function with the default budget.
 
 - `ParseError` — the error type of `parse_file`, with the single variant <!-- rq-814d8aa2 -->
   `Io { kind: std::io::ErrorKind, reason: String }` — a filesystem
@@ -202,6 +258,12 @@ module:
   3.1 MiB) and leave an order of magnitude over the ~540 KiB final-job span
   of the multi-step Gaussian fixture; the fixture corpus keeps them honest
   as it grows.
+- The CLI exposes the budget as `--head-bytes <N>` and `--tail-bytes <N>`
+  (bytes, defaulting to the constants; either value below 1 is a usage
+  error). They govern only build-mode reads; merge mode reads record
+  databases and ignores them. A `WindowBudget` carries the pair through
+  `parse_file_with`/`collect_inputs_with`/`gather_inputs_with`, so a user
+  can widen the windows past a seam that a record's error names.
 - A file no larger than `head_bytes + tail_bytes` is read whole once:
   covered, with `head` and `tail` both the entire content.
 - A larger file yields disjoint windows: the head is the first
@@ -220,6 +282,54 @@ module:
   elided middle is visible to neither. Parsers must rely on no content
   outside the windows — that is what keeps the framework honest for files
   of any size.
+- A `locate` call reads each visible window a constant number of times:
+  whole-window byte scans (sharing one newline table) locate every literal
+  pattern, and one shared line walk tests the structural (`Where`)
+  patterns — never one walk per marker. Each pattern is evaluated against
+  each line at most once. A covered window is read as one pass set: head
+  and tail hold the same text, so the literal scans, the shared newline
+  table, and the structural walk each cover the content once together and
+  answer the first and the last questions from the same pass.
+
+## Performance Constraints <!-- rq-15b1763d -->
+
+Collection is parse-bound: a directory of thousands of outputs must reach
+the database in seconds, and the framework keeps the per-record cost
+proportional to one walk over the windows.
+
+- One identify pass per record. A per-format parse locates every marker it
+  needs — energy, geometry header, frequency section, population and dipole
+  sections, identity fields, and its status markers — in a single `locate`
+  call, then reads values from the located lines and the bounded line spans
+  that follow them. A marker never costs a fresh walk or scan of a window.
+  One bounded exception: MRCC's echoed input deck is extracted from the
+  head window in its own scan (the deck runs from the `Input file:` marker
+  to the first stop-key line, a span `locate`'s line-at-a-time answers
+  cannot delimit), so MRCC scans the head once more — a marker search and
+  a line loop over at most `head_bytes`; no other parser re-walks a
+  window.
+- Whole-window byte searches are cheap and permitted. `str::contains` on a
+  window is one memory-bandwidth pass; it serves as the signature prefilter
+  in detection and as whole-window status tests.
+- Detection rejects cheaply. A parser whose signature is absent from the
+  head rejects with a constant number of whole-head `contains` searches;
+  where the signature is not literal text (the ORCA banner), a single line
+  walk is permitted only when its per-line test is allocation-free and its
+  per-line cost is bounded by a small number of substring scans — leading-
+  bytes rejects are the rule and should be kept wherever the signature's
+  shape (line start or fixed leading fields) allows one; a predicate that
+  must `contains` the whole line for genuine candidates (a centered
+  banner) is the accepted exception. Parsing one file never walks the head
+  once per registered parser with allocation-heavy per-line predicates.
+- Per-line tests allocate nothing before admitting a candidate. A predicate
+  or `Where` pattern runs byte-level shape tests first and splits the line
+  into fields only after the line is a candidate.
+- The resulting budget: every window byte is touched a small constant
+  number of times — the read, one identify pass, bounded local extraction —
+  independent of how many markers the format carries, so single-core
+  throughput approaches the whole-window byte-search rate. On commodity
+  hardware the parse path of a 3 MiB covered output runs in single-digit
+  milliseconds.
 
 ## Record Assembly <!-- rq-e4a815f2 -->
 
@@ -383,6 +493,14 @@ Feature: Format detection and parser framework
     And tail holds exactly the last 4 lines
     And head and tail share no line
 
+  @rq-72479b94
+  Scenario: A caller-supplied budget replaces the default window sizes
+    Given the registry contains a parser that claims heads containing "MAGIC" and records the tail's line count
+    And a file of 20 lines whose first line is "MAGIC"
+    When the file is parsed with the default budget and then with a budget of head 4 lines and tail 4 lines
+    Then the default-budget record counts 20 tail lines, for the file is covered
+    And the budgeted record counts 4 tail lines
+
   @rq-a37342d6
   Scenario: The tail keeps the file's final unterminated line
     Given a file larger than the windows whose last line lacks a trailing newline
@@ -535,6 +653,59 @@ Feature: Format detection and parser framework
     When after_last_line_where is called with the predicate
     Then it yields exactly the following visible head lines
     And it yields no line from the middle or the tail
+
+  # --- Multi-marker locate ---
+
+  @rq-a1bbe040
+  Scenario: locate answers every pattern from one call
+    Given a covered window whose lines are "A x", "B y", "A z"
+    When locate is called with the patterns Contains("A") and Contains("y")
+    Then first of Contains("A") is "A x" and last of Contains("A") is "A z"
+    And first and last of Contains("y") are both "B y"
+
+  @rq-e03d12a0
+  Scenario: locate prefers the head for first and the tail for last
+    Given uncovered windows in which "MARK" appears in both the head and the tail
+    When locate is called with the pattern Contains("MARK")
+    Then first returns the earliest head match
+    And last returns the latest tail match
+
+  @rq-1d792ead
+  Scenario: after_last stops at the window boundary like its single-pattern twin
+    Given uncovered windows whose last "MARK" match lies in the head,
+    followed by more head lines and then the elided middle
+    When after_last is taken for the pattern
+    Then it yields exactly the following visible head lines
+    And it yields no line from the middle or the tail
+
+  @rq-97b6a68f
+  Scenario: a covered window is walked once per locate call
+    Given a covered window of N lines
+    When locate is called with two Where matchers that count their invocations
+    Then each matcher is invoked exactly N times
+
+  @rq-7525d2fc
+  Scenario: a pattern absent from the windows matches nothing
+    Given windows and a pattern no visible line carries
+    When locate is called
+    Then first and last are None
+    And after_first and after_last yield no lines
+
+  @rq-abc3dfa6
+  Scenario: TrimmedEquals and TrimmedStartsWith match on trimmed lines
+    Given a covered window holding the lines "   VIBRATIONAL FREQUENCIES   " and "  Mulliken charges:"
+    When locate is called with TrimmedEquals("VIBRATIONAL FREQUENCIES")
+    Then that first line is the first and last match
+    When locate is called with TrimmedStartsWith("Mulliken")
+    Then the charges line is the first and last match
+
+  @rq-75876d4c
+  Scenario: last_in_tail sees only tail matches and reports their order
+    Given uncovered windows in which "END" matches a head line and two tail lines
+    And "HALT" matches only a head line
+    When locate is called with the patterns Contains("END") and Contains("HALT")
+    Then last_in_tail of Contains("END") is the later tail line with a larger index than the earlier tail match
+    And last_in_tail of Contains("HALT") is None although last is Some
 
   # --- Geometry table extraction ---
 

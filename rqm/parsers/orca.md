@@ -65,6 +65,15 @@ in an elided window yields an absent observable, never a guess.
   rotational entries are dropped, every genuine mode — imaginary included
   — is stored as printed, and a section whose visible modes are all
   trivial leaves the field absent.
+- The frequency span and seam honesty follow the Gaussian rule
+  (`rqm/parsers/gaussian.md`): with the last `VIBRATIONAL FREQUENCIES`
+  header visible in the tail the section is whole inside the windows;
+  when it is not, the section rows visible after a head-window header
+  plus every frequency-shaped row at the head of the tail are gathered,
+  and if the stored (post-filter) count then falls below 3N−6 while the
+  geometry shows N atoms, the record is demoted to `truncated` with an
+  error saying the frequency table may be incomplete and suggesting a
+  rerun with larger `--head-bytes`/`--tail-bytes` windows.
 - `dipole_moment` — the `Total Dipole Moment    :     <x> <y> <z>` line of <!-- rq-21041eac -->
   the last `DIPOLE MOMENT` block, in atomic units, stored unchanged.
 - `mulliken_charges` — the values of the rows `<idx> <El> : <q>` under the <!-- rq-80fdb0f3 -->
@@ -81,6 +90,10 @@ in an elided window yields an absent observable, never a guess.
   the corpus failed fixture (`rqm/parsers/conformance.md`), not by this
   document. The error text names the reported cause.
 - `truncated` — neither marker present. <!-- rq-95cbb226 -->
+- A banner-`ok` record whose fallback-gathered frequency section fails
+  the 3N−6 seam-honesty count is demoted to `truncated` (the frequency
+  section above); `failed` outcomes and header-delimited sections are
+  never demoted.
 - Observables extracted before the failure are carried in the record
   (`rqm/record.md`).
 
@@ -184,6 +197,25 @@ Feature: ORCA parser
     Given uncovered windows whose final DIPOLE MOMENT block lies in the elided middle
     When the windows are parsed
     Then the record has no dipole_moment
+
+  @rq-82f9c544
+  Scenario: An elided frequency header falls back to the visible rows
+    Given uncovered windows of a three-atom run whose final VIBRATIONAL FREQUENCIES
+    header lies in the head with some genuine section rows visible below it and the
+    section's remaining genuine rows opening the tail, and a normal termination banner
+    When the windows are parsed
+    Then the record has status ok
+    And the record's frequencies hold every visible genuine mode, head-window rows
+    first, in printed order
+
+  @rq-7ab0f27f
+  Scenario: A seam-cut frequency section is stored truncated
+    Given uncovered windows of a three-atom run in which only two genuine modes of a
+    VIBRATIONAL FREQUENCIES section are visible and its header is not in the tail,
+    and a normal termination banner
+    When the windows are parsed
+    Then the record has status truncated
+    And the record's error says the frequency table may be incomplete
 
   @rq-e770b7b2
   Scenario: The corpus fixture conforms

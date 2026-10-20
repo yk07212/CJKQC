@@ -28,7 +28,10 @@ use crate::record::{Record, RecordStatus};
 pub use gaussian::GaussianParser;
 pub use mrcc::MrccParser;
 pub use orca::OrcaParser;
-pub use windows::{FileWindows, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES};
+pub use windows::{
+    FileWindows, LineMatches, LinePattern, TailLine, WindowBudget, DEFAULT_HEAD_BYTES,
+    DEFAULT_TAIL_BYTES,
+};
 pub use xtb::XtbParser;
 pub use xyz::XyzParser;
 
@@ -211,6 +214,19 @@ impl ParserRegistry {
     ///
     /// (rq-b28b6e69 rq-e4a815f2)
     pub fn parse_file(&self, path: &Path) -> Result<Record, ParseError> {
+        self.parse_file_with(path, &WindowBudget::default())
+    }
+
+    /// `parse_file` with an explicit window budget: the caller widens
+    /// (or narrows) the head and tail past the framework defaults, the
+    /// knob behind the CLI's `--head-bytes` and `--tail-bytes` flags.
+    ///
+    /// (rq-362c1c7f)
+    pub fn parse_file_with(
+        &self,
+        path: &Path,
+        budget: &WindowBudget,
+    ) -> Result<Record, ParseError> {
         let mut file = File::open(path).map_err(ParseError::from_io)?;
         // Some filesystems report a directory's length as zero, where a
         // directory read would otherwise slip through the window reader
@@ -222,7 +238,7 @@ impl ParserRegistry {
                 reason: "is a directory".to_string(),
             });
         }
-        let windows = FileWindows::from_seekable(&mut file, DEFAULT_HEAD_BYTES, DEFAULT_TAIL_BYTES)
+        let windows = FileWindows::from_seekable(&mut file, budget.head_bytes, budget.tail_bytes)
             .map_err(ParseError::from_io)?;
         let mut record = self.assemble(&windows);
         record.name = path
@@ -335,19 +351,19 @@ fn strip_verbatim_prefix(path: &Path) -> &Path {
     path
 }
 
-/// The lines following the last visible line satisfying `header`: every
-/// line from the first row-shaped one (`row` on its whitespace fields)
-/// through the last consecutive row-shaped one. Leading non-row lines
-/// (rules, column headings) are skipped; the first non-row line after the
-/// table starts ends it. Shared by the per-format block extractors.
-pub(crate) fn rows_after_last(
-    windows: &FileWindows,
-    header: impl Fn(&str) -> bool,
+/// The lines of a located span that form a table: every line from the
+/// first row-shaped one (`row` on its whitespace fields) through the last
+/// consecutive row-shaped one. Leading non-row lines (rules, column
+/// headings) are skipped; the first non-row line after the table starts
+/// ends it. Shared by the per-format block extractors, fed by the located
+/// spans of one `locate` walk (`rq-15b1763d`).
+pub(crate) fn rows_following<'a>(
+    lines: impl Iterator<Item = &'a str>,
     row: impl Fn(&[&str]) -> bool,
-) -> Vec<&str> {
-    let mut rows: Vec<&str> = Vec::new();
+) -> Vec<&'a str> {
+    let mut rows: Vec<&'a str> = Vec::new();
     let mut started = false;
-    for line in windows.after_last_line_where(&header) {
+    for line in lines {
         let fields: Vec<&str> = line.split_whitespace().collect();
         if row(&fields) {
             rows.push(line);
@@ -362,6 +378,18 @@ pub(crate) fn rows_after_last(
 /// Whether a field reads as an integer.
 pub(crate) fn is_integer(field: &str) -> bool {
     field.parse::<i64>().is_ok()
+}
+
+/// The seam-honesty count of the frequency fallback: the stored mode
+/// count falls below 3N-6, the fewest normal modes a genuine frequency
+/// table prints (a linear molecule prints 3N-5, never fewer), so the
+/// table was cut by the window seam. Best-effort: a job with frozen
+/// coordinates legitimately prints fewer modes and can be flagged.
+///
+/// Shared by the Gaussian, ORCA and xtb fallback rules
+/// (`rqm/parsers/gaussian.md`, `rqm/parsers/orca.md`, `rqm/parsers/xtb.md`).
+pub(crate) fn frequency_table_short(found: usize, atoms: Option<usize>) -> bool {
+    atoms.is_some_and(|atoms| found < (3 * atoms).saturating_sub(6))
 }
 
 /// The byte offset, into `head`, of the earliest line satisfying
