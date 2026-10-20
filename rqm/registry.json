@@ -1243,6 +1243,18 @@
     "title": "A list of only trivial modes filters to empty",
     "type": "scenario"
   },
+  "rq-28e4ef6b": {
+    "decl": "Scenario: --ignoreimag prints the saddle point's thermochemistry",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--ignoreimag prints the saddle point's thermochemistry",
+    "type": "scenario"
+  },
   "rq-28fce0b1": {
     "decl": "- `geometry` — the table under the last `Standard orientation:` header:",
     "file": "parsers/gaussian",
@@ -4354,6 +4366,18 @@
     "title": "src",
     "type": "api-item"
   },
+  "rq-903b5a1f": {
+    "decl": "Scenario: --ignoreimag drops imaginary modes from the sums",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--ignoreimag drops imaginary modes from the sums",
+    "type": "scenario"
+  },
   "rq-9063d573": {
     "decl": "Scenario: A monomer without thermochemistry has no Gibbs reference",
     "file": "formation",
@@ -6513,6 +6537,18 @@
     "title": "validate rejects an empty geometry",
     "type": "scenario"
   },
+  "rq-daa8d422": {
+    "decl": "Scenario: --ignoreimag leaves the raw observables alone",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--ignoreimag leaves the raw observables alone",
+    "type": "scenario"
+  },
   "rq-dab135ee": {
     "decl": "- `metric_dipole_magnitude(record: &Record) -> Option<f64>`",
     "file": "uniqueness",
@@ -7106,6 +7142,18 @@
     "title": "A hidden dipole block leaves the dipole absent",
     "type": "scenario"
   },
+  "rq-ec8fbd92": {
+    "decl": "Scenario: A monatomic record with a stray imaginary mode is defined under --ignoreimag",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A monatomic record with a stray imaginary mode is defined under --ignoreimag",
+    "type": "scenario"
+  },
   "rq-ed0686aa": {
     "decl": "Scenario: Fortran float parsing accepts E, e, D, and d exponents",
     "file": "parser-framework",
@@ -7153,6 +7201,30 @@
     ],
     "title": "ReactedMode",
     "type": "api-item"
+  },
+  "rq-ef692e86": {
+    "decl": "Scenario: A record with only imaginary modes is undefined under --ignoreimag",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record with only imaginary modes is undefined under --ignoreimag",
+    "type": "scenario"
+  },
+  "rq-efd98e52": {
+    "decl": "Scenario: --ignoreimag with --makereal is a usage error",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--ignoreimag with --makereal is a usage error",
+    "type": "scenario"
   },
   "rq-f00ebeae": {
     "decl": "### Types",

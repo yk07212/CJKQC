@@ -39,7 +39,9 @@ const FREQ_PARTICIPATION_CUTOFF: f64 = 1.0;
 
 /// The run's thermochemistry settings: temperature (`--temp`),
 /// quasi-harmonic reference frequency (`--fc`), frequency scale
-/// (`--fscale`), and imaginary-mode handling (`--makereal`).
+/// (`--fscale`), and imaginary-mode handling (`--makereal`,
+/// `--ignoreimag`). The CLI rejects `makereal` and `ignoreimag`
+/// together, so no reachable condition set has both true.
 ///
 /// (rq-3315a51c rq-142ac35d)
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -54,6 +56,9 @@ pub struct ThermoConditions {
     /// Flip imaginary (negative) frequencies to their absolute values
     /// inside the derivation.
     pub makereal: bool,
+    /// Skip imaginary (negative) frequencies: they contribute to no
+    /// vibrational term.
+    pub ignoreimag: bool,
 }
 
 impl Default for ThermoConditions {
@@ -63,6 +68,7 @@ impl Default for ThermoConditions {
             freq_cutoff: 100.0,
             freq_scale: 1.0,
             makereal: false,
+            ignoreimag: false,
         }
     }
 }
@@ -287,9 +293,10 @@ pub fn rotational_constants(record: &Record) -> Option<Vec<f64>> {
 /// The full thermochemistry of one record at one condition set: `None`
 /// exactly when the derivation is undefined — no electronic energy, no
 /// geometry, a degenerate geometry, an unknown element symbol, an
-/// imaginary frequency without `makereal`, a non-monatomic record
-/// without participating modes, or a non-finite derived term (possible
-/// only for conditions beyond the `rqm/thermo.md` Numerics range).
+/// imaginary frequency under neither `makereal` nor `ignoreimag`, a
+/// non-monatomic record without participating modes, or a non-finite
+/// derived term (possible only for conditions beyond the `rqm/thermo.md`
+/// Numerics range).
 /// Pure: no caching, no mutation, deterministic in the inputs.
 ///
 /// (rq-bdd59f53 rq-5b33312a rq-ac683d6d)
@@ -298,16 +305,23 @@ pub fn thermochemistry(record: &Record, conditions: &ThermoConditions) -> Option
     let species = species_moments(record)?;
     let temperature = conditions.temperature;
 
-    // Mode selection: an imaginary frequency without `--makereal` leaves
-    // the whole derivation undefined; with it the frequency flips to its
-    // absolute value before the participation test (rqm/thermo.md).
+    // Mode selection: an imaginary frequency with neither imaginary-mode
+    // flag leaves the whole derivation undefined; `--makereal` flips it to
+    // its absolute value before the participation test and `--ignoreimag`
+    // drops it outright, so a negative value reaches the flip only under
+    // `makereal` (rqm/thermo.md).
+    debug_assert!(
+        !(conditions.makereal && conditions.ignoreimag),
+        "the CLI rejects --makereal together with --ignoreimag"
+    );
     let raw = record.vibrational_frequencies.as_deref().unwrap_or(&[]);
-    if raw.iter().any(|value| *value < 0.0) && !conditions.makereal {
+    if raw.iter().any(|value| *value < 0.0) && !conditions.makereal && !conditions.ignoreimag {
         return None;
     }
     let participating: Vec<f64> = raw
         .iter()
-        .map(|value| if *value < 0.0 { -value } else { *value })
+        .filter(|value| **value >= 0.0 || conditions.makereal)
+        .map(|value| value.abs())
         .filter(|value| *value > FREQ_PARTICIPATION_CUTOFF)
         .collect();
     let modes: &[f64] = match species.class {

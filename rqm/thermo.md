@@ -38,10 +38,13 @@ hartree (Eh); a term quoted "per mole" below is divided by
   stored observables are untouched.
 - `makereal` — `--makereal`, a boolean, default off. On, every negative
   (imaginary) raw frequency enters the derivation as its absolute value
-  (see Mode Selection); off, a record holding any negative frequency has
-  undefined thermochemistry altogether.
+  (see Mode Selection).
+- `ignoreimag` — `--ignoreimag`, a boolean, default off. On, every
+  negative (imaginary) raw frequency is skipped: it contributes to no
+  vibrational term (see Mode Selection). `--ignoreimag` and `--makereal`
+  are mutually exclusive; a run passing both is a usage error (exit 2).
 
-The four flags are settings flags: they configure derivations, never count
+The five flags are settings flags: they configure derivations, never count
 as manipulations or print flags, and a run that passes only settings flags
 still needs `--out` or a print flag (`rqm/filtering.md`).
 
@@ -52,21 +55,25 @@ still needs `--out` or a print flag (`rqm/filtering.md`).
   Absent `multiplicity` reads as 1; absent `rotational_symmetry_number`
   (σ) reads as 1.
 - **Participating modes**: a vibrational mode participates in the
-  vibrational sums iff its frequency value — after `--makereal` flipping
-  — is > 1.0 cm⁻¹. This drops the near-zero translational and rotational
-  contaminant modes programs print (ORCA's "Cut-Off Frequency
-  1.00 cm⁻¹"); a stored `−0.0` never participates.
+  vibrational sums iff its frequency value — after the imaginary-mode
+  handling below — is > 1.0 cm⁻¹. This drops the near-zero translational
+  and rotational contaminant modes programs print (ORCA's "Cut-Off
+  Frequency 1.00 cm⁻¹"); a stored `−0.0` never participates.
 - **Imaginary modes**: a negative raw frequency marks a saddle-point mode.
-  With `makereal` off, a record holding any negative frequency has
-  undefined thermochemistry — every zpe, h, s, and g value is undefined
-  and prints `-` (`rqm/filtering.md`). With `makereal` on, each negative
-  frequency is first flipped to its absolute value and then follows the
-  participation test and the vibrational formulas like any real mode. The
-  flip lives in the derivation only: the stored record, the `lf`
-  observable, and the `--nimag` count keep the raw values.
+  With both `makereal` and `ignoreimag` off, a record holding any negative
+  frequency has undefined thermochemistry — every zpe, h, s, and g value
+  is undefined and prints `-` (`rqm/filtering.md`). With `makereal` on,
+  each negative frequency is first flipped to its absolute value and then
+  follows the participation test and the vibrational formulas like any
+  real mode. With `ignoreimag` on, each negative frequency is dropped
+  before the participation test and contributes to no vibrational term;
+  a non-monatomic record whose every mode is dropped has no participating
+  mode and is undefined (Definedness). Neither flag touches the stored
+  data: the record, the `lf` observable, and the `--nimag` count keep the
+  raw values.
 - **Scaled frequency** ν̃′ᵢ = `freq_scale` · ν̃ᵢ for every participating
   mode; all vibrational formulas use ν̃′ᵢ. The 1.0 cm⁻¹ participation
-  test runs on the flipped, unscaled frequency.
+  test runs on the unscaled frequency after imaginary-mode handling.
 - **Species class**: `Monatomic` when the geometry has one atom;
   otherwise the mass-weighted principal moments of inertia
   I_a ≤ I_b ≤ I_c are computed from the geometry (in Å) with the standard
@@ -128,9 +135,10 @@ finite for arbitrarily small positive frequencies.
 Thermochemistry is defined for a record iff `electronic_energy` is present,
 `geometry` is present and non-degenerate (middle principal moment > 0),
 every geometry symbol is in the atomic-weight table, no raw vibrational
-frequency is negative (or `makereal` flips them), the species is
-`Monatomic` or has at least one participating vibrational mode, and every
-derived term is finite. Finiteness holds automatically inside the
+frequency is negative (or `makereal` flips or `ignoreimag` skips them),
+the species is `Monatomic` or has at least one participating vibrational
+mode, and every derived term is finite. Finiteness holds automatically
+inside the
 Numerics range; beyond it, conditions the CLI accepts (an absurd
 `--temp`) can leave a derivation non-finite, and such a derivation is
 undefined rather than infinite. An undefined derivation prints `-`,
@@ -175,8 +183,9 @@ the print boundary via the `--unit` flag (`rqm/filtering.md` Printing).
 ### Types <!-- rq-eaee0fc4 -->
 
 - `ThermoConditions` — `temperature: f64`, `freq_cutoff: f64`, <!-- rq-3315a51c -->
-  `freq_scale: f64`, `makereal: bool`; `Default` is 298.15 K, 100.0 cm⁻¹,
-  1.0, false.
+  `freq_scale: f64`, `makereal: bool`, `ignoreimag: bool`; `Default` is
+  298.15 K, 100.0 cm⁻¹, 1.0, false, false. The CLI rejects `makereal`
+  and `ignoreimag` together, so no reachable condition set has both true.
 - `SpeciesClass` — `Monatomic | Linear | Nonlinear`. <!-- rq-fb4ef102 -->
 - `Thermo` — one record's derivation at one condition set, all fields f64 <!-- rq-162b0bbe -->
   in Eh (the T·S fields are temperature-multiplied energy terms):
@@ -266,8 +275,9 @@ printed constants, pinning the moments-of-inertia path as well.
 - Alternative low-frequency schemes beyond the Grimme interpolation and
   the pure harmonic oscillator (`--fc 0`): no hard truncation (raising
   frequencies below a cutoff to the cutoff), no Truhlar/RRQHO selector.
-- Deleting imaginary modes (JKQC `-dropimg`): not supported; `--makereal`
-  flips them into the derivation instead and never edits a stored record.
+- Deleting imaginary modes from the stored record (JKQC `-dropimg`):
+  `--ignoreimag` skips them inside the derivation and `--makereal` flips
+  them; neither ever edits a stored record.
 - Concentration or solvent-adjusted translational entropy: the standard
   state is the ideal gas at 1 atm; there is no pressure flag.
 - Range validation beyond positivity/sign checks on the settings flags:
@@ -286,7 +296,7 @@ printed constants, pinning the moments-of-inertia path as well.
 Feature: Thermochemistry on demand
 
   Background:
-    Given the default ThermoConditions are temperature 298.15 K, freq_cutoff 100.0 cm^-1, freq_scale 1.0, makereal off
+    Given the default ThermoConditions are temperature 298.15 K, freq_cutoff 100.0 cm^-1, freq_scale 1.0, makereal off, ignoreimag off
 
   # --- Conformance against ORCA ---
 
@@ -346,6 +356,43 @@ Feature: Thermochemistry on demand
     When CJKQC is invoked with the database and "--name --nimag --g --makereal" and no --out
     Then nimag prints 1 and g prints a defined value
     And the lf cutoff property still sees -300.0, so "--filter-lt lf -200" keeps the record
+
+  @rq-903b5a1f
+  Scenario: --ignoreimag drops imaginary modes from the sums
+    Given a record with frequencies [1000.0, -300.0] and a record with frequencies [1000.0]
+    When thermochemistry is derived for the first with ignoreimag and for the second at default conditions
+    Then the zpe, thermal_vibrational, and ts_vibrational values are pairwise equal
+
+  @rq-28e4ef6b
+  Scenario: --ignoreimag prints the saddle point's thermochemistry
+    Given a database with one record holding an imaginary frequency
+    When CJKQC is invoked with the database and "--name --g --ignoreimag" and no --out
+    Then the g column prints a defined value
+
+  @rq-daa8d422
+  Scenario: --ignoreimag leaves the raw observables alone
+    Given a database with one record holding frequencies [1000.0, -300.0]
+    When CJKQC is invoked with the database and "--name --nimag --g --ignoreimag" and no --out
+    Then nimag prints 1 and g prints a defined value
+    And the lf cutoff property still sees -300.0, so "--filter-lt lf -200" keeps the record
+
+  @rq-ef692e86
+  Scenario: A record with only imaginary modes is undefined under --ignoreimag
+    Given a nonlinear 3-atom record with frequencies [-50.0, -300.0, -1200.0] and otherwise defined inputs
+    When thermochemistry is derived with ignoreimag
+    Then it returns None
+
+  @rq-ec8fbd92
+  Scenario: A monatomic record with a stray imaginary mode is defined under --ignoreimag
+    Given a one-atom record with electronic_energy and vibrational_frequencies [-300.0]
+    When thermochemistry is derived with ignoreimag
+    Then the thermochemistry is defined and zpe is 0
+
+  @rq-efd98e52
+  Scenario: --ignoreimag with --makereal is a usage error
+    Given a database with one record
+    When CJKQC is invoked with the database and "--g --makereal --ignoreimag"
+    Then the exit code is 2
 
   @rq-65b1e3cd
   Scenario: A single mode above the cutoff carries the thermochemistry

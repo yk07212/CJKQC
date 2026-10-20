@@ -1473,6 +1473,73 @@ fn makereal_leaves_the_raw_observables_alone() {
     assert_eq!(stdout(&kept).trim(), "name\nsaddle");
 }
 
+#[test] // rq-28e4ef6b
+fn ignoreimag_prints_the_saddle_point_s_thermochemistry() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_record_json(
+            "saddle",
+            Some(-76.0),
+            &[("am", 2)],
+            Some(&[1000.0, -300.0]),
+        )],
+    );
+    let run = cjkqc(&[&db, "--name", "--g", "--ignoreimag"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let row: Vec<&str> = text.trim().lines().nth(1).unwrap().split(' ').collect();
+    assert_eq!(row[0], "saddle");
+    assert_ne!(row[1], "-", "the g cell must be defined: {}", row[1]);
+    assert!(row[1].parse::<f64>().is_ok());
+}
+
+#[test] // rq-daa8d422
+fn ignoreimag_leaves_the_raw_observables_alone() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_record_json(
+            "saddle",
+            Some(-76.0),
+            &[("am", 2)],
+            Some(&[1000.0, -300.0]),
+        )],
+    );
+    let run = cjkqc(&[&db, "--name", "--nimag", "--g", "--ignoreimag"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let row: Vec<&str> = text.trim().lines().nth(1).unwrap().split(' ').collect();
+    assert_eq!(row[0], "saddle");
+    assert_ne!(row[1], "-", "g derives under --ignoreimag");
+    assert!(row[1].parse::<f64>().is_ok());
+    assert_eq!(row[2], "1", "nimag still counts the imaginary mode");
+    // The lf cutoff property still sees the raw -300.0, so a window that
+    // only admits values below -200 keeps the record.
+    let kept = cjkqc(&[&db, "--name", "--filter-lt", "lf", "-200", "--ignoreimag"]);
+    assert_eq!(kept.status.code(), Some(0), "{}", stderr(&kept));
+    assert_eq!(stdout(&kept).trim(), "name\nsaddle");
+}
+
+#[test] // rq-efd98e52
+fn ignoreimag_with_makereal_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_record_json(
+            "saddle",
+            Some(-76.0),
+            &[("am", 2)],
+            Some(&[1000.0, -300.0]),
+        )],
+    );
+    let run = cjkqc(&[&db, "--g", "--makereal", "--ignoreimag"]);
+    assert_eq!(run.status.code(), Some(2));
+}
+
 #[test] // rq-f9e49657
 fn a_nonpositive_temperature_is_a_usage_error() {
     let dir = temp_dir();

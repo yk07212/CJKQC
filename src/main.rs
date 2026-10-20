@@ -121,6 +121,11 @@ struct Cli {
     #[arg(long = "makereal")]
     makereal: bool,
 
+    /// Skip imaginary frequencies in the thermochemistry (mutually
+    /// exclusive with --makereal).
+    #[arg(long = "ignoreimag", conflicts_with = "makereal")]
+    ignoreimag: bool,
+
     /// Print energies in kcal/mol instead of hartree; takes no value.
     #[arg(long = "unit", num_args = 0..=1)]
     unit: Option<Option<String>>,
@@ -338,6 +343,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         freq_cutoff,
         freq_scale,
         makereal: cli.makereal,
+        ignoreimag: cli.ignoreimag,
     };
     // One derivation memo for the whole run: every Gibbs-valued stage and
     // every energy column shares it, so each record's thermochemistry is
@@ -668,6 +674,7 @@ mod tests {
         "fc",
         "fscale",
         "makereal",
+        "ignoreimag",
         "unit",
         "formation",
     ];

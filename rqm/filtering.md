@@ -21,9 +21,9 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
   `--glob`, `--shuffle`, `--seed`, `--noname`. **Print flags** (`--name`,
   `--el`, … — see Printing) select table columns; they print and
   manipulate nothing. **Settings flags** — `--temp`, `--fc`, `--fscale`,
-  `--makereal` (`rqm/thermo.md`) and `--unit` — configure derivations and
-  the energy unit at printing; they never manipulate, print, or satisfy
-  the visible-outcome rule on their own.
+  `--makereal`, `--ignoreimag` (`rqm/thermo.md`) and `--unit` — configure
+  derivations and the energy unit at printing; they never manipulate,
+  print, or satisfy the visible-outcome rule on their own.
 - A run must have a visible outcome. With neither manipulation nor print
   flags, `--out` is required and behavior is exactly collection's.
   `--out` writes the final records (atomic replacement and the `--fout`
@@ -186,8 +186,9 @@ the property set and units:
   `s`, `g` (`rqm/thermo.md`; `s` is the T·S entropy term) print like
   `el`; `rg`, `mass`, `dip` with 3; `lf` with 1 — the lowest stored
   vibrational frequency in cm⁻¹, a raw observable so imaginary modes
-  print negative whatever `--makereal` does, undefined when the record
-  stores no frequencies; integer fields plainly; `components`
+  print negative whatever `--makereal` or `--ignoreimag` does, undefined
+  when the record stores no frequencies; integer fields plainly;
+  `components`
   as `2am+3sa`-style alphabetical pairs; `ct` as the same alphabetical
   pairs with the `+` separators dropped (`2am3sa`), undefined when the
   record has no components or an empty map; an undefined or absent value
@@ -280,9 +281,9 @@ the property set and units:
   thermochemistry from a higher-level single-point energy is a future
   milestone (`rqm/thermo.md` Out of Scope).
 - Adaptive sampling (`-sample`), the JKQC `bonded` cutoff property,
-  `-dropimg` (deleting imaginary modes — `--makereal`
-  (`rqm/thermo.md`) is the supported way to fold imaginary frequencies
-  into a derivation).
+  `-dropimg` (deleting imaginary modes from the record — `--makereal`
+  and `--ignoreimag` (`rqm/thermo.md`) fold or skip imaginary frequencies
+  inside a derivation and never edit a record).
 - `-xyz`, `-movie`, spreadsheet output: milestone 7.
 - stdin input (`rqm/collection.md`).
 

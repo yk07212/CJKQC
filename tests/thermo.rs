@@ -198,6 +198,63 @@ fn makereal_applies_the_participation_test_after_flipping() {
     );
 }
 
+#[test] // rq-903b5a1f
+fn ignoreimag_drops_imaginary_modes_from_the_sums() {
+    let mut skipped = water_record();
+    skipped.vibrational_frequencies = Some(vec![1000.0, -300.0]);
+    let mut real = water_record();
+    real.vibrational_frequencies = Some(vec![1000.0]);
+    let with_ignoreimag = thermochemistry(
+        &skipped,
+        &ThermoConditions {
+            ignoreimag: true,
+            ..ThermoConditions::default()
+        },
+    )
+    .unwrap();
+    let without = thermochemistry(&real, &ThermoConditions::default()).unwrap();
+    assert_eq!(with_ignoreimag.zpe, without.zpe);
+    assert_eq!(
+        with_ignoreimag.thermal_vibrational,
+        without.thermal_vibrational
+    );
+    assert_eq!(with_ignoreimag.ts_vibrational, without.ts_vibrational);
+}
+
+#[test] // rq-ef692e86
+fn a_record_with_only_imaginary_modes_is_undefined_under_ignoreimag() {
+    let mut record = water_record();
+    record.vibrational_frequencies = Some(vec![-50.0, -300.0, -1200.0]);
+    assert!(thermochemistry(
+        &record,
+        &ThermoConditions {
+            ignoreimag: true,
+            ..ThermoConditions::default()
+        }
+    )
+    .is_none());
+}
+
+#[test] // rq-ec8fbd92
+fn a_monatomic_record_with_a_stray_imaginary_mode_is_defined_under_ignoreimag() {
+    let record = Record {
+        electronic_energy: Some(-128.0),
+        geometry: Some(geometry(&["Ne"], &[0.0, 0.0, 0.0])),
+        vibrational_frequencies: Some(vec![-300.0]),
+        ..Record::default()
+    };
+    let thermo = thermochemistry(
+        &record,
+        &ThermoConditions {
+            ignoreimag: true,
+            ..ThermoConditions::default()
+        },
+    )
+    .expect("a monatomic record has no vibrational sums to lose");
+    assert_eq!(thermo.zpe, 0.0);
+    assert_eq!(thermo.ts_vibrational, 0.0);
+}
+
 #[test] // rq-65b1e3cd
 fn a_single_mode_above_the_cutoff_carries_the_thermochemistry() {
     let mut record = water_record();

@@ -5,9 +5,9 @@ radius of gyration, dipole magnitude, and Gibbs free energy — computed on
 demand from the stored observables and never stored ("store observables,
 derive everything else", `rqm/ARCHITECTURE.md`). The Gibbs metric derives
 through the thermochemistry model (`rqm/thermo.md`) and follows the run's
-`--temp`, `--fc`, `--fscale`, and `--makereal` settings. The metrics are inputs to filtering
-and uniqueness (`rqm/filtering.md`). Uniqueness removes redundant
-structures:
+`--temp`, `--fc`, `--fscale`, `--makereal`, and `--ignoreimag` settings.
+The metrics are inputs to filtering and uniqueness (`rqm/filtering.md`).
+Uniqueness removes redundant structures:
 records whose name repeats (`dup` mode) or records that share a rounded
 property signature with an earlier record of the same composition group
 (`keys` mode). RMSD/structure-alignment uniqueness is not supported
