@@ -26,6 +26,21 @@ pub struct MonomerReferences {
     pub gibbs: BTreeMap<String, f64>,
 }
 
+/// The per-code corrected references in hartree: the same selection as
+/// [`collect_monomers`], read through the corrected keys `elcorr`/`gcorr`
+/// (`rqm/correction.md`); a code appears only when its selected monomer
+/// defines that level's corrected value.
+///
+/// (rq-67b44e63)
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CorrectedMonomerReferences {
+    /// Correction energy of each code's reference monomer.
+    pub electronic: BTreeMap<String, f64>,
+    /// Corrected Gibbs free energy of each code's reference monomer at the
+    /// run's conditions.
+    pub gibbs: BTreeMap<String, f64>,
+}
+
 /// A record's two derived formation levels, both in hartree.
 ///
 /// (rq-103447d2)
@@ -62,6 +77,27 @@ pub fn collect_monomers(
     sort: crate::filter::SortKey,
 ) -> MonomerReferences {
     let mut references = MonomerReferences::default();
+    for (code, reference) in select_references(records, memo, sort) {
+        if let Some(electronic) = reference.electronic_energy {
+            references.electronic.insert(code.to_string(), electronic);
+        }
+        if let Some(thermo) = memo.thermo(reference) {
+            references.gibbs.insert(code.to_string(), thermo.gibbs);
+        }
+    }
+    references
+}
+
+/// The per-code reference selection shared by the raw and corrected
+/// sections: per component code, the first of that code's monomers under
+/// the ascending sort ordering of `sort`; the sort is stable, so ties keep
+/// load order (`rqm/formation.md`).
+// rq-9e898298
+fn select_references<'a>(
+    records: &'a [Record],
+    memo: &ThermoMemo,
+    sort: crate::filter::SortKey,
+) -> BTreeMap<String, &'a Record> {
     let mut candidates: BTreeMap<&str, Vec<&Record>> = BTreeMap::new();
     for record in records {
         if is_monomer(record) {
@@ -75,6 +111,7 @@ pub fn collect_monomers(
             }
         }
     }
+    let mut selection = BTreeMap::new();
     for (code, monomers) in candidates {
         // The first monomer under the ascending sort ordering; the sort is
         // stable, so ties keep load order (rqm/formation.md).
@@ -84,14 +121,9 @@ pub fn collect_monomers(
                 reference = monomer;
             }
         }
-        if let Some(electronic) = reference.electronic_energy {
-            references.electronic.insert(code.to_string(), electronic);
-        }
-        if let Some(thermo) = memo.thermo(reference) {
-            references.gibbs.insert(code.to_string(), thermo.gibbs);
-        }
+        selection.insert(code.to_string(), reference);
     }
-    references
+    selection
 }
 
 /// Whether `left` sorts strictly before `right` under the ascending
@@ -158,6 +190,68 @@ pub fn formation_values(
     Formation { electronic, gibbs }
 }
 
+/// The corrected reference scan (`rqm/formation.md`): the same monomer
+/// set and the same sort-based selection as the raw section; a code's
+/// corrected electronic reference is that monomer's correction energy and
+/// its corrected Gibbs reference the monomer's `gcorr` value, and a
+/// level's reference is undefined when the selected monomer carries no
+/// correction (or its corrected Gibbs is undefined).
+///
+/// (rq-789635d3)
+pub fn corrected_monomer_references(
+    records: &[Record],
+    memo: &ThermoMemo,
+    sort: crate::filter::SortKey,
+) -> CorrectedMonomerReferences {
+    let mut references = CorrectedMonomerReferences::default();
+    for (code, reference) in select_references(records, memo, sort) {
+        if let Some(energy) = crate::correction::corrected_energy(reference) {
+            references.electronic.insert(code.clone(), energy);
+        }
+        if let Some(gibbs) = memo.value("gcorr", reference) {
+            references.gibbs.insert(code, gibbs);
+        }
+    }
+    references
+}
+
+/// A record's two corrected formation levels with their independent
+/// definedness: the correction energy minus the stoichiometric mix of
+/// corrected electronic references, the corrected Gibbs free energy minus
+/// the mix of corrected Gibbs references. A level is defined iff the
+/// record's own corrected value at that level is defined and every
+/// referenced code has a defined corrected reference at that level —
+/// corrected formation numbers never mix levels (`rqm/formation.md`).
+///
+/// (rq-fb892986)
+pub fn corrected_formation_values(
+    record: &Record,
+    references: &CorrectedMonomerReferences,
+    memo: &ThermoMemo,
+) -> Formation {
+    let Some(components) = record.components.as_ref() else {
+        return Formation {
+            electronic: None,
+            gibbs: None,
+        };
+    };
+    let electronic = crate::correction::corrected_energy(record).and_then(|energy| {
+        let mut value = energy;
+        for (code, count) in components {
+            value -= f64::from(*count) * references.electronic.get(code)?;
+        }
+        Some(value)
+    });
+    let gibbs = memo.value("gcorr", record).and_then(|free_energy| {
+        let mut value = free_energy;
+        for (code, count) in components {
+            value -= f64::from(*count) * references.gibbs.get(code)?;
+        }
+        Some(value)
+    });
+    Formation { electronic, gibbs }
+}
+
 /// The formation section: a `ct el g` header row, then one row per record
 /// in the given order. The `ct` cell is the record's composition token
 /// (`rqm/filtering.md` Printing), `-` without components; values follow
@@ -172,9 +266,42 @@ pub fn print_formation_section(
     memo: &ThermoMemo,
     unit: Unit,
 ) -> String {
-    let mut lines = vec!["ct el g".to_string()];
-    for record in records {
-        let formation = formation_values(record, references, memo);
+    let formations: Vec<Formation> = records
+        .iter()
+        .map(|record| formation_values(record, references, memo))
+        .collect();
+    print_formation_table(records, &formations, unit, "ct el g")
+}
+
+/// The corrected formation section (`rqm/formation.md`): the raw
+/// section's table with the corrected levels — header `ct elcorr gcorr`,
+/// the same composition tokens, formatting, and `-` rules.
+///
+/// (rq-4f20e170)
+pub fn print_formation_corr_section(
+    records: &[Record],
+    references: &CorrectedMonomerReferences,
+    memo: &ThermoMemo,
+    unit: Unit,
+) -> String {
+    let formations: Vec<Formation> = records
+        .iter()
+        .map(|record| corrected_formation_values(record, references, memo))
+        .collect();
+    print_formation_table(records, &formations, unit, "ct elcorr gcorr")
+}
+
+/// The shared section table: a header row, then one `ct el g`-shaped row
+/// per record in the given order.
+// rq-9503bcb2
+fn print_formation_table(
+    records: &[Record],
+    formations: &[Formation],
+    unit: Unit,
+    header: &str,
+) -> String {
+    let mut lines = vec![header.to_string()];
+    for (record, formation) in records.iter().zip(formations) {
         let token =
             composition_token(record.components.as_ref()).unwrap_or_else(|| "-".to_string());
         let electronic = formation

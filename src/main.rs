@@ -11,16 +11,20 @@ use std::process::ExitCode;
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser};
 
 use complied_jkqc::collect::{gather_inputs_with, CollectError, CollectOutcome, Gathered};
-use complied_jkqc::db;
+use complied_jkqc::correction::{attach_corrections, CorrectionError};
+use complied_jkqc::db::{self, DbError, LoadProblem};
 use complied_jkqc::filter::{
     apply_filters, parse_extract_query, print_table, CmpOp, Column, Cutoff, ExtractMode,
     FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
-use complied_jkqc::formation::{collect_monomers, print_formation_section};
+use complied_jkqc::formation::{
+    collect_monomers, corrected_monomer_references, print_formation_corr_section,
+    print_formation_section,
+};
 use complied_jkqc::metrics::parse_uniq_mode;
 use complied_jkqc::parser::WindowBudget;
 use complied_jkqc::reacted::ReactedMode;
-use complied_jkqc::record::RecordStatus;
+use complied_jkqc::record::{Record, RecordStatus};
 use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
 
 /// The cutoff flags: clap arg id, comparison, and mode
@@ -44,7 +48,7 @@ const CUTOFF_FLAGS: &[(&str, CmpOp, Mode)] = &[
     name = "CJKQC",
     version,
     about = "Collect, organize, filter, and post-process quantum-chemistry output for molecular clusters",
-    after_help = "Cutoff/sort/uniqueness PROPERTY: el (electronic energy), g (Gibbs at --temp), rg (radius of gyration), lf (lowest frequency), dip (dipole magnitude), mass, charge, multiplicity, natoms, nfreq, nimag.\nEnergy units: absolute cutoffs compare hartree, relative cutoffs kcal/mol; --unit switches printing to kcal/mol."
+    after_help = "Cutoff/sort/uniqueness PROPERTY: el (electronic energy), g (Gibbs at --temp), elcorr (correction energy), gcorr (Gibbs from the correction), rg (radius of gyration), lf (lowest frequency), dip (dipole magnitude), mass, charge, multiplicity, natoms, nfreq, nimag.\nEnergy units: absolute cutoffs compare hartree, relative cutoffs kcal/mol; --unit switches printing to kcal/mol."
 )]
 struct Cli {
     /// Database to write; required unless a manipulation or print flag
@@ -77,7 +81,7 @@ struct Cli {
     #[arg(long = "reacted2")]
     reacted2: bool,
 
-    /// Sort by el, g (Gibbs at --temp), rg, mass, or name.
+    /// Sort by el, g (Gibbs at --temp), elcorr, gcorr, rg, mass, or name.
     #[arg(long = "sort")]
     sort: Option<String>,
 
@@ -145,6 +149,17 @@ struct Cli {
     #[arg(long = "formation")]
     formation: bool,
 
+    /// Print the corrected formation-energy section after the table
+    /// (needs corrections, attached or stored).
+    #[arg(long = "formation-corr")]
+    formation_corr: bool,
+
+    /// Attach single-point corrections from the named database, matching
+    /// correction records to run records by exact case-sensitive name
+    /// (a manipulation flag).
+    #[arg(long = "add-correction", value_name = "PATH")]
+    add_correction: Vec<PathBuf>,
+
     // --- cutoff flags: `--<flag> PROPERTY VALUE` (repeatable) ---
     /// Absolute cutoff: keep records whose PROPERTY <= VALUE (energies
     /// in hartree).
@@ -200,6 +215,10 @@ struct Cli {
     /// Print the quoted command line column.
     #[arg(long = "command")]
     command: bool,
+    /// Print the correction provenance column: kind, program and version,
+    /// quoted commands.
+    #[arg(long = "correction")]
+    correction: bool,
     /// Print the electronic energy (hartree; kcal/mol with --unit).
     #[arg(long = "el")]
     el: bool,
@@ -215,6 +234,15 @@ struct Cli {
     /// Print the Gibbs free energy at --temp (thermo.md model, derived).
     #[arg(long = "g")]
     g: bool,
+    /// Print the attached correction energy (needs corrections).
+    #[arg(long = "elcorr")]
+    elcorr: bool,
+    /// Print the enthalpy from the attached correction energy.
+    #[arg(long = "hcorr")]
+    hcorr: bool,
+    /// Print the Gibbs free energy from the attached correction energy.
+    #[arg(long = "gcorr")]
+    gcorr: bool,
     /// Print the mass-weighted radius of gyration (Angstrom).
     #[arg(long = "rg")]
     rg: bool,
@@ -395,17 +423,33 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     // consistency test, so a flag that is declared but never read is caught.
     let active_manipulations = manipulation_ids(&cli);
     let has_manipulation = !cutoffs.is_empty() || !active_manipulations.is_empty();
+    // `--add-correction` is a manipulation flag for the visible-outcome
+    // rule, but a run whose only enrichment is attachment and that prints
+    // nothing still completes like a collection run, with the collection
+    // summary line (`rqm/correction.md`).
+    let has_other_manipulation = !cutoffs.is_empty()
+        || active_manipulations
+            .iter()
+            .any(|id| *id != "add_correction");
+    // Repeating --add-correction is a usage error (`rqm/correction.md`).
+    if cli.add_correction.len() > 1 {
+        return usage("cannot repeat --add-correction; give one correction database");
+    }
 
     let set_print = |column: Column| match column {
         Column::Name => cli.name,
         Column::Status => cli.status,
         Column::Program => cli.program,
         Column::Command => cli.command,
+        Column::Correction => cli.correction,
         Column::El => cli.el,
         Column::Zpe => cli.zpe,
         Column::H => cli.h,
         Column::S => cli.s,
         Column::G => cli.g,
+        Column::ElCorr => cli.elcorr,
+        Column::HCorr => cli.hcorr,
+        Column::GCorr => cli.gcorr,
         Column::Rg => cli.rg,
         Column::Mass => cli.mass,
         Column::Dip => cli.dip,
@@ -423,9 +467,10 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         .copied()
         .filter(|column| set_print(*column))
         .collect();
-    // `--formation` prints a section instead of a column but still counts
-    // as a print flag for the visible-outcome rule (`rqm/formation.md`).
-    let has_print = !columns.is_empty() || cli.formation;
+    // `--formation` and `--formation-corr` print sections instead of
+    // columns but still count as print flags for the visible-outcome rule
+    // (`rqm/formation.md`).
+    let has_print = !columns.is_empty() || cli.formation || cli.formation_corr;
 
     // A run must have a visible outcome (`rqm/filtering.md`); `has_manipulation`
     // and `has_print` are the single source of truth for the rule.
@@ -469,11 +514,33 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                     print_formation_section(&records, &references, &memo, unit)
                 );
             }
+            // The corrected section prints after the raw section, from
+            // the stored corrections (`rqm/formation.md`).
+            if cli.formation_corr {
+                let references = corrected_monomer_references(&records, &memo, SortKey::El);
+                println!(
+                    "{}",
+                    print_formation_corr_section(&records, &references, &memo, unit)
+                );
+            }
         }
         return match &cli.out {
             Some(out) => run_collection(&inputs, out, cli.fout, &budget),
             None => ExitCode::SUCCESS,
         };
+    }
+
+    // A run whose only enrichment is attachment, printing nothing:
+    // collection semantics — every record written, the collection summary
+    // line with the corrected suffix (`rqm/correction.md`).
+    if cli.add_correction.len() == 1 && !has_other_manipulation && !has_print {
+        return run_correcting_collection(
+            &inputs,
+            cli.add_correction[0].as_path(),
+            cli.out.as_deref(),
+            cli.fout,
+            &budget,
+        );
     }
 
     // Manipulation run: gather, filter, print, write.
@@ -492,6 +559,19 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             problem.line,
             problem.reason
         );
+    }
+
+    // Attachment precedes every pipeline stage, so cutoffs, sorts, and
+    // the formation sections see the corrected values
+    // (`rqm/correction.md`).
+    // rq-587473fd
+    let mut correction_problems: Vec<LoadProblem> = Vec::new();
+    if let Some(path) = cli.add_correction.first() {
+        let Some((enriched, loaded)) = attach_from_path(&records, path) else {
+            return ExitCode::FAILURE;
+        };
+        records = enriched;
+        correction_problems = loaded;
     }
 
     let excluded = records
@@ -534,8 +614,8 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     if !columns.is_empty() {
         println!("{}", print_table(&records, &columns, &memo, unit));
     }
-    // The formation section prints after the table, before the summary,
-    // over the pipeline survivors (rqm/formation.md).
+    // The formation sections print after the table, before the summary,
+    // over the pipeline survivors (`rqm/formation.md`).
     if cli.formation {
         let sort_key = spec.sort.unwrap_or(SortKey::El);
         let references = collect_monomers(&records, &memo, sort_key);
@@ -544,32 +624,45 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             print_formation_section(&records, &references, &memo, unit)
         );
     }
+    // The corrected section prints after the raw one, from the same
+    // reference selection (`rqm/formation.md`).
+    if cli.formation_corr {
+        let sort_key = spec.sort.unwrap_or(SortKey::El);
+        let references = corrected_monomer_references(&records, &memo, sort_key);
+        println!(
+            "{}",
+            print_formation_corr_section(&records, &references, &memo, unit)
+        );
+    }
 
     if let Some(out) = &cli.out {
         let replacing = out.exists();
-        let mut lines = Vec::with_capacity(records.len());
-        for record in &records {
-            if let Err(invalidity) = record.validate() {
-                eprintln!("error: {invalidity}");
-                return ExitCode::FAILURE;
-            }
-            match serde_json::to_string(record) {
-                Ok(line) => lines.push(line),
-                Err(error) => {
-                    eprintln!("error: {error}");
-                    return ExitCode::FAILURE;
-                }
-            }
-        }
-        if let Err(error) = db::write_database(out, &lines) {
+        if let Err(error) = write_records(out, &records) {
             eprintln!("error: {error}");
             return ExitCode::FAILURE;
         }
         warn_if_replacing(replacing, cli.fout, out);
-        println!("filtered {} records into {}", records.len(), out.display());
+        // The filtered summary reports the enrichment when the run
+        // carried --add-correction (`rqm/correction.md`).
+        // rq-58d85e68
+        let suffix = if cli.add_correction.is_empty() {
+            String::new()
+        } else {
+            let corrected = records
+                .iter()
+                .filter(|record| record.correction.is_some())
+                .count();
+            format!(" ({} corrected)", corrected)
+        };
+        println!(
+            "filtered {} records into {}{}",
+            records.len(),
+            out.display(),
+            suffix
+        );
     }
 
-    if problems.is_empty() {
+    if problems.is_empty() && correction_problems.is_empty() {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
@@ -627,6 +720,193 @@ fn warn_if_replacing(replacing: bool, forced: bool, out: &Path) {
     }
 }
 
+/// A correcting collection run (`rqm/correction.md`): the plain collection
+/// flow with attachment inserted before the write — every record is
+/// written, and the collection summary line carries the corrected suffix.
+///
+/// (rq-58d85e68 rq-66e4cb89)
+fn run_correcting_collection(
+    inputs: &[&Path],
+    correction_path: &Path,
+    out: Option<&Path>,
+    fout: bool,
+    budget: &WindowBudget,
+) -> ExitCode {
+    // Unreachable via the visible-outcome rule, which demands --out on a
+    // run with no print flags and no other manipulation — but fail loudly
+    // rather than silently succeeding if that rule is ever relaxed
+    // (`rqm/correction.md`).
+    // rq-3fd0b9bb
+    let Some(out) = out else {
+        eprintln!("error: a correcting collection run needs --out");
+        return ExitCode::from(2);
+    };
+    let (records, problems, is_build) = match gather_inputs_with(inputs, budget) {
+        Ok(Gathered::Build { records }) => (records, Vec::new(), true),
+        Ok(Gathered::Merge { records, problems }) => (records, problems, false),
+        Err(error) => {
+            eprintln!("error: {error}");
+            return collect_exit_code(&error);
+        }
+    };
+    for problem in &problems {
+        eprintln!(
+            "warning: {} line {}: {}",
+            problem.input.display(),
+            problem.line,
+            problem.reason
+        );
+    }
+    let Some((records, correction_problems)) = attach_from_path(&records, correction_path) else {
+        return ExitCode::FAILURE;
+    };
+    let replacing = out.exists();
+    if let Err(error) = write_records(out, &records) {
+        eprintln!("error: {error}");
+        return ExitCode::FAILURE;
+    }
+    warn_if_replacing(replacing, fout, out);
+    // The collection summary reports the enrichment (`rqm/correction.md`).
+    // rq-58d85e68
+    let corrected = records
+        .iter()
+        .filter(|record| record.correction.is_some())
+        .count();
+    if is_build {
+        let failed = records
+            .iter()
+            .filter(|record| record.status == RecordStatus::Failed)
+            .count();
+        let truncated = records
+            .iter()
+            .filter(|record| record.status == RecordStatus::Truncated)
+            .count();
+        println!(
+            "collected {} records into {} ({} failed, {} truncated, {} corrected)",
+            records.len(),
+            out.display(),
+            failed,
+            truncated,
+            corrected
+        );
+    } else {
+        println!(
+            "merged {} records into {} ({} corrected)",
+            records.len(),
+            out.display(),
+            corrected
+        );
+    }
+    if problems.is_empty() && correction_problems.is_empty() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}
+
+/// Loads the correction database — always through `load_database`, never
+/// classified like the positional inputs (`rqm/correction.md`) — and
+/// attaches its records to the run's records, reporting the load warnings
+/// and the attach warnings. A fatal failure (an unreadable database,
+/// duplicate candidate names) prints its error and returns `None`.
+///
+/// (rq-a9dae115)
+fn attach_from_path(records: &[Record], path: &Path) -> Option<(Vec<Record>, Vec<LoadProblem>)> {
+    let (corrections, problems) = match load_corrections(path) {
+        Ok(loaded) => loaded,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return None;
+        }
+    };
+    for problem in &problems {
+        eprintln!(
+            "warning: {} line {}: {}",
+            path.display(),
+            problem.line,
+            problem.reason
+        );
+    }
+    // A correction database that loads no record at all while reporting
+    // load problems is fatal: the error is reported and nothing is
+    // written (`rqm/correction.md`).
+    // rq-9fd40c4e
+    if corrections.is_empty() && !problems.is_empty() {
+        eprintln!(
+            "error: {}: no valid record loads from the correction database",
+            path.display()
+        );
+        return None;
+    }
+    let attachment = match attach_corrections(records, &corrections) {
+        Ok(attachment) => attachment,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return None;
+        }
+    };
+    // A non-ok correction record, or an ok one without an electronic
+    // energy, is skipped and warned individually, naming its name
+    // (`rqm/correction.md`). The skip reason comes from the same helper
+    // the attach pass counts with.
+    // rq-e59918d8 rq-a83c76ac
+    for record in &corrections {
+        if let Some(reason) = complied_jkqc::correction::skip_reason(record) {
+            let name = record.name.as_deref().unwrap_or("(unnamed)");
+            eprintln!("warning: skipped correction record \"{name}\": {reason}");
+        }
+    }
+    // The unmatched candidates are reported as one aggregate warning
+    // (`rqm/correction.md`).
+    // rq-6f572182
+    if attachment.unmatched > 0 {
+        let noun = if attachment.unmatched == 1 {
+            "record"
+        } else {
+            "records"
+        };
+        eprintln!(
+            "warning: {} unmatched correction {}",
+            attachment.unmatched, noun
+        );
+    }
+    Some((attachment.records, problems))
+}
+
+/// Loads the correction database through `load_database`, mapping the
+/// database error onto `CorrectionError`. `load_database` reports only
+/// filesystem-level failures as errors, so the catch-all arm below is
+/// unreachable today; it maps defensively rather than panicking.
+// rq-874abd6a
+fn load_corrections(path: &Path) -> Result<(Vec<Record>, Vec<LoadProblem>), CorrectionError> {
+    match db::load_database(path) {
+        Ok(outcome) => Ok((outcome.records, outcome.problems)),
+        Err(DbError::Io { kind, reason }) => Err(CorrectionError::Io { kind, reason }),
+        Err(error) => Err(CorrectionError::Io {
+            kind: std::io::ErrorKind::Other,
+            reason: error.to_string(),
+        }),
+    }
+}
+
+/// Validates, serializes, and writes the records as the complete new
+/// content of the output database (shared by the manipulation and
+/// correcting-collection runs).
+// rq-587473fd
+fn write_records(out: &Path, records: &[Record]) -> Result<(), String> {
+    let mut lines = Vec::with_capacity(records.len());
+    for record in records {
+        if let Err(invalidity) = record.validate() {
+            return Err(invalidity.to_string());
+        }
+        match serde_json::to_string(record) {
+            Ok(line) => lines.push(line),
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    db::write_database(out, &lines).map_err(|error| error.to_string())
+}
+
 fn usage(message: &str) -> ExitCode {
     eprintln!("error: {message}");
     ExitCode::from(2)
@@ -650,6 +930,7 @@ fn manipulation_ids(cli: &Cli) -> Vec<&'static str> {
         ("glob", cli.glob),
         ("shuffle", cli.shuffle),
         ("noname", cli.noname),
+        ("add_correction", !cli.add_correction.is_empty()),
     ] {
         if set {
             ids.push(id);
@@ -684,8 +965,8 @@ mod tests {
 
     /// Flags exempt from the manipulation/print accounting: settings flags
     /// are read into the conditions, window budget, and unit,
-    /// `--formation` into the formation section, and the rest never
-    /// affect the outcome rule.
+    /// `--formation` and `--formation-corr` into the formation sections,
+    /// and the rest never affect the outcome rule.
     const EXEMPT_IDS: &[&str] = &[
         "out",
         "fout",
@@ -701,6 +982,7 @@ mod tests {
         "tail_bytes",
         "unit",
         "formation",
+        "formation_corr",
     ];
 
     /// Every flag on `Cli` must be wired into `run`: a cutoff flag, a print
@@ -729,6 +1011,8 @@ mod tests {
             "--glob",
             "--shuffle",
             "--noname",
+            "--add-correction",
+            "corr.jsonl",
         ]);
         let active = manipulation_ids(&all_manipulations);
         for arg in command.get_arguments() {

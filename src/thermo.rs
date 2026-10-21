@@ -301,7 +301,21 @@ pub fn rotational_constants(record: &Record) -> Option<Vec<f64>> {
 ///
 /// (rq-bdd59f53 rq-5b33312a rq-ac683d6d)
 pub fn thermochemistry(record: &Record, conditions: &ThermoConditions) -> Option<Thermo> {
-    let electronic_energy = record.electronic_energy?;
+    thermochemistry_with_energy(record, record.electronic_energy?, conditions)
+}
+
+/// `thermochemistry` with an explicit electronic energy: the same
+/// derivation with the given energy in place of the stored one — the form
+/// the corrected keys `hcorr`/`gcorr` reuse with an attached correction's
+/// energy (`rqm/correction.md`). Every other input (geometry, modes,
+/// multiplicity, symmetry number) and every definedness rule is the
+/// record's own.
+// rq-bdd59f53
+pub(crate) fn thermochemistry_with_energy(
+    record: &Record,
+    electronic_energy: f64,
+    conditions: &ThermoConditions,
+) -> Option<Thermo> {
     let species = species_moments(record)?;
     let temperature = conditions.temperature;
 
@@ -467,17 +481,27 @@ pub fn thermochemistry(record: &Record, conditions: &ThermoConditions) -> Option
 /// `rqm/thermo.md` Feature API): every consumer of a derived energy key
 /// resolves it here — printing, cutoffs, sorting, uniqueness, `--glob`,
 /// and the formation section never hand-wire their own match arm to a
-/// derivation. The thermochemistry-dependent keys evaluate `thermo`
-/// lazily, so `"el"` and unknown keys never derive.
+/// derivation. The thermochemistry-dependent keys evaluate their
+/// derivation lazily, so `"el"`, `"elcorr"`, and unknown keys never
+/// derive; the corrected keys `hcorr`/`gcorr` evaluate the corrected
+/// derivation (`rqm/correction.md`).
 ///
 /// (rq-8f6da1c2)
-fn resolve(key: &str, record: &Record, thermo: impl FnOnce() -> Option<Thermo>) -> Option<f64> {
+fn resolve(
+    key: &str,
+    record: &Record,
+    thermo: impl FnOnce() -> Option<Thermo>,
+    corrected: impl FnOnce() -> Option<Thermo>,
+) -> Option<f64> {
     match key {
         "el" => record.electronic_energy,
+        "elcorr" => crate::correction::corrected_energy(record),
         "zpe" => thermo().map(|thermo| thermo.zpe),
         "h" => thermo().map(|thermo| thermo.enthalpy),
         "s" => thermo().map(|thermo| thermo.entropy_term),
         "g" => thermo().map(|thermo| thermo.gibbs),
+        "hcorr" => corrected().map(|thermo| thermo.enthalpy),
+        "gcorr" => corrected().map(|thermo| thermo.gibbs),
         _ => None,
     }
 }
@@ -486,27 +510,35 @@ fn resolve(key: &str, record: &Record, thermo: impl FnOnce() -> Option<Thermo>) 
 /// extensibility): `key` maps to a derivation function returning the
 /// record's value in hartree at the given conditions. The registry holds
 /// `"el"` (the passthrough electronic energy), `"zpe"`, `"h"`, `"s"` (the
-/// T·S entropy term), and `"g"`; unknown keys return `None`.
+/// T·S entropy term), `"g"`, and the corrected keys `"elcorr"`, `"hcorr"`,
+/// and `"gcorr"` (`rqm/correction.md`); unknown keys return `None`.
 ///
 /// (rq-8f6da1c2)
 pub fn derived_value(key: &str, record: &Record, conditions: &ThermoConditions) -> Option<f64> {
-    resolve(key, record, || thermochemistry(record, conditions))
+    resolve(
+        key,
+        record,
+        || thermochemistry(record, conditions),
+        || crate::correction::corrected_thermo(record, conditions),
+    )
 }
 
 /// The per-run derivation memo (`rqm/thermo.md` Performance): carries the
 /// run's `ThermoConditions` and derives each record's `Thermo` at most
 /// once, so printing, cutoffs, sorting, uniqueness, `--glob`, and the
-/// formation section share one derivation per record. Cache hits require
-/// full record equality (`Eq` over every field): the memo shares
-/// derivations across the consumers of a run, never across different
-/// records. The memo is a call-site convenience only: `thermochemistry`
-/// itself stays pure, uncached, and deterministic.
+/// formation section share one derivation per record. The corrected
+/// derivation (`rqm/correction.md`) is memoized the same way in its own
+/// cache. Cache hits require full record equality (`Eq` over every
+/// field): the memo shares derivations across the consumers of a run,
+/// never across different records. The memo is a call-site convenience
+/// only: `thermochemistry` itself stays pure, uncached, and deterministic.
 ///
 /// (rq-8b44ad8d rq-f9178b9d)
 #[derive(Debug, Default)]
 pub struct ThermoMemo {
     conditions: ThermoConditions,
     cache: RefCell<HashMap<Record, Option<Thermo>>>,
+    corrected_cache: RefCell<HashMap<Record, Option<Thermo>>>,
 }
 
 impl ThermoMemo {
@@ -515,6 +547,7 @@ impl ThermoMemo {
         ThermoMemo {
             conditions,
             cache: RefCell::new(HashMap::new()),
+            corrected_cache: RefCell::new(HashMap::new()),
         }
     }
 
@@ -529,9 +562,31 @@ impl ThermoMemo {
         value
     }
 
+    /// The record's corrected derivation (`rqm/correction.md`): the
+    /// standard thermochemistry with the attached correction's energy in
+    /// place of the stored one, computed at most once per record content
+    /// for the lifetime of this memo. `None` without a correction or when
+    /// the derivation is undefined under the usual rules.
+    // rq-8b44ad8d
+    fn corrected_thermo(&self, record: &Record) -> Option<Thermo> {
+        if let Some(hit) = self.corrected_cache.borrow().get(record) {
+            return *hit;
+        }
+        let value = crate::correction::corrected_thermo(record, &self.conditions);
+        self.corrected_cache
+            .borrow_mut()
+            .insert(record.clone(), value);
+        value
+    }
+
     /// The registry lookup of `key` served through this memo's
     /// derivations (`rq-8f6da1c2`).
     pub fn value(&self, key: &str, record: &Record) -> Option<f64> {
-        resolve(key, record, || self.thermo(record))
+        resolve(
+            key,
+            record,
+            || self.thermo(record),
+            || self.corrected_thermo(record),
+        )
     }
 }

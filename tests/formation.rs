@@ -2,7 +2,7 @@
 //! per Gherkin scenario of `rqm/formation.md` exercised at the API level.
 //! CLI-shaped scenarios live in `tests/cli.rs`.
 
-use complied_jkqc::filter::SortKey;
+use complied_jkqc::filter::{SortKey, Unit};
 use complied_jkqc::formation::{collect_monomers, formation_values, Formation, MonomerReferences};
 use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo};
 use complied_jkqc::{Components, Geometry, Record, RecordStatus};
@@ -242,4 +242,145 @@ fn records_without_components_form_at_neither_level() {
             gibbs: None,
         }
     );
+}
+
+// --- Corrected formation section (rqm/formation.md, rqm/correction.md) ---
+
+use complied_jkqc::formation::{
+    corrected_formation_values, corrected_monomer_references, print_formation_corr_section,
+};
+use complied_jkqc::thermo::KCAL_MOL_PER_HARTREE;
+use complied_jkqc::Correction;
+
+/// A monomer carrying an attached single-point correction.
+fn corrected_monomer(name: &str, electronic_energy: f64, code: &str, correction: f64) -> Record {
+    let mut record = monomer(name, Some(electronic_energy), code, 1000.0);
+    record.correction = Some(Correction {
+        energy: correction,
+        program: Some("orca".to_string()),
+        program_version: Some("6.0.0".to_string()),
+        commands: None,
+        kind: "sp".to_string(),
+    });
+    record
+}
+
+fn corrected_cluster(electronic_energy: f64, correction: f64) -> Record {
+    let mut cluster = monomer("cluster", Some(electronic_energy), "am", 1000.0);
+    cluster.components = Some(components(&[("am", 2)]));
+    cluster.correction = Some(Correction {
+        energy: correction,
+        program: Some("orca".to_string()),
+        program_version: Some("6.0.0".to_string()),
+        commands: None,
+        kind: "sp".to_string(),
+    });
+    cluster
+}
+
+#[test] // rq-39641660
+fn the_corrected_section_evaluates_the_attached_corrections() {
+    let mon = corrected_monomer("am1", -50.0, "am", -76.5);
+    let cluster = corrected_cluster(-141.0, -167.5);
+    let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
+    assert_eq!(references.electronic.get("am"), Some(&-76.5));
+    let formation = corrected_formation_values(&cluster, &references, &memo());
+    assert_eq!(formation.electronic, Some(-167.5 - 2.0 * -76.5));
+}
+
+#[test] // rq-20ab3295
+fn a_record_without_a_correction_has_dashes_in_the_corrected_section() {
+    let mon = corrected_monomer("am1", -50.0, "am", -76.5);
+    let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
+    // The cluster itself carries no correction: both levels are undefined.
+    let cluster = monomer("cluster", Some(-141.0), "am", 1000.0);
+    let mut cluster = cluster;
+    cluster.components = Some(components(&[("am", 2)]));
+    let formation = corrected_formation_values(&cluster, &references, &memo());
+    assert_eq!(
+        formation,
+        Formation {
+            electronic: None,
+            gibbs: None,
+        }
+    );
+}
+
+#[test] // rq-5ca4f95d
+fn a_reference_monomer_without_a_correction_leaves_both_levels_undefined() {
+    let mon = monomer("am1", Some(-50.0), "am", 1000.0);
+    let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
+    assert!(references.electronic.is_empty());
+    assert!(references.gibbs.is_empty());
+    let cluster = corrected_cluster(-141.0, -167.5);
+    let formation = corrected_formation_values(&cluster, &references, &memo());
+    assert_eq!(formation.electronic, None);
+    assert_eq!(formation.gibbs, None);
+}
+
+#[test] // rq-b6409abd
+fn the_corrected_section_reuses_the_raw_sections_reference_monomers() {
+    // Two am monomers; the raw sort by el picks the first (more stable)
+    // one, so the corrected references must come from that same monomer
+    // and not from the other one.
+    let first = corrected_monomer("am1", -50.0, "am", -76.5);
+    let second = corrected_monomer("am2", -49.0, "am", -75.0);
+    let references = corrected_monomer_references(&[first, second], &memo(), SortKey::El);
+    assert_eq!(references.electronic.get("am"), Some(&-76.5));
+    assert_ne!(references.electronic.get("am"), Some(&-75.0));
+}
+
+#[test] // rq-6e0560c2
+fn the_corrected_section_prints_in_the_runs_unit() {
+    let mon = corrected_monomer("am1", -50.0, "am", -76.5);
+    let cluster = corrected_cluster(-141.0, -167.5);
+    let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
+    let hartree = print_formation_corr_section(
+        std::slice::from_ref(&cluster),
+        &references,
+        &memo(),
+        Unit::Au,
+    );
+    let kcal = print_formation_corr_section(
+        std::slice::from_ref(&cluster),
+        &references,
+        &memo(),
+        Unit::Kcal,
+    );
+    // The corrected formation energy is -167.5 - 2*(-76.5) = -14.5 Eh.
+    let expected = -14.5 * KCAL_MOL_PER_HARTREE;
+    assert!(hartree.starts_with("ct elcorr gcorr"));
+    let row = kcal.lines().nth(1).expect("one row");
+    let value: f64 = row
+        .split(' ')
+        .nth(1)
+        .expect("elcorr cell")
+        .parse()
+        .expect("number");
+    assert!((value - expected).abs() < 1e-3, "{kcal}");
+}
+
+#[test] // rq-f99b56ad
+fn filtered_away_monomers_serve_as_no_corrected_references() {
+    // The run passes only its survivors: the monomer was filtered away,
+    // so the cluster's corrected levels are undefined even though the
+    // cluster carries a correction.
+    let cluster = corrected_cluster(-141.0, -167.5);
+    let references =
+        corrected_monomer_references(std::slice::from_ref(&cluster), &memo(), SortKey::El);
+    let formation = corrected_formation_values(&cluster, &references, &memo());
+    assert_eq!(formation.electronic, None);
+    assert_eq!(formation.gibbs, None);
+}
+
+#[test] // rq-67b44e63
+fn corrected_references_are_independent_per_level() {
+    // The selected monomer carries a correction energy but undefined
+    // corrected Gibbs (no frequencies beyond the silent six): the
+    // electronic reference exists while the Gibbs reference does not.
+    let mut mon = corrected_monomer("am1", -50.0, "am", -76.5);
+    mon.vibrational_frequencies = None;
+    let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
+    assert_eq!(references.electronic.get("am"), Some(&-76.5));
+    assert!(!references.gibbs.contains_key("am"));
 }

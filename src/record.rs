@@ -148,6 +148,36 @@ impl fmt::Display for RecordInvalidity {
 
 impl std::error::Error for RecordInvalidity {}
 
+/// One attached single-point correction with its provenance: the
+/// alternative electronic energy a `--add-correction` run matched to the
+/// record's `name`, plus where that energy came from
+/// (`rqm/correction.md`). The stored `electronic_energy` is never altered.
+///
+/// (rq-95e1c918)
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Correction {
+    /// The single-point electronic energy in hartree.
+    pub energy: f64,
+    /// The correction job's program token, copied from the correction
+    /// record.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub program: Option<String>,
+    /// The correction job's version string, copied from the correction
+    /// record.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub program_version: Option<String>,
+    /// The command line(s) that produced the energy: the correction
+    /// record's `command` as a one-element list, omitted when unknown; an
+    /// extrapolation correction lists one entry per contributing
+    /// calculation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commands: Option<Vec<String>>,
+    /// Non-empty token describing how the energy was obtained; `sp` when
+    /// attached from a parsed single-point record. Open vocabulary: tokens
+    /// are stored verbatim so later versions' databases stay loadable.
+    pub kind: String,
+}
+
 /// One quantum-chemistry job's primary observables. Serializable to one
 /// line of compact JSON; absent observables are omitted from the line and
 /// read back as `None`. Unknown keys are ignored on read, and a missing
@@ -218,6 +248,14 @@ pub struct Record {
     /// (rq-43be8f79 rq-ffc1bde0)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub components: Option<Components>,
+    /// An attached single-point correction with its provenance
+    /// (`rqm/correction.md`). Not an observable of this job: attached by
+    /// the correction mechanism or loaded from a previously corrected
+    /// database; the raw `electronic_energy` is never altered.
+    ///
+    /// (rq-43be8f79)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correction: Option<Correction>,
 }
 
 // See the `Geometry` note: validation rejects the only reflexivity gap
@@ -264,7 +302,8 @@ impl Record {
     /// geometry is present; a `failed` record carries a non-empty error
     /// message; `multiplicity` and `rotational_symmetry_number` are at
     /// least 1; a present components map is non-empty with valid codes and
-    /// counts.
+    /// counts; a present correction carries a finite energy and a non-empty
+    /// kind.
     ///
     /// (rq-1d31610c)
     pub fn validate(&self) -> Result<(), RecordInvalidity> {
@@ -302,6 +341,18 @@ impl Record {
         if let Some(values) = &self.mulliken_charges {
             for &value in values {
                 finite("mulliken_charges", value)?;
+            }
+        }
+        // A present correction carries a finite energy and a non-empty
+        // kind (rqm/correction.md).
+        // rq-f03405ec rq-0b4ab1a5
+        if let Some(correction) = &self.correction {
+            finite("correction.energy", correction.energy)?;
+            if correction.kind.is_empty() {
+                return Err(RecordInvalidity::InvalidScalar {
+                    field: "correction.kind",
+                    reason: "must not be empty".to_string(),
+                });
             }
         }
 

@@ -102,8 +102,12 @@ CJKQC <inputs>… -o <path> [--fout]
 
 - Build completion prints to stdout:
   `collected <n> records into <out> (<f> failed, <t> truncated)` —
-  `<f>`/`<t>` count records by status; writing them is success.
-- Merge completion prints to stdout: `merged <n> records into <out>`.
+  `<f>`/`<t>` count records by status; writing them is success. With
+  `--add-correction` (`rqm/correction.md`) the parentheses gain
+  `, <k> corrected`, counting written records that carry a correction.
+- Merge completion prints to stdout: `merged <n> records into <out>`. With
+  `--add-correction` (`rqm/correction.md`) the line gains
+  `(<k> corrected)`.
 - Replacing an existing database at `--out` prints a warning naming the path
   to stderr, unless `--fout` was given; the run still exits 0.
 - Each skipped corrupt line prints to stderr a warning naming the input

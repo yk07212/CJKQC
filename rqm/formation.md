@@ -85,12 +85,49 @@ binding column exists.
   the pipeline survivors for a manipulation run, every loaded record for a
   print-only run.
 
+## Corrected Formation Section <!-- rq-2f4611d0 -->
+
+- `--formation-corr` prints a second formation section evaluated at the
+  attached single-point corrections (`rqm/correction.md`). Every input energy
+  is a corrected value; a record with no correction has no values at all —
+  corrected formation numbers never mix levels.
+- The section uses the same reference monomers as the raw section: the same
+  monomer set and the same sort-based selection (Monomer References above). A
+  code's corrected electronic reference is that monomer's correction energy,
+  and its corrected Gibbs reference the monomer's `gcorr` value; a level's
+  reference is undefined when the selected monomer carries no correction (or
+  its corrected Gibbs is undefined).
+- For a printed record with components map C = {codeᵢ: nᵢ}:
+  - **Corrected formation energy** (Eh) = the record's correction energy −
+    Σᵢ nᵢ · Ecorr_ref(codeᵢ).
+  - **Corrected formation free energy** (Eh) = gcorr(record) − Σᵢ nᵢ ·
+    Gcorr_ref(codeᵢ).
+  - A level is defined iff the record's own corrected value at that level is
+    defined and every referenced code has a defined corrected reference at
+    that level.
+- The flag is a print flag like `--formation`: it satisfies the
+  visible-outcome rule of `rqm/filtering.md` on its own and adds no column to
+  the normal table. The corrected section prints after the raw formation
+  section (when `--formation` requested one) and before any summary line, so
+  stdout is always: main table, formation section, corrected formation
+  section, summary. A run with `--formation-corr` but no other print flag
+  prints only the corrected section.
+- The section is a table: a header row `ct elcorr gcorr`, then one row per
+  printed record in run order. The composition token and the number
+  formatting — the run's energy unit, kcal/mol under `--unit`
+  (`rqm/filtering.md` Printing), formatted like the corresponding energy
+  columns, `-` when undefined — are exactly the raw section's rules.
+
 ## Feature API <!-- rq-e814b912 -->
 
 ### Types <!-- rq-85b79495 -->
 
 - `MonomerReferences` — the per-code references in Eh: <!-- rq-a14c7897 -->
   `electronic: BTreeMap<String, f64>`, `gibbs: BTreeMap<String, f64>`.
+- `CorrectedMonomerReferences` — the per-code corrected references in Eh: <!-- rq-67b44e63 -->
+  `electronic: BTreeMap<String, f64>`, `gibbs: BTreeMap<String, f64>`; a
+  code appears only when its selected monomer defines that level's
+  corrected value (`rqm/correction.md`).
 - `Formation` — a record's two derived levels: <!-- rq-103447d2 -->
   `electronic: Option<f64>`, `gibbs: Option<f64>` (Eh).
 
@@ -109,16 +146,25 @@ binding column exists.
   — the section table with header `ct el g`, one row per record in the
   given order, `-` for undefined values and for the composition token
   when the record has no components.
+- `corrected_monomer_references(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> CorrectedMonomerReferences` <!-- rq-789635d3 -->
+  — the same selection as `collect_monomers`, read through the corrected
+  keys `elcorr`/`gcorr` (`rqm/correction.md`).
+- `corrected_formation_values(record: &Record, references: &CorrectedMonomerReferences, memo: &ThermoMemo) -> Formation` <!-- rq-fb892986 -->
+  — the two corrected levels with their independent definedness.
+- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit) -> String` <!-- rq-4f20e170 -->
+  — the corrected section table with header `ct elcorr gcorr`.
 
 ### Crate Layout <!-- rq-22e7999c -->
 
-- The scan, values, and section live in `src/formation.rs`; the library
+- The scan, values, and sections live in `src/formation.rs`; the library
   root re-exports the types and functions. No new dependencies; the CLI
-  adds `--formation` and wires the section into the printing block.
+  adds `--formation` and `--formation-corr` and wires both sections into
+  the printing block.
 - `tests/formation.rs` tests the scan and the values as pure functions <!-- rq-eb7da353 -->
   (sort-based reference selection, per-level definedness, missing
-  references, stoichiometry) and the section formatting; CLI coverage
-  extends `tests/cli.rs`.
+  references, stoichiometry), the section formatting, and the corrected
+  section's selection and definedness; CLI coverage extends
+  `tests/cli.rs`.
 
 ## Out of Scope <!-- rq-39f86935 -->
 
@@ -286,4 +332,54 @@ Feature: Formation energies from monomer references
     When the same database is run with "--formation" at --temp 298.15 and at --temp 350
     Then the two runs' g columns differ
     And the two runs' el columns are equal
+
+  # --- Corrected formation section ---
+
+  @rq-39641660
+  Scenario: The corrected section evaluates the attached corrections
+    Given a 1am1sa cluster and am and sa monomers all carrying corrections
+    When CJKQC is invoked with the database and "--formation-corr" and no --out
+    Then the header is "ct elcorr gcorr" and the cluster's row shows defined values
+
+  @rq-20ab3295
+  Scenario: A record without a correction has dashes in the corrected section
+    Given a 1am1sa cluster without a correction and corrected am and sa monomers
+    When CJKQC is invoked with the database and "--formation-corr" and no --out
+    Then the cluster's row is "1am1sa - -"
+
+  @rq-5ca4f95d
+  Scenario: A reference monomer without a correction leaves both levels undefined
+    Given a 1am cluster with a correction whose am monomer has none
+    When CJKQC is invoked with the database and "--formation-corr" and no --out
+    Then the cluster's row shows - for both levels
+
+  @rq-b6409abd
+  Scenario: The corrected section reuses the raw section's reference monomers
+    Given two am monomers where the sort selects the one without a correction even though the other carries a lower corrected energy
+    When CJKQC is invoked with the database and "--sort el --formation-corr" and no --out
+    Then the cluster's corrected formation row shows - for both levels
+
+  @rq-34d743c7
+  Scenario: The corrected section follows the raw section and precedes the summary
+    Given a database with a corrected cluster and its corrected monomers
+    When CJKQC is invoked with the database and "--formation --formation-corr --out kept.jsonl"
+    Then stdout shows the main table, the formation section, the corrected formation section, then "filtered <n> records into kept.jsonl"
+
+  @rq-09e99e7b
+  Scenario: --formation-corr alone is a visible outcome
+    Given a database with a corrected cluster and its corrected monomers
+    When CJKQC is invoked with the database and "--formation-corr" and no --out
+    Then the corrected section is printed and no database file is written
+
+  @rq-6e0560c2
+  Scenario: The corrected section obeys the unit setting
+    Given a cluster whose corrected formation energy is -0.01 Eh
+    When CJKQC is invoked with the database and "--formation-corr --unit" and no --out
+    Then the elcorr column prints the value in kcal/mol with 4 decimals
+
+  @rq-f99b56ad
+  Scenario: Filtered-away monomers serve as no corrected references
+    Given corrected am and sa monomers and a corrected 1am1sa cluster
+    When CJKQC is invoked with the database, "--extract 1am1sa --formation-corr" and no --out
+    Then the section prints one row for the cluster with - for both levels
 ```

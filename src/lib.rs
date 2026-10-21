@@ -7,6 +7,7 @@
 
 pub mod collect;
 pub mod composition;
+pub mod correction;
 pub mod db;
 pub mod filter;
 pub mod formation;
@@ -17,7 +18,10 @@ pub mod record;
 pub mod thermo;
 
 // rq-8c5e4002
-pub use record::{Components, Geometry, Record, RecordInvalidity, RecordStatus};
+pub use record::{Components, Correction, Geometry, Record, RecordInvalidity, RecordStatus};
+
+// rq-f8ab9d1b single-point correction surface (rqm/correction.md)
+pub use correction::{attach_corrections, corrected_energy, Attachment, CorrectionError};
 
 // rq-fe2700dc
 pub use composition::{parse_jkqc_name, resolve_components};
@@ -46,7 +50,9 @@ pub use thermo::{
 
 // rq-f8ebbc84 formation surface (rqm/formation.md)
 pub use formation::{
-    collect_monomers, formation_values, print_formation_section, Formation, MonomerReferences,
+    collect_monomers, corrected_formation_values, corrected_monomer_references, formation_values,
+    print_formation_corr_section, print_formation_section, CorrectedMonomerReferences, Formation,
+    MonomerReferences,
 };
 
 // rq-bf062c8f filtering surface (rqm/filtering.md)

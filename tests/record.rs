@@ -40,6 +40,7 @@ fn round_trip_a_record_with_every_observable_set() {
         mulliken_charges: Some(vec![-0.3, 0.15, 0.15]),
         rotational_symmetry_number: Some(1),
         components: Some(components(&[("am", 2), ("sa", 3)])),
+        correction: None,
     };
     assert!(record.validate().is_ok());
     let line = serde_json::to_string(&record).expect("serialization");
@@ -327,4 +328,77 @@ fn failed_record_from_a_matched_parser_is_not_unrecognized() {
 #[test] // rq-5aa5a715
 fn ok_record_is_not_unrecognized() {
     assert!(!Record::default().is_unrecognized());
+}
+
+// --- correction field (rqm/correction.md) ---
+
+use complied_jkqc::Correction;
+
+fn corrected_record() -> Record {
+    Record {
+        name: Some("2am3sa-1conf".to_string()),
+        electronic_energy: Some(-38.51),
+        components: Some(components(&[("am", 2), ("sa", 3)])),
+        correction: Some(Correction {
+            energy: -76.4,
+            program: Some("orca".to_string()),
+            program_version: Some("6.0.0".to_string()),
+            commands: Some(vec!["! wB97x-3c def2-TZVPP Sp".to_string()]),
+            kind: "sp".to_string(),
+        }),
+        ..Record::default()
+    }
+}
+
+#[test] // rq-3b0ad5a2
+fn a_correction_round_trips() {
+    let record = corrected_record();
+    assert!(record.validate().is_ok());
+    let line = serde_json::to_string(&record).expect("serialization");
+    let deserialized: Record = serde_json::from_str(&line).expect("deserialization");
+    assert_eq!(deserialized, record);
+}
+
+#[test] // rq-5a78fd5d
+fn a_correction_object_reads_from_a_json_object() {
+    let line = concat!(
+        r#"{"status":"ok","name":"1dma","electronic_energy":-76.0,"#,
+        r#""correction":{"energy":-76.4,"program":"orca","program_version":"6.0.0","#,
+        r#""commands":["! wB97x-3c def2-TZVPP Sp"],"kind":"sp"}}"#
+    );
+    let record: Record = serde_json::from_str(line).expect("deserialization");
+    let correction = record.correction.expect("correction present");
+    assert_eq!(correction.energy, -76.4);
+    assert_eq!(correction.program.as_deref(), Some("orca"));
+    assert_eq!(correction.program_version.as_deref(), Some("6.0.0"));
+    assert_eq!(
+        correction.commands.as_deref(),
+        Some(&["! wB97x-3c def2-TZVPP Sp".to_string()][..])
+    );
+    assert_eq!(correction.kind, "sp");
+}
+
+#[test] // rq-f03405ec
+fn validate_rejects_a_non_finite_correction_energy() {
+    let mut record = corrected_record();
+    record.correction.as_mut().unwrap().energy = f64::NAN;
+    assert_eq!(
+        record.validate(),
+        Err(RecordInvalidity::NonFiniteFloat {
+            field: "correction.energy"
+        })
+    );
+}
+
+#[test] // rq-0b4ab1a5
+fn validate_rejects_an_empty_correction_kind() {
+    let mut record = corrected_record();
+    record.correction.as_mut().unwrap().kind = String::new();
+    assert_eq!(
+        record.validate(),
+        Err(RecordInvalidity::InvalidScalar {
+            field: "correction.kind",
+            reason: "must not be empty".to_string(),
+        })
+    );
 }

@@ -8,7 +8,7 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use complied_jkqc::db::load_database;
-use complied_jkqc::{Record, RecordStatus};
+use complied_jkqc::{Components, Correction, Record, RecordStatus};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -2082,4 +2082,1067 @@ fn a_zero_window_budget_is_a_usage_error() {
     assert_eq!(run.status.code(), Some(2));
     assert!(stderr(&run).contains("at least 1"), "{}", stderr(&run));
     assert!(!dir.join("db.jsonl").exists());
+}
+
+// ---------------------------------------------------------------------------
+// Single-point corrections (`rqm/correction.md`, `rqm/formation.md`).
+// ---------------------------------------------------------------------------
+
+/// A correction-database candidate line with orca provenance.
+fn sp_line(name: &str, energy: f64, command: Option<&str>) -> String {
+    let mut record = Record {
+        status: RecordStatus::Ok,
+        name: Some(name.to_string()),
+        electronic_energy: Some(energy),
+        program: Some("orca".to_string()),
+        program_version: Some("6.0.0".to_string()),
+        ..Record::default()
+    };
+    record.command = command.map(str::to_string);
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// An arbitrary simple record line: optional name, optional energy, status.
+fn simple_line(name: Option<&str>, energy: Option<f64>, status: RecordStatus) -> String {
+    let mut record = Record {
+        status,
+        name: name.map(str::to_string),
+        electronic_energy: energy,
+        ..Record::default()
+    };
+    if status == RecordStatus::Failed {
+        record.error = Some("boom".to_string());
+    }
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// A record line carrying a stored correction.
+fn corrected_db_line(name: &str, energy: f64, correction: f64, commands: bool) -> String {
+    let mut record = Record {
+        status: RecordStatus::Ok,
+        name: Some(name.to_string()),
+        electronic_energy: Some(energy),
+        ..Record::default()
+    };
+    record.correction = Some(Correction {
+        energy: correction,
+        program: Some("orca".to_string()),
+        program_version: Some("6.0.0".to_string()),
+        commands: if commands {
+            Some(vec!["! wB97x-3c def2-TZVPP Sp".to_string()])
+        } else {
+            None
+        },
+        kind: "sp".to_string(),
+    });
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// A nonlinear 6-atom geometry (a planar hexagon): 3N−6 = 12 modes, so the
+/// record's thermochemistry is defined.
+fn hexagon() -> Geometry {
+    let mut coordinates = Vec::new();
+    for atom in 0..6 {
+        let angle = atom as f64 * std::f64::consts::PI / 3.0;
+        coordinates.extend([angle.cos(), angle.sin(), 0.0]);
+    }
+    Geometry {
+        symbols: vec!["C".to_string(); 6],
+        coordinates,
+    }
+}
+
+fn twelve_modes() -> Vec<f64> {
+    let mut values = vec![0.0; 6];
+    values.resize(18, 1000.0);
+    values
+}
+
+/// A full-thermochemistry ok record line, optionally with components and
+/// an attached correction.
+fn thermo_line(name: &str, energy: f64, comps: &[(&str, u32)], correction: Option<f64>) -> String {
+    let mut record = Record {
+        status: RecordStatus::Ok,
+        name: Some(name.to_string()),
+        electronic_energy: Some(energy),
+        geometry: Some(hexagon()),
+        vibrational_frequencies: Some(twelve_modes()),
+        ..Record::default()
+    };
+    if !comps.is_empty() {
+        record.components = Some(
+            comps
+                .iter()
+                .map(|(code, count)| (code.to_string(), *count))
+                .collect::<Components>(),
+        );
+    }
+    if let Some(correction) = correction {
+        record.correction = Some(Correction {
+            energy: correction,
+            program: Some("orca".to_string()),
+            program_version: Some("6.0.0".to_string()),
+            commands: Some(vec!["! wB97x-3c def2-TZVPP Sp".to_string()]),
+            kind: "sp".to_string(),
+        });
+    }
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// The Gibbs free energy of a full-thermochemistry record at the default
+/// conditions.
+fn raw_gibbs(energy: f64) -> f64 {
+    let record = Record {
+        status: RecordStatus::Ok,
+        electronic_energy: Some(energy),
+        geometry: Some(hexagon()),
+        vibrational_frequencies: Some(twelve_modes()),
+        ..Record::default()
+    };
+    thermochemistry(&record, &ThermoConditions::default())
+        .expect("defined thermochemistry")
+        .gibbs
+}
+
+/// The table's data rows as whitespace-split cells.
+fn data_rows(stdout_text: &str) -> Vec<Vec<String>> {
+    stdout_text
+        .lines()
+        .skip(1)
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.split(' ').map(str::to_string).collect())
+        .collect()
+}
+
+#[test] // rq-973be061
+fn an_attached_correction_carries_its_provenance() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(
+        &dir,
+        "sp.jsonl",
+        &[sp_line("1am", -76.4109, Some("! wB97x-3c def2-TZVPP Sp"))],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stdout(&run).contains("(1 corrected)"), "{}", stdout(&run));
+    let loaded = load_database(&out).expect("load out");
+    assert_eq!(loaded.records.len(), 1);
+    let correction = loaded.records[0].correction.as_ref().expect("attached");
+    assert_eq!(correction.energy, -76.4109);
+    assert_eq!(correction.program.as_deref(), Some("orca"));
+    assert_eq!(correction.program_version.as_deref(), Some("6.0.0"));
+    assert_eq!(
+        correction.commands.as_deref(),
+        Some(&["! wB97x-3c def2-TZVPP Sp".to_string()][..])
+    );
+    assert_eq!(correction.kind, "sp");
+    assert_eq!(loaded.records[0].electronic_energy, Some(-38.51));
+}
+
+#[test] // rq-6f572182
+fn matching_is_exact_and_case_sensitive() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1AM", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stderr(&run).contains("1 unmatched correction record"));
+    let loaded = load_database(&out).expect("load out");
+    assert!(loaded.records[0].correction.is_none());
+}
+
+#[test] // rq-c411edfa
+fn every_record_sharing_the_name_receives_the_correction() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok),
+            simple_line(Some("1am"), Some(-38.52), RecordStatus::Ok),
+        ],
+    );
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let loaded = load_database(&out).expect("load out");
+    assert_eq!(loaded.records.len(), 2);
+    for record in &loaded.records {
+        assert_eq!(
+            record.correction.as_ref().expect("attached").energy,
+            -76.4109
+        );
+    }
+}
+
+#[test] // rq-c907b696
+fn a_record_without_a_name_never_matches() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[simple_line(None, Some(-38.51), RecordStatus::Ok)]);
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stderr(&run).contains("1 unmatched correction record"));
+    let loaded = load_database(&out).expect("load out");
+    assert!(loaded.records[0].correction.is_none());
+}
+
+#[test] // rq-ea21b840
+fn a_candidate_without_a_name_is_unmatched() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(
+        &dir,
+        "sp.jsonl",
+        &[simple_line(None, Some(-76.4109), RecordStatus::Ok)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stderr(&run).contains("1 unmatched correction record"));
+    let loaded = load_database(&out).expect("load out");
+    assert!(loaded.records[0].correction.is_none());
+}
+
+#[test] // rq-0627beb4
+fn a_new_match_replaces_a_stored_correction() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[corrected_db_line("1am", -38.51, -76.0, true)]);
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let loaded = load_database(&out).expect("load out");
+    assert_eq!(
+        loaded.records[0]
+            .correction
+            .as_ref()
+            .expect("attached")
+            .energy,
+        -76.4109
+    );
+}
+
+#[test] // rq-53c8c5fc
+fn an_unmatched_record_keeps_its_stored_correction() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[corrected_db_line("2am", -38.51, -76.0, true)]);
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stderr(&run).contains("1 unmatched correction record"));
+    let loaded = load_database(&out).expect("load out");
+    assert_eq!(
+        loaded.records[0].correction.as_ref().expect("kept").energy,
+        -76.0
+    );
+}
+
+#[test] // rq-e59918d8
+fn a_failed_correction_record_is_skipped_with_a_warning() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(
+        &dir,
+        "sp.jsonl",
+        &[simple_line(Some("1am"), Some(-76.4), RecordStatus::Failed)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(
+        stderr(&run).contains("skipped correction record \"1am\""),
+        "{}",
+        stderr(&run)
+    );
+    let loaded = load_database(&out).expect("load out");
+    assert!(loaded.records[0].correction.is_none());
+}
+
+#[test] // rq-d599d450
+fn a_failed_rerun_does_not_collide_with_its_ok_replacement() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(
+        &dir,
+        "sp.jsonl",
+        &[
+            simple_line(Some("1am"), Some(-76.0), RecordStatus::Failed),
+            sp_line("1am", -76.4109, None),
+        ],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(
+        stderr(&run).contains("skipped correction record \"1am\""),
+        "{}",
+        stderr(&run)
+    );
+    let loaded = load_database(&out).expect("load out");
+    assert_eq!(
+        loaded.records[0]
+            .correction
+            .as_ref()
+            .expect("attached")
+            .energy,
+        -76.4109
+    );
+}
+
+#[test] // rq-a83c76ac
+fn an_ok_correction_record_without_an_energy_is_skipped_with_a_warning() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(
+        &dir,
+        "sp.jsonl",
+        &[simple_line(Some("1am"), None, RecordStatus::Ok)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(
+        stderr(&run).contains("skipped correction record \"1am\""),
+        "{}",
+        stderr(&run)
+    );
+    let loaded = load_database(&out).expect("load out");
+    assert!(loaded.records[0].correction.is_none());
+}
+
+#[test] // rq-e15a3e2d
+fn a_correction_record_without_a_command_attaches_without_commands() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let loaded = load_database(&out).expect("load out");
+    let correction = loaded.records[0].correction.as_ref().expect("attached");
+    assert_eq!(correction.energy, -76.4109);
+    assert_eq!(correction.program.as_deref(), Some("orca"));
+    assert_eq!(correction.kind, "sp");
+    assert!(correction.commands.is_none());
+}
+
+#[test] // rq-74350863
+fn duplicate_candidate_names_are_fatal() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(
+        &dir,
+        "sp.jsonl",
+        &[sp_line("1am", -76.4109, None), sp_line("1am", -76.5, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert!(stderr(&run).contains("1am"), "{}", stderr(&run));
+    assert!(!out.exists());
+}
+
+#[test] // rq-922a22be
+fn a_corrupt_line_in_the_correction_database_is_skipped_and_fails_the_run() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp_path = dir.join("sp.jsonl");
+    let content = format!("{}\nnot json at all\n", sp_line("1am", -76.4109, None));
+    fs::write(&sp_path, content).expect("write sp");
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp_path.to_string_lossy(),
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    let err = stderr(&run);
+    assert!(err.contains("sp.jsonl"), "{err}");
+    assert!(err.contains("line 2"), "{err}");
+    let loaded = load_database(&out).expect("load out");
+    assert_eq!(
+        loaded.records[0]
+            .correction
+            .as_ref()
+            .expect("attached")
+            .energy,
+        -76.4109
+    );
+}
+
+#[test] // rq-9fd40c4e
+fn a_correction_database_that_is_a_program_output_is_fatal() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &fixture("xtb/1dma.log"),
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert!(!out.exists());
+}
+
+#[test] // rq-83e236b7
+fn a_missing_correction_database_is_fatal() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &dir.join("missing.jsonl").to_string_lossy(),
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert!(!out.exists());
+}
+
+#[test] // rq-d1bd7404
+fn repeating_add_correction_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let a = db_with(&dir, "a.jsonl", &[sp_line("1am", -76.4, None)]);
+    let b = db_with(&dir, "b.jsonl", &[sp_line("2am", -76.5, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &a,
+        "--add-correction",
+        &b,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-3fd0b9bb
+fn add_correction_alone_is_not_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4, None)]);
+    let run = cjkqc(&[&db, "--add-correction", &sp]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-58d85e68
+fn a_correcting_build_run_reports_its_corrections() {
+    let dir = temp_dir();
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1dma", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &fixture("xtb/1dma.log"),
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    assert!(text.contains("collected 1 records into"), "{text}");
+    assert!(
+        text.contains("(0 failed, 0 truncated, 1 corrected)"),
+        "{text}"
+    );
+}
+
+#[test] // rq-66e4cb89
+fn a_correcting_merge_run_reports_its_corrections() {
+    let dir = temp_dir();
+    let a = database_in(
+        &dir,
+        &[
+            simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok),
+            simple_line(Some("2am"), Some(-38.52), RecordStatus::Ok),
+        ],
+    );
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[&a, "--add-correction", &sp, "--out", &out.to_string_lossy()]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    assert!(text.contains("merged 2 records into"), "{text}");
+    assert!(text.contains("(1 corrected)"), "{text}");
+}
+
+#[test] // rq-c0c3a1af
+fn unknown_keys_do_not_survive_a_correcting_run() {
+    let dir = temp_dir();
+    let db_path = dir.join("a.jsonl");
+    fs::write(
+        &db_path,
+        "{\"status\":\"ok\",\"name\":\"1am\",\"electronic_energy\":-38.51,\"future_field\":7}\n",
+    )
+    .expect("write db");
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db_path.to_string_lossy(),
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = fs::read_to_string(&out).expect("read out");
+    assert!(!text.contains("future_field"), "{text}");
+    assert!(text.contains("\"correction\""), "{text}");
+}
+
+#[test] // rq-b5e3b553
+fn el_and_g_stay_raw_while_the_corrected_columns_show_the_corrected_values() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[thermo_line("1am", -38.51, &[], Some(-76.4109))]);
+    let run = cjkqc(&[&db, "--el", "--h", "--g", "--elcorr", "--hcorr", "--gcorr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    assert_eq!(rows.len(), 1, "{}", stdout(&run));
+    assert_eq!(rows[0].len(), 6);
+    assert_eq!(rows[0][0], "-38.5100000000");
+    let el: f64 = rows[0][0].parse().expect("el");
+    let h: f64 = rows[0][1].parse().expect("h");
+    let g: f64 = rows[0][2].parse().expect("g");
+    let elcorr: f64 = rows[0][3].parse().expect("elcorr");
+    let hcorr: f64 = rows[0][4].parse().expect("hcorr");
+    let gcorr: f64 = rows[0][5].parse().expect("gcorr");
+    assert_eq!(elcorr, -76.4109);
+    assert!(
+        (hcorr - (-76.4109 + (h - el))).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+    assert!(
+        (gcorr - (-76.4109 + (g - el))).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-bca9f7b9
+fn the_corrected_columns_print_dash_without_a_correction() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[thermo_line("1am", -38.51, &[], None)]);
+    let run = cjkqc(&[&db, "--elcorr", "--hcorr", "--gcorr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    assert_eq!(rows[0], vec!["-", "-", "-"], "{}", stdout(&run));
+}
+
+#[test] // rq-5aca0e6b
+fn hcorr_and_gcorr_are_undefined_without_defined_thermochemistry() {
+    let dir = temp_dir();
+    // A non-monatomic record with a correction and no frequencies.
+    let mut record = Record {
+        status: RecordStatus::Ok,
+        name: Some("1am".to_string()),
+        electronic_energy: Some(-38.51),
+        geometry: Some(hexagon()),
+        ..Record::default()
+    };
+    record.correction = Some(Correction {
+        energy: -76.4109,
+        program: None,
+        program_version: None,
+        commands: None,
+        kind: "sp".to_string(),
+    });
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&record).expect("serialization")],
+    );
+    let run = cjkqc(&[&db, "--hcorr", "--gcorr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    assert_eq!(rows[0], vec!["-", "-"], "{}", stdout(&run));
+}
+
+#[test] // rq-21414dd3
+fn the_correction_column_prints_kind_program_version_and_quoted_commands() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[corrected_db_line("1am", -38.51, -76.4109, true)]);
+    let run = cjkqc(&[&db, "--correction"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let row = text.lines().nth(1).expect("data row");
+    assert_eq!(
+        row,
+        "sp orca 6.0.0 \"! wB97x-3c def2-TZVPP Sp\"",
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-be59d52a
+fn the_correction_column_drops_absent_pieces() {
+    let dir = temp_dir();
+    // A correction with a program but no version and no commands.
+    let mut record = Record {
+        status: RecordStatus::Ok,
+        name: Some("1am".to_string()),
+        electronic_energy: Some(-38.51),
+        ..Record::default()
+    };
+    record.correction = Some(Correction {
+        energy: -76.4109,
+        program: Some("orca".to_string()),
+        program_version: None,
+        commands: None,
+        kind: "sp".to_string(),
+    });
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&record).expect("serialization")],
+    );
+    let run = cjkqc(&[&db, "--correction"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let row = text.lines().nth(1).expect("data row");
+    assert_eq!(row, "sp orca", "{text}");
+}
+
+#[test] // rq-f3233093
+fn the_correction_column_prints_dash_without_a_correction() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let run = cjkqc(&[&db, "--correction"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    assert_eq!(rows[0][0], "-", "{}", stdout(&run));
+}
+
+#[test] // rq-e861c941 rq-a8f483c7
+fn the_corrected_columns_follow_the_canonical_order() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok)],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--gcorr",
+        "--elcorr",
+        "--correction",
+        "--command",
+        "--hcorr",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let header = stdout(&run).lines().next().expect("header").to_string();
+    assert_eq!(
+        header,
+        "command correction elcorr hcorr gcorr",
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-c51906fe
+fn unit_converts_the_corrected_energy_columns() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[thermo_line("1am", -38.51, &[], Some(-76.4109))]);
+    let run = cjkqc(&[
+        &db,
+        "--elcorr",
+        "--hcorr",
+        "--gcorr",
+        "--correction",
+        "--unit",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // The correction cell holds spaces (quoted command), so parse the
+    // row from the end: the last three cells are the corrected energies.
+    let text = stdout(&run);
+    let row = text.lines().nth(1).expect("data row");
+    assert!(
+        row.starts_with("sp orca 6.0.0 \"! wB97x-3c def2-TZVPP Sp\" "),
+        "{}",
+        stdout(&run)
+    );
+    let cells: Vec<&str> = row.split(' ').collect();
+    let numbers = &cells[cells.len() - 3..];
+    for cell in numbers {
+        let value: f64 = cell.parse().expect("number");
+        let decimals = cell.split('.').nth(1).expect("decimals").len();
+        assert_eq!(decimals, 4, "{cell}");
+        assert!(value < -7000.0, "{cell} is not in kcal/mol");
+    }
+}
+
+#[test] // rq-234d7e28 rq-41bf3f48
+fn a_relative_corrected_energy_window_is_per_composition_group() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            thermo_line("a0", 0.0, &[("am", 1)], Some(0.0)),
+            thermo_line("a2", 0.0, &[("am", 1)], Some(0.02)),
+            thermo_line("bneg", 0.0, &[("sa", 1)], Some(-5.0)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--cutr", "elcorr", "5", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    let names: Vec<&String> = rows.iter().map(|row| &row[0]).collect();
+    assert!(names.contains(&&"a0".to_string()), "{}", stdout(&run));
+    assert!(names.contains(&&"bneg".to_string()), "{}", stdout(&run));
+    assert!(!names.contains(&&"a2".to_string()), "{}", stdout(&run));
+}
+
+#[test] // rq-aa358806
+fn a_record_without_a_correction_fails_corrected_cutoffs_except_inequality() {
+    let dir = temp_dir();
+    // The corrected record's energy is positive, so `pass elcorr 0`
+    // (elcorr > 0) separates it from the uncorrected record.
+    let db = database_in(
+        &dir,
+        &[
+            thermo_line("corr", -38.51, &[("am", 1)], Some(0.5)),
+            thermo_line("bare", -38.51, &[("am", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--pass", "elcorr", "0", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+    assert_eq!(names, vec!["corr"], "{}", stdout(&run));
+
+    let run = cjkqc(&[&db, "--isnot", "elcorr", "0", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    assert_eq!(rows.len(), 2, "{}", stdout(&run));
+}
+
+#[test] // rq-bdac8cdb
+fn sort_elcorr_orders_ascending_with_undefined_last() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            simple_line(Some("high"), Some(-38.51), RecordStatus::Ok),
+            corrected_db_line("low", -38.51, -76.5, false),
+            corrected_db_line("mid", -38.51, -76.4, false),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "elcorr", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+    assert_eq!(names, vec!["low", "mid", "high"], "{}", stdout(&run));
+
+    let run = cjkqc(&[&db, "--sort", "elcorr", "--name", "--reverse"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+    assert_eq!(names, vec!["high", "mid", "low"], "{}", stdout(&run));
+}
+
+#[test] // rq-d84cf2be rq-16bb6b61
+fn sort_gcorr_orders_ascending_with_undefined_last() {
+    let dir = temp_dir();
+    // Tune the correction energies so the corrected Gibbs values hit
+    // -100.5 and -100.0 exactly (gcorr = elcorr + (g - el)).
+    let g_minus_el = raw_gibbs(-38.51) - -38.51;
+    let g1 = -100.5 - g_minus_el;
+    let g2 = -100.0 - g_minus_el;
+    let db = database_in(
+        &dir,
+        &[
+            thermo_line("one", -38.51, &[("am", 1)], Some(g1)),
+            thermo_line("two", -38.51, &[("am", 1)], Some(g2)),
+            simple_line(Some("bare"), Some(-38.51), RecordStatus::Ok),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "gcorr", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+    assert_eq!(names, vec!["one", "two", "bare"], "{}", stdout(&run));
+
+    let run = cjkqc(&[&db, "--sort", "gcorr", "--name", "--reverse"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+    assert_eq!(names, vec!["bare", "two", "one"], "{}", stdout(&run));
+}
+
+#[test] // rq-86219849
+fn stored_corrections_work_without_add_correction() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            thermo_line("low", 0.0, &[("am", 1)], Some(0.0)),
+            thermo_line("high", 0.0, &[("am", 1)], Some(0.02)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--cutr", "elcorr", "5", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+    assert_eq!(names, vec!["low"], "{}", stdout(&run));
+}
+
+#[test] // rq-34d743c7
+fn the_corrected_formation_section_follows_the_raw_one() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], Some(-76.5)),
+            thermo_line("cluster", -141.0, &[("am", 2)], Some(-167.5)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--formation-corr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let raw = text.find("ct el g").expect("raw header");
+    let corrected = text.find("ct elcorr gcorr").expect("corrected header");
+    assert!(raw < corrected, "{text}");
+}
+
+#[test] // rq-09e99e7b
+fn formation_corr_alone_is_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], Some(-76.5)),
+            thermo_line("cluster", -141.0, &[("am", 2)], Some(-167.5)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation-corr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stdout(&run).contains("ct elcorr gcorr"), "{}", stdout(&run));
+}
+
+// --- correction hardening (PR review findings) ---
+
+#[test]
+fn a_correcting_run_can_print_the_corrected_formation_section() {
+    // The primary real-world flow: attach corrections, then immediately
+    // view the corrected formation section over the enriched survivors.
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("cluster", -141.0, &[("am", 2)], None),
+        ],
+    );
+    let sp = db_with(
+        &dir,
+        "sp.jsonl",
+        &[
+            sp_line("am1", -76.5, None),
+            sp_line("cluster", -167.5, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--add-correction", &sp, "--formation-corr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    assert!(text.contains("ct elcorr gcorr"), "{text}");
+    // The cluster's corrected electronic formation: -167.5 - 2*(-76.5).
+    let mut found = false;
+    for line in text.lines().skip(1) {
+        let cells: Vec<&str> = line.split(' ').collect();
+        if cells.first() == Some(&"2am") {
+            found = true;
+            assert_eq!(cells[1], "-14.5000000000", "{text}");
+        }
+    }
+    assert!(found, "no 2am row: {text}");
+}
+
+#[test]
+fn a_correcting_run_with_a_print_flag_writes_ok_only_survivors() {
+    // The carve-out's other side: with a print flag the run takes the
+    // pipeline path — ok-only write and the filtered summary.
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok),
+            simple_line(Some("bad"), None, RecordStatus::Failed),
+        ],
+    );
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--name",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    assert!(text.contains("filtered 1 records into"), "{text}");
+    assert!(text.contains("(1 corrected)"), "{text}");
+    let loaded = load_database(&out).expect("load out");
+    assert_eq!(loaded.records.len(), 1, "{}", stderr(&run));
+    assert!(loaded.records[0].correction.is_some());
+}
+
+#[test]
+fn an_attachment_only_run_writes_every_record() {
+    // The carve-out itself: without print flags or other manipulations the
+    // run keeps collection semantics — the failed record is written too,
+    // uncorrected, and the summary is the collection one.
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            simple_line(Some("1am"), Some(-38.51), RecordStatus::Ok),
+            simple_line(Some("bad"), None, RecordStatus::Failed),
+        ],
+    );
+    let sp = db_with(&dir, "sp.jsonl", &[sp_line("1am", -76.4109, None)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        &sp,
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    assert!(text.contains("merged 2 records into"), "{text}");
+    assert!(text.contains("(1 corrected)"), "{text}");
+    let loaded = load_database(&out).expect("load out");
+    assert_eq!(loaded.records.len(), 2);
+    let corrected: Vec<_> = loaded
+        .records
+        .iter()
+        .filter(|record| record.correction.is_some())
+        .collect();
+    assert_eq!(corrected.len(), 1);
+    assert_eq!(corrected[0].name.as_deref(), Some("1am"));
 }

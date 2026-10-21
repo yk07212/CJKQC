@@ -210,7 +210,8 @@ the print boundary via the `--unit` flag (`rqm/filtering.md` Printing).
   — the derived-property registry lookup (`rqm/ARCHITECTURE.md`
   extensibility): `key` maps to a derivation function returning the
   record's value in Eh. The registry holds `"el"` (the passthrough
-  electronic energy), `"zpe"`, `"h"`, `"s"`, `"g"`. Printing, cutoffs,
+  electronic energy), `"zpe"`, `"h"`, `"s"`, `"g"`, and the corrected keys
+  `"elcorr"`, `"hcorr"`, and `"gcorr"` (`rqm/correction.md`). Printing, cutoffs,
   sorting, uniqueness, `--glob`, and the formation section resolve these
   keys through this single lookup — no pipeline stage hand-wires its own
   match arm to a derivation. A new derived property is a new registry
@@ -269,9 +270,6 @@ printed constants, pinning the moments-of-inertia path as well.
 ## Out of Scope <!-- rq-9613ceb9 -->
 
 - BSSE / counterpoise corrections: not supported in v1.
-- Single-point energy corrections (JKQC's `gout`/`elout`: re-deriving
-  thermochemistry from a higher-level single-point energy file) — a future
-  milestone; the record and derivation make no provision for them.
 - Alternative low-frequency schemes beyond the Grimme interpolation and
   the pure harmonic oscillator (`--fc 0`): no hard truncation (raising
   frequencies below a cutoff to the cutoff), no Truhlar/RRQHO selector.

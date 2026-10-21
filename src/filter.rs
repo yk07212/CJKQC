@@ -79,8 +79,9 @@ pub enum Mode {
     Relative,
 }
 
-/// A record property a cutoff can compare: `el`, `g`, `rg`, `lf`, `dip`,
-/// `mass`, `charge`, `multiplicity`, `natoms`, `nfreq`, `nimag`.
+/// A record property a cutoff can compare: `el`, `g`, `elcorr`, `gcorr`,
+/// `rg`, `lf`, `dip`, `mass`, `charge`, `multiplicity`, `natoms`,
+/// `nfreq`, `nimag`.
 ///
 /// (rq-d157ebb2)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,6 +91,13 @@ pub enum Property {
     /// Gibbs free energy under the run's thermochemistry conditions
     /// (`rqm/thermo.md`), hartree (kcal/mol in relative mode).
     G,
+    /// Attached correction energy (`rqm/correction.md`), hartree (kcal/mol
+    /// in relative mode); undefined without a correction.
+    ElCorr,
+    /// Gibbs free energy from the attached correction
+    /// (`rqm/correction.md`), hartree (kcal/mol in relative mode);
+    /// undefined without a correction or defined thermochemistry.
+    GCorr,
     /// Mass-weighted radius of gyration in Å.
     Rg,
     /// Lowest vibrational frequency in cm⁻¹.
@@ -116,6 +124,8 @@ impl Property {
         match name {
             "el" => Some(Property::El),
             "g" => Some(Property::G),
+            "elcorr" => Some(Property::ElCorr),
+            "gcorr" => Some(Property::GCorr),
             "rg" => Some(Property::Rg),
             "lf" => Some(Property::Lf),
             "dip" => Some(Property::Dip),
@@ -145,7 +155,7 @@ pub struct Cutoff {
     pub value: f64,
 }
 
-/// A sort key: `el`, `g`, `rg`, `mass`, `name`.
+/// A sort key: `el`, `g`, `elcorr`, `gcorr`, `rg`, `mass`, `name`.
 ///
 /// (rq-953da4ce)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -155,6 +165,11 @@ pub enum SortKey {
     /// Gibbs free energy under the run's thermochemistry conditions
     /// (`rqm/thermo.md`).
     G,
+    /// Attached correction energy (`rqm/correction.md`).
+    ElCorr,
+    /// Gibbs free energy from the attached correction
+    /// (`rqm/correction.md`).
+    GCorr,
     /// Radius of gyration.
     Rg,
     /// Total mass.
@@ -169,6 +184,8 @@ impl SortKey {
         match name {
             "el" => Some(SortKey::El),
             "g" => Some(SortKey::G),
+            "elcorr" => Some(SortKey::ElCorr),
+            "gcorr" => Some(SortKey::GCorr),
             "rg" => Some(SortKey::Rg),
             "mass" => Some(SortKey::Mass),
             "name" => Some(SortKey::Name),
@@ -276,6 +293,11 @@ pub enum Column {
     Program,
     /// Command line, double-quoted.
     Command,
+    /// Correction provenance: kind, program and version, quoted commands
+    /// (`rqm/correction.md`).
+    ///
+    /// (rq-38b619ff)
+    Correction,
     /// Electronic energy, hartree, 10 decimals.
     El,
     /// Zero-point energy (`rqm/thermo.md`), like `el`.
@@ -286,6 +308,20 @@ pub enum Column {
     S,
     /// Gibbs free energy (`rqm/thermo.md`), like `el`.
     G,
+    /// Attached correction energy (`rqm/correction.md`), like `el`.
+    ///
+    /// (rq-38b619ff)
+    ElCorr,
+    /// Enthalpy from the attached correction (`rqm/correction.md`), like
+    /// `el`.
+    ///
+    /// (rq-38b619ff)
+    HCorr,
+    /// Gibbs free energy from the attached correction
+    /// (`rqm/correction.md`), like `el`.
+    ///
+    /// (rq-38b619ff)
+    GCorr,
     /// Radius of gyration, 3 decimals.
     Rg,
     /// Total mass, 3 decimals.
@@ -318,16 +354,20 @@ pub enum Column {
 
 impl Column {
     /// All columns in canonical print order.
-    pub const ALL: [Column; 20] = [
+    pub const ALL: [Column; 24] = [
         Column::Name,
         Column::Status,
         Column::Program,
         Column::Command,
+        Column::Correction,
         Column::El,
         Column::Zpe,
         Column::H,
         Column::S,
         Column::G,
+        Column::ElCorr,
+        Column::HCorr,
+        Column::GCorr,
         Column::Rg,
         Column::Mass,
         Column::Dip,
@@ -354,6 +394,9 @@ impl Column {
             Column::H => Some("h"),
             Column::S => Some("s"),
             Column::G => Some("g"),
+            Column::ElCorr => Some("elcorr"),
+            Column::HCorr => Some("hcorr"),
+            Column::GCorr => Some("gcorr"),
             _ => None,
         }
     }
@@ -365,11 +408,15 @@ impl Column {
             Column::Status => "status",
             Column::Program => "program",
             Column::Command => "command",
+            Column::Correction => "correction",
             Column::El => "el",
             Column::Zpe => "zpe",
             Column::H => "h",
             Column::S => "s",
             Column::G => "g",
+            Column::ElCorr => "elcorr",
+            Column::HCorr => "hcorr",
+            Column::GCorr => "gcorr",
             Column::Rg => "rg",
             Column::Mass => "mass",
             Column::Dip => "dip",
@@ -388,14 +435,17 @@ impl Column {
 /// The record's defined value for a cutoff property; `None` marks it
 /// undefined (absent observable, unknown element for mass metrics, or —
 /// for `g` — undefined thermochemistry at the run's conditions,
-/// `rqm/thermo.md`). The energy keys `el` and `g` resolve through the
-/// derived-property registry on the run's memo.
+/// `rqm/thermo.md`). The energy keys `el`, `g`, `elcorr`, and `gcorr`
+/// resolve through the derived-property registry on the run's memo
+/// (`rqm/correction.md` for the corrected keys).
 ///
 /// (rq-b76b0761 rq-8f6da1c2)
 pub fn property_value(record: &Record, property: Property, memo: &ThermoMemo) -> Option<f64> {
     match property {
         Property::El => memo.value("el", record),
         Property::G => memo.value("g", record),
+        Property::ElCorr => memo.value("elcorr", record),
+        Property::GCorr => memo.value("gcorr", record),
         Property::Rg => metric_radius_of_gyration(record),
         Property::Lf => record
             .vibrational_frequencies
@@ -553,7 +603,8 @@ pub fn apply_filters(
 /// columns resolve through the derived-property registry on the run's
 /// memo, which derives each record's thermochemistry once across all
 /// thermo columns (`rqm/thermo.md` Performance); `unit` converts every
-/// energy column (`el`, `zpe`, `h`, `s`, `g`) to kcal/mol.
+/// energy column (`el`, `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, `gcorr`)
+/// to kcal/mol.
 ///
 /// (rq-8420b870 rq-4ea8ca35 rq-8b44ad8d)
 pub fn print_table(
@@ -595,8 +646,18 @@ pub(crate) fn format_energy(value: f64, unit: Unit) -> String {
 fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -> String {
     let undefined = || "-".to_string();
     match column {
-        // The five registry columns share one dispatch (rq-8f6da1c2).
-        Column::El | Column::Zpe | Column::H | Column::S | Column::G => column
+        // The energy columns share one registry dispatch (rq-8f6da1c2);
+        // the corrected columns resolve the corrected keys through it
+        // (rqm/correction.md).
+        // rq-8f6da1c2 rq-b5e3b553
+        Column::El
+        | Column::Zpe
+        | Column::H
+        | Column::S
+        | Column::G
+        | Column::ElCorr
+        | Column::HCorr
+        | Column::GCorr => column
             .registry_key()
             .and_then(|key| memo.value(key, record))
             .map_or_else(undefined, |value| format_energy(value, unit)),
@@ -621,6 +682,27 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
         Column::Command => match &record.command {
             Some(command) => format!("\"{command}\""),
             None => undefined(),
+        },
+        // The correction provenance cell: the kind, then the program and
+        // version the way the program column prints them (absent pieces
+        // dropped), then each command double-quoted like the command
+        // column (`rqm/correction.md` Printing).
+        // rq-21414dd3 rq-be59d52a
+        Column::Correction => match &record.correction {
+            None => undefined(),
+            Some(correction) => {
+                let mut parts = vec![correction.kind.clone()];
+                if let Some(program) = &correction.program {
+                    match &correction.program_version {
+                        Some(version) => parts.push(format!("{program} {version}")),
+                        None => parts.push(program.clone()),
+                    }
+                }
+                for command in correction.commands.iter().flatten() {
+                    parts.push(format!("\"{command}\""));
+                }
+                parts.join(" ")
+            }
         },
         Column::Rg => match metric_radius_of_gyration(record) {
             Some(value) => format!("{value:.3}"),
@@ -773,10 +855,15 @@ fn apply_cutoff(records: &mut Vec<Record>, cutoff: &Cutoff, grouping: Grouping, 
     retain(records, &keep);
 }
 
-/// Relative `el` and `g` comparisons run in kcal/mol; every other property
-/// keeps its native units.
+/// Relative `el`, `g`, `elcorr`, and `gcorr` comparisons run in kcal/mol;
+/// every other property keeps its native units.
 fn scale_relative(value: f64, cutoff: &Cutoff) -> f64 {
-    if cutoff.mode == Mode::Relative && matches!(cutoff.property, Property::El | Property::G) {
+    if cutoff.mode == Mode::Relative
+        && matches!(
+            cutoff.property,
+            Property::El | Property::G | Property::ElCorr | Property::GCorr
+        )
+    {
         value * KCAL_MOL_PER_HARTREE
     } else {
         value
@@ -888,12 +975,14 @@ fn sort_records(records: &mut Vec<Record>, key: SortKey, reverse: bool, memo: &T
 }
 
 /// The numeric value of a record's sort key; `None` marks it undefined.
-/// `el` and `g` resolve through the derived-property registry on the
-/// run's memo.
+/// `el`, `g`, `elcorr`, and `gcorr` resolve through the derived-property
+/// registry on the run's memo.
 pub(crate) fn sort_value_for(record: &Record, key: SortKey, memo: &ThermoMemo) -> Option<f64> {
     match key {
         SortKey::El => property_value(record, Property::El, memo),
         SortKey::G => property_value(record, Property::G, memo),
+        SortKey::ElCorr => property_value(record, Property::ElCorr, memo),
+        SortKey::GCorr => property_value(record, Property::GCorr, memo),
         SortKey::Rg => property_value(record, Property::Rg, memo),
         SortKey::Mass => property_value(record, Property::Mass, memo),
         SortKey::Name => None,

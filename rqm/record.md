@@ -69,6 +69,13 @@ else", `rqm/ARCHITECTURE.md`).
     alphabetical. It is not an observable: the parser never fills it —
     composition resolution and CLI overrides populate it, and downstream
     logic reads it instead of re-parsing names.
+  - `correction: Option<Correction>` — an attached single-point correction
+    with its provenance (`rqm/correction.md`): the alternative electronic
+    energy a `--add-correction` run matched to this record's `name`, plus
+    where that energy came from. It is not an observable of this job: it is
+    attached by the correction mechanism or loaded from a previously corrected
+    database, and the raw `electronic_energy` is never altered. Absent when no
+    correction is attached.
   - The default record has status `ok`, every observable absent, and no
     components.
   - An absent observable means "not extracted or not applicable"; it is omitted
@@ -87,6 +94,21 @@ else", `rqm/ARCHITECTURE.md`).
   - `coordinates: Vec<f64>` — positions in Å, row-major: exactly three values
     per atom, in `symbols` order.
 
+- `Correction` — one attached single-point correction, serialized as the <!-- rq-95e1c918 -->
+  `correction` object:
+  - `energy: f64` — the single-point electronic energy in hartree.
+  - `program: Option<String>` and `program_version: Option<String>` — the
+    correction job's program token and version, copied from the correction
+    record.
+  - `commands: Option<Vec<String>>` — the command line(s) that produced the
+    energy, copied from the correction record's `command` as a one-element
+    list and omitted when unknown; an extrapolation correction lists one
+    entry per contributing calculation.
+  - `kind: String` — non-empty token describing how the energy was obtained;
+    `sp` when attached from a parsed single-point record. The vocabulary is
+    open: tokens are stored verbatim, so databases written by later versions
+    (extrapolation kinds, for example) stay loadable.
+
 - `RecordInvalidity` — the reason a record fails validation. Variants: <!-- rq-4eefe504 -->
   - `NonFiniteFloat { field }` — a floating-point field holds NaN or ±∞; JSON
     cannot represent the value and it must not be written.
@@ -97,7 +119,7 @@ else", `rqm/ARCHITECTURE.md`).
     geometry's atom count.
   - `MissingError` — status is `failed` without an error message.
   - `InvalidScalar { field, reason }` — `multiplicity` or
-    `rotational_symmetry_number` below 1.
+    `rotational_symmetry_number` below 1, or an empty `correction.kind`.
   - `InvalidComponents` — the components map is empty, a component code is
     empty or holds anything but ASCII letters, or a count is below 1.
 
@@ -109,7 +131,8 @@ else", `rqm/ARCHITECTURE.md`).
     geometry's atom count when a geometry is present; a `failed` record
     carries a non-empty error message; `multiplicity` and
     `rotational_symmetry_number` are at least 1; a present components map is
-    non-empty with valid codes and counts.
+    non-empty with valid codes and counts; a present correction carries a
+    finite energy and a non-empty kind.
   - Per-atom array lengths are not checked when no geometry is present.
 
 - `Record::is_unrecognized(&self) -> bool` <!-- rq-8ebc6467 -->
@@ -147,7 +170,7 @@ records and databases always carry the canonical units above.
   `source_path`, `program`, `program_version`, `command`, `electronic_energy`,
   `charge`, `multiplicity`, `geometry`, `vibrational_frequencies`, `gradient`,
   `dipole_moment`, `mulliken_charges`, `rotational_symmetry_number`,
-  `components` — with absent observables omitted. The reader accepts keys in
+  `components`, `correction` — with absent observables omitted. The reader accepts keys in
   any order.
 - `geometry` serializes as nested parallel arrays:
   `{"symbols": [...], "coordinates": [...]}`.
@@ -163,6 +186,12 @@ Example line:
 
 ```json
 {"status":"ok","name":"1dma","source_path":"/scratch/runs/xtb/1dma.log","program":"xtb","program_version":"6.7.1","command":"xtb 1dma.xyz --gxtb --acc 0.01 -ohess","electronic_energy":-38.51,"charge":0,"multiplicity":1,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"vibrational_frequencies":[3421.1],"components":{"dma":1}}
+```
+
+A record with an attached single-point correction (`rqm/correction.md`):
+
+```json
+{"status":"ok","name":"1dma","program":"xtb","electronic_energy":-38.51,"geometry":{"symbols":["N","H"],"coordinates":[0.0,0.0,0.0,0.0,0.0,1.01]},"components":{"dma":1},"correction":{"energy":-76.4109,"program":"orca","program_version":"6.0.0","commands":["! wB97x-3c def2-TZVPP Sp"],"kind":"sp"}}
 ```
 
 ## Out of Scope <!-- rq-bed9e94b -->
@@ -346,4 +375,31 @@ Feature: Record schema
     Given a record with status "ok" and no program
     When is_unrecognized is called on it
     Then it returns false
+
+  # --- Correction ---
+
+  @rq-3b0ad5a2
+  Scenario: A correction round-trips
+    Given a record with an attached correction carrying energy, program, version, commands, and kind
+    When the record is serialized to JSON and deserialized back
+    Then the result equals the original record
+
+  @rq-5a78fd5d
+  Scenario: A correction object reads from a JSON object
+    Given a JSON line whose correction object holds energy, program, program_version, commands, and kind
+    When the line is deserialized into a record
+    Then the record carries that correction
+    And no error is reported
+
+  @rq-f03405ec
+  Scenario: validate rejects a non-finite correction energy
+    Given a record whose correction energy is NaN
+    When validate is called
+    Then it returns Err(RecordInvalidity::NonFiniteFloat { field: "correction.energy" })
+
+  @rq-0b4ab1a5
+  Scenario: validate rejects an empty correction kind
+    Given a record whose correction kind is ""
+    When validate is called
+    Then it returns Err(RecordInvalidity::InvalidScalar { field: "correction.kind" })
 ```

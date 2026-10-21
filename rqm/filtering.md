@@ -14,7 +14,8 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
 - `<inputs>…` are classified exactly as in collection (`rqm/collection.md`
   ): all program outputs build, all databases merge, a mixture is a usage
   error. The collected/merged records then flow through the pipeline.
-- **Manipulation flags** are: `--extract`, `--nextract`, `--cut`,
+- **Manipulation flags** are: `--add-correction`
+  (`rqm/correction.md`), `--extract`, `--nextract`, `--cut`,
   `--cutr`, `--pass`, `--passr`, `--is`, `--isnot`, `--filter-lt`,
   `--filter-ge`, `--rel-filter-lt`, `--rel-filter-ge`, `--uniq`,
   `--reacted`, `--reacted2`, `--sort`, `--reverse`, `--select`,
@@ -124,6 +125,8 @@ the property set and units:
 |---|---|---|---|
 | `el` | `electronic_energy` | hartree | kcal/mol (× the Eh→kcal/mol constant of `rqm/thermo.md` Constants) |
 | `g` | Gibbs free energy (`rqm/thermo.md`) | hartree | kcal/mol (× the Eh→kcal/mol constant of `rqm/thermo.md` Constants) |
+| `elcorr` | attached correction energy (`rqm/correction.md`) | hartree | kcal/mol (× the Eh→kcal/mol constant of `rqm/thermo.md` Constants) |
+| `gcorr` | Gibbs free energy from the attached correction (`rqm/correction.md`) | hartree | kcal/mol (× the Eh→kcal/mol constant of `rqm/thermo.md` Constants) |
 | `rg` | radius of gyration (`rqm/uniqueness.md`) | Å | Å |
 | `lf` | lowest (minimum) vibrational frequency | cm⁻¹ | cm⁻¹ |
 | `dip` | dipole magnitude (`rqm/uniqueness.md`) | atomic units | atomic units |
@@ -146,7 +149,8 @@ the property set and units:
 ## Sort, Select, Shuffle <!-- rq-17ea1903 -->
 
 - `--sort <key>` with keys `el`, `g` (Gibbs free energy derived at the
-  run's conditions, `rqm/thermo.md`), `rg`, `mass`, `name`.
+  run's conditions, `rqm/thermo.md`), `elcorr`, `gcorr` (the corrected
+  levels, `rqm/correction.md`), `rg`, `mass`, `name`.
   Ascending unless `--reverse`. A record whose sort key is undefined sorts
   last ascending, first descending; records without a `name` sort first
   ascending under `name`. `--reverse` only orients a sort (explicit
@@ -167,9 +171,10 @@ the property set and units:
 ## Printing <!-- rq-4ea8ca35 -->
 
 - Printing follows JKQC: every printable column has its own flag —
-  `--name`, `--status`, `--program`, `--command`, `--el`, `--zpe`, `--h`,
-  `--s`, `--g`, `--rg`, `--mass`, `--dip`, `--charge`, `--multiplicity`,
-  `--natoms`, `--lf`, `--nfreq`, `--nimag`, `--components`, `--ct`.
+  `--name`, `--status`, `--program`, `--command`, `--correction`, `--el`,
+  `--zpe`, `--h`, `--s`, `--g`, `--elcorr`, `--hcorr`, `--gcorr`, `--rg`,
+  `--mass`, `--dip`, `--charge`, `--multiplicity`, `--natoms`, `--lf`,
+  `--nfreq`, `--nimag`, `--components`, `--ct`.
   There is no default
   selection: no print flag means no table is printed at all. The
   `--formation` flag (`rqm/formation.md`) prints a section after the
@@ -184,7 +189,8 @@ the property set and units:
   record in run order, values separated by a single space. `el` prints
   in hartree with 10 decimals; the thermochemistry columns `zpe`, `h`,
   `s`, `g` (`rqm/thermo.md`; `s` is the T·S entropy term) print like
-  `el`; `rg`, `mass`, `dip` with 3; `lf` with 1 — the lowest stored
+  `el`, as do the corrected columns `elcorr`, `hcorr`, and `gcorr`
+  (`rqm/correction.md`); `rg`, `mass`, `dip` with 3; `lf` with 1 — the lowest stored
   vibrational frequency in cm⁻¹, a raw observable so imaginary modes
   print negative whatever `--makereal` or `--ignoreimag` does, undefined
   when the record stores no frequencies; integer fields plainly;
@@ -197,23 +203,30 @@ the property set and units:
   version is absent. The `command` column wraps the stored command line
   in double quotes, since the value contains spaces and the table's
   values are separated by single spaces; an absent command prints a bare
-  unquoted `-`.
+  unquoted `-`. The `correction` column prints a record's correction
+  provenance (`rqm/correction.md`).
 - `--unit` converts every Hartree-valued print quantity — the energy
-  columns (`el`, `zpe`, `h`, `s`, `g`) and the `--formation` section's
-  values (`rqm/formation.md`) — from hartree to kcal/mol at this
-  boundary: kcal/mol prints with 4 decimals. The flag is a plain
-  boolean: it takes no value, and without it energies print in hartree.
-  The relative-cutoff kcal/mol conversion above is unaffected by
+  columns (`el`, `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, `gcorr`) and the
+  `--formation` section's values (`rqm/formation.md`) — from hartree to
+  kcal/mol at this boundary: kcal/mol prints with 4 decimals. The flag is
+  a plain boolean: it takes no value, and without it energies print in
+  hartree. The relative-cutoff kcal/mol conversion above is unaffected by
   `--unit`.
 - A run that manipulates prints the pipeline survivors (all status
   `ok`); a run with print flags but no manipulation flag prints every
   record as loaded, in file order — printing alone is not an operation
-  on the data.
-- A writing run prints to stdout `filtered <n> records into <out>`; the
-  table (when requested) prints before that summary line. This ordering
-  holds for manipulation runs and for a plain collection run that also
-  prints (table first, then the collection summary), so a table is always
-  the first thing on stdout when requested.
+  on the data. `--add-correction` (`rqm/correction.md`) is the one
+  manipulation flag that does not change which records a run writes when
+  it acts alone: an attachment-only run — no print flag, no other
+  manipulation flag — keeps collection semantics, writing every loaded
+  record under the collection summary line. Any print flag or any other
+  manipulation flag switches the run to the pipeline semantics above.
+- A writing run prints to stdout `filtered <n> records into <out>`; with
+  `--add-correction` (`rqm/correction.md`) the line gains
+  `(<k> corrected)`. The table (when requested) prints before that summary
+  line. This ordering holds for manipulation runs and for a plain
+  collection run that also prints (table first, then the collection
+  summary), so a table is always the first thing on stdout when requested.
 
 ## Feature API <!-- rq-19b7a23e -->
 
@@ -231,10 +244,12 @@ the property set and units:
   OnlyExactly(u32, Vec<String>)}`.
 - `Cutoff` — `op: CmpOp` (`Lt, Le, Gt, Ge, Eq, Ne`), `mode: Mode` <!-- rq-8ad5e95a -->
   (`Absolute, Relative`), `property: Property`, `value: f64`.
-- `Property` — `El, G, Rg, Lf, Dip, Mass, Charge, Multiplicity, Natoms, <!-- rq-d157ebb2 -->
-  Nfreq, Nimag`; `G` derives via `rqm/thermo.md`.
-- `SortKey` — `El | G | Rg | Mass | Name`. <!-- rq-953da4ce -->
-- `Column` — the print columns above, `Zpe | H | S | G` included. <!-- rq-38b619ff -->
+- `Property` — `El, G, ElCorr, GCorr, Rg, Lf, Dip, Mass, Charge, <!-- rq-d157ebb2 -->
+  Multiplicity, Natoms, Nfreq, Nimag`; `G` derives via `rqm/thermo.md`;
+  `ElCorr` and `GCorr` via `rqm/correction.md`.
+- `SortKey` — `El | G | ElCorr | GCorr | Rg | Mass | Name`. <!-- rq-953da4ce -->
+- `Column` — the print columns above, `Zpe | H | S | G | ElCorr | <!-- rq-38b619ff -->
+  HCorr | GCorr | Correction` included.
 - `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the <!-- rq-8718aee5 -->
   `--unit` flag is present, `Au` (hartree) otherwise.
 - `ExtractError` — parse failure detail for usage reporting. <!-- rq-881749dc -->
@@ -246,8 +261,8 @@ the property set and units:
 - `extract_matches(pattern: &ExtractPattern, components: Option<&Components>) -> bool` <!-- rq-1e1f9c11 -->
 - `property_value(record: &Record, property: Property, memo: &ThermoMemo) -> Option<f64>` <!-- rq-b76b0761 -->
   — derived per the table (`rg`, `mass`, `dip` via `rqm/uniqueness.md`;
-  `el` and `g` through the derived-property registry on the run's memo,
-  `rqm/thermo.md`).
+  `el`, `g`, `elcorr`, and `gcorr` through the derived-property registry on
+  the run's memo, `rqm/thermo.md` and `rqm/correction.md`).
 - `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<Vec<Record>, <!-- rq-bc3e1482 -->
   ExtractError>` — the full pipeline including the ok-only pre-filter and
   grouping; never mutates the input. The memo carries the run's
@@ -277,9 +292,6 @@ the property set and units:
 - RMSD/structure-alignment uniqueness (`--arbalign`, `--MWarbalign`): not
   supported; the flags are unknown flags and stay usage errors
   (`rqm/uniqueness.md`).
-- Single-point-corrected energies (`gout`, `elout`): re-deriving
-  thermochemistry from a higher-level single-point energy is a future
-  milestone (`rqm/thermo.md` Out of Scope).
 - Adaptive sampling (`-sample`), the JKQC `bonded` cutoff property,
   `-dropimg` (deleting imaginary modes from the record — `--makereal`
   and `--ignoreimag` (`rqm/thermo.md`) fold or skip imaginary frequencies
@@ -487,6 +499,26 @@ Feature: Filtering, sorting, and printing
     Given a group with three records of differing gibbs and a group with one
     When --select 2 applies (after the sort) and then --glob
     Then the first group contributes its lowest-gibbs record among the two selected and the second its only record
+
+  # --- Corrected energies ---
+
+  @rq-41bf3f48
+  Scenario: A relative corrected-energy window is per composition group
+    Given one group with corrected energies 0.0 and 0.02 Eh and another with -5.0 Eh
+    When the cutoff cutr elcorr 5 applies
+    Then the 0.02 Eh record (12.6 kcal/mol above its minimum) is dropped and the -5.0 record survives
+
+  @rq-16bb6b61
+  Scenario: Sorting by corrected Gibbs puts undefined values last
+    Given records with corrected Gibbs -100.0 and -100.5 and one without a correction
+    When CJKQC is invoked with the database and "--sort gcorr --name" and no --out
+    Then the order is -100.5, -100.0, uncorrected
+
+  @rq-a8f483c7
+  Scenario: The corrected columns sit in canonical order
+    Given a database with one ok record
+    When CJKQC is invoked with the database and "--gcorr --elcorr --correction --command --hcorr" and no --out
+    Then the header orders command, correction, elcorr, hcorr, gcorr
 
   # --- CLI and printing ---
 

@@ -147,6 +147,18 @@
     "title": "Undefined levels print as dashes",
     "type": "scenario"
   },
+  "rq-04a56097": {
+    "decl": "Scenario: The corrected thermochemistry equals the correction energy plus the raw thermal correction",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected thermochemistry equals the correction energy plus the raw thermal correction",
+    "type": "scenario"
+  },
   "rq-04bf58f3": {
     "decl": "Scenario: Nameless records are never duplicates",
     "file": "uniqueness",
@@ -178,6 +190,22 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-0627beb4": {
+    "decl": "Scenario: A new match replaces a stored correction",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A new match replaces a stored correction",
+    "type": "scenario"
   },
   "rq-06cfcbfe": {
     "decl": "Scenario: An absurd temperature leaves thermochemistry undefined",
@@ -242,6 +270,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-09e99e7b": {
+    "decl": "Scenario: --formation-corr alone is a visible outcome",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--formation-corr alone is a visible outcome",
+    "type": "scenario"
+  },
   "rq-0a2ed6f8": {
     "decl": "Scenario: An unwritable output directory is fatal",
     "file": "collection",
@@ -289,6 +329,22 @@
     ],
     "title": "Feature: Record Schema of Primary Observables",
     "type": "file"
+  },
+  "rq-0b4ab1a5": {
+    "decl": "Scenario: validate rejects an empty correction kind",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects an empty correction kind",
+    "type": "scenario"
   },
   "rq-0bb4b64f": {
     "decl": "Scenario: An unrelated head is not claimed",
@@ -422,6 +478,13 @@
     "title": "--formation alone is a visible outcome",
     "type": "scenario"
   },
+  "rq-0f7d8c11": {
+    "decl": "- `tests/correction.rs` tests attachment as a pure function (matching,",
+    "file": "correction",
+    "refs": [],
+    "title": "tests",
+    "type": "api-item"
+  },
   "rq-0f8ebb73": {
     "decl": "Scenario: A recorded failed run is classified failed",
     "file": "parsers/orca",
@@ -469,6 +532,14 @@
     ],
     "title": "An elided frequency header falls back to the visible eigval lines",
     "type": "scenario"
+  },
+  "rq-123b0f89": {
+    "decl": "### Functions",
+    "file": "correction",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
   },
   "rq-125f5313": {
     "decl": "- `DbError` — error type for database operations:",
@@ -715,6 +786,18 @@
       }
     ],
     "title": "Electronic entropy carries the spin degeneracy",
+    "type": "scenario"
+  },
+  "rq-16bb6b61": {
+    "decl": "Scenario: Sorting by corrected Gibbs puts undefined values last",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Sorting by corrected Gibbs puts undefined values last",
     "type": "scenario"
   },
   "rq-1736b3f9": {
@@ -1106,6 +1189,18 @@
     "title": "The lf column prints the lowest raw frequency",
     "type": "scenario"
   },
+  "rq-20ab3295": {
+    "decl": "Scenario: A record without a correction has dashes in the corrected section",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without a correction has dashes in the corrected section",
+    "type": "scenario"
+  },
   "rq-21041eac": {
     "decl": "- `dipole_moment` — the `Total Dipole Moment    :     <x> <y> <z>` line of",
     "file": "parsers/orca",
@@ -1124,6 +1219,22 @@
     ],
     "title": "ParserRegistry",
     "type": "api-item"
+  },
+  "rq-21414dd3": {
+    "decl": "Scenario: The correction column prints kind, program, version, and quoted commands",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The correction column prints kind, program, version, and quoted commands",
+    "type": "scenario"
   },
   "rq-219164a5": {
     "decl": "Scenario: The parser's status and error are preserved verbatim",
@@ -1206,6 +1317,31 @@
       }
     ],
     "title": "Duplicate names collapse to the first occurrence",
+    "type": "scenario"
+  },
+  "rq-233e0670": {
+    "decl": "## The Correction Database",
+    "file": "correction",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The Correction Database",
+    "type": "section"
+  },
+  "rq-234d7e28": {
+    "decl": "Scenario: A relative corrected-energy window is per composition group",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A relative corrected-energy window is per composition group",
     "type": "scenario"
   },
   "rq-239fd4b8": {
@@ -1574,6 +1710,14 @@
     "title": "Uniq implies sorting by energy",
     "type": "scenario"
   },
+  "rq-2f4611d0": {
+    "decl": "## Corrected Formation Section",
+    "file": "formation",
+    "level": 2,
+    "refs": [],
+    "title": "Corrected Formation Section",
+    "type": "section"
+  },
   "rq-2f996ba6": {
     "decl": "## Grouping",
     "file": "filtering",
@@ -1867,6 +2011,18 @@
     "title": "Extraction",
     "type": "section"
   },
+  "rq-34d743c7": {
+    "decl": "Scenario: The corrected section follows the raw section and precedes the summary",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected section follows the raw section and precedes the summary",
+    "type": "scenario"
+  },
   "rq-355e66c9": {
     "decl": "- `detect(head)` returns the byte offset of the earliest line containing",
     "file": "parsers/mrcc",
@@ -1983,7 +2139,7 @@
     "type": "scenario"
   },
   "rq-38b619ff": {
-    "decl": "- `Column` — the print columns above, `Zpe | H | S | G` included.",
+    "decl": "- `Column` — the print columns above, `Zpe | H | S | G | ElCorr |",
     "file": "filtering",
     "refs": [
       {
@@ -1993,6 +2149,18 @@
     ],
     "title": "Column",
     "type": "api-item"
+  },
+  "rq-39641660": {
+    "decl": "Scenario: The corrected section evaluates the attached corrections",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected section evaluates the attached corrections",
+    "type": "scenario"
   },
   "rq-39759c8a": {
     "decl": "- `parse_fortran_f64(field: &str) -> Option<f64>` — parses a decimal number",
@@ -2050,6 +2218,14 @@
     "title": "MergeOutcome",
     "type": "api-item"
   },
+  "rq-3a687494": {
+    "decl": "## Out of Scope",
+    "file": "correction",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
   "rq-3a6b7e46": {
     "decl": "Scenario: validate rejects a gradient length that mismatches the geometry",
     "file": "record",
@@ -2091,6 +2267,18 @@
       }
     ],
     "title": "A failed replacement leaves the existing target intact",
+    "type": "scenario"
+  },
+  "rq-3b0ad5a2": {
+    "decl": "Scenario: A correction round-trips",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A correction round-trips",
     "type": "scenario"
   },
   "rq-3b5861a5": {
@@ -2193,6 +2381,22 @@
     "title": "An imaginary frequency leaves thermochemistry undefined",
     "type": "scenario"
   },
+  "rq-3fd0b9bb": {
+    "decl": "Scenario: --add-correction alone is not a visible outcome",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--add-correction alone is not a visible outcome",
+    "type": "scenario"
+  },
   "rq-41528ecc": {
     "decl": "## ORCA Reference Values",
     "file": "thermo",
@@ -2205,6 +2409,18 @@
     ],
     "title": "ORCA Reference Values",
     "type": "section"
+  },
+  "rq-41bf3f48": {
+    "decl": "Scenario: A relative corrected-energy window is per composition group",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A relative corrected-energy window is per composition group",
+    "type": "scenario"
   },
   "rq-41e77e57": {
     "decl": "- `Cargo.toml` declares the `serde` and `serde_json` dependencies; no other",
@@ -2604,6 +2820,18 @@
     "title": "RecordInvalidity",
     "type": "api-item"
   },
+  "rq-4f20e170": {
+    "decl": "- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit) -> String`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "print_formation_corr_section",
+    "type": "api-item"
+  },
   "rq-4f9a9a29": {
     "decl": "## Feature API",
     "file": "record",
@@ -2732,6 +2960,22 @@
     "title": "Failed monomer records never qualify",
     "type": "scenario"
   },
+  "rq-53c8c5fc": {
+    "decl": "Scenario: An unmatched record keeps its stored correction",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unmatched record keeps its stored correction",
+    "type": "scenario"
+  },
   "rq-54536800": {
     "decl": "Scenario: A dash argument is an ordinary path, not stdin",
     "file": "collection",
@@ -2840,6 +3084,23 @@
     "title": "A row count below expected_rows yields None",
     "type": "scenario"
   },
+  "rq-587473fd": {
+    "decl": "## Attachment",
+    "file": "correction",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Attachment",
+    "type": "section"
+  },
   "rq-58808413": {
     "decl": "Scenario: --glob drops records with undefined Gibbs",
     "file": "thermo",
@@ -2908,6 +3169,22 @@
     "title": "Conformance Assertions",
     "type": "section"
   },
+  "rq-58d85e68": {
+    "decl": "Scenario: A correcting build run reports its corrections",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A correcting build run reports its corrections",
+    "type": "scenario"
+  },
   "rq-58f8e962": {
     "decl": "Scenario: Load returns all records in file order",
     "file": "database",
@@ -2952,6 +3229,18 @@
     "title": "Partial lines at the window seams are dropped",
     "type": "scenario"
   },
+  "rq-5a78fd5d": {
+    "decl": "Scenario: A correction object reads from a JSON object",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A correction object reads from a JSON object",
+    "type": "scenario"
+  },
   "rq-5aa5a715": {
     "decl": "Scenario: An ok record is not unrecognized",
     "file": "record",
@@ -2974,6 +3263,22 @@
       }
     ],
     "title": "A file within the window sizes is read whole",
+    "type": "scenario"
+  },
+  "rq-5aca0e6b": {
+    "decl": "Scenario: hcorr and gcorr are undefined without defined thermochemistry",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "hcorr and gcorr are undefined without defined thermochemistry",
     "type": "scenario"
   },
   "rq-5b33312a": {
@@ -3030,6 +3335,18 @@
       }
     ],
     "title": "A count range expands inclusively",
+    "type": "scenario"
+  },
+  "rq-5ca4f95d": {
+    "decl": "Scenario: A reference monomer without a correction leaves both levels undefined",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A reference monomer without a correction leaves both levels undefined",
     "type": "scenario"
   },
   "rq-5d0be798": {
@@ -3288,6 +3605,14 @@
     "title": "The MRCC corpus fixture reproduces the JKQC ground truth",
     "type": "scenario"
   },
+  "rq-64a6e8ac": {
+    "decl": "## Gherkin Scenarios",
+    "file": "correction",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
   "rq-64a72e10": {
     "decl": "Scenario: --sort g makes the lowest-gibbs conformer the reference for both levels",
     "file": "formation",
@@ -3375,6 +3700,22 @@
     "title": "An unknown element symbol is undefined",
     "type": "scenario"
   },
+  "rq-66e4cb89": {
+    "decl": "Scenario: A correcting merge run reports its corrections",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A correcting merge run reports its corrections",
+    "type": "scenario"
+  },
   "rq-6702f697": {
     "decl": "## Gherkin Scenarios",
     "file": "parser-framework",
@@ -3382,6 +3723,22 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-67b44e63": {
+    "decl": "- `CorrectedMonomerReferences` — the per-code corrected references in Eh:",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "CorrectedMonomerReferences",
+    "type": "api-item"
   },
   "rq-68850338": {
     "decl": "Scenario: A completed run yields the full observable set",
@@ -3530,6 +3887,18 @@
     "title": "An Rg cutoff uses angstroms",
     "type": "scenario"
   },
+  "rq-6e0560c2": {
+    "decl": "Scenario: The corrected section obeys the unit setting",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected section obeys the unit setting",
+    "type": "scenario"
+  },
   "rq-6e71ffd1": {
     "decl": "- `TailLine<'w>` — the pair `last_in_tail` returns: `line` (the matched",
     "file": "parser-framework",
@@ -3564,6 +3933,26 @@
       }
     ],
     "title": "An empty composition part does not resolve",
+    "type": "scenario"
+  },
+  "rq-6f572182": {
+    "decl": "Scenario: Matching is exact and case-sensitive",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Matching is exact and case-sensitive",
     "type": "scenario"
   },
   "rq-6f803572": {
@@ -3666,6 +4055,22 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-74350863": {
+    "decl": "Scenario: Duplicate candidate names are fatal",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Duplicate candidate names are fatal",
+    "type": "scenario"
   },
   "rq-74c176bd": {
     "decl": "Scenario: Energies within the rounding agree and collapse",
@@ -3821,6 +4226,18 @@
     ],
     "title": "A relative energy window is per composition group",
     "type": "scenario"
+  },
+  "rq-789635d3": {
+    "decl": "- `corrected_monomer_references(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> CorrectedMonomerReferences`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "corrected_monomer_references",
+    "type": "api-item"
   },
   "rq-799f6155": {
     "decl": "Scenario: The version banner is detected",
@@ -3992,6 +4409,14 @@
     ],
     "title": "The --unit flag converts the energy columns to kcal/mol",
     "type": "scenario"
+  },
+  "rq-7f894a81": {
+    "decl": "### Types",
+    "file": "correction",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
   },
   "rq-7fe12cf9": {
     "decl": "Scenario: A missing electronic energy leaves thermochemistry undefined",
@@ -4193,6 +4618,18 @@
     "title": "Element symbols are normalized to title case",
     "type": "scenario"
   },
+  "rq-83e236b7": {
+    "decl": "Scenario: A missing correction database is fatal",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing correction database is fatal",
+    "type": "scenario"
+  },
   "rq-8420b870": {
     "decl": "- `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit) -> String`",
     "file": "filtering",
@@ -4240,6 +4677,26 @@
     "refs": [],
     "title": "Extraction",
     "type": "section"
+  },
+  "rq-85d2e095": {
+    "decl": "## Printing",
+    "file": "correction",
+    "level": 2,
+    "refs": [],
+    "title": "Printing",
+    "type": "section"
+  },
+  "rq-86219849": {
+    "decl": "Scenario: Stored corrections work without --add-correction",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Stored corrections work without --add-correction",
+    "type": "scenario"
   },
   "rq-86740b39": {
     "decl": "Scenario: A parser from outside the shipped set carries its own token",
@@ -4291,6 +4748,22 @@
       }
     ],
     "title": "Unit",
+    "type": "api-item"
+  },
+  "rq-874abd6a": {
+    "decl": "- `CorrectionError` — error type of the attach pass:",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "CorrectionError",
     "type": "api-item"
   },
   "rq-87c46fa4": {
@@ -4456,6 +4929,18 @@
     ],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-8ce96e45": {
+    "decl": "Scenario: The registry exposes the corrected keys",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The registry exposes the corrected keys",
+    "type": "scenario"
   },
   "rq-8d91e753": {
     "decl": "- `geometry` — the table under the last `CARTESIAN COORDINATES",
@@ -4665,6 +5150,18 @@
     "title": "A record-carried composition wins over the name",
     "type": "scenario"
   },
+  "rq-922a22be": {
+    "decl": "Scenario: A corrupt line in the correction database is skipped and fails the run",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A corrupt line in the correction database is skipped and fails the run",
+    "type": "scenario"
+  },
   "rq-927eb1c6": {
     "decl": "Scenario: A mode at the reference frequency weighs half",
     "file": "thermo",
@@ -4705,6 +5202,18 @@
     "title": "print_formation_section",
     "type": "api-item"
   },
+  "rq-952b74c9": {
+    "decl": "- `Attachment` — what an attach pass did: `records: Vec<Record>` (enriched",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Attachment",
+    "type": "api-item"
+  },
   "rq-953a8521": {
     "decl": "Scenario: Version takes precedence over extra arguments",
     "file": "scaffolding",
@@ -4718,7 +5227,7 @@
     "type": "scenario"
   },
   "rq-953da4ce": {
-    "decl": "- `SortKey` — `El | G | Rg | Mass | Name`.",
+    "decl": "- `SortKey` — `El | G | ElCorr | GCorr | Rg | Mass | Name`.",
     "file": "filtering",
     "refs": [
       {
@@ -4746,6 +5255,18 @@
     "file": "parsers/orca",
     "refs": [],
     "title": "truncated",
+    "type": "api-item"
+  },
+  "rq-95e1c918": {
+    "decl": "- `Correction` — one attached single-point correction, serialized as the",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Correction",
     "type": "api-item"
   },
   "rq-9613ceb9": {
@@ -4791,6 +5312,22 @@
     ],
     "title": "MergeProblem",
     "type": "api-item"
+  },
+  "rq-973be061": {
+    "decl": "Scenario: An attached correction carries its provenance",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An attached correction carries its provenance",
+    "type": "scenario"
   },
   "rq-97790ec7": {
     "decl": "- `ok` — the tail carries `Normal termination of mrcc`.",
@@ -5182,6 +5719,22 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-9fd40c4e": {
+    "decl": "Scenario: A correction database that is a program output is fatal",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A correction database that is a program output is fatal",
+    "type": "scenario"
+  },
   "rq-a0202680": {
     "decl": "Scenario: validate rejects Mulliken charges that mismatch the geometry",
     "file": "record",
@@ -5212,6 +5765,13 @@
       }
     ],
     "title": "MonomerReferences",
+    "type": "api-item"
+  },
+  "rq-a169ccdf": {
+    "decl": "- `Correction` — the attached correction as stored on a record",
+    "file": "correction",
+    "refs": [],
+    "title": "Correction",
     "type": "api-item"
   },
   "rq-a1b00922": {
@@ -5413,6 +5973,30 @@
     "title": "program_version",
     "type": "api-item"
   },
+  "rq-a83c76ac": {
+    "decl": "Scenario: An ok correction record without an energy is skipped with a warning",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An ok correction record without an energy is skipped with a warning",
+    "type": "scenario"
+  },
   "rq-a849a9cc": {
     "decl": "- `multiplicity` — the value of `Spin multiplicity:  <n>`.",
     "file": "parsers/mrcc",
@@ -5420,11 +6004,43 @@
     "title": "multiplicity",
     "type": "api-item"
   },
+  "rq-a8f483c7": {
+    "decl": "Scenario: The corrected columns sit in canonical order",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected columns sit in canonical order",
+    "type": "scenario"
+  },
   "rq-a921051d": {
     "decl": "- `filter_reacted(groups: &[(Vec<Record>)], mode: ReactedMode) -> Vec<Record>`",
     "file": "detection",
     "refs": [],
     "title": "filter_reacted",
+    "type": "api-item"
+  },
+  "rq-a9dae115": {
+    "decl": "- `attach_corrections(records: &[Record], corrections: &[Record]) ->",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "attach_corrections",
     "type": "api-item"
   },
   "rq-aa33eaea": {
@@ -5438,6 +6054,18 @@
     ],
     "title": "XyzParser",
     "type": "api-item"
+  },
+  "rq-aa358806": {
+    "decl": "Scenario: A record without a correction fails corrected cutoffs except inequality",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without a correction fails corrected cutoffs except inequality",
+    "type": "scenario"
   },
   "rq-ab9f329c": {
     "decl": "Scenario: An unresolvable name leaves components absent",
@@ -5656,6 +6284,14 @@
     "title": "Near-zero trivial modes are dropped and real modes are kept",
     "type": "scenario"
   },
+  "rq-b1054bc7": {
+    "decl": "## Cutoffs and Sorting",
+    "file": "correction",
+    "level": 2,
+    "refs": [],
+    "title": "Cutoffs and Sorting",
+    "type": "section"
+  },
   "rq-b177c1e4": {
     "decl": "Scenario: Appending zero records to a missing file creates nothing",
     "file": "database",
@@ -5791,12 +6427,47 @@
     "title": "Merge copies records verbatim",
     "type": "scenario"
   },
+  "rq-b52af539": {
+    "decl": "- `derived_value(\"elcorr\" | \"hcorr\" | \"gcorr\", record, conditions)` — the",
+    "file": "correction",
+    "refs": [],
+    "title": "derived_value",
+    "type": "api-item"
+  },
   "rq-b5b01447": {
     "decl": "- `multiplicity` — `Multiplicity           Mult            .... <n>` value",
     "file": "parsers/orca",
     "refs": [],
     "title": "multiplicity",
     "type": "api-item"
+  },
+  "rq-b5e3b553": {
+    "decl": "Scenario: el and g stay raw while the corrected columns show the corrected values",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "el and g stay raw while the corrected columns show the corrected values",
+    "type": "scenario"
+  },
+  "rq-b6409abd": {
+    "decl": "Scenario: The corrected section reuses the raw section's reference monomers",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected section reuses the raw section's reference monomers",
+    "type": "scenario"
   },
   "rq-b6a5add7": {
     "decl": "Scenario: Under noname, extract compares names verbatim",
@@ -6017,6 +6688,22 @@
     "title": "apply_filters",
     "type": "api-item"
   },
+  "rq-bca9f7b9": {
+    "decl": "Scenario: The corrected columns print - without a correction",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected columns print - without a correction",
+    "type": "scenario"
+  },
   "rq-bd3986f2": {
     "decl": "### Extraction",
     "file": "parsers/xtb",
@@ -6035,6 +6722,18 @@
       }
     ],
     "title": "Help output advertises the collection surface",
+    "type": "scenario"
+  },
+  "rq-bdac8cdb": {
+    "decl": "Scenario: --sort elcorr orders ascending with undefined last",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--sort elcorr orders ascending with undefined last",
     "type": "scenario"
   },
   "rq-bdb74057": {
@@ -6099,6 +6798,22 @@
       }
     ],
     "title": "A run cut mid-flight is truncated",
+    "type": "scenario"
+  },
+  "rq-be59d52a": {
+    "decl": "Scenario: The correction column drops absent pieces",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The correction column drops absent pieces",
     "type": "scenario"
   },
   "rq-be817932": {
@@ -6210,6 +6925,18 @@
     "title": "command",
     "type": "api-item"
   },
+  "rq-c0c3a1af": {
+    "decl": "Scenario: Unknown keys do not survive a correcting run",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Unknown keys do not survive a correcting run",
+    "type": "scenario"
+  },
   "rq-c1056d55": {
     "decl": "# Feature: Collection Command Line",
     "file": "collection",
@@ -6290,6 +7017,22 @@
     "title": "collection pipeline (`rqm/collection.md`).",
     "type": "anchor"
   },
+  "rq-c411edfa": {
+    "decl": "Scenario: Every record sharing the name receives the correction",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Every record sharing the name receives the correction",
+    "type": "scenario"
+  },
   "rq-c4aff078": {
     "decl": "Scenario: validate rejects a geometry whose coordinates are not three per atom",
     "file": "record",
@@ -6300,6 +7043,18 @@
       }
     ],
     "title": "validate rejects a geometry whose coordinates are not three per atom",
+    "type": "scenario"
+  },
+  "rq-c51906fe": {
+    "decl": "Scenario: --unit converts the corrected energy columns",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--unit converts the corrected energy columns",
     "type": "scenario"
   },
   "rq-c5a229be": {
@@ -6421,6 +7176,22 @@
       }
     ],
     "title": "Absent observables are omitted, never null",
+    "type": "scenario"
+  },
+  "rq-c907b696": {
+    "decl": "Scenario: A record without a name never matches",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without a name never matches",
     "type": "scenario"
   },
   "rq-ca0185f6": {
@@ -6578,6 +7349,14 @@
     "title": "program_version",
     "type": "api-item"
   },
+  "rq-cfefec96": {
+    "decl": "### Crate Layout",
+    "file": "correction",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
   "rq-d04cc134": {
     "decl": "Scenario: A degenerate geometry prints dashes, not infinities",
     "file": "thermo",
@@ -6606,7 +7385,7 @@
     "type": "api-item"
   },
   "rq-d157ebb2": {
-    "decl": "- `Property` — `El, G, Rg, Lf, Dip, Mass, Charge, Multiplicity, Natoms,",
+    "decl": "- `Property` — `El, G, ElCorr, GCorr, Rg, Lf, Dip, Mass, Charge,",
     "file": "filtering",
     "refs": [
       {
@@ -6616,6 +7395,18 @@
     ],
     "title": "Property",
     "type": "api-item"
+  },
+  "rq-d1bd7404": {
+    "decl": "Scenario: Repeating --add-correction is a usage error",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Repeating --add-correction is a usage error",
+    "type": "scenario"
   },
   "rq-d1cfac2d": {
     "decl": "Scenario: Stage order is fixed",
@@ -6716,6 +7507,22 @@
     "title": "Companion xyz files route to the plain-xyz parser",
     "type": "scenario"
   },
+  "rq-d599d450": {
+    "decl": "Scenario: A failed rerun does not collide with its ok replacement",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A failed rerun does not collide with its ok replacement",
+    "type": "scenario"
+  },
   "rq-d59cd7df": {
     "decl": "Scenario: Mass-weighted Rg differs from unweighted for mixed masses",
     "file": "uniqueness",
@@ -6803,6 +7610,18 @@
     ],
     "title": "tests",
     "type": "api-item"
+  },
+  "rq-d84cf2be": {
+    "decl": "Scenario: --sort gcorr orders ascending with undefined last",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--sort gcorr orders ascending with undefined last",
+    "type": "scenario"
   },
   "rq-d8a0968b": {
     "decl": "Scenario: An opt+freq log yields the final job's observables",
@@ -6999,6 +7818,22 @@
     "title": "locate prefers the head for first and the tail for last",
     "type": "scenario"
   },
+  "rq-e15a3e2d": {
+    "decl": "Scenario: A correction record without a command attaches without commands",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A correction record without a command attaches without commands",
+    "type": "scenario"
+  },
   "rq-e17eea18": {
     "decl": "- `Geometry` — a structure as parallel arrays.",
     "file": "record",
@@ -7178,6 +8013,30 @@
     "title": "An empty input file aborts the run and writes nothing",
     "type": "scenario"
   },
+  "rq-e59918d8": {
+    "decl": "Scenario: A failed correction record is skipped with a warning",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A failed correction record is skipped with a warning",
+    "type": "scenario"
+  },
   "rq-e61c2633": {
     "decl": "- `tests/` contains integration tests; the CLI tests run the built binary",
     "file": "scaffolding",
@@ -7288,6 +8147,18 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-e861c941": {
+    "decl": "Scenario: The new columns follow the canonical order",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The new columns follow the canonical order",
+    "type": "scenario"
+  },
   "rq-e8bb37c3": {
     "decl": "Scenario: Invalid UTF-8 bytes become replacement characters",
     "file": "parser-framework",
@@ -7330,6 +8201,26 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-ea21b840": {
+    "decl": "Scenario: A candidate without a name is unmatched",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A candidate without a name is unmatched",
+    "type": "scenario"
   },
   "rq-ea25c7ce": {
     "decl": "Scenario: Total mass sums atomic weights",
@@ -7553,6 +8444,22 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-f03405ec": {
+    "decl": "Scenario: validate rejects a non-finite correction energy",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a non-finite correction energy",
+    "type": "scenario"
+  },
   "rq-f03f140d": {
     "decl": "Scenario: The symmetry number divides the rotational partition function",
     "file": "thermo",
@@ -7639,6 +8546,18 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-f3233093": {
+    "decl": "Scenario: The correction column prints - without a correction",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The correction column prints - without a correction",
+    "type": "scenario"
   },
   "rq-f43b5dbf": {
     "decl": "Scenario: An unparsable query is a usage error",
@@ -7763,6 +8682,22 @@
     "title": "A directory is an Io error",
     "type": "scenario"
   },
+  "rq-f8ab9d1b": {
+    "decl": "# Feature: Single-Point Energy Corrections",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Single-Point Energy Corrections",
+    "type": "file"
+  },
   "rq-f8c76b21": {
     "decl": "- `truncated` — the content ends inside a frame: a count line with fewer",
     "file": "parsers/xyz",
@@ -7824,6 +8759,18 @@
       }
     ],
     "title": "validate rejects a failed record without an error message",
+    "type": "scenario"
+  },
+  "rq-f99b56ad": {
+    "decl": "Scenario: Filtered-away monomers serve as no corrected references",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Filtered-away monomers serve as no corrected references",
     "type": "scenario"
   },
   "rq-f9a3759e": {
@@ -7918,6 +8865,30 @@
     "title": "A chemical formula does not resolve",
     "type": "scenario"
   },
+  "rq-fb892986": {
+    "decl": "- `corrected_formation_values(record: &Record, references: &CorrectedMonomerReferences, memo: &ThermoMemo) -> Formation`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "corrected_formation_values",
+    "type": "api-item"
+  },
+  "rq-fc9218b9": {
+    "decl": "- `corrected_energy(record: &Record) -> Option<f64>` — the attached",
+    "file": "correction",
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "corrected_energy",
+    "type": "api-item"
+  },
   "rq-fcb0174f": {
     "decl": "- `src/collect.rs` holds classification and the two pipelines; the library",
     "file": "collection",
@@ -7929,6 +8900,19 @@
     ],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-fd59200d": {
+    "decl": "## Corrected Values",
+    "file": "correction",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/correction.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Corrected Values",
+    "type": "section"
   },
   "rq-fd767996": {
     "decl": "Scenario: A hidden geometry table leaves geometry absent",
@@ -7952,6 +8936,14 @@
     "level": 3,
     "refs": [],
     "title": "Detection",
+    "type": "section"
+  },
+  "rq-fdadf7b4": {
+    "decl": "## Feature API",
+    "file": "correction",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
     "type": "section"
   },
   "rq-fdd7be52": {
