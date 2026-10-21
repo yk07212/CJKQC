@@ -18,8 +18,8 @@ use complied_jkqc::filter::{
     FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
 use complied_jkqc::formation::{
-    collect_monomers, corrected_monomer_references, print_formation_corr_section,
-    print_formation_section,
+    collect_monomers, corrected_monomer_references, parse_conc_value, print_formation_corr_section,
+    print_formation_section, ConcConditions, ConcSpec,
 };
 use complied_jkqc::metrics::parse_uniq_mode;
 use complied_jkqc::parser::WindowBudget;
@@ -153,6 +153,18 @@ struct Cli {
     /// (needs corrections, attached or stored).
     #[arg(long = "formation-corr")]
     formation_corr: bool,
+
+    /// Evaluate the formation free energies at vapors of the named
+    /// component at the given concentration (repeatable; VALUE in Pa, or
+    /// a ppt/ppb mole fraction, or cmmc molecules/cm^3). A settings flag
+    /// (rqm/formation.md).
+    #[arg(long = "conc", num_args = 2, value_names = ["CODE", "VALUE"], allow_hyphen_values = true)]
+    conc: Vec<String>,
+
+    /// Scale each named component's concentration term by (N-1)/N, so a
+    /// monomer's formation free energy stays zero (self-consistent dG).
+    #[arg(long = "cnt")]
+    cnt: bool,
 
     /// Attach single-point corrections from the named database, matching
     /// correction records to run records by exact case-sensitive name
@@ -316,7 +328,10 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 return usage(&format!("unknown cutoff property `{property}`"));
             };
             let Ok(value) = value.parse::<f64>() else {
-                return usage(&format!("`{value}` is not a number"));
+                return usage(&format!(
+                    "`{value}` is not a number{}",
+                    forgotten_value_hint(value)
+                ));
             };
             let order = indices.get(position).copied().unwrap_or(usize::MAX);
             ordered.push((
@@ -410,6 +425,36 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             ));
         }
     };
+    // The `--conc` specs parse and validate up front: the VALUE grammar,
+    // letter-only codes, and one spec per code are usage errors
+    // (`rqm/formation.md` Formation at Given Concentrations). Settings
+    // flags: they configure the formation derivations and never count as
+    // manipulations or print flags.
+    // rq-10341821
+    let mut concs = ConcConditions {
+        specs: Vec::new(),
+        self_consistent: cli.cnt,
+    };
+    for pair in cli.conc.chunks(2) {
+        let [code, value] = pair else { break };
+        if code.is_empty() || !code.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+            return usage(&format!("--conc code `{code}` must be letter-only"));
+        }
+        if concs.specs.iter().any(|spec| &spec.code == code) {
+            return usage(&format!("--conc names the code `{code}` twice"));
+        }
+        let Some((magnitude, conc_unit)) = parse_conc_value(value) else {
+            return usage(&format!(
+                "`--conc {code} {value}`: the value must be a positive Pa pressure, optionally suffixed ppt, ppb, or cmmc{}",
+                forgotten_value_hint(value)
+            ));
+        };
+        concs.specs.push(ConcSpec {
+            code: code.clone(),
+            magnitude,
+            unit: conc_unit,
+        });
+    }
 
     let extract = if !cli.extract.is_empty() {
         Some((cli.extract.clone(), ExtractMode::Keep))
@@ -501,6 +546,14 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 Gathered::Build { records } => records,
                 Gathered::Merge { records, .. } => records,
             };
+            // Every --conc code must appear in the record set the
+            // formation sections evaluate (`rqm/formation.md`).
+            // rq-10341821
+            if cli.formation || cli.formation_corr {
+                if let Err(error) = validate_conc_codes(&concs, &records) {
+                    return usage(&error);
+                }
+            }
             if !columns.is_empty() {
                 println!("{}", print_table(&records, &columns, &memo, unit));
             }
@@ -511,7 +564,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 let references = collect_monomers(&records, &memo, SortKey::El);
                 println!(
                     "{}",
-                    print_formation_section(&records, &references, &memo, unit)
+                    print_formation_section(&records, &references, &memo, unit, &concs)
                 );
             }
             // The corrected section prints after the raw section, from
@@ -520,7 +573,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 let references = corrected_monomer_references(&records, &memo, SortKey::El);
                 println!(
                     "{}",
-                    print_formation_corr_section(&records, &references, &memo, unit)
+                    print_formation_corr_section(&records, &references, &memo, unit, &concs)
                 );
             }
         }
@@ -611,6 +664,15 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         }
     };
 
+    // Every --conc code must appear in the record set the formation
+    // sections evaluate — the pipeline survivors (`rqm/formation.md`).
+    // rq-10341821
+    if cli.formation || cli.formation_corr {
+        if let Err(error) = validate_conc_codes(&concs, &records) {
+            return usage(&error);
+        }
+    }
+
     if !columns.is_empty() {
         println!("{}", print_table(&records, &columns, &memo, unit));
     }
@@ -621,7 +683,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         let references = collect_monomers(&records, &memo, sort_key);
         println!(
             "{}",
-            print_formation_section(&records, &references, &memo, unit)
+            print_formation_section(&records, &references, &memo, unit, &concs)
         );
     }
     // The corrected section prints after the raw one, from the same
@@ -631,7 +693,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         let references = corrected_monomer_references(&records, &memo, sort_key);
         println!(
             "{}",
-            print_formation_corr_section(&records, &references, &memo, unit)
+            print_formation_corr_section(&records, &references, &memo, unit, &concs)
         );
     }
 
@@ -912,6 +974,41 @@ fn usage(message: &str) -> ExitCode {
     ExitCode::from(2)
 }
 
+/// The hint for a two-value flag (`--cut PROPERTY VALUE`, `--conc CODE
+/// VALUE`) whose second word is itself a flag: the classic forgotten-
+/// VALUE mistake, where `allow_hyphen_values` let the next flag be eaten.
+fn forgotten_value_hint(value: &str) -> &'static str {
+    if value.starts_with("--") {
+        " (did you forget the VALUE?)"
+    } else {
+        ""
+    }
+}
+
+/// Every `--conc` code must appear as a component of at least one record
+/// in the section's record set, else the run is a usage error; a code
+/// whose monomers were filtered away may still appear inside cluster
+/// compositions and simply forms no reference (`rqm/formation.md`).
+///
+/// (rq-10341821)
+fn validate_conc_codes(concs: &ConcConditions, records: &[Record]) -> Result<(), String> {
+    for spec in &concs.specs {
+        let present = records.iter().any(|record| {
+            record
+                .components
+                .as_ref()
+                .is_some_and(|components| components.contains_key(&spec.code))
+        });
+        if !present {
+            return Err(format!(
+                "--conc code `{}` appears in no record's composition",
+                spec.code
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// The ids of manipulation flags actually set on `cli` (`rqm/filtering.md`).
 /// `run` derives `has_manipulation` from this and the consistency test
 /// checks it against the declared flags, so every manipulation flag must be
@@ -964,9 +1061,10 @@ mod tests {
     use super::*;
 
     /// Flags exempt from the manipulation/print accounting: settings flags
-    /// are read into the conditions, window budget, and unit,
-    /// `--formation` and `--formation-corr` into the formation sections,
-    /// and the rest never affect the outcome rule.
+    /// are read into the conditions, window budget, unit, and the
+    /// concentration conditions, `--formation` and `--formation-corr`
+    /// into the formation sections, and the rest never affect the
+    /// outcome rule.
     const EXEMPT_IDS: &[&str] = &[
         "out",
         "fout",
@@ -983,6 +1081,8 @@ mod tests {
         "unit",
         "formation",
         "formation_corr",
+        "conc",
+        "cnt",
     ];
 
     /// Every flag on `Cli` must be wired into `run`: a cutoff flag, a print

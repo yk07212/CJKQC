@@ -217,6 +217,15 @@ the print boundary via the `--unit` flag (`rqm/filtering.md` Printing).
   match arm to a derivation. A new derived property is a new registry
   row plus reference tests, with no record-schema change.
 
+### Constants <!-- rq-a9ede621 -->
+
+The crate exports the single constant set of the Constants table for the
+concentration term of `rqm/formation.md` and its tests:
+
+- `K_B = 1.380649e-23` J/K, `P_STANDARD = 101325.0` Pa (1 atm), <!-- rq-150f26f1 -->
+  `E_HARTREE = 4.3597447222071e-18` J, and `KCAL_MOL_PER_HARTREE =
+  627.5094740631` (Eh → kcal/mol).
+
 ## Performance <!-- rq-8b44ad8d -->
 
 A run derives each record's thermochemistry at most once, no matter how
@@ -277,7 +286,10 @@ printed constants, pinning the moments-of-inertia path as well.
   `--ignoreimag` skips them inside the derivation and `--makereal` flips
   them; neither ever edits a stored record.
 - Concentration or solvent-adjusted translational entropy: the standard
-  state is the ideal gas at 1 atm; there is no pressure flag.
+  state is the ideal gas at 1 atm; there is no pressure flag. Vapor
+  concentrations enter only at the formation level
+  (`rqm/formation.md` Formation at Given Concentrations), never inside
+  this derivation.
 - Range validation beyond positivity/sign checks on the settings flags:
   `--temp` is checked only for positivity, so absurd temperatures
   (10¹⁶ K and above) are accepted; the Numerics section states the

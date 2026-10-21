@@ -135,6 +135,18 @@
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
+  "rq-040dd0d3": {
+    "decl": "Scenario: --cnt keeps a monomer's formation free energy at zero",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--cnt keeps a monomer's formation free energy at zero",
+    "type": "scenario"
+  },
   "rq-043c29fe": {
     "decl": "Scenario: Undefined levels print as dashes",
     "file": "formation",
@@ -454,6 +466,18 @@
     "title": "A failed record still gains its composition",
     "type": "scenario"
   },
+  "rq-0f5b209d": {
+    "decl": "Scenario: A cmmc value converts through the ideal-gas law at the run's temperature",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A cmmc value converts through the ideal-gas law at the run's temperature",
+    "type": "scenario"
+  },
   "rq-0f6147ac": {
     "decl": "- `parse_uniq_keys(list: &str) -> Result<Vec<UniqKey>, String>`",
     "file": "uniqueness",
@@ -500,6 +524,27 @@
     ],
     "title": "A recorded failed run is classified failed",
     "type": "scenario"
+  },
+  "rq-10341821": {
+    "decl": "## Formation at Given Concentrations",
+    "file": "formation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Formation at Given Concentrations",
+    "type": "section"
   },
   "rq-103447d2": {
     "decl": "- `Formation` — a record's two derived levels:",
@@ -634,6 +679,13 @@
     ],
     "title": "The ORCA corpus fixture reproduces the JKQC ground truth",
     "type": "scenario"
+  },
+  "rq-150f26f1": {
+    "decl": "- `K_B = 1.380649e-23` J/K, `P_STANDARD = 101325.0` Pa (1 atm),",
+    "file": "thermo",
+    "refs": [],
+    "title": "K_B",
+    "type": "api-item"
   },
   "rq-157f85ee": {
     "decl": "- `electronic_energy` — the boxed final line `| TOTAL ENERGY <value> Eh |`",
@@ -873,6 +925,18 @@
     "title": "OrcaParser",
     "type": "api-item"
   },
+  "rq-183b0f2b": {
+    "decl": "Scenario: A ppb value is a mole fraction of the standard atmosphere",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A ppb value is a mole fraction of the standard atmosphere",
+    "type": "scenario"
+  },
   "rq-18ba8ffb": {
     "decl": "Scenario: A label containing hyphens and underscores is ignored",
     "file": "composition",
@@ -947,6 +1011,18 @@
       }
     ],
     "title": "An implicit count does not resolve",
+    "type": "scenario"
+  },
+  "rq-1b039c1f": {
+    "decl": "Scenario: --cnt scales a fully covered cluster's correction by (N-1)/N",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--cnt scales a fully covered cluster's correction by (N-1)/N",
     "type": "scenario"
   },
   "rq-1b571f91": {
@@ -1306,6 +1382,22 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-2333d9cc": {
+    "decl": "- `concentration_correction(components: &Components, concs: &ConcConditions, temperature: f64) -> f64`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "concentration_correction",
+    "type": "api-item"
   },
   "rq-23365bec": {
     "decl": "Scenario: Duplicate names collapse to the first occurrence",
@@ -1851,6 +1943,14 @@
     "title": "A descriptive stem does not resolve",
     "type": "scenario"
   },
+  "rq-3299396a": {
+    "decl": "## Architectural Decisions",
+    "file": "ARCHITECTURE",
+    "level": 2,
+    "refs": [],
+    "title": "Architectural Decisions",
+    "type": "section"
+  },
   "rq-329b3c89": {
     "decl": "### Status Classification",
     "file": "parsers/xtb",
@@ -1946,6 +2046,18 @@
     "refs": [],
     "title": "Crate Layout",
     "type": "section"
+  },
+  "rq-3384f0c4": {
+    "decl": "Scenario: A non-letter code is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-letter code is a usage error",
+    "type": "scenario"
   },
   "rq-33ab6159": {
     "decl": "Scenario: The MRCC banner is detected",
@@ -2136,6 +2248,18 @@
       }
     ],
     "title": "An atomic-number column maps to element symbols",
+    "type": "scenario"
+  },
+  "rq-38b48ce6": {
+    "decl": "Scenario: A spec whose monomers were filtered away is not a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A spec whose monomers were filtered away is not a usage error",
     "type": "scenario"
   },
   "rq-38b619ff": {
@@ -2821,7 +2945,7 @@
     "type": "api-item"
   },
   "rq-4f20e170": {
-    "decl": "- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit) -> String`",
+    "decl": "- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
     "file": "formation",
     "refs": [
       {
@@ -3336,6 +3460,14 @@
     ],
     "title": "A count range expands inclusively",
     "type": "scenario"
+  },
+  "rq-5c88d514": {
+    "decl": "### Non-Goals",
+    "file": "ARCHITECTURE",
+    "level": 3,
+    "refs": [],
+    "title": "Non-Goals",
+    "type": "section"
   },
   "rq-5ca4f95d": {
     "decl": "Scenario: A reference monomer without a correction leaves both levels undefined",
@@ -3935,6 +4067,18 @@
     "title": "An empty composition part does not resolve",
     "type": "scenario"
   },
+  "rq-6f3e4732": {
+    "decl": "Scenario: The main table and --glob ignore the concentrations",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The main table and --glob ignore the concentrations",
+    "type": "scenario"
+  },
   "rq-6f572182": {
     "decl": "Scenario: Matching is exact and case-sensitive",
     "file": "correction",
@@ -3969,7 +4113,7 @@
     "type": "section"
   },
   "rq-6ffbf9aa": {
-    "decl": "- `formation_values(record: &Record, references: &MonomerReferences, memo: &ThermoMemo) -> Formation`",
+    "decl": "- `formation_values(record: &Record, references: &MonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation`",
     "file": "formation",
     "refs": [
       {
@@ -3986,6 +4130,14 @@
     "refs": [],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-7147968f": {
+    "decl": "## Extensibility",
+    "file": "ARCHITECTURE",
+    "level": 2,
+    "refs": [],
+    "title": "Extensibility",
+    "type": "section"
   },
   "rq-71a3e979": {
     "decl": "Scenario: An ORCA run embedding an xtb banner routes to ORCA",
@@ -4106,6 +4258,18 @@
       }
     ],
     "title": "last_in_tail sees only tail matches and reports their order",
+    "type": "scenario"
+  },
+  "rq-75ac7572": {
+    "decl": "Scenario: --conc without a formation section is an accepted no-op",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--conc without a formation section is an accepted no-op",
     "type": "scenario"
   },
   "rq-75f85412": {
@@ -4343,6 +4507,18 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-7d64cce1": {
+    "decl": "- `ConcUnit` — `Pa | Ppt | Ppb | Cmmc`, the VALUE grammar's units.",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ConcUnit",
+    "type": "api-item"
+  },
   "rq-7d8c7128": {
     "decl": "- `ok` — the last frame is complete and valid.",
     "file": "parsers/xyz",
@@ -4509,6 +4685,14 @@
     "title": "mulliken_charges",
     "type": "api-item"
   },
+  "rq-814a4e22": {
+    "decl": "## Scope and Key Features",
+    "file": "ARCHITECTURE",
+    "level": 2,
+    "refs": [],
+    "title": "Scope and Key Features",
+    "type": "section"
+  },
   "rq-814d8aa2": {
     "decl": "- `ParseError` — the error type of `parse_file`, with the single variant",
     "file": "parser-framework",
@@ -4661,6 +4845,18 @@
     "refs": [],
     "title": "Uniqueness Model",
     "type": "section"
+  },
+  "rq-85150fe0": {
+    "decl": "Scenario: Several --conc flags each cover their own component",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Several --conc flags each cover their own component",
+    "type": "scenario"
   },
   "rq-85b79495": {
     "decl": "### Types",
@@ -4818,6 +5014,18 @@
     ],
     "title": "Crate Layout",
     "type": "section"
+  },
+  "rq-890737af": {
+    "decl": "Scenario: A non-positive or non-finite value is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-positive or non-finite value is a usage error",
+    "type": "scenario"
   },
   "rq-899932a2": {
     "decl": "- `CJKQC` — the only binary target of the crate `complied-jkqc`.",
@@ -5190,8 +5398,20 @@
     "title": "Detection",
     "type": "section"
   },
+  "rq-9423306b": {
+    "decl": "Scenario: A value outside the grammar is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A value outside the grammar is a usage error",
+    "type": "scenario"
+  },
   "rq-9503bcb2": {
-    "decl": "- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit) -> String`",
+    "decl": "- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
     "file": "formation",
     "refs": [
       {
@@ -5237,6 +5457,14 @@
     ],
     "title": "SortKey",
     "type": "api-item"
+  },
+  "rq-958794a9": {
+    "decl": "## Purpose",
+    "file": "ARCHITECTURE",
+    "level": 2,
+    "refs": [],
+    "title": "Purpose",
+    "type": "section"
   },
   "rq-95c630bc": {
     "decl": "Scenario: Merge concatenates inputs in order",
@@ -5359,6 +5587,30 @@
       }
     ],
     "title": "a covered window is walked once per locate call",
+    "type": "scenario"
+  },
+  "rq-98440673": {
+    "decl": "Scenario: The named component shifts the g level by its chemical potential",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The named component shifts the g level by its chemical potential",
+    "type": "scenario"
+  },
+  "rq-985cc1a5": {
+    "decl": "Scenario: A spec for a code in no final record is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A spec for a code in no final record is a usage error",
     "type": "scenario"
   },
   "rq-989e6417": {
@@ -5487,6 +5739,18 @@
     ],
     "title": "Feature: Filtering, Sorting, and Printing (Manipulation Pipeline)",
     "type": "file"
+  },
+  "rq-9b67220d": {
+    "decl": "Scenario: The correction never creates a defined value",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The correction never creates a defined value",
+    "type": "scenario"
   },
   "rq-9b8f2e7b": {
     "decl": "Scenario: A minimal record serializes to an exact canonical line",
@@ -5746,6 +6010,18 @@
     ],
     "title": "validate rejects Mulliken charges that mismatch the geometry",
     "type": "scenario"
+  },
+  "rq-a0748032": {
+    "decl": "- `ConcConditions` — the run's concentration settings:",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ConcConditions",
+    "type": "api-item"
   },
   "rq-a0dfc43a": {
     "decl": "## Out of Scope",
@@ -6043,6 +6319,14 @@
     "title": "attach_corrections",
     "type": "api-item"
   },
+  "rq-a9ede621": {
+    "decl": "### Constants",
+    "file": "thermo",
+    "level": 3,
+    "refs": [],
+    "title": "Constants",
+    "type": "section"
+  },
   "rq-aa33eaea": {
     "decl": "- `XyzParser` — unit struct implementing the framework `Parser` trait with",
     "file": "parsers/xyz",
@@ -6175,6 +6459,18 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-ae14b02d": {
+    "decl": "Scenario: The caret power syntax is not part of the grammar",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The caret power syntax is not part of the grammar",
+    "type": "scenario"
   },
   "rq-aeb0d510": {
     "decl": "- `append_records(path: &Path, records: &[Record]) -> Result<(), DbError>`",
@@ -6441,6 +6737,18 @@
     "title": "multiplicity",
     "type": "api-item"
   },
+  "rq-b5d0f3d1": {
+    "decl": "Scenario: A spec at the standard pressure reproduces the uncorrected values",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A spec at the standard pressure reproduces the uncorrected values",
+    "type": "scenario"
+  },
   "rq-b5e3b553": {
     "decl": "Scenario: el and g stay raw while the corrected columns show the corrected values",
     "file": "correction",
@@ -6672,6 +6980,18 @@
     "title": "Resolution Model",
     "type": "section"
   },
+  "rq-bbf4e72d": {
+    "decl": "Scenario: A component without a spec stays at the standard state",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A component without a spec stays at the standard state",
+    "type": "scenario"
+  },
   "rq-bc3e1482": {
     "decl": "- `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<Vec<Record>,",
     "file": "filtering",
@@ -6877,6 +7197,14 @@
     "title": "The last SCF Done wins",
     "type": "scenario"
   },
+  "rq-bf3e0e91": {
+    "decl": "## Open Questions",
+    "file": "ARCHITECTURE",
+    "level": 2,
+    "refs": [],
+    "title": "Open Questions",
+    "type": "section"
+  },
   "rq-bf8fdacc": {
     "decl": "Scenario: A saddle point's thermochemistry columns print dashes",
     "file": "thermo",
@@ -6924,6 +7252,14 @@
     ],
     "title": "command",
     "type": "api-item"
+  },
+  "rq-c04bd98a": {
+    "decl": "## Testing Strategy",
+    "file": "ARCHITECTURE",
+    "level": 2,
+    "refs": [],
+    "title": "Testing Strategy",
+    "type": "section"
   },
   "rq-c0c3a1af": {
     "decl": "Scenario: Unknown keys do not survive a correcting run",
@@ -7192,6 +7528,30 @@
       }
     ],
     "title": "A record without a name never matches",
+    "type": "scenario"
+  },
+  "rq-c92b9ff1": {
+    "decl": "- `ConcSpec` — one `--conc` spec: `code: String`, `magnitude: f64`,",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ConcSpec",
+    "type": "api-item"
+  },
+  "rq-c984bd29": {
+    "decl": "Scenario: Undefined thermochemistry stays undefined under --conc",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined thermochemistry stays undefined under --conc",
     "type": "scenario"
   },
   "rq-ca0185f6": {
@@ -7575,6 +7935,18 @@
     "title": "Functions",
     "type": "section"
   },
+  "rq-d6fc375d": {
+    "decl": "Scenario: --conc alone is not a visible outcome",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--conc alone is not a visible outcome",
+    "type": "scenario"
+  },
   "rq-d72bb4c5": {
     "decl": "- `MrccParser` — unit struct implementing the framework `Parser` trait with",
     "file": "parsers/mrcc",
@@ -7611,6 +7983,18 @@
     "title": "tests",
     "type": "api-item"
   },
+  "rq-d7a0c24f": {
+    "decl": "Scenario: A ppt value is a mole fraction of the standard atmosphere",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A ppt value is a mole fraction of the standard atmosphere",
+    "type": "scenario"
+  },
   "rq-d84cf2be": {
     "decl": "Scenario: --sort gcorr orders ascending with undefined last",
     "file": "correction",
@@ -7638,6 +8022,13 @@
     ],
     "title": "An opt+freq log yields the final job's observables",
     "type": "scenario"
+  },
+  "rq-d993628d": {
+    "decl": "# Architecture",
+    "file": "ARCHITECTURE",
+    "refs": [],
+    "title": "Architecture",
+    "type": "file"
   },
   "rq-d99aaa73": {
     "decl": "- `CollectOutcome` — what a completed run did:",
@@ -8171,6 +8562,30 @@
     "title": "Invalid UTF-8 bytes become replacement characters",
     "type": "scenario"
   },
+  "rq-e8ea3b7f": {
+    "decl": "Scenario: The corrected section shifts gcorr the same way",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected section shifts gcorr the same way",
+    "type": "scenario"
+  },
+  "rq-e982f0e0": {
+    "decl": "Scenario: A plain value is a partial pressure in Pa",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A plain value is a partial pressure in Pa",
+    "type": "scenario"
+  },
   "rq-e9a48d20": {
     "decl": "## Out of Scope",
     "file": "parsers/gaussian",
@@ -8424,6 +8839,18 @@
     "title": "A record with only imaginary modes is undefined under --ignoreimag",
     "type": "scenario"
   },
+  "rq-ef6c9159": {
+    "decl": "Scenario: The ppt correction scales linearly with temperature",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The ppt correction scales linearly with temperature",
+    "type": "scenario"
+  },
   "rq-efd98e52": {
     "decl": "Scenario: --ignoreimag with --makereal is a usage error",
     "file": "thermo",
@@ -8606,6 +9033,18 @@
     "title": "Default windows cover every file of the fixture corpus",
     "type": "scenario"
   },
+  "rq-f623ed28": {
+    "decl": "Scenario: An absurd magnitude leaves the level undefined rather than infinite",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An absurd magnitude leaves the level undefined rather than infinite",
+    "type": "scenario"
+  },
   "rq-f695c066": {
     "decl": "## Feature API",
     "file": "parsers/conformance",
@@ -8681,6 +9120,18 @@
     ],
     "title": "A directory is an Io error",
     "type": "scenario"
+  },
+  "rq-f8a2fb33": {
+    "decl": "- `parse_conc_value(text: &str) -> Option<(f64, ConcUnit)>` — the VALUE",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_conc_value",
+    "type": "api-item"
   },
   "rq-f8ab9d1b": {
     "decl": "# Feature: Single-Point Energy Corrections",
@@ -8866,7 +9317,7 @@
     "type": "scenario"
   },
   "rq-fb892986": {
-    "decl": "- `corrected_formation_values(record: &Record, references: &CorrectedMonomerReferences, memo: &ThermoMemo) -> Formation`",
+    "decl": "- `corrected_formation_values(record: &Record, references: &CorrectedMonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation`",
     "file": "formation",
     "refs": [
       {
@@ -8900,6 +9351,18 @@
     ],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-fd428ce5": {
+    "decl": "Scenario: A concentration above the standard state lowers the formation free energy",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A concentration above the standard state lowers the formation free energy",
+    "type": "scenario"
   },
   "rq-fd59200d": {
     "decl": "## Corrected Values",
@@ -8994,6 +9457,18 @@
     ],
     "title": "tests",
     "type": "api-item"
+  },
+  "rq-fecf8cb9": {
+    "decl": "Scenario: Naming one code twice is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Naming one code twice is a usage error",
+    "type": "scenario"
   },
   "rq-feddee4c": {
     "decl": "Scenario: --reverse does not change the reference",

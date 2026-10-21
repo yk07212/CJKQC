@@ -10,7 +10,9 @@ formation free energy as a section after the normal property table.
 Nothing is stored: formation values are derived at request time from the
 records' observables under the run's thermochemistry conditions
 (`rqm/thermo.md`), so temperature, reference frequency, and unit changes
-apply to them like to any derived property.
+apply to them like to any derived property. The `--conc` and `--cnt`
+flags further evaluate the free-energy level at vapors of named
+components at given concentrations (Formation at Given Concentrations).
 
 ## Monomer References <!-- rq-1b571f91 -->
 
@@ -118,6 +120,69 @@ binding column exists.
   (`rqm/filtering.md` Printing), formatted like the corresponding energy
   columns, `-` when undefined — are exactly the raw section's rules.
 
+## Formation at Given Concentrations <!-- rq-10341821 -->
+
+- `--conc CODE VALUE` (repeatable) and `--cnt` evaluate the formation
+  free energies at vapors of named components whose concentrations differ
+  from the standard state: the chemical potential of a vapor at partial
+  pressure c is lower than its 1 atm standard-state value by R T ln(c/p°)
+  per mole, and forming a cluster withdraws nᵢ vapor molecules of each
+  component. The flags are settings flags (`rqm/thermo.md`): they
+  configure the formation derivations, never count as manipulations or
+  print flags, and a run that passes only them still needs `--out` or a
+  print flag.
+- VALUE is a partial pressure in Pa — a decimal or scientific-notation
+  number — optionally suffixed, lowercase and without whitespace, with a
+  unit: `100ppt` and `10ppb` are the mole fractions 10⁻¹² and 10⁻⁹ of the
+  standard atmosphere (100·10⁻¹²·p° and 10·10⁻⁹·p° Pa), and `1e10cmmc` is
+  10¹⁰ molecules per cm³, converted as c·10⁶·k_B·T Pa at the run's
+  temperature. A value outside this grammar, non-finite, or not positive
+  is a usage error (exit 2); the `^` power syntax other tools accept is
+  not part of the grammar. The unit constants are the CODATA 2018 set of
+  `rqm/thermo.md` Constants (p° = 101325 Pa).
+- Each spec names one component code: a non-empty, letter-only code as
+  `rqm/record.md` component validation requires. Naming the same code in
+  two specs is a usage error. When a formation section is printed, every
+  spec's code must appear as a component of at least one record in the
+  section's record set — the run's final record set — or the run is a
+  usage error; a code whose monomers were filtered away may still appear
+  inside cluster compositions and simply forms no reference (Monomer
+  References).
+- With specs S and a record whose components map C = {codeᵢ: nᵢ}, the
+  formation section's `g` value is
+
+  g_conc = g_form − Σ_{codeᵢ ∈ S} nᵢ,eff · R T ln(cᵢ/p°) / (N_A E_h),
+
+  with cᵢ the spec's resolved partial pressure and nᵢ,eff = nᵢ. Under
+  `--cnt`, the self-consistent form, nᵢ,eff = nᵢ·(N−1)/N where
+  N = Σ nᵢ over the record's whole components map. A spec whose code is
+  absent from C contributes nothing, so coverage may be partial.
+- The self-consistent form keeps the concentration term of every
+  monomer at zero under any concentration, so the reference monomer's
+  own formation free energy stays exactly 0 while a non-reference
+  conformer keeps its conformer difference against the reference; the
+  total concentration term of a fully covered N-molecule cluster is
+  (N−1)·R T-weighted instead of N (JKQC's `-cnt`, "see Wyslouzil"; CJKQC
+  keeps the flag name `--cnt`).
+- Only the Gibbs levels shift: the raw section's `g` and the corrected
+  section's `gcorr` (Corrected Formation Section) each subtract the same
+  correction from their standard-state value. The electronic levels `el`
+  and `elcorr` stay at the standard state — the concentration term is a
+  chemical-potential (entropy) correction with no electronic counterpart,
+  where JKQC applies its correction to every numeric formation column. A
+  level that is undefined stays undefined; the correction never creates
+  a value. A magnitude so extreme that the resolved pressure underflows
+  below the smallest positive double, or the term itself overflows,
+  makes the level undefined rather than infinite — the crate's numerics
+  rule (`rqm/thermo.md` Numerics), never a printed infinity.
+- p° is the 1 atm standard pressure of `rqm/thermo.md` Constants — the
+  same standard state the translational entropy is evaluated at — so a
+  spec at exactly p° reproduces the uncorrected values. A concentration
+  above p° is accepted and lowers the formation free energy. The main
+  table, cutoffs, sorting, `--glob`, and the composition token are
+  untouched: `--conc` changes only the formation sections' `g`/`gcorr`
+  values, printed in the run's energy unit like any formation value.
+
 ## Feature API <!-- rq-e814b912 -->
 
 ### Types <!-- rq-85b79495 -->
@@ -130,41 +195,63 @@ binding column exists.
   corrected value (`rqm/correction.md`).
 - `Formation` — a record's two derived levels: <!-- rq-103447d2 -->
   `electronic: Option<f64>`, `gibbs: Option<f64>` (Eh).
+- `ConcUnit` — `Pa | Ppt | Ppb | Cmmc`, the VALUE grammar's units. <!-- rq-7d64cce1 -->
+- `ConcSpec` — one `--conc` spec: `code: String`, `magnitude: f64`, <!-- rq-c92b9ff1 -->
+  `unit: ConcUnit`; `pressure(temperature: f64) -> f64` resolves the
+  partial pressure in Pa: `Pa` the magnitude itself, `Ppt`/`Ppb`
+  magnitude·10⁻¹²/10⁻⁹·p°, `Cmmc` magnitude·10⁶·k_B·temperature.
+- `ConcConditions` — the run's concentration settings: <!-- rq-a0748032 -->
+  `specs: Vec<ConcSpec>`, `self_consistent: bool`; `Default` is no specs
+  and `--cnt` off.
 
 ### Functions <!-- rq-ded51dfb -->
 
+- `parse_conc_value(text: &str) -> Option<(f64, ConcUnit)>` — the VALUE <!-- rq-f8a2fb33 -->
+  grammar; `None` for a value outside the grammar, non-finite, or not
+  positive (the CLI turns `None` into a usage error).
 - `collect_monomers(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> MonomerReferences` <!-- rq-9e898298 -->
   — the reference scan over the given records (the run passes its final
   record set; `rqm/filtering.md`) with the sort-based selection above.
   The memo carries the run's thermochemistry conditions and derives each
   record at most once (`rqm/thermo.md` Performance).
-- `formation_values(record: &Record, references: &MonomerReferences, memo: &ThermoMemo) -> Formation` <!-- rq-6ffbf9aa -->
+- `formation_values(record: &Record, references: &MonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-6ffbf9aa -->
   — the two levels with their independent definedness; the record's Gibbs
   value resolves through the derived-property registry on the memo
-  (`rqm/thermo.md`).
-- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit) -> String` <!-- rq-9503bcb2 -->
+  (`rqm/thermo.md`) and, when defined, has the concentration term of
+  `concentration_correction` subtracted; a correction that is not finite
+  (an absurd magnitude) leaves the level undefined rather than infinite.
+- `concentration_correction(components: &Components, concs: &ConcConditions, temperature: f64) -> f64` <!-- rq-2333d9cc -->
+  — the term subtracted from a defined formation free energy, in Eh:
+  Σ over the specs whose code is in the components map of
+  nᵢ,eff · k_B T ln(cᵢ/p°) / E_h, with nᵢ,eff = nᵢ or, under
+  `self_consistent`, nᵢ·(N−1)/N; 0 when no spec matches.
+- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-9503bcb2 -->
   — the section table with header `ct el g`, one row per record in the
   given order, `-` for undefined values and for the composition token
   when the record has no components.
 - `corrected_monomer_references(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> CorrectedMonomerReferences` <!-- rq-789635d3 -->
   — the same selection as `collect_monomers`, read through the corrected
   keys `elcorr`/`gcorr` (`rqm/correction.md`).
-- `corrected_formation_values(record: &Record, references: &CorrectedMonomerReferences, memo: &ThermoMemo) -> Formation` <!-- rq-fb892986 -->
-  — the two corrected levels with their independent definedness.
-- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit) -> String` <!-- rq-4f20e170 -->
+- `corrected_formation_values(record: &Record, references: &CorrectedMonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-fb892986 -->
+  — the two corrected levels with their independent definedness; the
+  corrected Gibbs value has the same concentration term subtracted, with
+  the same non-finite guard.
+- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4f20e170 -->
   — the corrected section table with header `ct elcorr gcorr`.
 
 ### Crate Layout <!-- rq-22e7999c -->
 
 - The scan, values, and sections live in `src/formation.rs`; the library
   root re-exports the types and functions. No new dependencies; the CLI
-  adds `--formation` and `--formation-corr` and wires both sections into
-  the printing block.
+  adds `--formation`, `--formation-corr`, `--conc`, and `--cnt`, parses
+  the specs into `ConcConditions` with the usage-error validation above,
+  and wires both sections into the printing block.
 - `tests/formation.rs` tests the scan and the values as pure functions <!-- rq-eb7da353 -->
   (sort-based reference selection, per-level definedness, missing
-  references, stoichiometry), the section formatting, and the corrected
-  section's selection and definedness; CLI coverage extends
-  `tests/cli.rs`.
+  references, stoichiometry), the section formatting, the corrected
+  section's selection and definedness, the VALUE grammar and pressure
+  resolution, and the concentration correction's stoichiometry and
+  self-consistent factor; CLI coverage extends `tests/cli.rs`.
 
 ## Out of Scope <!-- rq-39f86935 -->
 
@@ -174,7 +261,13 @@ binding column exists.
   reference stoichiometry) — they print `-`.
 - Per-cluster reference overrides (pointing a code at a hand-picked
   conformer rather than the sort-selected one).
-- Standard-state corrections beyond `rqm/thermo.md`'s ideal gas at 1 atm.
+- Standard-state corrections to the thermochemistry model itself:
+  `rqm/thermo.md` stays the ideal gas at 1 atm — `--conc` shifts only the
+  formation levels and never re-derives a record's translational entropy —
+  and liquid/solvent-phase reference states are not modeled.
+- Vapor-depletion or Kelvin-equation self-consistency beyond `--cnt`'s
+  (N−1)/N scaling: the given concentrations are taken as fixed inputs, not
+  solved for.
 - Boltzmann-population and other ensemble-derived properties: future work;
   like formation values, they compute on the run's final record set, never
   on the pre-pipeline database.
@@ -382,4 +475,168 @@ Feature: Formation energies from monomer references
     Given corrected am and sa monomers and a corrected 1am1sa cluster
     When CJKQC is invoked with the database, "--extract 1am1sa --formation-corr" and no --out
     Then the section prints one row for the cluster with - for both levels
+
+  # --- Concentrations ---
+
+  @rq-e982f0e0
+  Scenario: A plain value is a partial pressure in Pa
+    When parse_conc_value is called with "0.00001"
+    Then it returns 0.00001 in unit Pa
+
+  @rq-d7a0c24f
+  Scenario: A ppt value is a mole fraction of the standard atmosphere
+    When parse_conc_value is called with "100ppt"
+    Then it returns 100 in unit Ppt
+    And the spec's pressure at 298.15 K is 100*10^-12*p° = 1.01325e-5 Pa
+
+  @rq-183b0f2b
+  Scenario: A ppb value is a mole fraction of the standard atmosphere
+    When parse_conc_value is called with "10ppb"
+    Then it returns 10 in unit Ppb
+    And the spec's pressure at 298.15 K is 10*10^-9*p° = 1.01325e-3 Pa
+
+  @rq-0f5b209d
+  Scenario: A cmmc value converts through the ideal-gas law at the run's temperature
+    When parse_conc_value is called with "1e10cmmc"
+    Then it returns 1e10 in unit Cmmc
+    And the spec's pressure at 298.15 K is 1e10*10^6*k_B*298.15 = 4.1164e-5 Pa
+    And the spec's pressure at 350 K is 4.8323e-5 Pa
+
+  @rq-9423306b
+  Scenario: A value outside the grammar is a usage error
+    Given a database with am and sa monomers
+    When CJKQC is invoked with the database and "--formation --conc sa 100ppm" and no --out
+    Then the exit code is 2
+
+  @rq-890737af
+  Scenario: A non-positive or non-finite value is a usage error
+    Given a database with am and sa monomers
+    When CJKQC is invoked with the database and "--formation --conc sa 0" and no --out
+    Then the exit code is 2
+    And the same holds for "-1e-7", "nan", and "inf"
+
+  @rq-ae14b02d
+  Scenario: The caret power syntax is not part of the grammar
+    Given a database with am and sa monomers
+    When CJKQC is invoked with the database and "--formation --conc sa 10^3ppt" and no --out
+    Then the exit code is 2
+
+  @rq-3384f0c4
+  Scenario: A non-letter code is a usage error
+    Given a database with am and sa monomers
+    When CJKQC is invoked with the database and "--formation --conc 2sa 100ppt" and no --out
+    Then the exit code is 2
+
+  @rq-fecf8cb9
+  Scenario: Naming one code twice is a usage error
+    Given a database with am and sa monomers
+    When CJKQC is invoked with the database and "--formation --conc sa 100ppt --conc sa 1ppb" and no --out
+    Then the exit code is 2
+
+  @rq-98440673
+  Scenario: The named component shifts the g level by its chemical potential
+    Given a database with a 1am1sa cluster whose formation free energy is -10.0 Eh under the am and sa monomers
+    When CJKQC is invoked with the database and "--formation --conc sa 100ppt" and no --out
+    Then the cluster's g formation value is -10.0 Eh + R T ln(10^10), about 13.6 kcal/mol higher
+    And the cluster's el formation value is still -10.0 Eh
+
+  @rq-85150fe0
+  Scenario: Several --conc flags each cover their own component
+    Given a database with a 2am1sa cluster whose formation free energy is g_form under the am and sa monomers
+    When CJKQC is invoked with the database and "--formation --conc am 100ppt --conc sa 10ppb" and no --out
+    Then the cluster's g formation value is g_form + 2 R T ln(10^10) + R T ln(10^8)
+
+  @rq-bbf4e72d
+  Scenario: A component without a spec stays at the standard state
+    Given a 2am1sa record with references and a single spec for sa
+    When formation_values is called
+    Then the gibbs level is g_form - R T ln(c_sa/p°) with no am term
+
+  @rq-1b039c1f
+  Scenario: --cnt scales a fully covered cluster's correction by (N-1)/N
+    Given a 3sa record with the sa reference and a sa spec
+    When formation_values is called with self_consistent off and with self_consistent on
+    Then the off gibbs level is g_form - 3 R T ln(c_sa/p°)
+    And the on gibbs level is g_form - 2 R T ln(c_sa/p°)
+
+  @rq-040dd0d3
+  Scenario: --cnt keeps a monomer's formation free energy at zero
+    Given a database with a 1sa monomer with defined thermochemistry
+    When CJKQC is invoked with the database and "--formation --cnt --conc sa 100ppt" and no --out
+    Then the monomer's g formation value is 0
+    And without --cnt it is +R T ln(10^10), about 13.6 kcal/mol
+
+  @rq-fd428ce5
+  Scenario: A concentration above the standard state lowers the formation free energy
+    Given a database with a 2sa cluster whose formation free energy is -5.0 Eh under the sa monomer
+    When CJKQC is invoked with the database and "--formation --conc sa 202650" and no --out
+    Then the cluster's g formation value is -5.0 Eh - 2 R T ln(2)
+
+  @rq-b5d0f3d1
+  Scenario: A spec at the standard pressure reproduces the uncorrected values
+    Given a database with a 1am1sa cluster and its am and sa monomers
+    When the same database is run with "--formation" and with "--formation --conc sa 101325 --conc am 101325"
+    Then the two runs' formation sections are identical
+
+  @rq-9b67220d
+  Scenario: The correction never creates a defined value
+    Given a database with am and sa monomers and a 1am1sa cluster
+    When CJKQC is invoked with the database, "--extract 1am1sa --formation --conc sa 100ppt" and no --out
+    Then the cluster's row shows - for both levels
+
+  @rq-c984bd29
+  Scenario: Undefined thermochemistry stays undefined under --conc
+    Given a sa monomer with defined thermochemistry and a 1sa cluster record without vibrational frequencies
+    When CJKQC is invoked with the database and "--formation --conc sa 100ppt" and no --out
+    Then the cluster's g formation value prints -
+
+  @rq-e8ea3b7f
+  Scenario: The corrected section shifts gcorr the same way
+    Given a 1am1sa cluster and am and sa monomers all carrying corrections
+    When CJKQC is invoked with the database and "--formation-corr --conc sa 100ppt" and no --out
+    Then the cluster's gcorr formation value is its standard-state value + R T ln(10^10)
+    And the cluster's elcorr formation value is unchanged
+
+  @rq-985cc1a5
+  Scenario: A spec for a code in no final record is a usage error
+    Given a database with am and sa monomers and a 1am1sa cluster
+    When CJKQC is invoked with the database and "--formation --conc w 100ppt" and no --out
+    Then the exit code is 2
+
+  @rq-38b48ce6
+  Scenario: A spec whose monomers were filtered away is not a usage error
+    Given a database with am and sa monomers and a 1am1sa cluster
+    When CJKQC is invoked with the database, "--extract 1am1sa --formation --conc am 100ppt --conc sa 100ppt" and no --out
+    Then the exit code is 0 and the cluster's row shows - for both levels
+
+  @rq-75ac7572
+  Scenario: --conc without a formation section is an accepted no-op
+    Given a database with one record
+    When CJKQC is invoked with the database and "--name --el --conc sa 100ppt" and no --out
+    Then the table prints normally, identical to the run without --conc
+
+  @rq-d6fc375d
+  Scenario: --conc alone is not a visible outcome
+    When CJKQC is invoked with a database and "--conc sa 100ppt" and no --out and no print flag
+    Then the exit code is 2
+
+  @rq-6f3e4732
+  Scenario: The main table and --glob ignore the concentrations
+    Given a database with a 2am1sa cluster and its am and sa monomers
+    When CJKQC is invoked with the database and "--ct --g --glob --formation --conc sa 100ppt" and no --out
+    Then the main table's g column equals the run without --conc
+    And the formation section's g value carries the concentration term
+
+  @rq-ef6c9159
+  Scenario: The ppt correction scales linearly with temperature
+    Given a 1am1sa cluster with defined thermochemistry and a sa spec of 100ppt
+    When the same database is run with "--formation --conc sa 100ppt" at --temp 298.15 and at --temp 350
+    Then the shift from the standard-state value at 350 K is 350/298.15 times the shift at 298.15 K
+
+  @rq-f623ed28
+  Scenario: An absurd magnitude leaves the level undefined rather than infinite
+    Given a database with an am monomer, an sa monomer, and a 2am1sa cluster with full thermochemistry
+    When CJKQC is invoked with the database and "--formation --conc sa 1e-320" and no --out
+    Then the run exits 0
+    And every sa-covered row's g formation value prints -
 ```

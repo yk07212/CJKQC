@@ -1,6 +1,6 @@
-# Architecture
+# Architecture <!-- rq-d993628d -->
 
-## Purpose
+## Purpose <!-- rq-958794a9 -->
 
 CJKQC (Complied JKQC) is a standalone tool for collecting, organizing, filtering, and
 post-processing quantum-chemistry (QC) output for molecular clusters. It is a
@@ -28,7 +28,7 @@ pickle-based database hindered adoption because users could not open it; the
 successor's databases are JSON Lines files that anyone can inspect with a text
 editor, `jq`, or pandas.
 
-## Scope and Key Features
+## Scope and Key Features <!-- rq-814a4e22 -->
 
 All four capability pillars below are v1 commitments, mirroring JKQC's feature
 surface:
@@ -59,7 +59,7 @@ override or supply what filenames cannot express. Whatever the source, the
 resolved composition, charge, and multiplicity are always stored as explicit
 fields in each database record, so downstream logic never re-parses names.
 
-### Non-Goals
+### Non-Goals <!-- rq-5c88d514 -->
 
 Deliberately out of scope — these belong to other tools in the JKCS family or
 are not attempted at all:
@@ -72,7 +72,7 @@ are not attempted at all:
 - **Running QC calculations** — the tool consumes QC outputs; it never
   launches or drives a QC package itself.
 
-## Architectural Decisions
+## Architectural Decisions <!-- rq-3299396a -->
 
 - **Language.** Rust (edition 2021), a single crate producing a single
   binary. No Python runtime, no FFI.
@@ -106,7 +106,7 @@ are not attempted at all:
   become records with an error status; the run continues and reports what
   succeeded and what failed.
 
-## Extensibility
+## Extensibility <!-- rq-7147968f -->
 
 Trait + registry, built on composition:
 
@@ -129,7 +129,7 @@ Trait + registry, built on composition:
   records tolerate missing fields (serde defaults), so old databases remain
   loadable.
 
-## Testing Strategy
+## Testing Strategy <!-- rq-c04bd98a -->
 
 Conformance harness:
 
@@ -149,7 +149,7 @@ Conformance harness:
   source output files.
 - CI runs the full suite via `cargo test`; coverage is tracked.
 
-## Open Questions
+## Open Questions <!-- rq-bf3e0e91 -->
 
 - Distribution: how CJKQC ships (crates.io, conda, static binary) and the
   exact executable spelling (`cjkqc`).

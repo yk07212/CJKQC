@@ -3,7 +3,9 @@
 //! CLI-shaped scenarios live in `tests/cli.rs`.
 
 use complied_jkqc::filter::{SortKey, Unit};
-use complied_jkqc::formation::{collect_monomers, formation_values, Formation, MonomerReferences};
+use complied_jkqc::formation::{
+    collect_monomers, formation_values, ConcConditions, Formation, MonomerReferences,
+};
 use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo};
 use complied_jkqc::{Components, Geometry, Record, RecordStatus};
 
@@ -178,7 +180,7 @@ fn a_2am1sa_cluster_forms_from_its_stoichiometric_monomers() {
         components: Some(components(&[("am", 2), ("sa", 1)])),
         ..Record::default()
     };
-    let formation = formation_values(&cluster, &references, &memo());
+    let formation = formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert_eq!(
         formation,
         Formation {
@@ -192,7 +194,7 @@ fn a_2am1sa_cluster_forms_from_its_stoichiometric_monomers() {
 fn a_monomer_s_own_formation_energy_is_zero() {
     let monomer = with_gibbs("am1", "am", 1000.0, -50.0);
     let references = collect_monomers(std::slice::from_ref(&monomer), &memo(), SortKey::El);
-    let formation = formation_values(&monomer, &references, &memo());
+    let formation = formation_values(&monomer, &references, &memo(), &ConcConditions::default());
     assert_eq!(formation.electronic, Some(0.0));
     assert_eq!(formation.gibbs, Some(0.0));
 }
@@ -207,7 +209,7 @@ fn a_missing_code_reference_leaves_that_level_undefined() {
         components: Some(components(&[("am", 1), ("na", 1)])),
         ..Record::default()
     };
-    let formation = formation_values(&cluster, &references, &memo());
+    let formation = formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert_eq!(formation.electronic, None);
 }
 
@@ -222,7 +224,7 @@ fn the_two_levels_are_independently_undefined() {
     let mut cluster = cluster;
     cluster.components = Some(components(&[("am", 1), ("na", 1)]));
     let references = collect_monomers(&[am, na], &memo(), SortKey::El);
-    let formation = formation_values(&cluster, &references, &memo());
+    let formation = formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert!(formation.electronic.is_some());
     assert_eq!(formation.gibbs, None);
 }
@@ -234,7 +236,12 @@ fn records_without_components_form_at_neither_level() {
         electronic_energy: Some(-60.0),
         ..Record::default()
     };
-    let formation = formation_values(&record, &MonomerReferences::default(), &memo());
+    let formation = formation_values(
+        &record,
+        &MonomerReferences::default(),
+        &memo(),
+        &ConcConditions::default(),
+    );
     assert_eq!(
         formation,
         Formation {
@@ -284,7 +291,8 @@ fn the_corrected_section_evaluates_the_attached_corrections() {
     let cluster = corrected_cluster(-141.0, -167.5);
     let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
     assert_eq!(references.electronic.get("am"), Some(&-76.5));
-    let formation = corrected_formation_values(&cluster, &references, &memo());
+    let formation =
+        corrected_formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert_eq!(formation.electronic, Some(-167.5 - 2.0 * -76.5));
 }
 
@@ -296,7 +304,8 @@ fn a_record_without_a_correction_has_dashes_in_the_corrected_section() {
     let cluster = monomer("cluster", Some(-141.0), "am", 1000.0);
     let mut cluster = cluster;
     cluster.components = Some(components(&[("am", 2)]));
-    let formation = corrected_formation_values(&cluster, &references, &memo());
+    let formation =
+        corrected_formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert_eq!(
         formation,
         Formation {
@@ -313,7 +322,8 @@ fn a_reference_monomer_without_a_correction_leaves_both_levels_undefined() {
     assert!(references.electronic.is_empty());
     assert!(references.gibbs.is_empty());
     let cluster = corrected_cluster(-141.0, -167.5);
-    let formation = corrected_formation_values(&cluster, &references, &memo());
+    let formation =
+        corrected_formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert_eq!(formation.electronic, None);
     assert_eq!(formation.gibbs, None);
 }
@@ -340,12 +350,14 @@ fn the_corrected_section_prints_in_the_runs_unit() {
         &references,
         &memo(),
         Unit::Au,
+        &ConcConditions::default(),
     );
     let kcal = print_formation_corr_section(
         std::slice::from_ref(&cluster),
         &references,
         &memo(),
         Unit::Kcal,
+        &ConcConditions::default(),
     );
     // The corrected formation energy is -167.5 - 2*(-76.5) = -14.5 Eh.
     let expected = -14.5 * KCAL_MOL_PER_HARTREE;
@@ -368,7 +380,8 @@ fn filtered_away_monomers_serve_as_no_corrected_references() {
     let cluster = corrected_cluster(-141.0, -167.5);
     let references =
         corrected_monomer_references(std::slice::from_ref(&cluster), &memo(), SortKey::El);
-    let formation = corrected_formation_values(&cluster, &references, &memo());
+    let formation =
+        corrected_formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert_eq!(formation.electronic, None);
     assert_eq!(formation.gibbs, None);
 }
@@ -383,4 +396,152 @@ fn corrected_references_are_independent_per_level() {
     let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
     assert_eq!(references.electronic.get("am"), Some(&-76.5));
     assert!(!references.gibbs.contains_key("am"));
+}
+
+// --- Concentrations (rqm/formation.md, Formation at Given Concentrations) ---
+
+use complied_jkqc::formation::{concentration_correction, parse_conc_value, ConcSpec, ConcUnit};
+use complied_jkqc::thermo::{E_HARTREE, K_B, P_STANDARD};
+
+/// The per-molecule R T in Eh at 298.15 K: k_B T / E_h.
+fn kbt() -> f64 {
+    K_B * 298.15 / E_HARTREE
+}
+
+#[test] // rq-e982f0e0
+fn a_plain_value_is_a_partial_pressure_in_pa() {
+    assert_eq!(parse_conc_value("0.00001"), Some((0.00001, ConcUnit::Pa)));
+}
+
+#[test] // rq-d7a0c24f
+fn a_ppt_value_is_a_mole_fraction_of_the_standard_atmosphere() {
+    let (magnitude, unit) = parse_conc_value("100ppt").expect("parses");
+    assert_eq!(magnitude, 100.0);
+    assert_eq!(unit, ConcUnit::Ppt);
+    let spec = ConcSpec {
+        code: "sa".to_string(),
+        magnitude,
+        unit,
+    };
+    assert_eq!(spec.pressure(298.15), 100.0 * 1.0e-12 * P_STANDARD);
+    assert!((spec.pressure(298.15) - 1.01325e-5).abs() < 1e-20);
+}
+
+#[test] // rq-183b0f2b
+fn a_ppb_value_is_a_mole_fraction_of_the_standard_atmosphere() {
+    let (magnitude, unit) = parse_conc_value("10ppb").expect("parses");
+    assert_eq!(magnitude, 10.0);
+    assert_eq!(unit, ConcUnit::Ppb);
+    let spec = ConcSpec {
+        code: "sa".to_string(),
+        magnitude,
+        unit,
+    };
+    assert_eq!(spec.pressure(298.15), 10.0 * 1.0e-9 * P_STANDARD);
+    assert!((spec.pressure(298.15) - 1.01325e-3).abs() < 1e-18);
+}
+
+#[test] // rq-0f5b209d
+fn a_cmmc_value_converts_through_the_ideal_gas_law_at_the_runs_temperature() {
+    let (magnitude, unit) = parse_conc_value("1e10cmmc").expect("parses");
+    assert_eq!(magnitude, 1.0e10);
+    assert_eq!(unit, ConcUnit::Cmmc);
+    let spec = ConcSpec {
+        code: "sa".to_string(),
+        magnitude,
+        unit,
+    };
+    assert_eq!(spec.pressure(298.15), 1.0e10 * 1.0e6 * K_B * 298.15);
+    assert!((spec.pressure(298.15) - 4.1164e-5).abs() < 1e-9);
+    assert_eq!(spec.pressure(350.0), 1.0e10 * 1.0e6 * K_B * 350.0);
+    assert!((spec.pressure(350.0) - 4.8323e-5).abs() < 1e-9);
+}
+
+#[test] // rq-bbf4e72d
+fn a_component_without_a_spec_stays_at_the_standard_state() {
+    // A 2am1sa record with defined gibbs and one sa-only spec: the
+    // correction carries exactly one sa term and no am term.
+    let am = with_gibbs("am1", "am", 1000.0, -50.0);
+    let sa = with_gibbs("sa1", "sa", 1000.0, -40.0);
+    let mut cluster = with_gibbs("cluster", "am", 1000.0, -141.0);
+    cluster.components = Some(components(&[("am", 2), ("sa", 1)]));
+    let references = collect_monomers(&[am, sa], &memo(), SortKey::El);
+    let concs = ConcConditions {
+        specs: vec![ConcSpec {
+            code: "sa".to_string(),
+            magnitude: 100.0,
+            unit: ConcUnit::Ppt,
+        }],
+        self_consistent: false,
+    };
+    let formation = formation_values(&cluster, &references, &memo(), &concs);
+    let uncorrected = formation_values(&cluster, &references, &memo(), &ConcConditions::default());
+    let shift = kbt() * (100.0_f64 * 1.0e-12).ln();
+    assert_eq!(formation.gibbs, Some(uncorrected.gibbs.unwrap() - shift));
+}
+
+#[test] // rq-1b039c1f
+fn cnt_scales_a_fully_covered_clusters_correction_by_n_minus_one_over_n() {
+    // A 3sa record: without --cnt the correction is 3 R T ln(c/p°); with
+    // --cnt it is 3·(3−1)/3 = 2 R T ln(c/p°).
+    let sa = with_gibbs("sa1", "sa", 1000.0, -40.0);
+    let mut cluster = with_gibbs("cluster", "sa", 1000.0, -121.0);
+    cluster.components = Some(components(&[("sa", 3)]));
+    let references = collect_monomers(std::slice::from_ref(&sa), &memo(), SortKey::El);
+    let spec = ConcSpec {
+        code: "sa".to_string(),
+        magnitude: 100.0,
+        unit: ConcUnit::Ppt,
+    };
+    let off = ConcConditions {
+        specs: vec![spec.clone()],
+        self_consistent: false,
+    };
+    let on = ConcConditions {
+        specs: vec![spec],
+        self_consistent: true,
+    };
+    let uncorrected = formation_values(&cluster, &references, &memo(), &ConcConditions::default())
+        .gibbs
+        .unwrap();
+    let shift = kbt() * (100.0_f64 * 1.0e-12).ln();
+    assert_eq!(
+        formation_values(&cluster, &references, &memo(), &off).gibbs,
+        Some(uncorrected - 3.0 * shift)
+    );
+    assert_eq!(
+        formation_values(&cluster, &references, &memo(), &on).gibbs,
+        Some(uncorrected - 2.0 * shift)
+    );
+}
+
+#[test] // rq-2333d9cc
+fn a_spec_whose_code_is_absent_contributes_nothing() {
+    let components = components(&[("am", 2)]);
+    let concs = ConcConditions {
+        specs: vec![ConcSpec {
+            code: "sa".to_string(),
+            magnitude: 100.0,
+            unit: ConcUnit::Ppt,
+        }],
+        self_consistent: true,
+    };
+    assert_eq!(concentration_correction(&components, &concs, 298.15), 0.0);
+}
+
+#[test] // rq-2333d9cc
+fn cnt_sums_n_over_the_whole_components_map() {
+    // 2am1sa with only sa spec'd: the un-spec'd am molecules still count
+    // toward N, so the sa term scales by 1·(3−1)/3 = 2/3, not by 1.
+    let components = components(&[("am", 2), ("sa", 1)]);
+    let on = ConcConditions {
+        specs: vec![ConcSpec {
+            code: "sa".to_string(),
+            magnitude: 100.0,
+            unit: ConcUnit::Ppt,
+        }],
+        self_consistent: true,
+    };
+    let expected = (2.0f64 / 3.0) * K_B * 298.15 * (100.0e-12_f64).ln() / E_HARTREE;
+    assert!((concentration_correction(&components, &on, 298.15) - expected).abs() < 1e-18);
 }

@@ -4,14 +4,18 @@
 //! — the first of its monomers under the run's sort ordering — and the
 //! `--formation` flag prints each printed record's formation energy and
 //! formation free energy as a section after the normal property table.
-//! Nothing is stored: values derive at request time under the run's
-//! thermochemistry conditions.
+//! The `--conc` and `--cnt` flags evaluate the free-energy level at
+//! vapors of named components at given concentrations. Nothing is
+//! stored: values derive at request time under the run's thermochemistry
+//! conditions.
+//!
+//! (rq-10341821)
 
 use std::collections::BTreeMap;
 
 use crate::filter::{composition_token, format_energy, sort_value_for, Unit};
-use crate::record::{Record, RecordStatus};
-use crate::thermo::ThermoMemo;
+use crate::record::{Components, Record, RecordStatus};
+use crate::thermo::{ThermoMemo, E_HARTREE, K_B, P_STANDARD};
 
 /// The per-code monomer references in hartree, derived from the reference
 /// records' observables.
@@ -50,6 +54,121 @@ pub struct Formation {
     pub electronic: Option<f64>,
     /// Formation free energy (Gibbs level).
     pub gibbs: Option<f64>,
+}
+
+/// The VALUE grammar's units (`rqm/formation.md` Formation at Given
+/// Concentrations): Pa plain, `ppt`/`ppb` mole fractions of the standard
+/// atmosphere, `cmmc` molecules per cm³.
+///
+/// (rq-7d64cce1)
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ConcUnit {
+    /// A partial pressure in Pa.
+    Pa,
+    /// A mole fraction of 10⁻¹² of the standard atmosphere.
+    Ppt,
+    /// A mole fraction of 10⁻⁹ of the standard atmosphere.
+    Ppb,
+    /// Molecules per cm³, converted through the ideal-gas law at the
+    /// run's temperature.
+    Cmmc,
+}
+
+/// One `--conc` spec: a component code and a concentration magnitude in
+/// the given unit.
+///
+/// (rq-c92b9ff1)
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConcSpec {
+    /// The component code the spec covers.
+    pub code: String,
+    /// The concentration magnitude quoted in `unit`.
+    pub magnitude: f64,
+    /// The unit `magnitude` is quoted in.
+    pub unit: ConcUnit,
+}
+
+impl ConcSpec {
+    /// The spec's partial pressure in Pa: `Pa` the magnitude itself,
+    /// `Ppt`/`Ppb` magnitude·10⁻¹²/10⁻⁹·p°, `Cmmc` the number density
+    /// converted through the ideal-gas law at the given temperature.
+    ///
+    /// (rq-c92b9ff1)
+    pub fn pressure(&self, temperature: f64) -> f64 {
+        match self.unit {
+            ConcUnit::Pa => self.magnitude,
+            ConcUnit::Ppt => self.magnitude * 1.0e-12 * P_STANDARD,
+            ConcUnit::Ppb => self.magnitude * 1.0e-9 * P_STANDARD,
+            ConcUnit::Cmmc => self.magnitude * 1.0e6 * K_B * temperature,
+        }
+    }
+}
+
+/// The run's concentration settings: the parsed `--conc` specs and the
+/// `--cnt` self-consistent switch. The default — no specs, `--cnt` off —
+/// leaves the formation free energies at the 1 atm standard state.
+///
+/// (rq-a0748032)
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ConcConditions {
+    /// The parsed `--conc CODE VALUE` specs in command order.
+    pub specs: Vec<ConcSpec>,
+    /// Whether `--cnt` scales each named component's term by (N−1)/N.
+    pub self_consistent: bool,
+}
+
+/// The VALUE grammar of `--conc`: a decimal or scientific-notation
+/// number, optionally suffixed lowercase with `ppt`, `ppb`, or `cmmc`.
+/// `None` for a value outside the grammar, non-finite, or not positive —
+/// the CLI turns `None` into a usage error (`rqm/formation.md`).
+///
+/// (rq-f8a2fb33)
+pub fn parse_conc_value(text: &str) -> Option<(f64, ConcUnit)> {
+    let (number, unit) = if let Some(number) = text.strip_suffix("ppt") {
+        (number, ConcUnit::Ppt)
+    } else if let Some(number) = text.strip_suffix("ppb") {
+        (number, ConcUnit::Ppb)
+    } else if let Some(number) = text.strip_suffix("cmmc") {
+        (number, ConcUnit::Cmmc)
+    } else {
+        (text, ConcUnit::Pa)
+    };
+    let magnitude = number.parse::<f64>().ok()?;
+    if !magnitude.is_finite() || magnitude <= 0.0 {
+        return None;
+    }
+    Some((magnitude, unit))
+}
+
+/// The concentration term subtracted from a defined formation free
+/// energy, in Eh: the sum over the specs whose code is in the components
+/// map of nᵢ,eff · k_B T ln(cᵢ/p°) / E_h, with nᵢ,eff = nᵢ or, under
+/// `self_consistent`, nᵢ·(N−1)/N for the record's total molecule count N.
+/// A spec whose code is absent from the components contributes nothing,
+/// so with no matching spec the term is 0.
+///
+/// (rq-2333d9cc)
+pub fn concentration_correction(
+    components: &Components,
+    concs: &ConcConditions,
+    temperature: f64,
+) -> f64 {
+    let total = components.values().copied().sum::<u32>();
+    let mut shift = 0.0;
+    for spec in &concs.specs {
+        let Some(count) = components.get(&spec.code) else {
+            continue;
+        };
+        let count = f64::from(*count);
+        let effective = if concs.self_consistent {
+            count * (f64::from(total) - 1.0) / f64::from(total)
+        } else {
+            count
+        };
+        shift += effective * K_B * temperature * (spec.pressure(temperature) / P_STANDARD).ln()
+            / E_HARTREE;
+    }
+    shift
 }
 
 /// Whether a record is a monomer reference candidate: status `ok` and a
@@ -157,15 +276,19 @@ fn sorts_before(
 /// electronic energy minus the stoichiometric mix of electronic references,
 /// Gibbs free energy minus the mix of Gibbs references. The record's Gibbs
 /// value resolves through the derived-property registry on the run's memo
-/// (`rqm/thermo.md`). A level is undefined when the record lacks
-/// components, lacks the level's input energy, or any referenced code lacks
-/// that level's reference.
+/// (`rqm/thermo.md`); when defined, it has the concentration term of
+/// `concentration_correction` under the run's `ConcConditions` subtracted,
+/// and a correction that turns non-finite (an absurd input magnitude)
+/// leaves the level undefined rather than infinite. A level is undefined
+/// when the record lacks components, lacks the level's input energy, or
+/// any referenced code lacks that level's reference.
 ///
-/// (rq-6ffbf9aa rq-c3425396 rq-8f6da1c2)
+/// (rq-6ffbf9aa rq-c3425396 rq-8f6da1c2 rq-2333d9cc)
 pub fn formation_values(
     record: &Record,
     references: &MonomerReferences,
     memo: &ThermoMemo,
+    concs: &ConcConditions,
 ) -> Formation {
     let Some(components) = record.components.as_ref() else {
         return Formation {
@@ -185,7 +308,8 @@ pub fn formation_values(
         for (code, count) in components {
             value -= f64::from(*count) * references.gibbs.get(code)?;
         }
-        Some(value)
+        let value = value - concentration_correction(components, concs, memo.temperature());
+        Some(value).filter(|value| value.is_finite())
     });
     Formation { electronic, gibbs }
 }
@@ -222,12 +346,15 @@ pub fn corrected_monomer_references(
 /// record's own corrected value at that level is defined and every
 /// referenced code has a defined corrected reference at that level —
 /// corrected formation numbers never mix levels (`rqm/formation.md`).
+/// The corrected Gibbs value, when defined, has the same concentration
+/// term as the raw section subtracted, with the same non-finite guard.
 ///
-/// (rq-fb892986)
+/// (rq-fb892986 rq-2333d9cc)
 pub fn corrected_formation_values(
     record: &Record,
     references: &CorrectedMonomerReferences,
     memo: &ThermoMemo,
+    concs: &ConcConditions,
 ) -> Formation {
     let Some(components) = record.components.as_ref() else {
         return Formation {
@@ -247,7 +374,8 @@ pub fn corrected_formation_values(
         for (code, count) in components {
             value -= f64::from(*count) * references.gibbs.get(code)?;
         }
-        Some(value)
+        let value = value - concentration_correction(components, concs, memo.temperature());
+        Some(value).filter(|value| value.is_finite())
     });
     Formation { electronic, gibbs }
 }
@@ -265,10 +393,11 @@ pub fn print_formation_section(
     references: &MonomerReferences,
     memo: &ThermoMemo,
     unit: Unit,
+    concs: &ConcConditions,
 ) -> String {
     let formations: Vec<Formation> = records
         .iter()
-        .map(|record| formation_values(record, references, memo))
+        .map(|record| formation_values(record, references, memo, concs))
         .collect();
     print_formation_table(records, &formations, unit, "ct el g")
 }
@@ -283,10 +412,11 @@ pub fn print_formation_corr_section(
     references: &CorrectedMonomerReferences,
     memo: &ThermoMemo,
     unit: Unit,
+    concs: &ConcConditions,
 ) -> String {
     let formations: Vec<Formation> = records
         .iter()
-        .map(|record| corrected_formation_values(record, references, memo))
+        .map(|record| corrected_formation_values(record, references, memo, concs))
         .collect();
     print_formation_table(records, &formations, unit, "ct elcorr gcorr")
 }

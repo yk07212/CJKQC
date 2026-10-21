@@ -1272,8 +1272,8 @@ fn every_cutoff_flag_wires_its_operator() {
 // ---------------------------------------------------------------------------
 
 use complied_jkqc::filter::SortKey;
-use complied_jkqc::formation::{collect_monomers, formation_values};
-use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo};
+use complied_jkqc::formation::{collect_monomers, formation_values, ConcConditions};
+use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo, E_HARTREE, K_B};
 use complied_jkqc::Geometry;
 
 /// A serialized water-like record with geometry, optional frequencies and
@@ -1976,7 +1976,12 @@ fn a_print_only_run_sees_every_loaded_monomer() {
     // And the values are the stoichiometric ones.
     let record: Record = serde_json::from_str(&db_line(&db, 0)).expect("record deserializes");
     let references = collect_monomers(&loaded_records(&db), &ThermoMemo::default(), SortKey::El);
-    let formation = formation_values(&record, &references, &ThermoMemo::default());
+    let formation = formation_values(
+        &record,
+        &references,
+        &ThermoMemo::default(),
+        &ConcConditions::default(),
+    );
     assert_eq!(row[1], format!("{:.10}", formation.electronic.unwrap()));
     assert_eq!(row[2], format!("{:.10}", formation.gibbs.unwrap()));
 }
@@ -3145,4 +3150,550 @@ fn an_attachment_only_run_writes_every_record() {
         .collect();
     assert_eq!(corrected.len(), 1);
     assert_eq!(corrected[0].name.as_deref(), Some("1am"));
+}
+
+// ---------------------------------------------------------------------------
+// Formation at given concentrations (`rqm/formation.md`).
+// ---------------------------------------------------------------------------
+
+/// The per-molecule R T in Eh at the given temperature: k_B T / E_h.
+fn kbt_eh(temperature: f64) -> f64 {
+    K_B * temperature / E_HARTREE
+}
+
+/// The stdout from the formation section's header onward, so
+/// `formation_row` never matches a main-table row of the same token.
+fn formation_section(stdout_text: &str) -> &str {
+    match stdout_text.find("ct el g") {
+        Some(index) => &stdout_text[index..],
+        None => panic!("no formation section in:\n{stdout_text}"),
+    }
+}
+
+/// The stdout from the corrected formation section's header onward.
+fn corrected_section(stdout_text: &str) -> &str {
+    match stdout_text.find("ct elcorr gcorr") {
+        Some(index) => &stdout_text[index..],
+        None => panic!("no corrected formation section in:\n{stdout_text}"),
+    }
+}
+
+/// The amount added to a formation free energy per molecule of a
+/// component specified at `magnitude` ppt: −k_B T ln(magnitude·10⁻¹²)/E_h.
+fn ppt_shift(magnitude: f64) -> f64 {
+    -K_B * 298.15 * (magnitude * 1.0e-12).ln() / E_HARTREE
+}
+
+#[test] // rq-9423306b
+fn a_value_outside_the_grammar_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_line("am1", -50.0, &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--formation", "--conc", "sa", "100ppm"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-890737af
+fn a_non_positive_or_non_finite_value_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_line("am1", -50.0, &[("am", 1)], None)],
+    );
+    for value in ["0", "-1e-7", "nan", "inf"] {
+        let run = cjkqc(&[&db, "--formation", "--conc", "sa", value]);
+        assert_eq!(run.status.code(), Some(2), "{value}: {}", stderr(&run));
+    }
+}
+
+#[test] // rq-ae14b02d
+fn the_caret_power_syntax_is_not_part_of_the_grammar() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_line("am1", -50.0, &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--formation", "--conc", "sa", "10^3ppt"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-3384f0c4
+fn a_non_letter_code_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_line("am1", -50.0, &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--formation", "--conc", "2sa", "100ppt"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-fecf8cb9
+fn naming_one_code_twice_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_line("am1", -50.0, &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--formation",
+        "--conc",
+        "sa",
+        "100ppt",
+        "--conc",
+        "sa",
+        "1ppb",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-98440673
+fn the_named_component_shifts_the_g_level_by_its_chemical_potential() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], None),
+        ],
+    );
+    let base = cjkqc(&[&db, "--formation"]);
+    assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
+    let run = cjkqc(&[&db, "--formation", "--conc", "sa", "100ppt"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let base_row = formation_row(&stdout(&base), "1am1sa");
+    let row = formation_row(&stdout(&run), "1am1sa");
+    // The sa term: g_form − k_B T ln(100·10⁻¹²) — about +13.6 kcal/mol.
+    let g_base: f64 = base_row[2].parse().expect("base gibbs");
+    let g_conc: f64 = row[2].parse().expect("conc gibbs");
+    let expected = -kbt_eh(298.15) * (100.0_f64 * 1.0e-12).ln();
+    assert!(
+        (g_conc - g_base - expected).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+    // The electronic level stays at the standard state.
+    assert_eq!(row[1], base_row[1], "{}", stdout(&run));
+}
+
+#[test] // rq-85150fe0
+fn several_conc_flags_each_cover_their_own_component() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -131.0, &[("am", 2), ("sa", 1)], None),
+        ],
+    );
+    let base = cjkqc(&[&db, "--formation"]);
+    assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
+    let run = cjkqc(&[
+        &db,
+        "--formation",
+        "--conc",
+        "am",
+        "100ppt",
+        "--conc",
+        "sa",
+        "10ppb",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let g_base: f64 = formation_row(&stdout(&base), "2am1sa")[2]
+        .parse()
+        .expect("base gibbs");
+    let g_conc: f64 = formation_row(&stdout(&run), "2am1sa")[2]
+        .parse()
+        .expect("conc gibbs");
+    // am at 100 ppt contributes twice, sa at 10 ppb once.
+    let expected = -(2.0 * kbt_eh(298.15) * (100.0_f64 * 1.0e-12).ln()
+        + kbt_eh(298.15) * (10.0_f64 * 1.0e-9).ln());
+    assert!(
+        (g_conc - g_base - expected).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-040dd0d3
+fn cnt_keeps_a_monomers_formation_free_energy_at_zero() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_line("sa1", -40.0, &[("sa", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--formation", "--cnt", "--conc", "sa", "100ppt"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let row = formation_row(&stdout(&run), "1sa");
+    assert_eq!(row[2], "0.0000000000", "{}", stdout(&run));
+    // Without --cnt the monomer carries the full chemical-potential term.
+    let plain = cjkqc(&[&db, "--formation", "--conc", "sa", "100ppt"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    let row = formation_row(&stdout(&plain), "1sa");
+    let value: f64 = row[2].parse().expect("monomer gibbs");
+    assert!(
+        (value - ppt_shift(100.0)).abs() < 1e-9,
+        "{}",
+        stdout(&plain)
+    );
+}
+
+#[test] // rq-fd428ce5
+fn a_concentration_above_the_standard_state_lowers_the_formation_free_energy() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -81.0, &[("sa", 2)], None),
+        ],
+    );
+    let base = cjkqc(&[&db, "--formation"]);
+    assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
+    let run = cjkqc(&[&db, "--formation", "--conc", "sa", "202650"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let g_base: f64 = formation_row(&stdout(&base), "2sa")[2]
+        .parse()
+        .expect("base gibbs");
+    let g_conc: f64 = formation_row(&stdout(&run), "2sa")[2]
+        .parse()
+        .expect("conc gibbs");
+    // 202650 Pa is 2 p°: the correction flips sign and lowers g.
+    let expected = -2.0 * kbt_eh(298.15) * (2.0_f64).ln();
+    assert!(
+        (g_conc - g_base - expected).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+    assert!(g_conc < g_base);
+}
+
+#[test] // rq-b5d0f3d1
+fn a_spec_at_the_standard_pressure_reproduces_the_uncorrected_values() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--formation"]);
+    let corrected = cjkqc(&[
+        &db,
+        "--formation",
+        "--conc",
+        "sa",
+        // p° itself: the logarithm is exactly zero.
+        "101325",
+        "--conc",
+        "am",
+        "101325",
+    ]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(corrected.status.code(), Some(0), "{}", stderr(&corrected));
+    assert_eq!(stdout(&plain), stdout(&corrected));
+}
+
+#[test] // rq-9b67220d
+fn the_correction_never_creates_a_defined_value() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--extract",
+        "1am1sa",
+        "--formation",
+        "--conc",
+        "sa",
+        "100ppt",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let row = formation_row(&stdout(&run), "1am1sa");
+    assert_eq!(row[1], "-");
+    assert_eq!(row[2], "-");
+}
+
+#[test] // rq-c984bd29
+fn undefined_thermochemistry_stays_undefined_under_conc() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            // The cluster carries no frequencies: its own Gibbs is
+            // undefined. The higher el keeps the defined monomer as the
+            // sa reference, so the dash below is the cluster's own
+            // undefined level, not an undefined reference.
+            thermo_record_json("cluster", Some(-30.0), &[("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--conc", "sa", "100ppt"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // Both records print the 1sa token; the defined monomer comes first.
+    let rows: Vec<Vec<String>> = stdout(&run)
+        .lines()
+        .skip(1)
+        .filter(|line| line.starts_with("1sa "))
+        .map(|line| line.split(' ').map(str::to_string).collect())
+        .collect();
+    assert_eq!(rows.len(), 2, "{}", stdout(&run));
+    let reference: f64 = rows[0][2].parse().expect("reference monomer gibbs");
+    assert!((reference - ppt_shift(100.0)).abs() < 1e-9);
+    // The cluster: its own thermochemistry is undefined under --conc.
+    assert_eq!(rows[1][2], "-", "{}", stdout(&run));
+}
+
+#[test] // rq-e8ea3b7f
+fn the_corrected_section_shifts_gcorr_the_same_way() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], Some(-76.5)),
+            thermo_line("sa1", -40.0, &[("sa", 1)], Some(-69.5)),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], Some(-146.5)),
+        ],
+    );
+    let base = cjkqc(&[&db, "--formation-corr"]);
+    assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
+    let run = cjkqc(&[&db, "--formation-corr", "--conc", "sa", "100ppt"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let g_base: f64 = formation_row(corrected_section(&stdout(&base)), "1am1sa")[2]
+        .parse()
+        .expect("base gcorr");
+    let g_conc: f64 = formation_row(corrected_section(&stdout(&run)), "1am1sa")[2]
+        .parse()
+        .expect("conc gcorr");
+    let expected = -kbt_eh(298.15) * (100.0_f64 * 1.0e-12).ln();
+    assert!(
+        (g_conc - g_base - expected).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+    // The corrected electronic level stays at the standard state.
+    let base_row = formation_row(corrected_section(&stdout(&base)), "1am1sa");
+    let row = formation_row(corrected_section(&stdout(&run)), "1am1sa");
+    assert_eq!(row[1], base_row[1]);
+}
+
+#[test] // rq-985cc1a5
+fn a_spec_for_a_code_in_no_final_record_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--conc", "w", "100ppt"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-38b48ce6
+fn a_spec_whose_monomers_were_filtered_away_is_not_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--extract",
+        "1am1sa",
+        "--formation",
+        "--conc",
+        "am",
+        "100ppt",
+        "--conc",
+        "sa",
+        "100ppt",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let row = formation_row(&stdout(&run), "1am1sa");
+    assert_eq!(row[1], "-");
+    assert_eq!(row[2], "-");
+}
+
+#[test] // rq-75ac7572
+fn conc_without_a_formation_section_is_an_accepted_no_op() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_line("am1", -50.0, &[("am", 1)], None)],
+    );
+    let plain = cjkqc(&[&db, "--name", "--el"]);
+    let with_conc = cjkqc(&[&db, "--name", "--el", "--conc", "sa", "100ppt"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(with_conc.status.code(), Some(0), "{}", stderr(&with_conc));
+    assert_eq!(stdout(&plain), stdout(&with_conc));
+}
+
+#[test] // rq-d6fc375d
+fn conc_alone_is_not_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[thermo_line("am1", -50.0, &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--conc", "sa", "100ppt"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-6f3e4732
+fn the_main_table_and_glob_ignore_the_concentrations() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -131.0, &[("am", 2), ("sa", 1)], None),
+        ],
+    );
+    let base = cjkqc(&[&db, "--ct", "--g", "--glob", "--formation"]);
+    let run = cjkqc(&[
+        &db,
+        "--ct",
+        "--g",
+        "--glob",
+        "--formation",
+        "--conc",
+        "sa",
+        "100ppt",
+    ]);
+    assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // The main tables are identical; only the formation section moves.
+    let table_end = |text: &str| text.find("ct el g").expect("formation header");
+    assert_eq!(
+        &stdout(&base)[..table_end(&stdout(&base))],
+        &stdout(&run)[..table_end(&stdout(&run))]
+    );
+    let g_base: f64 = formation_row(formation_section(&stdout(&base)), "2am1sa")[2]
+        .parse()
+        .expect("base gibbs");
+    let g_conc: f64 = formation_row(formation_section(&stdout(&run)), "2am1sa")[2]
+        .parse()
+        .expect("conc gibbs");
+    assert!((g_conc - g_base - ppt_shift(100.0)).abs() < 1e-9);
+}
+
+#[test] // rq-ef6c9159
+fn the_ppt_correction_scales_linearly_with_temperature() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], None),
+        ],
+    );
+    let base_warm = cjkqc(&[&db, "--formation", "--temp", "298.15"]);
+    let conc_warm = cjkqc(&[
+        &db,
+        "--formation",
+        "--temp",
+        "298.15",
+        "--conc",
+        "sa",
+        "100ppt",
+    ]);
+    let base_hot = cjkqc(&[&db, "--formation", "--temp", "350"]);
+    let conc_hot = cjkqc(&[
+        &db,
+        "--formation",
+        "--temp",
+        "350",
+        "--conc",
+        "sa",
+        "100ppt",
+    ]);
+    for run in [&base_warm, &conc_warm, &base_hot, &conc_hot] {
+        assert_eq!(run.status.code(), Some(0), "{}", stderr(run));
+    }
+    let g = |out: &Output| -> f64 {
+        formation_row(&stdout(out), "1am1sa")[2]
+            .parse()
+            .expect("gibbs")
+    };
+    let shift_warm = g(&conc_warm) - g(&base_warm);
+    let shift_hot = g(&conc_hot) - g(&base_hot);
+    // The ppt ratio is temperature-independent, so the shift scales with
+    // R T alone.
+    assert!((shift_hot - shift_warm * 350.0 / 298.15).abs() < 1e-9);
+    // Sanity: the shift is nonzero and positive.
+    assert!(shift_warm > 0.0);
+}
+
+#[test] // rq-f623ed28
+fn an_absurd_magnitude_leaves_the_level_undefined_rather_than_infinite() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -131.0, &[("am", 2), ("sa", 1)], None),
+        ],
+    );
+    // A Pa pressure that underflows below the smallest positive double
+    // when divided by p°, and a cmmc magnitude whose resolved pressure
+    // underflows the same way.
+    for value in ["1e-320", "1e-320cmmc"] {
+        let run = cjkqc(&[&db, "--formation", "--conc", "sa", value]);
+        assert_eq!(run.status.code(), Some(0), "{value}: {}", stderr(&run));
+        assert_eq!(
+            formation_row(&stdout(&run), "1sa")[2],
+            "-",
+            "{value}: {}",
+            stdout(&run)
+        );
+        assert_eq!(
+            formation_row(&stdout(&run), "2am1sa")[2],
+            "-",
+            "{value}: {}",
+            stdout(&run)
+        );
+    }
 }

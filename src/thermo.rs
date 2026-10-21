@@ -16,12 +16,12 @@ use crate::record::Record;
 // conversion in the crate.
 const H_PLANCK: f64 = 6.62607015e-34; // J s
 const C_LIGHT_CM_PER_S: f64 = 2.99792458e10; // cm/s
-const K_B: f64 = 1.380649e-23; // J/K
+pub const K_B: f64 = 1.380649e-23; // J/K
 const N_A: f64 = 6.02214076e23; // 1/mol
 const R: f64 = N_A * K_B; // J mol^-1 K^-1
 const U_ATOMIC_MASS: f64 = 1.66053906660e-27; // kg
-const P_STANDARD: f64 = 101325.0; // Pa (1 atm)
-const E_HARTREE: f64 = 4.3597447222071e-18; // J
+pub const P_STANDARD: f64 = 101325.0; // Pa (1 atm)
+pub const E_HARTREE: f64 = 4.3597447222071e-18; // J
 
 /// Hartree to kcal/mol (`rqm/thermo.md` Constants).
 ///
@@ -549,6 +549,15 @@ impl ThermoMemo {
             cache: RefCell::new(HashMap::new()),
             corrected_cache: RefCell::new(HashMap::new()),
         }
+    }
+
+    /// The run's temperature in K as configured at construction: the
+    /// formation sections' concentration correction resolves the `--conc`
+    /// pressures and the k_B T term through it (`rqm/formation.md`).
+    ///
+    /// (rq-10341821)
+    pub fn temperature(&self) -> f64 {
+        self.conditions.temperature
     }
 
     /// The record's full derivation, computed at most once per record

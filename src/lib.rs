@@ -45,14 +45,15 @@ pub use reacted::{are_bonded, filter_reacted, fragment_signature, ReactedMode};
 // rq-3345a07b thermochemistry surface (rqm/thermo.md)
 pub use thermo::{
     classify_species, derived_value, rotational_constants, thermochemistry, SpeciesClass, Thermo,
-    ThermoConditions, ThermoMemo, KCAL_MOL_PER_HARTREE,
+    ThermoConditions, ThermoMemo, E_HARTREE, KCAL_MOL_PER_HARTREE, K_B, P_STANDARD,
 };
 
 // rq-f8ebbc84 formation surface (rqm/formation.md)
 pub use formation::{
-    collect_monomers, corrected_formation_values, corrected_monomer_references, formation_values,
-    print_formation_corr_section, print_formation_section, CorrectedMonomerReferences, Formation,
-    MonomerReferences,
+    collect_monomers, concentration_correction, corrected_formation_values,
+    corrected_monomer_references, formation_values, parse_conc_value, print_formation_corr_section,
+    print_formation_section, ConcConditions, ConcSpec, ConcUnit, CorrectedMonomerReferences,
+    Formation, MonomerReferences,
 };
 
 // rq-bf062c8f filtering surface (rqm/filtering.md)
