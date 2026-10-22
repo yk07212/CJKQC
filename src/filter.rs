@@ -11,6 +11,7 @@ use crate::metrics::{
     dedup_names_mask, metric_dipole_magnitude, metric_radius_of_gyration, metric_total_mass,
     uniqueness_mask, UniqMode,
 };
+use crate::population::{populations, PopLevel};
 use crate::reacted::{reacted_mask, ReactedMode};
 use crate::record::{Components, Record, RecordStatus};
 use crate::thermo::{ThermoMemo, KCAL_MOL_PER_HARTREE};
@@ -322,6 +323,26 @@ pub enum Column {
     ///
     /// (rq-38b619ff)
     GCorr,
+    /// Boltzmann population from the Gibbs free energy
+    /// (`rqm/population.md`), a dimensionless probability, 4 decimals.
+    ///
+    /// (rq-38b619ff)
+    Pop,
+    /// Boltzmann population from the electronic energy
+    /// (`rqm/population.md`), like `pop`.
+    ///
+    /// (rq-38b619ff)
+    PopEl,
+    /// Boltzmann population from the attached correction energy
+    /// (`rqm/population.md`), like `pop`.
+    ///
+    /// (rq-38b619ff)
+    PopElCorr,
+    /// Boltzmann population from the corrected Gibbs free energy
+    /// (`rqm/population.md`), like `pop`.
+    ///
+    /// (rq-38b619ff)
+    PopGCorr,
     /// Radius of gyration, 3 decimals.
     Rg,
     /// Total mass, 3 decimals.
@@ -354,7 +375,7 @@ pub enum Column {
 
 impl Column {
     /// All columns in canonical print order.
-    pub const ALL: [Column; 24] = [
+    pub const ALL: [Column; 28] = [
         Column::Name,
         Column::Status,
         Column::Program,
@@ -368,6 +389,10 @@ impl Column {
         Column::ElCorr,
         Column::HCorr,
         Column::GCorr,
+        Column::Pop,
+        Column::PopEl,
+        Column::PopElCorr,
+        Column::PopGCorr,
         Column::Rg,
         Column::Mass,
         Column::Dip,
@@ -401,6 +426,22 @@ impl Column {
         }
     }
 
+    /// The population level behind a population column, `None` for every
+    /// other column (`rqm/population.md` Bases and Flags): `pop` the
+    /// Gibbs basis, `popel` the electronic basis, `popelcorr`/`popgcorr`
+    /// the corrected bases.
+    ///
+    /// (rq-38b619ff)
+    pub fn pop_level(&self) -> Option<PopLevel> {
+        match self {
+            Column::Pop => Some(PopLevel::G),
+            Column::PopEl => Some(PopLevel::El),
+            Column::PopElCorr => Some(PopLevel::ElCorr),
+            Column::PopGCorr => Some(PopLevel::GCorr),
+            _ => None,
+        }
+    }
+
     /// Header label (also the print flag's long name).
     pub fn label(&self) -> &'static str {
         match self {
@@ -417,6 +458,10 @@ impl Column {
             Column::ElCorr => "elcorr",
             Column::HCorr => "hcorr",
             Column::GCorr => "gcorr",
+            Column::Pop => "pop",
+            Column::PopEl => "popel",
+            Column::PopElCorr => "popelcorr",
+            Column::PopGCorr => "popgcorr",
             Column::Rg => "rg",
             Column::Mass => "mass",
             Column::Dip => "dip",
@@ -604,7 +649,9 @@ pub fn apply_filters(
 /// memo, which derives each record's thermochemistry once across all
 /// thermo columns (`rqm/thermo.md` Performance); `unit` converts every
 /// energy column (`el`, `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, `gcorr`)
-/// to kcal/mol.
+/// to kcal/mol. `grouping` is the run's grouping (`rqm/filtering.md`
+/// Grouping): the population columns (`rqm/population.md`) pool per
+/// composition group, or into one global pool under `--noname`.
 ///
 /// (rq-8420b870 rq-4ea8ca35 rq-8b44ad8d)
 pub fn print_table(
@@ -612,7 +659,20 @@ pub fn print_table(
     columns: &[Column],
     memo: &ThermoMemo,
     unit: Unit,
+    grouping: Grouping,
 ) -> String {
+    // Population columns are ensemble properties: each requested column's
+    // populations are computed once over the printed record set, grouped
+    // per the run's grouping (`rqm/population.md` Computation).
+    // rq-540b4c18
+    let population_columns: Vec<(Column, Vec<Option<f64>>)> = columns
+        .iter()
+        .filter_map(|column| {
+            column
+                .pop_level()
+                .map(|level| (*column, populations(records, level, memo, grouping)))
+        })
+        .collect();
     let mut lines = Vec::with_capacity(records.len() + 1);
     lines.push(
         columns
@@ -621,14 +681,24 @@ pub fn print_table(
             .collect::<Vec<_>>()
             .join(" "),
     );
-    for record in records {
-        lines.push(
-            columns
-                .iter()
-                .map(|column| format_cell(record, *column, memo, unit))
-                .collect::<Vec<_>>()
-                .join(" "),
-        );
+    for (row, record) in records.iter().enumerate() {
+        let mut cells = Vec::with_capacity(columns.len());
+        for column in columns {
+            match column.pop_level().and_then(|_| {
+                population_columns
+                    .iter()
+                    .find(|(population, _)| population == column)
+                    .map(|(_, values)| values[row])
+            }) {
+                // Dimensionless probabilities print with 4 decimals
+                // (`rqm/population.md` Computation).
+                // rq-b7d07857
+                Some(Some(value)) => cells.push(format!("{value:.4}")),
+                Some(None) => cells.push("-".to_string()),
+                None => cells.push(format_cell(record, *column, memo, unit)),
+            }
+        }
+        lines.push(cells.join(" "));
     }
     lines.join("\n")
 }
@@ -753,6 +823,13 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
             _ => undefined(),
         },
         Column::Ct => composition_token(record.components.as_ref()).unwrap_or_else(undefined),
+        // Population cells never reach `format_cell`: print_table renders
+        // them from the precomputed ensemble vectors above
+        // (`rqm/population.md` Computation). Fail loudly if a future print
+        // path bypasses the precompute instead of printing a silent dash.
+        Column::Pop | Column::PopEl | Column::PopElCorr | Column::PopGCorr => {
+            unreachable!("population column {} reached format_cell", column.label())
+        }
     }
 }
 
@@ -1010,8 +1087,9 @@ fn splitmix64(state: &mut u64) -> u64 {
 }
 
 /// Group members in order of first appearance; each inner vector holds
-/// record indices in current order.
-fn group_indices(records: &[Record], grouping: Grouping) -> Vec<Vec<usize>> {
+/// record indices in current order. Shared with the population columns
+/// (`rqm/population.md` Computation).
+pub(crate) fn group_indices(records: &[Record], grouping: Grouping) -> Vec<Vec<usize>> {
     match grouping {
         Grouping::Unit => vec![(0..records.len()).collect()],
         Grouping::Composition => {

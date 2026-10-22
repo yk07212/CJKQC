@@ -268,9 +268,9 @@ binding column exists.
 - Vapor-depletion or Kelvin-equation self-consistency beyond `--cnt`'s
   (N−1)/N scaling: the given concentrations are taken as fixed inputs, not
   solved for.
-- Boltzmann-population and other ensemble-derived properties: future work;
-  like formation values, they compute on the run's final record set, never
-  on the pre-pipeline database.
+- Boltzmann-population and other ensemble-derived properties beyond the
+  formation sections: `rqm/population.md` computes populations on the run's
+  final record set, like the formation values.
 
 ## Gherkin Scenarios <!-- rq-077d9eed -->
 

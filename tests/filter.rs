@@ -3,8 +3,8 @@
 //! CLI-shaped scenarios live in `tests/cli.rs`.
 
 use complied_jkqc::filter::{
-    apply_filters, extract_matches, parse_extract_query, property_value, CmpOp, Cutoff,
-    ExtractMode, FilterSpec, Mode, Property, SortKey,
+    apply_filters, extract_matches, parse_extract_query, print_table, property_value, CmpOp,
+    Column, Cutoff, ExtractMode, FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
 use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
 use complied_jkqc::{Components, Geometry, Record, RecordStatus, UniqKey, UniqMetric, UniqMode};
@@ -491,9 +491,6 @@ fn property_values_cover_the_cutoff_properties() {
 // Milestone 6: Gibbs-valued stages (rqm/thermo.md, rqm/filtering.md).
 // ---------------------------------------------------------------------------
 
-use complied_jkqc::filter::print_table;
-use complied_jkqc::filter::Column;
-use complied_jkqc::filter::Unit;
 use complied_jkqc::thermo::thermochemistry;
 
 fn default_conditions() -> ThermoConditions {
@@ -632,6 +629,7 @@ fn energy_columns_print_kcal_mol_under_unit() {
         &columns,
         &ThermoMemo::default(),
         Unit::Kcal,
+        Grouping::Composition,
     );
     let thermo = thermochemistry(&record, &default_conditions()).unwrap();
     let per_hartree = complied_jkqc::KCAL_MOL_PER_HARTREE;

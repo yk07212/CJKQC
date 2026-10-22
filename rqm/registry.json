@@ -87,6 +87,18 @@
     "title": "multiplicity",
     "type": "api-item"
   },
+  "rq-032b5e42": {
+    "decl": "Scenario: --pop el prints the electronic-based column",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--pop el prints the electronic-based column",
+    "type": "scenario"
+  },
   "rq-033ff671": {
     "decl": "Scenario: A file whose head matches a registered parser is parsed by it",
     "file": "parser-framework",
@@ -195,6 +207,14 @@
     "title": "Settings flags alone do not make a visible outcome",
     "type": "scenario"
   },
+  "rq-05c32f0e": {
+    "decl": "### Types",
+    "file": "population",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-05e6abe2": {
     "decl": "## Gherkin Scenarios",
     "file": "thermo",
@@ -292,6 +312,18 @@
       }
     ],
     "title": "--formation-corr alone is a visible outcome",
+    "type": "scenario"
+  },
+  "rq-09f8b051": {
+    "decl": "Scenario: An unknown level is a usage error",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unknown level is a usage error",
     "type": "scenario"
   },
   "rq-0a2ed6f8": {
@@ -405,6 +437,34 @@
     "refs": [],
     "title": "Crate Layout",
     "type": "section"
+  },
+  "rq-0c46871d": {
+    "decl": "Scenario: The population columns sit in canonical order",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The population columns sit in canonical order",
+    "type": "scenario"
+  },
+  "rq-0c93ce7a": {
+    "decl": "Scenario: Repeating one level prints its column once",
+    "file": "population",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Repeating one level prints its column once",
+    "type": "scenario"
   },
   "rq-0cc3c80f": {
     "decl": "- `Program` — a program token: a wrapper over a `&'static str` lowercase",
@@ -598,6 +658,19 @@
     "title": "DbError",
     "type": "api-item"
   },
+  "rq-12614633": {
+    "decl": "## Numerics",
+    "file": "population",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Numerics",
+    "type": "section"
+  },
   "rq-12d8fdf2": {
     "decl": "## Mass Table",
     "file": "uniqueness",
@@ -686,6 +759,14 @@
     "refs": [],
     "title": "K_B",
     "type": "api-item"
+  },
+  "rq-1514262e": {
+    "decl": "## Level Parity",
+    "file": "population",
+    "level": 2,
+    "refs": [],
+    "title": "Level Parity",
+    "type": "section"
   },
   "rq-157f85ee": {
     "decl": "- `electronic_energy` — the boxed final line `| TOTAL ENERGY <value> Eh |`",
@@ -1190,6 +1271,18 @@
     "title": "- `tests/thermo.rs` tests the derivation as pure functions against",
     "type": "anchor"
   },
+  "rq-1ee82da7": {
+    "decl": "Scenario: A record without a correction is undefined at the corrected levels alone",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without a correction is undefined at the corrected levels alone",
+    "type": "scenario"
+  },
   "rq-1f63ac38": {
     "decl": "Scenario: The ct column prints components without separators",
     "file": "filtering",
@@ -1343,6 +1436,14 @@
     "title": "Feature: Geometric Metrics and Property Uniqueness",
     "type": "file"
   },
+  "rq-22bb815b": {
+    "decl": "### Functions",
+    "file": "population",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
   "rq-22e7999c": {
     "decl": "### Crate Layout",
     "file": "formation",
@@ -1458,6 +1559,18 @@
       }
     ],
     "title": "Merge with a missing input writes nothing",
+    "type": "scenario"
+  },
+  "rq-2415978d": {
+    "decl": "Scenario: --select renormalizes over the survivors",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--select renormalizes over the survivors",
     "type": "scenario"
   },
   "rq-2486bcc8": {
@@ -1675,6 +1788,18 @@
     "title": "Appended records round-trip",
     "type": "scenario"
   },
+  "rq-2c1cd4e2": {
+    "decl": "Scenario: --conc leaves populations alone",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--conc leaves populations alone",
+    "type": "scenario"
+  },
   "rq-2c1dac26": {
     "decl": "- `LoadOutcome` — `records: Vec<Record>` (valid records, in file order) and",
     "file": "database",
@@ -1790,6 +1915,14 @@
     "title": "Components read from a JSON object",
     "type": "scenario"
   },
+  "rq-2e5e70c1": {
+    "decl": "## Out of Scope",
+    "file": "population",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
   "rq-2f2ca923": {
     "decl": "Scenario: Uniq implies sorting by energy",
     "file": "filtering",
@@ -1865,6 +1998,14 @@
     ],
     "title": "Uppercase codes resolve and differ from lowercase ones",
     "type": "scenario"
+  },
+  "rq-312442a6": {
+    "decl": "## Crate Layout",
+    "file": "population",
+    "level": 2,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
   },
   "rq-3172eb32": {
     "decl": "Scenario: A large file yields disjoint line-aligned windows",
@@ -2075,6 +2216,18 @@
     "title": "The MRCC banner is detected",
     "type": "scenario"
   },
+  "rq-33c2faa3": {
+    "decl": "Scenario: A saddle point pops under --makereal",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A saddle point pops under --makereal",
+    "type": "scenario"
+  },
   "rq-33d65b8c": {
     "decl": "### Functions",
     "file": "database",
@@ -2082,6 +2235,18 @@
     "refs": [],
     "title": "Functions",
     "type": "section"
+  },
+  "rq-33dafbb7": {
+    "decl": "Scenario: A record without an electronic energy prints - at every level",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without an electronic energy prints - at every level",
+    "type": "scenario"
   },
   "rq-340e4add": {
     "decl": "### Functions",
@@ -2169,6 +2334,19 @@
     ],
     "title": "The version banner is detected",
     "type": "scenario"
+  },
+  "rq-35d66314": {
+    "decl": "## Bases and Flags",
+    "file": "population",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Bases and Flags",
+    "type": "section"
   },
   "rq-35f562fe": {
     "decl": "### Extraction",
@@ -2521,6 +2699,18 @@
     "title": "--add-correction alone is not a visible outcome",
     "type": "scenario"
   },
+  "rq-40e5e575": {
+    "decl": "Scenario: --noname pools every record into one population",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--noname pools every record into one population",
+    "type": "scenario"
+  },
   "rq-41528ecc": {
     "decl": "## ORCA Reference Values",
     "file": "thermo",
@@ -2811,6 +3001,18 @@
     "title": "A single-frame file yields its geometry",
     "type": "scenario"
   },
+  "rq-49b5e21e": {
+    "decl": "Scenario: Populations are per composition group",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Populations are per composition group",
+    "type": "scenario"
+  },
   "rq-49f1442c": {
     "decl": "Scenario: A label comment in a pattern is ignored",
     "file": "filtering",
@@ -2843,6 +3045,18 @@
     "title": "last_line_where falls back to the head",
     "type": "scenario"
   },
+  "rq-4c429ba4": {
+    "decl": "Scenario: The corrected basis splits like the plain basis at equal gaps",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected basis splits like the plain basis at equal gaps",
+    "type": "scenario"
+  },
   "rq-4c73955a": {
     "decl": "## Out of Scope",
     "file": "parsers/xyz",
@@ -2861,6 +3075,34 @@
       }
     ],
     "title": "Uniqueness rounds Gibbs like any metric",
+    "type": "scenario"
+  },
+  "rq-4d3860a0": {
+    "decl": "Scenario: Bare --pop prints the Gibbs-based column",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Bare --pop prints the Gibbs-based column",
+    "type": "scenario"
+  },
+  "rq-4d3ba8f2": {
+    "decl": "Scenario: The corrected levels print their own columns",
+    "file": "population",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected levels print their own columns",
     "type": "scenario"
   },
   "rq-4da7b314": {
@@ -3099,6 +3341,26 @@
     ],
     "title": "An unmatched record keeps its stored correction",
     "type": "scenario"
+  },
+  "rq-540b4c18": {
+    "decl": "- `populations(records: &[Record], level: PopLevel, memo: &ThermoMemo,",
+    "file": "population",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/population.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "populations",
+    "type": "api-item"
   },
   "rq-54536800": {
     "decl": "Scenario: A dash argument is an ordinary path, not stdin",
@@ -3351,6 +3613,18 @@
       }
     ],
     "title": "Partial lines at the window seams are dropped",
+    "type": "scenario"
+  },
+  "rq-5a5c97f2": {
+    "decl": "Scenario: pop_level_value resolves all four levels through one path",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "pop_level_value resolves all four levels through one path",
     "type": "scenario"
   },
   "rq-5a78fd5d": {
@@ -3952,6 +4226,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-6c00aaee": {
+    "decl": "- `pop_level_value(record: &Record, level: PopLevel, memo: &ThermoMemo) -> Option<f64>`",
+    "file": "population",
+    "refs": [
+      {
+        "file": "src/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "pop_level_value",
+    "type": "api-item"
+  },
   "rq-6c1202df": {
     "decl": "- `rotational_symmetry_number` — the value of the last",
     "file": "parsers/gaussian",
@@ -4065,6 +4351,18 @@
       }
     ],
     "title": "An empty composition part does not resolve",
+    "type": "scenario"
+  },
+  "rq-6f2e5003": {
+    "decl": "Scenario: Sorting never changes population values",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Sorting never changes population values",
     "type": "scenario"
   },
   "rq-6f3e4732": {
@@ -4574,6 +4872,18 @@
     "title": "Fragment Signature",
     "type": "section"
   },
+  "rq-7efc4513": {
+    "decl": "Scenario: Two conformers split by their Boltzmann factors",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Two conformers split by their Boltzmann factors",
+    "type": "scenario"
+  },
   "rq-7f65572f": {
     "decl": "Scenario: The --unit flag converts the energy columns to kcal/mol",
     "file": "thermo",
@@ -4777,6 +5087,18 @@
     "title": "An elided frequency header falls back to the visible rows",
     "type": "scenario"
   },
+  "rq-82fee485": {
+    "decl": "Scenario: --glob leaves each survivor at the full population",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--glob leaves each survivor at the full population",
+    "type": "scenario"
+  },
   "rq-83c62ce0": {
     "decl": "### Crate Layout",
     "file": "detection",
@@ -4815,7 +5137,7 @@
     "type": "scenario"
   },
   "rq-8420b870": {
-    "decl": "- `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit) -> String`",
+    "decl": "- `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit, grouping: Grouping) -> String`",
     "file": "filtering",
     "refs": [
       {
@@ -5118,6 +5440,18 @@
     "title": "Without --unit the energies remain hartree",
     "type": "scenario"
   },
+  "rq-8bae3ee9": {
+    "decl": "Scenario: --unit leaves populations alone",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--unit leaves populations alone",
+    "type": "scenario"
+  },
   "rq-8c38a83e": {
     "decl": "## Out of Scope",
     "file": "parsers/mrcc",
@@ -5410,6 +5744,22 @@
     "title": "A value outside the grammar is a usage error",
     "type": "scenario"
   },
+  "rq-94d96047": {
+    "decl": "Scenario: Records without components form their own group",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Records without components form their own group",
+    "type": "scenario"
+  },
   "rq-9503bcb2": {
     "decl": "- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
     "file": "formation",
@@ -5496,6 +5846,14 @@
     ],
     "title": "Correction",
     "type": "api-item"
+  },
+  "rq-95fd0e27": {
+    "decl": "## Gherkin Scenarios",
+    "file": "population",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
   },
   "rq-9613ceb9": {
     "decl": "## Out of Scope",
@@ -5712,6 +6070,18 @@
     "title": "Crate Layout",
     "type": "section"
   },
+  "rq-9b20809b": {
+    "decl": "Scenario: A member far above the minimum underflows to zero",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A member far above the minimum underflows to zero",
+    "type": "scenario"
+  },
   "rq-9b28d28a": {
     "decl": "Scenario: Missing --out is still required without manipulation flags",
     "file": "filtering",
@@ -5782,6 +6152,22 @@
     ],
     "title": "ok",
     "type": "api-item"
+  },
+  "rq-9c420929": {
+    "decl": "Scenario: Repeating --pop prints one column per level in canonical order",
+    "file": "population",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Repeating --pop prints one column per level in canonical order",
+    "type": "scenario"
   },
   "rq-9c420eee": {
     "decl": "Scenario: An unknown status value fails deserialization",
@@ -5878,6 +6264,18 @@
     ],
     "title": "Undefined thermochemistry prints as a dash",
     "type": "scenario"
+  },
+  "rq-9e28654c": {
+    "decl": "# Feature: Boltzmann Population Columns",
+    "file": "population",
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Boltzmann Population Columns",
+    "type": "file"
   },
   "rq-9e36a525": {
     "decl": "### Functions",
@@ -6472,6 +6870,18 @@
     "title": "The caret power syntax is not part of the grammar",
     "type": "scenario"
   },
+  "rq-ae4f8a69": {
+    "decl": "Scenario: Ties share the population",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Ties share the population",
+    "type": "scenario"
+  },
   "rq-aeb0d510": {
     "decl": "- `append_records(path: &Path, records: &[Record]) -> Result<(), DbError>`",
     "file": "database",
@@ -6600,6 +7010,18 @@
     "title": "Appending zero records to a missing file creates nothing",
     "type": "scenario"
   },
+  "rq-b19284dd": {
+    "decl": "Scenario: A record without frequencies has defined popel and undefined pop",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without frequencies has defined popel and undefined pop",
+    "type": "scenario"
+  },
   "rq-b1b26ed5": {
     "decl": "Scenario: Append preserves existing content",
     "file": "database",
@@ -6623,6 +7045,18 @@
     ],
     "title": "tests",
     "type": "api-item"
+  },
+  "rq-b25a95ec": {
+    "decl": "Scenario: The temperature shifts the split",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The temperature shifts the split",
+    "type": "scenario"
   },
   "rq-b28b6e69": {
     "decl": "- `ParserRegistry` — the ordered set of parsers.",
@@ -6789,6 +7223,18 @@
     "title": "Under noname, extract compares names verbatim",
     "type": "scenario"
   },
+  "rq-b6a6c98c": {
+    "decl": "Scenario: --pop alone is a visible outcome",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--pop alone is a visible outcome",
+    "type": "scenario"
+  },
   "rq-b7081115": {
     "decl": "Scenario: A head that opens xyz-shaped wins over a banner further down",
     "file": "parser-framework",
@@ -6886,6 +7332,27 @@
     "title": "metric_radius_of_gyration",
     "type": "api-item"
   },
+  "rq-b7d07857": {
+    "decl": "## Computation",
+    "file": "population",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Computation",
+    "type": "section"
+  },
   "rq-b81cce20": {
     "decl": "Scenario: A manipulation with neither --out nor a print flag is a usage error",
     "file": "filtering",
@@ -6939,6 +7406,18 @@
     ],
     "title": "Atomic numbers map to title-case element symbols",
     "type": "scenario"
+  },
+  "rq-b954f3fb": {
+    "decl": "- `PopLevel` — `El | G | ElCorr | GCorr`, the population bases; bare",
+    "file": "population",
+    "refs": [
+      {
+        "file": "src/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "PopLevel",
+    "type": "api-item"
   },
   "rq-b992e561": {
     "decl": "Scenario: A nameless record is left unchanged",
@@ -7650,6 +8129,26 @@
     "title": "--makereal applies the participation test after flipping",
     "type": "scenario"
   },
+  "rq-cd221e62": {
+    "decl": "- `parse_pop_level(text: &str) -> Option<PopLevel>` — the level grammar",
+    "file": "population",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/population.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_pop_level",
+    "type": "api-item"
+  },
   "rq-cd33a3de": {
     "decl": "Scenario: Non-ok records are excluded and counted",
     "file": "filtering",
@@ -7727,6 +8226,18 @@
       }
     ],
     "title": "A degenerate geometry prints dashes, not infinities",
+    "type": "scenario"
+  },
+  "rq-d0b32669": {
+    "decl": "Scenario: A group where no record defines the level prints all dashes",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A group where no record defines the level prints all dashes",
     "type": "scenario"
   },
   "rq-d0ee2621": {
@@ -8152,6 +8663,18 @@
     "refs": [],
     "title": "Functions",
     "type": "section"
+  },
+  "rq-df30182b": {
+    "decl": "Scenario: --select 1 leaves the survivor at the full population",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--select 1 leaves the survivor at the full population",
+    "type": "scenario"
   },
   "rq-df4e27e8": {
     "decl": "Scenario: The registry exposes the five energy keys",
@@ -8601,6 +9124,14 @@
     "title": "program_version",
     "type": "api-item"
   },
+  "rq-e9bd21e0": {
+    "decl": "## Feature API",
+    "file": "population",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
   "rq-ea151d18": {
     "decl": "### Types",
     "file": "filtering",
@@ -8749,6 +9280,18 @@
       }
     ],
     "title": "The corpus fixture conforms",
+    "type": "scenario"
+  },
+  "rq-ebf60f52": {
+    "decl": "Scenario: A very high temperature flattens the populations",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A very high temperature flattens the populations",
     "type": "scenario"
   },
   "rq-ec125e27": {
@@ -9376,6 +9919,18 @@
     ],
     "title": "Corrected Values",
     "type": "section"
+  },
+  "rq-fd6f3491": {
+    "decl": "Scenario: A print-only run sees every loaded record",
+    "file": "population",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A print-only run sees every loaded record",
+    "type": "scenario"
   },
   "rq-fd767996": {
     "decl": "Scenario: A hidden geometry table leaves geometry absent",

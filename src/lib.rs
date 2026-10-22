@@ -13,6 +13,7 @@ pub mod filter;
 pub mod formation;
 pub mod metrics;
 pub mod parser;
+pub mod population;
 pub mod reacted;
 pub mod record;
 pub mod thermo;
@@ -55,6 +56,9 @@ pub use formation::{
     print_formation_section, ConcConditions, ConcSpec, ConcUnit, CorrectedMonomerReferences,
     Formation, MonomerReferences,
 };
+
+// rq-9e28654c population surface (rqm/population.md)
+pub use population::{parse_pop_level, pop_level_value, populations, PopLevel};
 
 // rq-bf062c8f filtering surface (rqm/filtering.md)
 pub use filter::{

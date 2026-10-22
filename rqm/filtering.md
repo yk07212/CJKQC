@@ -65,6 +65,9 @@ not trigger it.
 - `--noname` collapses everything into a single global group;
   `--extract`/`--nextract` then compare their patterns verbatim against
   each record's `name` (no ranges, wildcards, or zero-count rules).
+- The population columns (`rqm/population.md`) group by the same rule: one
+  population per composition group, or one global population under
+  `--noname`.
 - Groups are processed in order of first appearance; results preserve
   global record order within each stage.
 
@@ -172,14 +175,17 @@ the property set and units:
 
 - Printing follows JKQC: every printable column has its own flag —
   `--name`, `--status`, `--program`, `--command`, `--correction`, `--el`,
-  `--zpe`, `--h`, `--s`, `--g`, `--elcorr`, `--hcorr`, `--gcorr`, `--rg`,
-  `--mass`, `--dip`, `--charge`, `--multiplicity`, `--natoms`, `--lf`,
-  `--nfreq`, `--nimag`, `--components`, `--ct`.
+  `--zpe`, `--h`, `--s`, `--g`, `--elcorr`, `--hcorr`, `--gcorr`, `--pop`,
+  `--rg`, `--mass`, `--dip`, `--charge`, `--multiplicity`, `--natoms`,
+  `--lf`, `--nfreq`, `--nimag`, `--components`, `--ct`.
   There is no default
   selection: no print flag means no table is printed at all. The
   `--formation` flag (`rqm/formation.md`) prints a section after the
   table; it selects no column and counts as a print flag for the
-  visible-outcome rule.
+  visible-outcome rule. The `--pop` flag (`rqm/population.md`) selects the
+  population columns; it takes an optional level argument (`el`, `g`,
+  `elcorr`, `gcorr` — `g` when omitted) and is repeatable, one column per
+  requested level.
 - Columns always appear in the canonical order of that list, regardless
   of the order the flags were given. `--charge` and `--multiplicity`
   denote printing here; the composition-override flags of the hybrid
@@ -198,7 +204,9 @@ the property set and units:
   as `2am+3sa`-style alphabetical pairs; `ct` as the same alphabetical
   pairs with the `+` separators dropped (`2am3sa`), undefined when the
   record has no components or an empty map; an undefined or absent value
-  prints `-`. The `program` column prints the program token and the
+  prints `-`. The population columns `pop`, `popel`, `popelcorr`,
+  `popgcorr` (`rqm/population.md`) print dimensionless probabilities with
+  4 decimals. The `program` column prints the program token and the
   version joined by one space (`xtb 6.7.1`), and the token alone when the
   version is absent. The `command` column wraps the stored command line
   in double quotes, since the value contains spaces and the table's
@@ -249,7 +257,8 @@ the property set and units:
   `ElCorr` and `GCorr` via `rqm/correction.md`.
 - `SortKey` — `El | G | ElCorr | GCorr | Rg | Mass | Name`. <!-- rq-953da4ce -->
 - `Column` — the print columns above, `Zpe | H | S | G | ElCorr | <!-- rq-38b619ff -->
-  HCorr | GCorr | Correction` included.
+  HCorr | GCorr | Correction` included, plus the population columns
+  `Pop | PopEl | PopElCorr | PopGCorr` (`rqm/population.md`).
 - `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the <!-- rq-8718aee5 -->
   `--unit` flag is present, `Au` (hartree) otherwise.
 - `ExtractError` — parse failure detail for usage reporting. <!-- rq-881749dc -->
@@ -274,7 +283,10 @@ the property set and units:
   silently dropping records (the CLI pre-validates, so callers see `Ok`);
   under `Unit` grouping extract compares names verbatim and cannot fail to
   parse.
-- `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit) -> String` <!-- rq-8420b870 -->
+- `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit, grouping: Grouping) -> String` <!-- rq-8420b870 -->
+  — `grouping` is the run's grouping (`rqm/filtering.md` Grouping): the
+  population columns (`rqm/population.md`) pool per composition group, or
+  into one global pool under `--noname`.
 
 ### Crate Layout <!-- rq-bf062c8f -->
 

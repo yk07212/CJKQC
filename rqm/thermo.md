@@ -295,8 +295,9 @@ printed constants, pinning the moments-of-inertia path as well.
   (10¹⁶ K and above) are accepted; the Numerics section states the
   finite-value range, and derivations that turn non-finite beyond it are
   undefined (Definedness).
-- Boltzmann-population or statistical-mechanics reporting beyond the
-  quantities above (`rqm/ARCHITECTURE.md` open question).
+- Boltzmann-population reporting: an ensemble property of the printed
+  record set, computed at printing time by `rqm/population.md` — never a
+  part of this per-record derivation.
 - Formation/binding energies from monomer references: `rqm/formation.md`.
 - Storing any derived quantity in a record or database.
 

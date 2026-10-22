@@ -3697,3 +3697,470 @@ fn an_absurd_magnitude_leaves_the_level_undefined_rather_than_infinite() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Population scenarios from `rqm/population.md` that are CLI-shaped.
+// ---------------------------------------------------------------------------
+
+/// k_B T in Eh at 298.15 K (`rqm/thermo.md` Constants).
+fn pop_kbt() -> f64 {
+    complied_jkqc::K_B * 298.15 / complied_jkqc::E_HARTREE
+}
+
+/// A conformer line with defined thermochemistry (hexagon geometry,
+/// twelve 1000 cm^-1 modes), optional composition, and optionally a
+/// stored correction.
+fn conformer_line(
+    name: &str,
+    energy: Option<f64>,
+    comps: &[(&str, u32)],
+    correction_energy: Option<f64>,
+) -> String {
+    let mut coordinates = Vec::new();
+    for atom in 0..6 {
+        let angle = atom as f64 * std::f64::consts::PI / 3.0;
+        coordinates.extend([angle.cos(), angle.sin(), 0.0]);
+    }
+    let mut frequencies = vec![0.0; 6];
+    frequencies.resize(18, 1000.0);
+    let mut record = Record {
+        name: Some(name.to_string()),
+        electronic_energy: energy,
+        geometry: Some(complied_jkqc::Geometry {
+            symbols: vec!["C".to_string(); 6],
+            coordinates,
+        }),
+        vibrational_frequencies: Some(frequencies),
+        ..Record::default()
+    };
+    if !comps.is_empty() {
+        record.components = Some(
+            comps
+                .iter()
+                .map(|(code, count)| (code.to_string(), *count))
+                .collect(),
+        );
+    }
+    if let Some(energy) = correction_energy {
+        record.correction = Some(Correction {
+            energy,
+            program: None,
+            program_version: None,
+            commands: None,
+            kind: "sp".to_string(),
+        });
+    }
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// A single-point line: an electronic energy, no geometry, no frequencies.
+fn single_point_line(name: &str, energy: f64) -> String {
+    serde_json::to_string(&Record {
+        name: Some(name.to_string()),
+        electronic_energy: Some(energy),
+        ..Record::default()
+    })
+    .expect("serialization")
+}
+
+/// The population column of a printed table as parsed f64 values.
+fn pop_column(text: &str, column: usize) -> Vec<Option<f64>> {
+    let mut values = Vec::new();
+    for line in text.lines().skip(1) {
+        let cell = line.split(' ').nth(column).expect("cell");
+        values.push(if cell == "-" {
+            None
+        } else {
+            Some(cell.parse::<f64>().expect("population value"))
+        });
+    }
+    values
+}
+
+#[test]
+// rq-4d3860a0
+fn bare_pop_prints_the_gibbs_based_column() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[conformer_line("one", Some(-50.0), &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "pop\n1.0000");
+}
+
+#[test]
+// rq-032b5e42
+fn pop_el_prints_the_electronic_based_column() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[single_point_line("sp", -50.0)]);
+    let run = cjkqc(&[&db, "--pop", "el"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "popel\n1.0000");
+}
+
+#[test]
+// rq-4d3ba8f2
+fn the_corrected_levels_print_their_own_columns() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[conformer_line(
+            "one",
+            Some(-50.0),
+            &[("am", 1)],
+            Some(-49.0),
+        )],
+    );
+    let run = cjkqc(&[&db, "--pop", "elcorr", "--pop", "gcorr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "popelcorr popgcorr\n1.0000 1.0000");
+}
+
+#[test]
+// rq-9c420929
+fn repeating_pop_prints_one_column_per_level_in_canonical_order() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[conformer_line("one", Some(-50.0), &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--pop", "el", "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "pop popel\n1.0000 1.0000");
+}
+
+#[test]
+// rq-0c93ce7a
+fn repeating_one_level_prints_its_column_once() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[conformer_line("one", Some(-50.0), &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--pop", "--pop", "g"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "pop\n1.0000");
+}
+
+#[test]
+// rq-09f8b051
+fn an_unknown_level_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[conformer_line("one", Some(-50.0), &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--pop", "x"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test]
+// rq-b6a6c98c
+fn pop_alone_is_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[conformer_line("one", Some(-50.0), &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stdout(&run).starts_with("pop\n"), "{}", stdout(&run));
+    assert!(!dir.join("out.jsonl").exists());
+}
+
+#[test]
+// rq-0c46871d
+fn the_population_columns_sit_in_canonical_order() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[conformer_line("one", Some(-50.0), &[("am", 1)], None)],
+    );
+    let run = cjkqc(&[&db, "--rg", "--pop", "--pop", "el", "--el"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let header = stdout(&run).lines().next().unwrap().to_string();
+    assert_eq!(header, "el pop popel rg");
+}
+
+#[test]
+// rq-2415978d
+fn select_renormalizes_over_the_survivors() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("mid", Some(-50.0 + gap), &[("am", 1)], None),
+            conformer_line("high", Some(-50.0 + 2.0 * gap), &[("am", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "g", "--select", "2", "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let values = pop_column(&stdout(&run), 0);
+    assert!((values[0].unwrap() - 0.7311).abs() < 5e-5, "{values:?}");
+    assert!((values[1].unwrap() - 0.2689).abs() < 5e-5, "{values:?}");
+    let text = stdout(&run);
+    assert!(
+        !text.contains("0.6652") && !text.contains("0.2447"),
+        "{text}"
+    );
+}
+
+#[test]
+// rq-df30182b
+fn select_1_leaves_the_survivor_at_the_full_population() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("mid", Some(-50.0 + gap), &[("am", 1)], None),
+            conformer_line("high", Some(-50.0 + 2.0 * gap), &[("am", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "g", "--select", "1", "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "pop\n1.0000");
+}
+
+#[test]
+// rq-82fee485
+fn glob_leaves_each_survivor_at_the_full_population() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("am1", Some(-50.0), &[("am", 1)], None),
+            conformer_line("am2", Some(-50.0 + gap), &[("am", 1)], None),
+            conformer_line("sa1", Some(-60.0), &[("sa", 1)], None),
+            conformer_line("sa2", Some(-60.0 + gap), &[("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--glob", "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    for value in pop_column(&stdout(&run), 0) {
+        assert_eq!(value, Some(1.0), "{}", stdout(&run));
+    }
+}
+
+#[test]
+// rq-40e5e575
+fn noname_pools_every_record_into_one_population() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("am1", Some(-50.0), &[("am", 1)], None),
+            conformer_line("am2", Some(-50.0 + gap), &[("am", 1)], None),
+            conformer_line("sa1", Some(-60.0), &[("sa", 1)], None),
+            conformer_line("sa2", Some(-60.0 + gap), &[("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--noname", "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let total: f64 = pop_column(&stdout(&run), 0)
+        .into_iter()
+        .map(|value| value.expect("defined in a global pool"))
+        .sum();
+    assert!((total - 1.0).abs() < 1e-9, "{total}");
+}
+
+#[test]
+// rq-94d96047
+fn records_without_components_form_their_own_group() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("first", Some(-50.0), &[], None),
+            conformer_line("second", Some(-50.0 + pop_kbt() * 3.0_f64.ln()), &[], None),
+            conformer_line("monomer", Some(-60.0), &[("am", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--pop", "el"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let values = pop_column(&stdout(&run), 0);
+    assert!((values[0].unwrap() - 0.75).abs() < 5e-5, "{values:?}");
+    assert!((values[1].unwrap() - 0.25).abs() < 5e-5, "{values:?}");
+    assert_eq!(values[2], Some(1.0));
+}
+
+#[test]
+// rq-6f2e5003
+fn sorting_never_changes_population_values() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("mid", Some(-50.0 + gap), &[("am", 1)], None),
+            conformer_line("high", Some(-50.0 + 2.0 * gap), &[("am", 1)], None),
+        ],
+    );
+    let ascending = cjkqc(&[&db, "--sort", "g", "--pop"]);
+    let descending = cjkqc(&[&db, "--sort", "g", "--reverse", "--pop"]);
+    assert_eq!(ascending.status.code(), Some(0), "{}", stderr(&ascending));
+    assert_eq!(descending.status.code(), Some(0), "{}", stderr(&descending));
+    let mut up = pop_column(&stdout(&ascending), 0);
+    let mut down = pop_column(&stdout(&descending), 0);
+    up.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    down.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    assert_eq!(up, down);
+}
+
+#[test]
+// rq-fd6f3491
+fn a_print_only_run_sees_every_loaded_record() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("high", Some(-50.0 + gap), &[("am", 1)], None),
+            comp_line("broken", Some(-70.0), &[("am", 1)], RecordStatus::Failed),
+        ],
+    );
+    let run = cjkqc(&[&db, "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let values = pop_column(&stdout(&run), 0);
+    assert_eq!(values.len(), 3, "{}", stdout(&run));
+    assert_eq!(values[2], None, "{}", stdout(&run));
+    let total: f64 = values[0].unwrap() + values[1].unwrap();
+    assert!((total - 1.0).abs() < 1e-9, "{total}");
+}
+
+#[test]
+// rq-33c2faa3
+fn a_saddle_point_pops_under_makereal() {
+    let dir = temp_dir();
+    let mut saddle = conformer_line("saddle", Some(-50.0), &[("am", 1)], None);
+    let mut record: Record = serde_json::from_str(&saddle).expect("record");
+    record.vibrational_frequencies = Some(vec![1000.0, -300.0]);
+    saddle = serde_json::to_string(&record).expect("serialization");
+    let minimum = conformer_line("minimum", Some(-50.5), &[("am", 1)], None);
+    let db = database_in(&dir, &[saddle, minimum]);
+    let without = cjkqc(&[&db, "--pop"]);
+    assert_eq!(without.status.code(), Some(0), "{}", stderr(&without));
+    let values = pop_column(&stdout(&without), 0);
+    assert_eq!(values[0], None, "{}", stdout(&without));
+    assert_eq!(values[1], Some(1.0), "{}", stdout(&without));
+    let with = cjkqc(&[&db, "--pop", "--makereal"]);
+    assert_eq!(with.status.code(), Some(0), "{}", stderr(&with));
+    let values = pop_column(&stdout(&with), 0);
+    assert!(
+        values[0].is_some() && values[1].is_some(),
+        "{}",
+        stdout(&with)
+    );
+    let total = values[0].unwrap() + values[1].unwrap();
+    assert!((total - 1.0).abs() < 1e-9, "{total}");
+}
+
+#[test]
+// rq-b25a95ec
+fn the_temperature_shifts_the_split() {
+    let dir = temp_dir();
+    let gap = pop_kbt() * 3.0_f64.ln();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("high", Some(-50.0 + gap), &[("am", 1)], None),
+        ],
+    );
+    let room = cjkqc(&[&db, "--pop"]);
+    assert_eq!(room.status.code(), Some(0), "{}", stderr(&room));
+    let values = pop_column(&stdout(&room), 0);
+    assert!((values[0].unwrap() - 0.75).abs() < 5e-5, "{values:?}");
+    assert!((values[1].unwrap() - 0.25).abs() < 5e-5, "{values:?}");
+    let hot = cjkqc(&[&db, "--pop", "--temp", "596.3"]);
+    assert_eq!(hot.status.code(), Some(0), "{}", stderr(&hot));
+    let values = pop_column(&stdout(&hot), 0);
+    assert!((values[0].unwrap() - 0.6340).abs() < 5e-4, "{values:?}");
+    assert!((values[1].unwrap() - 0.3660).abs() < 5e-4, "{values:?}");
+}
+
+#[test]
+// rq-ebf60f52
+fn a_very_high_temperature_flattens_the_populations() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("high", Some(-50.0 + 1e-6), &[("am", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--temp", "100000", "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    for value in pop_column(&stdout(&run), 0) {
+        assert!((value.unwrap() - 0.5).abs() < 1e-5, "{}", stdout(&run));
+    }
+}
+
+#[test]
+// rq-9b20809b
+fn a_member_far_above_the_minimum_underflows_to_zero() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("mid", Some(-50.0 + gap), &[("am", 1)], None),
+            conformer_line("far", Some(-50.0 + 400.0 * gap), &[("am", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--pop"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    assert!(text.contains("0.7311"), "{text}");
+    assert!(text.contains("0.2689"), "{text}");
+    assert!(text.contains("0.0000"), "{text}");
+}
+
+#[test]
+// rq-8bae3ee9
+fn unit_leaves_populations_alone() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("high", Some(-50.0 + gap), &[("am", 1)], None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--pop"]);
+    let kcal = cjkqc(&[&db, "--pop", "--unit"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(kcal.status.code(), Some(0), "{}", stderr(&kcal));
+    assert_eq!(stdout(&plain), stdout(&kcal));
+}
+
+#[test]
+// rq-2c1cd4e2
+fn conc_leaves_populations_alone() {
+    let dir = temp_dir();
+    let gap = pop_kbt();
+    let db = database_in(
+        &dir,
+        &[
+            conformer_line("low", Some(-50.0), &[("am", 1)], None),
+            conformer_line("high", Some(-50.0 + gap), &[("am", 1)], None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--pop"]);
+    let shifted = cjkqc(&[&db, "--pop", "--conc", "am", "100ppt"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(shifted.status.code(), Some(0), "{}", stderr(&shifted));
+    assert_eq!(stdout(&plain), stdout(&shifted));
+}

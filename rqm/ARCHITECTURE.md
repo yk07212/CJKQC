@@ -156,8 +156,6 @@ Conformance harness:
 - The JKQC property vocabulary: which flags carry over 1:1, which are
   renamed, which dropped. Decided feature-by-feature in `/rr-plan`, but the
   overall flag surface shapes the CLI's feel.
-- Whether Boltzmann-population and statistical-mechanics reporting beyond
-  formation energies at a temperature belongs in v1.
 - Geometric uniqueness: which RMSD/alignment approach replaces ArbAlign,
   and whether it is a dependency or hand-rolled.
 - Record schema versioning: how a `.jsonl` record declares its schema

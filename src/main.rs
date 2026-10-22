@@ -23,6 +23,7 @@ use complied_jkqc::formation::{
 };
 use complied_jkqc::metrics::parse_uniq_mode;
 use complied_jkqc::parser::WindowBudget;
+use complied_jkqc::population::{parse_pop_level, PopLevel};
 use complied_jkqc::reacted::ReactedMode;
 use complied_jkqc::record::{Record, RecordStatus};
 use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
@@ -255,6 +256,16 @@ struct Cli {
     /// Print the Gibbs free energy from the attached correction energy.
     #[arg(long = "gcorr")]
     gcorr: bool,
+    /// Print a Boltzmann population column (rqm/population.md): the
+    /// fraction of the thermal ensemble each printed structure holds,
+    /// computed per composition group. LEVEL picks the energy basis: g
+    /// (Gibbs, the default), el (electronic), elcorr, or gcorr — JKQC's
+    /// -pop and -popEL. Repeatable, one column per requested level. A
+    /// space-separated value is eaten by the flag even when it is your
+    /// database path (CJKQC --pop db.jsonl fails): use --pop=LEVEL there,
+    /// or place --pop after the inputs.
+    #[arg(long = "pop", num_args = 0..=1, value_name = "LEVEL", default_missing_value = "g")]
+    pop: Vec<String>,
     /// Print the mass-weighted radius of gyration (Angstrom).
     #[arg(long = "rg")]
     rg: bool,
@@ -378,6 +389,26 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         return usage("cannot combine --reacted with --reacted2");
     }
 
+    // The --pop levels parse up front: bare --pop arrives as the default
+    // level `g` and an unknown level is a usage error
+    // (`rqm/population.md` Bases and Flags). Repeats dedupe into the
+    // columns' canonical order.
+    // rq-cd221e62 rq-35d66314
+    let mut pop_levels: Vec<PopLevel> = Vec::new();
+    for text in &cli.pop {
+        let Some(parsed) = parse_pop_level(text) else {
+            return usage(&format!(
+                "unknown population level `{text}` (expected el, g, elcorr, or gcorr)"
+            ));
+        };
+        pop_levels.push(parsed);
+    }
+    let pop_levels: Vec<PopLevel> = PopLevel::CANONICAL
+        .iter()
+        .copied()
+        .filter(|level| pop_levels.contains(level))
+        .collect();
+
     // Settings flags configure the derivations; invalid values are usage
     // errors (`rqm/thermo.md`).
     let temperature = cli.temp.unwrap_or(298.15);
@@ -424,6 +455,15 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 "--unit takes no value (got `{value}`); add it alone for kcal/mol"
             ));
         }
+    };
+    // The run's grouping: the population columns pool per composition
+    // group, or into one global pool under --noname
+    // (`rqm/population.md` Computation).
+    // rq-b7d07857
+    let grouping = if cli.noname {
+        Grouping::Unit
+    } else {
+        Grouping::Composition
     };
     // The `--conc` specs parse and validate up front: the VALUE grammar,
     // letter-only codes, and one spec per code are usage errors
@@ -495,6 +535,9 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         Column::ElCorr => cli.elcorr,
         Column::HCorr => cli.hcorr,
         Column::GCorr => cli.gcorr,
+        // Population columns are driven by the --pop levels, never by a
+        // boolean (`rqm/population.md` Bases and Flags).
+        Column::Pop | Column::PopEl | Column::PopElCorr | Column::PopGCorr => false,
         Column::Rg => cli.rg,
         Column::Mass => cli.mass,
         Column::Dip => cli.dip,
@@ -510,7 +553,13 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     let columns: Vec<Column> = Column::ALL
         .iter()
         .copied()
-        .filter(|column| set_print(*column))
+        .filter(|column| match column.pop_level() {
+            // The population columns join through the --pop levels
+            // (`rqm/population.md` Bases and Flags).
+            // rq-4d3ba8f2 rq-9c420929 rq-0c93ce7a
+            Some(level) => pop_levels.contains(&level),
+            None => set_print(*column),
+        })
         .collect();
     // `--formation` and `--formation-corr` print sections instead of
     // columns but still count as print flags for the visible-outcome rule
@@ -555,7 +604,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 }
             }
             if !columns.is_empty() {
-                println!("{}", print_table(&records, &columns, &memo, unit));
+                println!("{}", print_table(&records, &columns, &memo, unit, grouping));
             }
             // A print-only run has no --sort (that would be a
             // manipulation), so the references use the el ordering
@@ -650,11 +699,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         glob: cli.glob,
         shuffle: cli.shuffle,
         seed: cli.seed.unwrap_or(0),
-        grouping: if cli.noname {
-            Grouping::Unit
-        } else {
-            Grouping::Composition
-        },
+        grouping,
     };
     records = match apply_filters(&records, &spec, &memo) {
         Ok(records) => records,
@@ -674,7 +719,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     }
 
     if !columns.is_empty() {
-        println!("{}", print_table(&records, &columns, &memo, unit));
+        println!("{}", print_table(&records, &columns, &memo, unit, grouping));
     }
     // The formation sections print after the table, before the summary,
     // over the pipeline survivors (`rqm/formation.md`).
