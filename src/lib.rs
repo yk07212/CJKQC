@@ -51,10 +51,12 @@ pub use thermo::{
 
 // rq-f8ebbc84 formation surface (rqm/formation.md)
 pub use formation::{
-    collect_monomers, concentration_correction, corrected_formation_values,
-    corrected_monomer_references, formation_values, parse_conc_value, print_formation_corr_section,
-    print_formation_section, ConcConditions, ConcSpec, ConcUnit, CorrectedMonomerReferences,
-    Formation, MonomerReferences,
+    collapse_ensembles, collect_monomers, concentration_correction, corrected_collapse_ensembles,
+    corrected_ensemble_formation_values, corrected_ensemble_references, corrected_formation_values,
+    corrected_monomer_references, ensemble_formation_values, ensemble_references, formation_values,
+    parse_conc_value, print_formation_corr_ensembles, print_formation_corr_section,
+    print_formation_ensembles, print_formation_section, ConcConditions, ConcSpec, ConcUnit,
+    CorrectedMonomerReferences, Ensemble, Formation, MonomerReferences,
 };
 
 // rq-9e28654c population surface (rqm/population.md)

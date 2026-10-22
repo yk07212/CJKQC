@@ -545,3 +545,409 @@ fn cnt_sums_n_over_the_whole_components_map() {
     let expected = (2.0f64 / 3.0) * K_B * 298.15 * (100.0e-12_f64).ln() / E_HARTREE;
     assert!((concentration_correction(&components, &on, 298.15) - expected).abs() < 1e-18);
 }
+
+// --- Boltzmann-averaged sections (rqm/formation.md, rq-dd65e289) ---
+
+use complied_jkqc::correction::corrected_energy;
+use complied_jkqc::formation::{
+    collapse_ensembles, corrected_collapse_ensembles, corrected_ensemble_formation_values,
+    corrected_ensemble_references, ensemble_formation_values, ensemble_references,
+    print_formation_ensembles, Ensemble,
+};
+
+/// A cluster-shaped record whose Gibbs free energy hits `target` exactly
+/// at the default conditions (the electronic energy absorbs the
+/// correction).
+fn cluster_with_gibbs(name: &str, pairs: &[(&str, u32)], mode_value: f64, target: f64) -> Record {
+    let mut record = Record {
+        name: Some(name.to_string()),
+        electronic_energy: Some(0.0),
+        geometry: Some(hexagon()),
+        vibrational_frequencies: Some(modes(12, mode_value)),
+        components: Some(components(pairs)),
+        ..Record::default()
+    };
+    retarget_gibbs(&mut record, target);
+    record
+}
+
+/// Re-points the record's electronic energy so its Gibbs free energy hits
+/// `target` exactly at the default conditions (the derivation is linear
+/// in the electronic energy).
+fn retarget_gibbs(record: &mut Record, target: f64) {
+    record.electronic_energy = Some(0.0);
+    let terms = thermochemistry(record, &default_conditions())
+        .expect("template has defined thermochemistry")
+        .gibbs;
+    record.electronic_energy = Some(target - terms);
+}
+
+/// A copy of `template` with the given spin multiplicity: the electronic
+/// entropy term R·ln(m) shifts the Gibbs value by exactly k_B·T·ln(m)
+/// while the electronic energy stays put (rqm/thermo.md).
+fn with_multiplicity(template: &Record, multiplicity: u32) -> Record {
+    let mut record = template.clone();
+    record.multiplicity = Some(multiplicity);
+    record
+}
+
+/// A record with an attached correction whose Gibbs free energy hits
+/// `target` exactly at the default conditions.
+fn corrected_with_gibbs(
+    name: &str,
+    pairs: &[(&str, u32)],
+    mode_value: f64,
+    target: f64,
+    correction_energy: f64,
+) -> Record {
+    let mut record = cluster_with_gibbs(name, pairs, mode_value, target);
+    record.correction = Some(Correction {
+        energy: correction_energy,
+        program: Some("orca".to_string()),
+        program_version: Some("6.0.0".to_string()),
+        commands: None,
+        kind: "sp".to_string(),
+    });
+    record
+}
+
+/// Tolerance for the ensemble arithmetic: the Boltzmann weights carry a
+/// few units in the last place, so the exact identities hold only to f64
+/// rounding of the energies (~1e-14 at 100 Eh magnitudes).
+const EPS: f64 = 1e-12;
+
+#[test] // rq-7d43ccc9
+fn the_collapsed_g_includes_the_conformational_entropy_term() {
+    // Two 2am1sa conformers with equal electronic energies whose Gibbs
+    // values differ by exactly kB*T*ln(3): the multiplicity-3 copy holds
+    // R*ln(3) more electronic entropy. The collapse weights are 3/4 and
+    // 1/4, so the stabilization is k_B*T*ln(4/3).
+    let template = cluster_with_gibbs("a", &[("am", 2), ("sa", 1)], 1000.0, -91.0);
+    let excited = with_multiplicity(&template, 3);
+    let am = with_gibbs("am1", "am", 1000.0, -50.0);
+    let sa = with_gibbs("sa1", "sa", 1000.0, -40.0);
+    let memo = memo();
+    // The multiplicity-3 copy holds R*ln(3) more electronic entropy, so
+    // its Gibbs value sits exactly kB*T*ln(3) BELOW the template's — it
+    // is the best conformer.
+    let gap = memo.value("g", &excited).unwrap() - memo.value("g", &template).unwrap();
+    assert!((gap + kbt() * 3.0f64.ln()).abs() < EPS, "fixture gap {gap}");
+    let records = vec![template, excited, am, sa];
+    let ensembles = collapse_ensembles(&records, &memo);
+    assert_eq!(ensembles.len(), 3);
+    let references = ensemble_references(&ensembles);
+    let ensemble = ensemble_formation_values(
+        &ensembles[0],
+        &references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    let record_references = collect_monomers(&records, &memo, SortKey::El);
+    let conformer = formation_values(
+        &records[1],
+        &record_references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    // The collapsed el equals either conformer's: equal electronic
+    // energies make the population-weighted mean that energy.
+    assert!((ensemble.electronic.unwrap() - conformer.electronic.unwrap()).abs() < EPS);
+    // The collapsed g sits k_B*T*ln(4/3) below the best conformer's.
+    assert!(
+        (ensemble.gibbs.unwrap() - (conformer.gibbs.unwrap() - kbt() * (4.0f64 / 3.0).ln())).abs()
+            < EPS,
+        "ensemble g {:?} vs conformer g {:?}",
+        ensemble.gibbs,
+        conformer.gibbs
+    );
+}
+
+#[test] // rq-f524bb50
+fn the_collapsed_el_is_the_population_weighted_mean() {
+    // Two 2am1sa conformers with equal Gibbs values and different
+    // electronic energies: the weights are exactly 1/2 each, so the
+    // collapsed el is the midpoint of the two conformers' el formation
+    // values whatever their gap.
+    let base = cluster_with_gibbs("a", &[("am", 2), ("sa", 1)], 1000.0, -91.0);
+    let mut partner = base.clone();
+    partner.name = Some("b".to_string());
+    partner.multiplicity = Some(3);
+    // Re-hit the same Gibbs target with the multiplicity shifted, so the
+    // electronic energies come apart while the Gibbs values stay equal.
+    retarget_gibbs(&mut partner, -91.0);
+    let am = with_gibbs("am1", "am", 1000.0, -50.0);
+    let sa = with_gibbs("sa1", "sa", 1000.0, -40.0);
+    let memo = memo();
+    assert!((memo.value("g", &partner).unwrap() - memo.value("g", &base).unwrap()).abs() < EPS);
+    assert!(
+        (partner.electronic_energy.unwrap() - base.electronic_energy.unwrap()).abs() > 1.0e-6,
+        "the fixture's electronic energies must differ"
+    );
+    let records = vec![base, partner, am, sa];
+    let ensembles = collapse_ensembles(&records, &memo);
+    let references = ensemble_references(&ensembles);
+    let ensemble = ensemble_formation_values(
+        &ensembles[0],
+        &references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    let record_references = collect_monomers(&records, &memo, SortKey::El);
+    let first = formation_values(
+        &records[0],
+        &record_references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    let second = formation_values(
+        &records[1],
+        &record_references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    let midpoint = (first.electronic.unwrap() + second.electronic.unwrap()) / 2.0;
+    assert!((ensemble.electronic.unwrap() - midpoint).abs() < EPS);
+}
+
+#[test] // rq-f71670c3
+fn monomer_rows_print_exactly_zero() {
+    // Two am conformers with defined thermochemistry: the monomer
+    // ensemble supplies its own reference, so the 1am row prints 0 at
+    // both levels.
+    let first = with_gibbs("am1", "am", 1000.0, -50.0);
+    let second = with_multiplicity(&first, 3);
+    let cluster = cluster_with_gibbs("cluster", &[("am", 2)], 1000.0, -101.0);
+    let memo = memo();
+    let records = vec![first, second, cluster];
+    let ensembles = collapse_ensembles(&records, &memo);
+    let references = ensemble_references(&ensembles);
+    let section = print_formation_ensembles(
+        &ensembles,
+        &references,
+        &memo,
+        Unit::Au,
+        &ConcConditions::default(),
+    );
+    let row = section
+        .lines()
+        .find(|line| line.starts_with("1am "))
+        .expect("1am row");
+    let values: Vec<f64> = row
+        .split(' ')
+        .skip(1)
+        .map(|cell| cell.parse::<f64>().expect("number"))
+        .collect();
+    assert_eq!(values.len(), 2);
+    assert!(values[0].abs() < EPS && values[1].abs() < EPS, "{section}");
+}
+
+#[test] // rq-f93d319b
+fn undefined_members_never_poison_the_group() {
+    // Two full conformers with the kB*T*ln(3) Gibbs gap plus one without
+    // frequencies: the valueless record contributes nothing and the
+    // surviving members define the ensemble.
+    let template = cluster_with_gibbs("a", &[("am", 2), ("sa", 1)], 1000.0, -91.0);
+    let excited = with_multiplicity(&template, 3);
+    let mut valueless = cluster_with_gibbs("c", &[("am", 2), ("sa", 1)], 1000.0, -90.0);
+    valueless.vibrational_frequencies = None;
+    let am = with_gibbs("am1", "am", 1000.0, -50.0);
+    let sa = with_gibbs("sa1", "sa", 1000.0, -40.0);
+    let memo = memo();
+    let records = vec![template, excited, valueless, am, sa];
+    let ensembles = collapse_ensembles(&records, &memo);
+    assert_eq!(ensembles.len(), 3);
+    let references = ensemble_references(&ensembles);
+    let ensemble = ensemble_formation_values(
+        &ensembles[0],
+        &references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    let record_references = collect_monomers(&records, &memo, SortKey::El);
+    // The multiplicity-3 copy holds the lower Gibbs value: it is the
+    // best conformer.
+    let best = formation_values(
+        &records[1],
+        &record_references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    assert!(
+        (ensemble.gibbs.unwrap() - (best.gibbs.unwrap() - kbt() * (4.0f64 / 3.0).ln())).abs() < EPS
+    );
+}
+
+#[test] // rq-482ab490
+fn failed_records_contribute_nothing_to_the_collapse() {
+    // The failed record keeps its full observables: it is excluded by
+    // status, not by definedness — and its lower energy would dominate
+    // the ensemble if the ok-gate regressed.
+    let failed = cluster_with_gibbs("bad", &[("am", 2), ("sa", 1)], 1000.0, -95.0);
+    let mut failed = failed;
+    failed.status = RecordStatus::Failed;
+    failed.error = Some("boom".to_string());
+    let ok = cluster_with_gibbs("good", &[("am", 2), ("sa", 1)], 1000.0, -91.5);
+    let am = with_gibbs("am1", "am", 1000.0, -50.0);
+    let sa = with_gibbs("sa1", "sa", 1000.0, -40.0);
+    let memo = memo();
+    let records = vec![failed, ok, am, sa];
+    let ensembles = collapse_ensembles(&records, &memo);
+    assert_eq!(ensembles.len(), 3);
+    // The 2am1sa ensemble is the ok record alone: with exactly its
+    // values, never an average that includes the failed record.
+    assert_eq!(ensembles[0].electronic, records[1].electronic_energy);
+    assert_eq!(ensembles[0].gibbs, memo.value("g", &records[1]));
+}
+
+#[test] // rq-deca4a24
+fn the_corrected_section_collapses_at_its_own_level() {
+    // Two corrected 1am1sa conformers with equal correction energies
+    // whose gcorr values differ by exactly kB*T*ln(3) — the electronic
+    // entropy of the multiplicity-3 copy — and corrected monomers.
+    let template = corrected_with_gibbs("a", &[("am", 1), ("sa", 1)], 1000.0, -61.0, -5.0);
+    let excited = with_multiplicity(&template, 3);
+    let am = corrected_with_gibbs("am1", &[("am", 1)], 1000.0, -50.0, -5.0);
+    let sa = corrected_with_gibbs("sa1", &[("sa", 1)], 1000.0, -40.0, -5.0);
+    let memo = memo();
+    // The multiplicity-3 copy holds R*ln(3) more electronic entropy, so
+    // its gcorr value sits exactly kB*T*ln(3) BELOW the template's — it
+    // is the best conformer; the correction energies are equal.
+    let gap = memo.value("gcorr", &excited).unwrap() - memo.value("gcorr", &template).unwrap();
+    assert!((gap + kbt() * 3.0f64.ln()).abs() < EPS, "fixture gap {gap}");
+    let records = vec![template, excited, am, sa];
+    let ensembles = corrected_collapse_ensembles(&records, &memo);
+    assert_eq!(ensembles.len(), 3);
+    let references = corrected_ensemble_references(&ensembles);
+    let ensemble = corrected_ensemble_formation_values(
+        &ensembles[0],
+        &references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    let record_references = corrected_monomer_references(&records, &memo, SortKey::El);
+    let conformer = corrected_formation_values(
+        &records[1],
+        &record_references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    // Equal correction energies make the collapsed elcorr either
+    // conformer's; the collapsed gcorr sits k_B*T*ln(4/3) below the best.
+    assert!((ensemble.electronic.unwrap() - conformer.electronic.unwrap()).abs() < EPS);
+    assert!(
+        (ensemble.gibbs.unwrap() - (conformer.gibbs.unwrap() - kbt() * (4.0f64 / 3.0).ln())).abs()
+            < EPS
+    );
+}
+
+#[test] // rq-ade63c60
+fn a_corrected_member_without_thermochemistry_contributes_nothing() {
+    let full = corrected_with_gibbs("a", &[("am", 1), ("sa", 1)], 1000.0, -61.0, -5.0);
+    let mut valueless = corrected_with_gibbs("b", &[("am", 1), ("sa", 1)], 1000.0, -60.5, -5.0);
+    valueless.vibrational_frequencies = None;
+    let am = corrected_with_gibbs("am1", &[("am", 1)], 1000.0, -50.0, -5.0);
+    let sa = corrected_with_gibbs("sa1", &[("sa", 1)], 1000.0, -40.0, -5.0);
+    let memo = memo();
+    let records = vec![full.clone(), valueless, am, sa];
+    let ensembles = corrected_collapse_ensembles(&records, &memo);
+    assert_eq!(ensembles.len(), 3);
+    // The single surviving member collapses to itself exactly.
+    assert!((ensembles[0].gibbs.unwrap() - memo.value("gcorr", &full).unwrap()).abs() < 1e-15);
+    assert!((ensembles[0].electronic.unwrap() - corrected_energy(&full).unwrap()).abs() < 1e-15);
+    // And the collapsed row's values equal the full conformer's
+    // uncollapsed row's values.
+    let references = corrected_ensemble_references(&ensembles);
+    let ensemble = corrected_ensemble_formation_values(
+        &ensembles[0],
+        &references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    let record_references = corrected_monomer_references(&records, &memo, SortKey::El);
+    let conformer =
+        corrected_formation_values(&full, &record_references, &memo, &ConcConditions::default());
+    assert!((ensemble.electronic.unwrap() - conformer.electronic.unwrap()).abs() < 1e-15);
+    assert!((ensemble.gibbs.unwrap() - conformer.gibbs.unwrap()).abs() < 1e-15);
+}
+
+#[test] // rq-0df193f0
+fn a_monomer_group_without_any_gibbs_loses_its_reference_at_both_levels() {
+    let cluster = cluster_with_gibbs("cluster", &[("am", 2)], 1000.0, -101.0);
+    let mut sp_am = with_gibbs("am1", "am", 1000.0, -50.0);
+    sp_am.vibrational_frequencies = None;
+    let sa = with_gibbs("sa1", "sa", 1000.0, -40.0);
+    let memo = memo();
+    let records = vec![cluster.clone(), sp_am, sa];
+    let ensembles = collapse_ensembles(&records, &memo);
+    assert_eq!(ensembles.len(), 3);
+    // The am group's single record defines no Gibbs level, so its
+    // ensemble carries no values and supplies no reference.
+    assert_eq!(ensembles[1].electronic, None);
+    assert_eq!(ensembles[1].gibbs, None);
+    let references = ensemble_references(&ensembles);
+    assert!(!references.electronic.contains_key("am"));
+    assert!(references.gibbs.contains_key("sa"));
+    // The cluster loses its reference at both levels at once.
+    let ensemble = ensemble_formation_values(
+        &ensembles[0],
+        &references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    assert_eq!(ensemble.electronic, None);
+    assert_eq!(ensemble.gibbs, None);
+    // Without the collapse the electronic level still forms.
+    let record_references = collect_monomers(&records, &memo, SortKey::El);
+    let uncollapsed = formation_values(
+        &cluster,
+        &record_references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    assert!(uncollapsed.electronic.is_some());
+    assert_eq!(uncollapsed.gibbs, None);
+}
+
+#[test] // rq-1ad3c076
+fn records_without_components_form_one_unnamed_ensemble() {
+    let bare = |name: &str| Record {
+        name: Some(name.to_string()),
+        electronic_energy: Some(-60.0),
+        ..Record::default()
+    };
+    let am = with_gibbs("am1", "am", 1000.0, -50.0);
+    let memo = memo();
+    // A componentless record loads first, yet the unnamed ensemble comes
+    // last: the section prints 1am first, then one row of dashes.
+    let records = vec![bare("bare1"), am, bare("bare2")];
+    let ensembles = collapse_ensembles(&records, &memo);
+    assert_eq!(ensembles.len(), 2);
+    assert_eq!(ensembles[0].components, Some(components(&[("am", 1)])));
+    assert!(ensembles[0].gibbs.is_some());
+    assert_eq!(ensembles[1].components, None);
+    assert_eq!(ensembles[1].electronic, None);
+    assert_eq!(ensembles[1].gibbs, None);
+}
+
+#[test] // rq-7721f6ff
+fn the_collapse_preserves_first_appearance_order() {
+    let mixed = cluster_with_gibbs("m1", &[("am", 1), ("sa", 1)], 1000.0, -61.0);
+    let two_am = cluster_with_gibbs("c2", &[("am", 2)], 1000.0, -101.0);
+    let mixed_again = cluster_with_gibbs("m2", &[("am", 1), ("sa", 1)], 1000.0, -61.5);
+    let one_sa = cluster_with_gibbs("s1", &[("sa", 1)], 1000.0, -40.0);
+    let memo = memo();
+    let records = vec![mixed, two_am, mixed_again, one_sa];
+    let ensembles = collapse_ensembles(&records, &memo);
+    let tokens: Vec<Components> = ensembles
+        .iter()
+        .filter_map(|ensemble: &Ensemble| ensemble.components.clone())
+        .collect();
+    assert_eq!(
+        tokens,
+        vec![
+            components(&[("am", 1), ("sa", 1)]),
+            components(&[("am", 2)]),
+            components(&[("sa", 1)]),
+        ]
+    );
+}

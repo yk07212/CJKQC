@@ -48,9 +48,12 @@ applies to its corrected counterpart through the same function.
 - For a group and level, vᵢ is record i's level value in Eh: for `el` the
   record's `electronic_energy`, for `g` the Gibbs free energy derived at
   the run's conditions (`rqm/thermo.md`), for `elcorr` and `gcorr` the
-  corrected values (`rqm/correction.md`). A record whose level value is
-  undefined is excluded from the group's partition sum and prints `-`;
-  the defined members' populations stay defined (JKQC's population printer
+  corrected values (`rqm/correction.md`). A record contributes to the
+  partition sum only when its status is `ok` — failed and truncated
+  records are excluded and print `-`, exactly as the pipeline excludes
+  them (`rqm/filtering.md`) — and an `ok` record whose level value is
+  undefined is excluded from the partition sum and prints `-`; the
+  defined members' populations stay defined (JKQC's population printer
   turns a whole group `nan` when one member lacks the level — CJKQC does
   not carry that behavior over).
 - When at least one member of the group defines the level, record i's

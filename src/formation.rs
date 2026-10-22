@@ -13,7 +13,8 @@
 
 use std::collections::BTreeMap;
 
-use crate::filter::{composition_token, format_energy, sort_value_for, Unit};
+use crate::filter::{composition_token, format_energy, sort_value_for, Grouping, Unit};
+use crate::population::{boltzmann_weights, pop_level_value, PopLevel};
 use crate::record::{Components, Record, RecordStatus};
 use crate::thermo::{ThermoMemo, E_HARTREE, K_B, P_STANDARD};
 
@@ -117,6 +118,26 @@ pub struct ConcConditions {
     pub self_consistent: bool,
 }
 
+/// One collapsed composition group (Boltzmann-Averaged Sections): the
+/// ensemble of one composition's records, with `components` `None` for
+/// the unnamed ensemble of the records without components. The two values
+/// in Eh — the population-weighted electronic mean and the
+/// partition-function free energy — are `Some` together or `None`
+/// together; an ensemble without values is a group whose records all lack
+/// the section's Gibbs level.
+///
+/// (rq-35671b9e)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Ensemble {
+    /// The group's components map, `None` for the unnamed ensemble.
+    pub components: Option<Components>,
+    /// The population-weighted mean of the members' electronic-level
+    /// inputs.
+    pub electronic: Option<f64>,
+    /// The ensemble free energy −k_B·T·ln(Σⱼ exp(−gⱼ/(k_B·T))).
+    pub gibbs: Option<f64>,
+}
+
 /// The VALUE grammar of `--conc`: a decimal or scientific-notation
 /// number, optionally suffixed lowercase with `ppt`, `ppb`, or `cmmc`.
 /// `None` for a value outside the grammar, non-finite, or not positive —
@@ -171,14 +192,19 @@ pub fn concentration_correction(
     shift
 }
 
+/// Whether a components map is monomer-shaped: exactly one entry with
+/// count 1 (`rqm/formation.md` Monomer References) — the shape test
+/// shared by the record-level and ensemble-level monomer checks.
+// rq-1b571f91 rq-35671b9e
+fn is_monomer_shaped(components: &Components) -> bool {
+    components.len() == 1 && components.values().all(|count| *count == 1)
+}
+
 /// Whether a record is a monomer reference candidate: status `ok` and a
-/// components map of exactly one entry with count 1 (`rqm/formation.md`).
+/// monomer-shaped components map (`rqm/formation.md`).
 // rq-1b571f91
 fn is_monomer(record: &Record) -> bool {
-    record.status == RecordStatus::Ok
-        && record.components.as_ref().is_some_and(|components| {
-            components.len() == 1 && components.values().all(|count| *count == 1)
-        })
+    record.status == RecordStatus::Ok && record.components.as_ref().is_some_and(is_monomer_shaped)
 }
 
 /// The reference scan over the given records (the run passes its final
@@ -395,11 +421,16 @@ pub fn print_formation_section(
     unit: Unit,
     concs: &ConcConditions,
 ) -> String {
-    let formations: Vec<Formation> = records
+    let rows: Vec<(String, Formation)> = records
         .iter()
-        .map(|record| formation_values(record, references, memo, concs))
+        .map(|record| {
+            let token =
+                composition_token(record.components.as_ref()).unwrap_or_else(|| "-".to_string());
+            let formation = formation_values(record, references, memo, concs);
+            (token, formation)
+        })
         .collect();
-    print_formation_table(records, &formations, unit, "ct el g")
+    print_formation_table(&rows, unit, "ct el g")
 }
 
 /// The corrected formation section (`rqm/formation.md`): the raw
@@ -414,26 +445,25 @@ pub fn print_formation_corr_section(
     unit: Unit,
     concs: &ConcConditions,
 ) -> String {
-    let formations: Vec<Formation> = records
+    let rows: Vec<(String, Formation)> = records
         .iter()
-        .map(|record| corrected_formation_values(record, references, memo, concs))
+        .map(|record| {
+            let token =
+                composition_token(record.components.as_ref()).unwrap_or_else(|| "-".to_string());
+            let formation = corrected_formation_values(record, references, memo, concs);
+            (token, formation)
+        })
         .collect();
-    print_formation_table(records, &formations, unit, "ct elcorr gcorr")
+    print_formation_table(&rows, unit, "ct elcorr gcorr")
 }
 
 /// The shared section table: a header row, then one `ct el g`-shaped row
-/// per record in the given order.
+/// per `(token, formation)` pair in the given order — shared with the
+/// collapsed sections (`rqm/formation.md` Boltzmann-Averaged Sections).
 // rq-9503bcb2
-fn print_formation_table(
-    records: &[Record],
-    formations: &[Formation],
-    unit: Unit,
-    header: &str,
-) -> String {
+fn print_formation_table(rows: &[(String, Formation)], unit: Unit, header: &str) -> String {
     let mut lines = vec![header.to_string()];
-    for (record, formation) in records.iter().zip(formations) {
-        let token =
-            composition_token(record.components.as_ref()).unwrap_or_else(|| "-".to_string());
+    for (token, formation) in rows {
         let electronic = formation
             .electronic
             .map_or_else(|| "-".to_string(), |value| format_energy(value, unit));
@@ -443,4 +473,335 @@ fn print_formation_table(
         lines.push(format!("{token} {electronic} {gibbs}"));
     }
     lines.join("\n")
+}
+
+/// Whether an ensemble is a code's monomer ensemble: its components map
+/// is monomer-shaped (Boltzmann-Averaged Sections).
+// rq-35671b9e
+fn is_monomer_ensemble(ensemble: &Ensemble) -> bool {
+    ensemble.components.as_ref().is_some_and(is_monomer_shaped)
+}
+
+/// The electronic level paired with the collapse's Gibbs level: the raw
+/// section reads the record's electronic energy, the corrected one the
+/// correction energy (`rqm/formation.md` Boltzmann-Averaged Sections).
+// rq-dd65e289
+fn electronic_level(level: PopLevel) -> PopLevel {
+    match level {
+        PopLevel::G => PopLevel::El,
+        PopLevel::GCorr => PopLevel::ElCorr,
+        _ => unreachable!("the collapse collapses at a Gibbs level"),
+    }
+}
+
+/// The shared collapse behind both sections (Boltzmann-Averaged
+/// Sections): the records group by components map in first-appearance
+/// order, with the records without components last as the unnamed
+/// ensemble — `--noname` never pools the rows (`rqm/filtering.md`
+/// Grouping). A group's members are its `ok` records that define the
+/// Gibbs level of `level` — the derived Gibbs free energy for the raw
+/// section, `gcorr` for the corrected one — resolved through the shared
+/// registry resolver of `rqm/population.md`: failed and truncated
+/// records contribute nothing exactly as the pipeline excludes them
+/// (`rqm/filtering.md`), and an `ok` record without that value
+/// contributes nothing (the definedness rule of `rqm/population.md`); a
+/// group with no members yields an ensemble without values. The ensemble
+/// values are the members' population-weighted mean of the paired
+/// electronic level — every member defines that level too, since the
+/// Gibbs derives from the electronic energy — and the ensemble free
+/// energy g_min − k_B·T·ln Z over the members' Gibbs values, computed
+/// against the members' minimum as `rqm/population.md` Numerics
+/// prescribes, at the memo's temperature.
+// rq-18dba668
+fn collapse(records: &[Record], memo: &ThermoMemo, level: PopLevel) -> Vec<Ensemble> {
+    // The grouping reuses the pipeline's composition groups; the unnamed
+    // group rotates to the end (Boltzmann-Averaged Sections).
+    // rq-dd65e289
+    let mut groups = crate::filter::group_indices(records, Grouping::Composition);
+    if let Some(position) = groups
+        .iter()
+        .position(|members| records[members[0]].components.is_none())
+    {
+        let unnamed = groups.remove(position);
+        groups.push(unnamed);
+    }
+    let kbt = K_B * memo.temperature() / E_HARTREE;
+    let mut ensembles = Vec::with_capacity(groups.len());
+    for indices in groups {
+        // The ensemble's components map is the group's own — independent
+        // of which records survive as members.
+        let components = components_of(records, &indices);
+        // The members: the group's `ok` records that define the Gibbs
+        // level of `level` (Boltzmann-Averaged Sections).
+        // rq-dd65e289
+        let members: Vec<usize> = indices
+            .into_iter()
+            .filter(|&index| {
+                records[index].status == RecordStatus::Ok
+                    && pop_level_value(&records[index], level, memo).is_some()
+            })
+            .collect();
+        let values: Vec<Option<f64>> = members
+            .iter()
+            .map(|&index| pop_level_value(&records[index], level, memo))
+            .collect();
+        let electronic_values: Vec<Option<f64>> = members
+            .iter()
+            .map(|&index| pop_level_value(&records[index], electronic_level(level), memo))
+            .collect();
+        let ensemble = match boltzmann_weights(&values, kbt) {
+            // No member defines the level: the ensemble carries no values.
+            None => Ensemble {
+                components,
+                electronic: None,
+                gibbs: None,
+            },
+            Some((weights, partition)) => {
+                // The population-weighted mean of the members' electronic
+                // inputs; a member without one — unreachable, since the
+                // Gibbs derives from the electronic energy — leaves the
+                // ensemble without values rather than half-defined.
+                let electronic = weights.iter().zip(&electronic_values).try_fold(
+                    0.0_f64,
+                    |sum, (weight, value)| match (weight, value) {
+                        (Some(weight), Some(value)) => Some(sum + weight * value),
+                        (Some(_), None) => None,
+                        (None, _) => Some(sum),
+                    },
+                );
+                match electronic {
+                    Some(mean) => {
+                        let minimum = values
+                            .iter()
+                            .filter_map(|value| *value)
+                            .reduce(f64::min)
+                            .expect("the weights exist only when some member defines the level");
+                        Ensemble {
+                            components,
+                            electronic: Some(mean),
+                            gibbs: Some(minimum - kbt * partition.ln()),
+                        }
+                    }
+                    None => Ensemble {
+                        components,
+                        electronic: None,
+                        gibbs: None,
+                    },
+                }
+            }
+        };
+        ensembles.push(ensemble);
+    }
+    ensembles
+}
+
+/// The group's components map: the group's first record's own, `None`
+/// for the unnamed ensemble of records without components.
+// rq-35671b9e
+fn components_of(records: &[Record], indices: &[usize]) -> Option<Components> {
+    records[indices[0]].components.clone()
+}
+
+/// The raw section's collapse (Boltzmann-Averaged Sections): groups by
+/// components map in first-appearance order, the records without
+/// components last as the unnamed ensemble; the members are the `ok`
+/// records defining the derived Gibbs free energy and the electronic
+/// inputs are the records' electronic energies.
+///
+/// (rq-18dba668)
+pub fn collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble> {
+    collapse(records, memo, PopLevel::G)
+}
+
+/// The corrected section's collapse (Boltzmann-Averaged Sections): the
+/// members and electronic inputs resolve through `gcorr` and the
+/// correction energy (`rqm/correction.md`), otherwise identical to
+/// [`collapse_ensembles`].
+///
+/// (rq-f162476c)
+pub fn corrected_collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble> {
+    collapse(records, memo, PopLevel::GCorr)
+}
+
+/// The reference scan over ensembles (Boltzmann-Averaged Sections): each
+/// monomer ensemble — components exactly one entry with count 1 —
+/// supplies both reference values for its code; ensembles without values
+/// contribute nothing. The collapse produces at most one ensemble per
+/// components map, so the scan never overwrites a code.
+///
+/// (rq-27a3b339)
+pub fn ensemble_references(ensembles: &[Ensemble]) -> MonomerReferences {
+    let mut references = MonomerReferences::default();
+    for ensemble in ensembles {
+        if !is_monomer_ensemble(ensemble) {
+            continue;
+        }
+        // The two values are Some together or not at all.
+        let (Some(electronic), Some(gibbs)) = (ensemble.electronic, ensemble.gibbs) else {
+            continue;
+        };
+        if let Some(code) = ensemble
+            .components
+            .as_ref()
+            .and_then(|components| components.keys().next())
+        {
+            references.electronic.insert(code.clone(), electronic);
+            references.gibbs.insert(code.to_string(), gibbs);
+        }
+    }
+    references
+}
+
+/// The same scan read as the corrected references (Boltzmann-Averaged
+/// Sections): the monomer ensemble's electronic mean is the
+/// correction-energy reference and its Gibbs value the `gcorr` reference
+/// (`rqm/correction.md`).
+///
+/// (rq-4b8a9f98)
+pub fn corrected_ensemble_references(ensembles: &[Ensemble]) -> CorrectedMonomerReferences {
+    let mut references = CorrectedMonomerReferences::default();
+    for ensemble in ensembles {
+        if !is_monomer_ensemble(ensemble) {
+            continue;
+        }
+        // The two values are Some together or not at all.
+        let (Some(electronic), Some(gibbs)) = (ensemble.electronic, ensemble.gibbs) else {
+            continue;
+        };
+        if let Some(code) = ensemble
+            .components
+            .as_ref()
+            .and_then(|components| components.keys().next())
+        {
+            references.electronic.insert(code.clone(), electronic);
+            references.gibbs.insert(code.to_string(), gibbs);
+        }
+    }
+    references
+}
+
+/// The two levels of one collapsed row (Boltzmann-Averaged Sections):
+/// the ensemble's values minus the stoichiometric references, the Gibbs
+/// level minus the concentration term of `concentration_correction` with
+/// the same non-finite guard as the record-level values; both levels
+/// undefined when the ensemble has no values or lacks components.
+///
+/// (rq-eafc5e8e)
+pub fn ensemble_formation_values(
+    ensemble: &Ensemble,
+    references: &MonomerReferences,
+    memo: &ThermoMemo,
+    concs: &ConcConditions,
+) -> Formation {
+    let empty = Formation {
+        electronic: None,
+        gibbs: None,
+    };
+    let Some(components) = ensemble.components.as_ref() else {
+        return empty;
+    };
+    // The two values are Some together or not at all.
+    let (Some(ensemble_electronic), Some(ensemble_gibbs)) = (ensemble.electronic, ensemble.gibbs)
+    else {
+        return empty;
+    };
+    let electronic = components
+        .iter()
+        .try_fold(ensemble_electronic, |value, (code, count)| {
+            Some(value - f64::from(*count) * references.electronic.get(code)?)
+        });
+    let gibbs = components
+        .iter()
+        .try_fold(ensemble_gibbs, |value, (code, count)| {
+            Some(value - f64::from(*count) * references.gibbs.get(code)?)
+        })
+        .map(|value| value - concentration_correction(components, concs, memo.temperature()))
+        .filter(|value| value.is_finite());
+    Formation { electronic, gibbs }
+}
+
+/// The corrected row's two levels (Boltzmann-Averaged Sections): the same
+/// rule as [`ensemble_formation_values`] against the corrected
+/// references (`rqm/correction.md`).
+///
+/// (rq-f5583f17)
+pub fn corrected_ensemble_formation_values(
+    ensemble: &Ensemble,
+    references: &CorrectedMonomerReferences,
+    memo: &ThermoMemo,
+    concs: &ConcConditions,
+) -> Formation {
+    let empty = Formation {
+        electronic: None,
+        gibbs: None,
+    };
+    let Some(components) = ensemble.components.as_ref() else {
+        return empty;
+    };
+    // The two values are Some together or not at all.
+    let (Some(ensemble_electronic), Some(ensemble_gibbs)) = (ensemble.electronic, ensemble.gibbs)
+    else {
+        return empty;
+    };
+    let electronic = components
+        .iter()
+        .try_fold(ensemble_electronic, |value, (code, count)| {
+            Some(value - f64::from(*count) * references.electronic.get(code)?)
+        });
+    let gibbs = components
+        .iter()
+        .try_fold(ensemble_gibbs, |value, (code, count)| {
+            Some(value - f64::from(*count) * references.gibbs.get(code)?)
+        })
+        .map(|value| value - concentration_correction(components, concs, memo.temperature()))
+        .filter(|value| value.is_finite());
+    Formation { electronic, gibbs }
+}
+
+/// The collapsed raw section (Boltzmann-Averaged Sections): header
+/// `ct el g`, one row per ensemble in the given order, `-` for undefined
+/// values and for the unnamed ensemble's token.
+///
+/// (rq-30ea9ebc)
+pub fn print_formation_ensembles(
+    ensembles: &[Ensemble],
+    references: &MonomerReferences,
+    memo: &ThermoMemo,
+    unit: Unit,
+    concs: &ConcConditions,
+) -> String {
+    let rows: Vec<(String, Formation)> = ensembles
+        .iter()
+        .map(|ensemble| {
+            let token =
+                composition_token(ensemble.components.as_ref()).unwrap_or_else(|| "-".to_string());
+            let formation = ensemble_formation_values(ensemble, references, memo, concs);
+            (token, formation)
+        })
+        .collect();
+    print_formation_table(&rows, unit, "ct el g")
+}
+
+/// The collapsed corrected section (Boltzmann-Averaged Sections): the
+/// collapsed raw section's table with the corrected levels — header
+/// `ct elcorr gcorr`.
+///
+/// (rq-4c1bcb87)
+pub fn print_formation_corr_ensembles(
+    ensembles: &[Ensemble],
+    references: &CorrectedMonomerReferences,
+    memo: &ThermoMemo,
+    unit: Unit,
+    concs: &ConcConditions,
+) -> String {
+    let rows: Vec<(String, Formation)> = ensembles
+        .iter()
+        .map(|ensemble| {
+            let token =
+                composition_token(ensemble.components.as_ref()).unwrap_or_else(|| "-".to_string());
+            let formation = corrected_ensemble_formation_values(ensemble, references, memo, concs);
+            (token, formation)
+        })
+        .collect();
+    print_formation_table(&rows, unit, "ct elcorr gcorr")
 }

@@ -18,8 +18,10 @@ use complied_jkqc::filter::{
     FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
 use complied_jkqc::formation::{
-    collect_monomers, corrected_monomer_references, parse_conc_value, print_formation_corr_section,
-    print_formation_section, ConcConditions, ConcSpec,
+    collapse_ensembles, collect_monomers, corrected_collapse_ensembles,
+    corrected_ensemble_references, corrected_monomer_references, ensemble_references,
+    parse_conc_value, print_formation_corr_ensembles, print_formation_corr_section,
+    print_formation_ensembles, print_formation_section, ConcConditions, ConcSpec,
 };
 use complied_jkqc::metrics::parse_uniq_mode;
 use complied_jkqc::parser::WindowBudget;
@@ -166,6 +168,13 @@ struct Cli {
     /// monomer's formation free energy stays zero (self-consistent dG).
     #[arg(long = "cnt")]
     cnt: bool,
+
+    /// Collapse each printed formation section into one
+    /// Boltzmann-averaged row per composition
+    /// (rqm/formation.md Boltzmann-Averaged Sections). A settings flag
+    /// like --conc: without a formation section it is an accepted no-op.
+    #[arg(long = "bavg")]
+    bavg: bool,
 
     /// Attach single-point corrections from the named database, matching
     /// correction records to run records by exact case-sensitive name
@@ -608,22 +617,51 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             }
             // A print-only run has no --sort (that would be a
             // manipulation), so the references use the el ordering
-            // (rqm/formation.md).
+            // (rqm/formation.md). Under --bavg the section collapses
+            // into one ensemble per composition first
+            // (rqm/formation.md Boltzmann-Averaged Sections).
+            // rq-dd65e289
             if cli.formation {
-                let references = collect_monomers(&records, &memo, SortKey::El);
-                println!(
-                    "{}",
-                    print_formation_section(&records, &references, &memo, unit, &concs)
-                );
+                if cli.bavg {
+                    let ensembles = collapse_ensembles(&records, &memo);
+                    let references = ensemble_references(&ensembles);
+                    println!(
+                        "{}",
+                        print_formation_ensembles(&ensembles, &references, &memo, unit, &concs)
+                    );
+                } else {
+                    let references = collect_monomers(&records, &memo, SortKey::El);
+                    println!(
+                        "{}",
+                        print_formation_section(&records, &references, &memo, unit, &concs)
+                    );
+                }
             }
             // The corrected section prints after the raw section, from
-            // the stored corrections (`rqm/formation.md`).
+            // the stored corrections (`rqm/formation.md`), collapsing at
+            // its own level under --bavg.
+            // rq-dd65e289
             if cli.formation_corr {
-                let references = corrected_monomer_references(&records, &memo, SortKey::El);
-                println!(
-                    "{}",
-                    print_formation_corr_section(&records, &references, &memo, unit, &concs)
-                );
+                if cli.bavg {
+                    let ensembles = corrected_collapse_ensembles(&records, &memo);
+                    let references = corrected_ensemble_references(&ensembles);
+                    println!(
+                        "{}",
+                        print_formation_corr_ensembles(
+                            &ensembles,
+                            &references,
+                            &memo,
+                            unit,
+                            &concs
+                        )
+                    );
+                } else {
+                    let references = corrected_monomer_references(&records, &memo, SortKey::El);
+                    println!(
+                        "{}",
+                        print_formation_corr_section(&records, &references, &memo, unit, &concs)
+                    );
+                }
             }
         }
         return match &cli.out {
@@ -722,24 +760,47 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         println!("{}", print_table(&records, &columns, &memo, unit, grouping));
     }
     // The formation sections print after the table, before the summary,
-    // over the pipeline survivors (`rqm/formation.md`).
+    // over the pipeline survivors (`rqm/formation.md`), collapsing into
+    // ensembles under --bavg (rqm/formation.md Boltzmann-Averaged
+    // Sections).
+    // rq-dd65e289
     if cli.formation {
-        let sort_key = spec.sort.unwrap_or(SortKey::El);
-        let references = collect_monomers(&records, &memo, sort_key);
-        println!(
-            "{}",
-            print_formation_section(&records, &references, &memo, unit, &concs)
-        );
+        if cli.bavg {
+            let ensembles = collapse_ensembles(&records, &memo);
+            let references = ensemble_references(&ensembles);
+            println!(
+                "{}",
+                print_formation_ensembles(&ensembles, &references, &memo, unit, &concs)
+            );
+        } else {
+            let sort_key = spec.sort.unwrap_or(SortKey::El);
+            let references = collect_monomers(&records, &memo, sort_key);
+            println!(
+                "{}",
+                print_formation_section(&records, &references, &memo, unit, &concs)
+            );
+        }
     }
     // The corrected section prints after the raw one, from the same
-    // reference selection (`rqm/formation.md`).
+    // reference selection (`rqm/formation.md`), collapsing at its own
+    // level under --bavg.
+    // rq-dd65e289
     if cli.formation_corr {
-        let sort_key = spec.sort.unwrap_or(SortKey::El);
-        let references = corrected_monomer_references(&records, &memo, sort_key);
-        println!(
-            "{}",
-            print_formation_corr_section(&records, &references, &memo, unit, &concs)
-        );
+        if cli.bavg {
+            let ensembles = corrected_collapse_ensembles(&records, &memo);
+            let references = corrected_ensemble_references(&ensembles);
+            println!(
+                "{}",
+                print_formation_corr_ensembles(&ensembles, &references, &memo, unit, &concs)
+            );
+        } else {
+            let sort_key = spec.sort.unwrap_or(SortKey::El);
+            let references = corrected_monomer_references(&records, &memo, sort_key);
+            println!(
+                "{}",
+                print_formation_corr_section(&records, &references, &memo, unit, &concs)
+            );
+        }
     }
 
     if let Some(out) = &cli.out {
@@ -1128,6 +1189,7 @@ mod tests {
         "formation_corr",
         "conc",
         "cnt",
+        "bavg",
     ];
 
     /// Every flag on `Cli` must be wired into `run`: a cutoff flag, a print

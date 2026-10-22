@@ -498,6 +498,18 @@
     "title": "Executable",
     "type": "section"
   },
+  "rq-0df193f0": {
+    "decl": "Scenario: A monomer group without any Gibbs loses its reference at both levels",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A monomer group without any Gibbs loses its reference at both levels",
+    "type": "scenario"
+  },
   "rq-0e05c3af": {
     "decl": "### Crate Layout",
     "file": "scaffolding",
@@ -1042,6 +1054,22 @@
     "title": "Bohr coordinates are converted to Ångström",
     "type": "scenario"
   },
+  "rq-18dba668": {
+    "decl": "- `collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble>`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/population.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "collapse_ensembles",
+    "type": "api-item"
+  },
   "rq-18e4b628": {
     "decl": "Scenario: The reference frequency shifts the interpolation",
     "file": "thermo",
@@ -1080,6 +1108,18 @@
       }
     ],
     "title": "A failed record without a program is unrecognized",
+    "type": "scenario"
+  },
+  "rq-1ad3c076": {
+    "decl": "Scenario: Records without components form one unnamed ensemble",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Records without components form one unnamed ensemble",
     "type": "scenario"
   },
   "rq-1adfe3e9": {
@@ -1641,6 +1681,18 @@
     "title": "A missing input is fatal and writes nothing",
     "type": "scenario"
   },
+  "rq-27a3b339": {
+    "decl": "- `ensemble_references(ensembles: &[Ensemble]) -> MonomerReferences`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ensemble_references",
+    "type": "api-item"
+  },
   "rq-27c965f2": {
     "decl": "Scenario: A list of only trivial modes filters to empty",
     "file": "parser-framework",
@@ -1999,6 +2051,30 @@
     "title": "Uppercase codes resolve and differ from lowercase ones",
     "type": "scenario"
   },
+  "rq-30bd57ee": {
+    "decl": "Scenario: --glob makes the collapse the identity",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--glob makes the collapse the identity",
+    "type": "scenario"
+  },
+  "rq-30ea9ebc": {
+    "decl": "- `print_formation_ensembles(ensembles: &[Ensemble], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "print_formation_ensembles",
+    "type": "api-item"
+  },
   "rq-312442a6": {
     "decl": "## Crate Layout",
     "file": "population",
@@ -2318,6 +2394,18 @@
     ],
     "title": "Registration order breaks a same-offset signature tie",
     "type": "scenario"
+  },
+  "rq-35671b9e": {
+    "decl": "- `Ensemble` — one collapsed composition group (Boltzmann-Averaged",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Ensemble",
+    "type": "api-item"
   },
   "rq-35c8e2c9": {
     "decl": "Scenario: The version banner is detected",
@@ -2954,6 +3042,18 @@
     "title": "Fractional decimal counts are accepted",
     "type": "scenario"
   },
+  "rq-482ab490": {
+    "decl": "Scenario: Failed records contribute nothing to the collapse",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Failed records contribute nothing to the collapse",
+    "type": "scenario"
+  },
   "rq-48469bb2": {
     "decl": "Scenario: A frequency section of only trivial modes leaves the field absent",
     "file": "parsers/orca",
@@ -3044,6 +3144,30 @@
     ],
     "title": "last_line_where falls back to the head",
     "type": "scenario"
+  },
+  "rq-4b8a9f98": {
+    "decl": "- `corrected_ensemble_references(ensembles: &[Ensemble]) -> CorrectedMonomerReferences`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "corrected_ensemble_references",
+    "type": "api-item"
+  },
+  "rq-4c1bcb87": {
+    "decl": "- `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "print_formation_corr_ensembles",
+    "type": "api-item"
   },
   "rq-4c429ba4": {
     "decl": "Scenario: The corrected basis splits like the plain basis at equal gaps",
@@ -3860,6 +3984,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-603dd405": {
+    "decl": "Scenario: --bavgout is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--bavgout is a usage error",
+    "type": "scenario"
+  },
   "rq-60671cab": {
     "decl": "### Crate Layout",
     "file": "thermo",
@@ -4625,6 +4761,18 @@
     "title": "A choice expands",
     "type": "scenario"
   },
+  "rq-7721f6ff": {
+    "decl": "Scenario: The collapse preserves first-appearance order",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The collapse preserves first-appearance order",
+    "type": "scenario"
+  },
   "rq-773db11b": {
     "decl": "- `FilterSpec` — the whole manipulation: `extract: Option<(Vec<String>,",
     "file": "filtering",
@@ -4804,6 +4952,18 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-7d43ccc9": {
+    "decl": "Scenario: The collapsed g includes the conformational entropy term",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The collapsed g includes the conformational entropy term",
+    "type": "scenario"
   },
   "rq-7d64cce1": {
     "decl": "- `ConcUnit` — `Pa | Ppt | Ppb | Cmmc`, the VALUE grammar's units.",
@@ -5203,6 +5363,18 @@
     "refs": [],
     "title": "Printing",
     "type": "section"
+  },
+  "rq-85dab208": {
+    "decl": "Scenario: --bavg prints one row per composition",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--bavg prints one row per composition",
+    "type": "scenario"
   },
   "rq-86219849": {
     "decl": "Scenario: Stored corrections work without --add-correction",
@@ -5742,6 +5914,18 @@
       }
     ],
     "title": "A value outside the grammar is a usage error",
+    "type": "scenario"
+  },
+  "rq-94cec13a": {
+    "decl": "Scenario: --bavg leaves the main table per record",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--bavg leaves the main table per record",
     "type": "scenario"
   },
   "rq-94d96047": {
@@ -6349,6 +6533,18 @@
     "title": "An unrelated head is not claimed",
     "type": "scenario"
   },
+  "rq-9f5be6e0": {
+    "decl": "Scenario: --bavg without a formation section is an accepted no-op",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--bavg without a formation section is an accepted no-op",
+    "type": "scenario"
+  },
   "rq-9f86cf20": {
     "decl": "Scenario: Append with an invalid record writes nothing",
     "file": "database",
@@ -6616,6 +6812,18 @@
     "title": "failed",
     "type": "api-item"
   },
+  "rq-a74b25aa": {
+    "decl": "Scenario: --cnt scales the collapsed concentration term by (N-1)/N",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--cnt scales the collapsed concentration term by (N-1)/N",
+    "type": "scenario"
+  },
   "rq-a7757bca": {
     "decl": "- `dedup_names(records: &[Record]) -> Vec<Record>`",
     "file": "uniqueness",
@@ -6857,6 +7065,18 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-ade63c60": {
+    "decl": "Scenario: A corrected member without thermochemistry contributes nothing",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A corrected member without thermochemistry contributes nothing",
+    "type": "scenario"
   },
   "rq-ae14b02d": {
     "decl": "Scenario: The caret power syntax is not part of the grammar",
@@ -7145,6 +7365,18 @@
     "title": "ok",
     "type": "api-item"
   },
+  "rq-b4bcf592": {
+    "decl": "Scenario: --bavg alone is not a visible outcome",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--bavg alone is not a visible outcome",
+    "type": "scenario"
+  },
   "rq-b51f8bc8": {
     "decl": "Scenario: Merge copies records verbatim",
     "file": "collection",
@@ -7343,6 +7575,10 @@
       },
       {
         "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/population.rs",
         "kind": "code"
       },
       {
@@ -7832,6 +8068,18 @@
     "title": "collection pipeline (`rqm/collection.md`).",
     "type": "anchor"
   },
+  "rq-c39939f4": {
+    "decl": "Scenario: Ensemble references make the cluster less favorable than its best conformer",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Ensemble references make the cluster less favorable than its best conformer",
+    "type": "scenario"
+  },
   "rq-c411edfa": {
     "decl": "Scenario: Every record sharing the name receives the correction",
     "file": "correction",
@@ -8020,6 +8268,18 @@
     ],
     "title": "ConcSpec",
     "type": "api-item"
+  },
+  "rq-c959877c": {
+    "decl": "Scenario: Both sections collapse when both are printed",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Both sections collapse when both are printed",
+    "type": "scenario"
   },
   "rq-c984bd29": {
     "decl": "Scenario: Undefined thermochemistry stays undefined under --conc",
@@ -8640,6 +8900,27 @@
     "title": "A count beyond u32::MAX makes the name unresolvable",
     "type": "scenario"
   },
+  "rq-dd65e289": {
+    "decl": "## Boltzmann-Averaged Sections",
+    "file": "formation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Boltzmann-Averaged Sections",
+    "type": "section"
+  },
   "rq-de12aef8": {
     "decl": "Scenario: A normally terminated run yields the observable set",
     "file": "parsers/mrcc",
@@ -8654,6 +8935,30 @@
       }
     ],
     "title": "A normally terminated run yields the observable set",
+    "type": "scenario"
+  },
+  "rq-de842863": {
+    "decl": "Scenario: --noname does not pool the collapse",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--noname does not pool the collapse",
+    "type": "scenario"
+  },
+  "rq-deca4a24": {
+    "decl": "Scenario: The corrected section collapses at its own level",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected section collapses at its own level",
     "type": "scenario"
   },
   "rq-ded51dfb": {
@@ -8746,6 +9051,18 @@
       }
     ],
     "title": "A correction record without a command attaches without commands",
+    "type": "scenario"
+  },
+  "rq-e1615410": {
+    "decl": "Scenario: A single-point-only group prints dashes under --bavg",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A single-point-only group prints dashes under --bavg",
     "type": "scenario"
   },
   "rq-e17eea18": {
@@ -9200,6 +9517,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-eafc5e8e": {
+    "decl": "- `ensemble_formation_values(ensemble: &Ensemble, references: &MonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ensemble_formation_values",
+    "type": "api-item"
+  },
   "rq-eb256ed1": {
     "decl": "- `geometry` — the table under the header line",
     "file": "parsers/mrcc",
@@ -9454,6 +9783,18 @@
     "title": "A missing --out is a usage error",
     "type": "scenario"
   },
+  "rq-f0980405": {
+    "decl": "Scenario: The collapsed row carries the concentration term",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The collapsed row carries the concentration term",
+    "type": "scenario"
+  },
   "rq-f0b153d7": {
     "decl": "- `fragment_signature(record: &Record) -> Option<String>`",
     "file": "detection",
@@ -9484,6 +9825,18 @@
     ],
     "title": "Trivial modes are dropped and a genuine imaginary mode is kept",
     "type": "scenario"
+  },
+  "rq-f162476c": {
+    "decl": "- `corrected_collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble>`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "corrected_collapse_ensembles",
+    "type": "api-item"
   },
   "rq-f1754e10": {
     "decl": "Scenario: Failed and truncated fixtures yield status records",
@@ -9564,6 +9917,30 @@
     "title": "dipole_moment",
     "type": "api-item"
   },
+  "rq-f524bb50": {
+    "decl": "Scenario: The collapsed el is the population-weighted mean",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The collapsed el is the population-weighted mean",
+    "type": "scenario"
+  },
+  "rq-f5583f17": {
+    "decl": "- `corrected_ensemble_formation_values(ensemble: &Ensemble, references: &CorrectedMonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "corrected_ensemble_formation_values",
+    "type": "api-item"
+  },
   "rq-f61c0532": {
     "decl": "Scenario: Default windows cover every file of the fixture corpus",
     "file": "parser-framework",
@@ -9618,6 +9995,18 @@
       }
     ],
     "title": "--makereal flips imaginary modes into the sums",
+    "type": "scenario"
+  },
+  "rq-f71670c3": {
+    "decl": "Scenario: Monomer rows print exactly zero",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Monomer rows print exactly zero",
     "type": "scenario"
   },
   "rq-f7dd8d6f": {
@@ -9734,6 +10123,18 @@
     ],
     "title": "ThermoMemo",
     "type": "api-item"
+  },
+  "rq-f93d319b": {
+    "decl": "Scenario: Undefined members never poison the group",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined members never poison the group",
+    "type": "scenario"
   },
   "rq-f94ef108": {
     "decl": "## Out of Scope",

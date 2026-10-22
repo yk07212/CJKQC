@@ -12,7 +12,9 @@ records' observables under the run's thermochemistry conditions
 (`rqm/thermo.md`), so temperature, reference frequency, and unit changes
 apply to them like to any derived property. The `--conc` and `--cnt`
 flags further evaluate the free-energy level at vapors of named
-components at given concentrations (Formation at Given Concentrations).
+components at given concentrations (Formation at Given Concentrations),
+and `--bavg` collapses each printed section to one Boltzmann-averaged
+row per composition (Boltzmann-Averaged Sections).
 
 ## Monomer References <!-- rq-1b571f91 -->
 
@@ -183,6 +185,85 @@ binding column exists.
   untouched: `--conc` changes only the formation sections' `g`/`gcorr`
   values, printed in the run's energy unit like any formation value.
 
+## Boltzmann-Averaged Sections <!-- rq-dd65e289 -->
+
+- `--bavg` reshapes the printed formation sections: each section's record
+  set is first collapsed into one **ensemble** per composition group, and
+  the section then computes its references, values, concentrations, and
+  formatting over the ensembles exactly as it does over records. The flag
+  is a settings flag (`rqm/thermo.md`), like `--conc` and `--cnt`: it
+  configures the formation sections' presentation, never counts as a
+  manipulation or print flag, and a run that passes only it still needs
+  `--out` or a print flag. It takes no value; without a printed formation
+  section it is an accepted no-op, and the `-bavgout` spelling is not part
+  of the surface (an unknown-flag usage error, `rqm/scaffolding.md`). The
+  main table is untouched: it always prints one row per record, whatever
+  `--bavg` is given.
+- The collapse groups the section's record set by `components` map
+  (`rqm/filtering.md` Grouping), always by composition — `--noname` never
+  pools the formation rows into one global ensemble — in order of first
+  appearance, with records without components forming one unnamed
+  ensemble. A group's **members** are its `ok` records that define the
+  section's Gibbs level: the derived Gibbs free energy for the raw
+  section (`rqm/thermo.md`), `gcorr` for the corrected section
+  (`rqm/correction.md`). Failed and truncated records contribute nothing
+  even when they still carry the observables — the collapse treats them
+  exactly as the pipeline does (`rqm/filtering.md`) — and an `ok` record
+  without that value contributes nothing (the definedness rule of
+  `rqm/population.md`); a group with no members yields an ensemble
+  without values. The ok-gate keeps the collapsed references consistent
+  with the uncollapsed ones, whose monomer references are `ok` records
+  by definition (Monomer References).
+- An ensemble with members carries two values in Eh, defined together or
+  not at all — a member that defines the Gibbs level always defines the
+  electronic level too, since the Gibbs derives from the electronic
+  energy:
+  - the **electronic value** is the members' population-weighted mean
+    Σⱼ pⱼ·eⱼ of the section's electronic-level inputs — the record's
+    `electronic_energy` for the raw section, the correction energy
+    (`rqm/correction.md`) for the corrected one — with pⱼ the members'
+    Boltzmann populations (`rqm/population.md`) at the run's temperature;
+  - the **Gibbs value** is the ensemble free energy
+    −k_B·T·ln(Σⱼ exp(−gⱼ/(k_B·T))) over the members' Gibbs-level values —
+    equivalently g_min − k_B·T·ln Z, computed against the members' minimum
+    as `rqm/population.md` Numerics prescribes. This is the
+    conformationally stabilized free energy of the group (JKQC's "-g is
+    treated correctly"): a plain population-weighted mean would drop the
+    −k_B·T·ln Z entropy term.
+- Over the collapsed set every standing rule applies unchanged. An
+  ensemble whose components map is exactly one entry with count 1 is its
+  code's **monomer ensemble** and supplies both of that level's reference
+  values, so a monomer row's formation values are exactly 0; an ensemble
+  without values supplies no reference at either level. The treatment is
+  uniform — monomers and clusters are ensembled alike — and a user who
+  wants a fixed baseline curates it themselves: with a single monomer
+  conformer per code in the record set, the collapsed row reduces to the
+  global-minimum formation value plus the conformer-entropy correction
+  −k_B·T·ln(Σⱼ exp(−(ΔGⱼ − ΔG_0)/(k_B·T))) against that baseline (the
+  conformer correction of Partanen 2016, JKQC's `-bavg` intent), which is
+  then never above the best conformer's value. The formation values
+  subtract Σᵢ nᵢ·ref(codeᵢ) and the `--conc`/`--cnt` term exactly
+  as for records — the concentration term is constant within a group, so
+  concentrating and collapsing produce the same numbers in either order.
+  The section prints one row per ensemble in first-appearance order —
+  `ct` the ensemble's composition token, `-` for the unnamed ensemble —
+  under the section's standing header, unit, and formatting.
+- Consequences worth naming: a composition whose records all lack the
+  section's Gibbs level — a single-point-only group — prints one row of
+  dashes where the uncollapsed section would print electronic-level
+  values, and a code whose monomers all lack it loses its reference at
+  both levels at once. Undefined members never poison their group: the
+  surviving members define the ensemble (JKQC's NaN-poisoned columns are
+  not carried over). A group whose single member defines the Gibbs level
+  collapses to itself, so `--glob` makes the collapse the identity.
+- The collapse always stabilizes a group's own ensemble —
+  −k_B·T·ln Z ≤ 0 — but a formation value is a difference of two
+  ensembles, so averaging shifts it either way: it turns less favorable
+  when the monomer ensembles carry more conformational entropy than the
+  cluster ensemble (forming the cluster costs the monomers' conformer
+  freedom) and more favorable in the opposite case, with the terms
+  cancelling for equally floppy cluster and monomers.
+
 ## Feature API <!-- rq-e814b912 -->
 
 ### Types <!-- rq-85b79495 -->
@@ -203,6 +284,10 @@ binding column exists.
 - `ConcConditions` — the run's concentration settings: <!-- rq-a0748032 -->
   `specs: Vec<ConcSpec>`, `self_consistent: bool`; `Default` is no specs
   and `--cnt` off.
+- `Ensemble` — one collapsed composition group (Boltzmann-Averaged <!-- rq-35671b9e -->
+  Sections): `components: Option<Components>` (`None` for the unnamed
+  ensemble), `electronic: Option<f64>`, `gibbs: Option<f64>` (Eh); the
+  two values are `Some` together or `None` together.
 
 ### Functions <!-- rq-ded51dfb -->
 
@@ -238,20 +323,54 @@ binding column exists.
   the same non-finite guard.
 - `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4f20e170 -->
   — the corrected section table with header `ct elcorr gcorr`.
+- `collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble>` <!-- rq-18dba668 -->
+  — the raw section's collapse (Boltzmann-Averaged Sections): groups by
+  components map in first-appearance order, the records without
+  components last as the unnamed ensemble; members, weights, and the two
+  values per that section.
+- `corrected_collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble>` <!-- rq-f162476c -->
+  — the corrected section's collapse: members and inputs resolved through
+  `gcorr` and the correction energy (`rqm/correction.md`), otherwise
+  identical.
+- `ensemble_references(ensembles: &[Ensemble]) -> MonomerReferences` <!-- rq-27a3b339 -->
+  — the reference scan over ensembles: each monomer ensemble supplies
+  both reference values for its code; ensembles without values contribute
+  nothing.
+- `corrected_ensemble_references(ensembles: &[Ensemble]) -> CorrectedMonomerReferences` <!-- rq-4b8a9f98 -->
+  — the same scan read as the corrected references.
+- `ensemble_formation_values(ensemble: &Ensemble, references: &MonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-eafc5e8e -->
+  — the two levels of one collapsed row: the ensemble's values minus the
+  stoichiometric references, minus the concentration term of
+  `concentration_correction` with the same non-finite guard; both levels
+  undefined when the ensemble has no values.
+- `corrected_ensemble_formation_values(ensemble: &Ensemble, references: &CorrectedMonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-f5583f17 -->
+  — the corrected row's two levels, same rule.
+- `print_formation_ensembles(ensembles: &[Ensemble], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-30ea9ebc -->
+  — the collapsed raw section: header `ct el g`, one row per ensemble in
+  the given order, `-` for undefined values and for the unnamed
+  ensemble's token.
+- `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4c1bcb87 -->
+  — the collapsed corrected section: header `ct elcorr gcorr`.
 
 ### Crate Layout <!-- rq-22e7999c -->
 
 - The scan, values, and sections live in `src/formation.rs`; the library
   root re-exports the types and functions. No new dependencies; the CLI
-  adds `--formation`, `--formation-corr`, `--conc`, and `--cnt`, parses
-  the specs into `ConcConditions` with the usage-error validation above,
-  and wires both sections into the printing block.
+  adds `--formation`, `--formation-corr`, `--conc`, `--cnt`, and
+  `--bavg`, parses the specs into `ConcConditions` with the usage-error
+  validation above, and wires both sections into the printing block —
+  through the ensemble path when `--bavg` is set. The collapse reuses the
+  Boltzmann populations of `rqm/population.md`.
 - `tests/formation.rs` tests the scan and the values as pure functions <!-- rq-eb7da353 -->
   (sort-based reference selection, per-level definedness, missing
   references, stoichiometry), the section formatting, the corrected
   section's selection and definedness, the VALUE grammar and pressure
   resolution, and the concentration correction's stoichiometry and
-  self-consistent factor; CLI coverage extends `tests/cli.rs`.
+  self-consistent factor; the ensemble collapse (grouping, member
+  definedness, the population-weighted mean, the partition-function
+  Gibbs against hand-computed splits), the ensemble references, and the
+  collapsed sections' formatting and concentration terms extend the same
+  tests; CLI coverage extends `tests/cli.rs`.
 
 ## Out of Scope <!-- rq-39f86935 -->
 
@@ -271,6 +390,14 @@ binding column exists.
 - Boltzmann-population and other ensemble-derived properties beyond the
   formation sections: `rqm/population.md` computes populations on the run's
   final record set, like the formation values.
+- A Boltzmann collapse of the main table: JKQC's `-bavg` averages every
+  printed column over each composition; CJKQC's `--bavg` reshapes only the
+  formation sections, and the main table always prints one row per record.
+- The `-bavgout` flag name: the corrected section is averaged by the same
+  `--bavg` at its own level, so no second flag exists.
+- Ensemble enthalpy or entropy columns: the sections print only the
+  `el`/`g` levels, so JKQC's "-s not treated; use (G - H)/T" caveat has no
+  surface here.
 
 ## Gherkin Scenarios <!-- rq-077d9eed -->
 
@@ -639,4 +766,146 @@ Feature: Formation energies from monomer references
     When CJKQC is invoked with the database and "--formation --conc sa 1e-320" and no --out
     Then the run exits 0
     And every sa-covered row's g formation value prints -
+
+  # --- Boltzmann averaging ---
+
+  @rq-85dab208
+  Scenario: --bavg prints one row per composition
+    Given a database with two 2am1sa conformers, an am monomer, and an sa monomer
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the section header is "ct el g"
+    And the section prints three rows: 2am1sa, 1am, and 1sa
+
+  @rq-7d43ccc9
+  Scenario: The collapsed g includes the conformational entropy term
+    Given two 2am1sa conformers whose gibbs values differ by kB*T*ln(3) and whose electronic energies are equal, and the am and sa monomers
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the cluster's el formation value equals either conformer's
+    And the cluster's g formation value is k_B*T*ln(4/3) below the best conformer's
+
+  @rq-f524bb50
+  Scenario: The collapsed el is the population-weighted mean
+    Given two 2am1sa conformers with equal gibbs values and electronic energies 0.02 Eh apart, and the am and sa monomers
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the cluster's el formation value is the midpoint of the two conformers' el formation values
+
+  @rq-f71670c3
+  Scenario: Monomer rows print exactly zero
+    Given a database with two am conformers with defined thermochemistry and a 2am cluster
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the 1am row prints 0 at both levels
+
+  @rq-c39939f4
+  Scenario: Ensemble references make the cluster less favorable than its best conformer
+    Given two am monomers whose gibbs values differ by kB*T*ln(3) and whose electronic energies are equal, and a 2am cluster with defined thermochemistry
+    When the same database is run with "--formation --sort g" and with "--formation --sort g --bavg"
+    Then the two runs' cluster el formation values are equal
+    And the averaged run's cluster g formation value is 2*k_B*T*ln(4/3) above the uncollapsed run's
+    And the averaged run's 1am row prints 0 at both levels
+
+  @rq-e1615410
+  Scenario: A single-point-only group prints dashes under --bavg
+    Given two 2am1sa single-point records without frequencies and am and sa monomers with full thermochemistry
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the 2am1sa row shows - for both levels
+    And without --bavg the same run prints the cluster's el formation value
+
+  @rq-0df193f0
+  Scenario: A monomer group without any Gibbs loses its reference at both levels
+    Given a 2am cluster with full thermochemistry, a single-point am monomer without frequencies, and an sa monomer with full thermochemistry
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the cluster's row shows - for both levels
+    And without --bavg the cluster's el formation value is defined and its g is -
+
+  @rq-1ad3c076
+  Scenario: Records without components form one unnamed ensemble
+    Given two records without components and an am monomer
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the section prints exactly two rows: 1am and one row of "- - -"
+
+  @rq-30bd57ee
+  Scenario: --glob makes the collapse the identity
+    Given a database with two 2am1sa conformers and am and sa monomers
+    When the same database is run with "--glob --formation" and with "--glob --formation --bavg"
+    Then the two runs' formation sections are identical
+
+  @rq-f93d319b
+  Scenario: Undefined members never poison the group
+    Given three 2am1sa records, two with full thermochemistry whose gibbs values differ by kB*T*ln(3) and one without frequencies, and the am and sa monomers
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the cluster's g formation value is k_B*T*ln(4/3) below the best conformer's
+
+  @rq-482ab490
+  Scenario: Failed records contribute nothing to the collapse
+    Given a failed 2am1sa record and an ok 2am1sa record with full thermochemistry, and the am and sa monomers
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the section prints one 2am1sa row with defined values
+
+  @rq-deca4a24
+  Scenario: The corrected section collapses at its own level
+    Given two corrected 1am1sa conformers whose gcorr values differ by kB*T*ln(3) and whose correction energies are equal, and corrected am and sa monomers
+    When CJKQC is invoked with the database and "--formation-corr --bavg" and no --out
+    Then the cluster's elcorr formation value equals either conformer's
+    And the cluster's gcorr formation value is k_B*T*ln(4/3) below the best conformer's
+
+  @rq-ade63c60
+  Scenario: A corrected member without thermochemistry contributes nothing
+    Given two corrected 1am1sa conformers, one without frequencies, and corrected am and sa monomers
+    When the same database is run with "--formation-corr" and with "--formation-corr --bavg"
+    Then the uncollapsed section prints two rows and the collapsed section one
+    And the collapsed row's values equal the full conformer's uncollapsed row's values
+
+  @rq-c959877c
+  Scenario: Both sections collapse when both are printed
+    Given a database with corrected 2am1sa conformers and corrected am and sa monomers
+    When CJKQC is invoked with the database and "--formation --formation-corr --bavg" and no --out
+    Then both sections print one row per composition
+
+  @rq-f0980405
+  Scenario: The collapsed row carries the concentration term
+    Given a database with two 2sa conformers whose gibbs values differ by kB*T*ln(3) and an sa monomer
+    When the same database is run with "--formation --bavg" and with "--formation --bavg --conc sa 100ppt"
+    Then the conc run's collapsed g formation value is 2*R*T*ln(10^10) above the plain run's
+
+  @rq-a74b25aa
+  Scenario: --cnt scales the collapsed concentration term by (N-1)/N
+    Given a database with two 2sa conformers whose gibbs values differ by kB*T*ln(3) and an sa monomer
+    When the same database is run with "--formation --bavg --conc sa 100ppt" and with "--formation --bavg --cnt --conc sa 100ppt"
+    Then the cnt run's collapsed g formation value is R*T*ln(10^10) below the conc run's, the term 2*(N-1)/N = 1
+
+  @rq-de842863
+  Scenario: --noname does not pool the collapse
+    Given a database with 2am conformers and 1sa conformers and their monomers
+    When CJKQC is invoked with the database and "--noname --formation --bavg" and no --out
+    Then the section still prints one row per composition, not one global row
+
+  @rq-7721f6ff
+  Scenario: The collapse preserves first-appearance order
+    Given a database loaded in the order 1am1sa, 2am, a second 1am1sa, 1sa
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the section rows are 1am1sa, 2am, 1sa
+
+  @rq-94cec13a
+  Scenario: --bavg leaves the main table per record
+    Given a database with three 2am1sa conformers and the am and sa monomers
+    When CJKQC is invoked with the database and "--ct --g --formation --bavg" and no --out
+    Then the main table prints three rows
+    And the formation section prints one row per composition
+
+  @rq-9f5be6e0
+  Scenario: --bavg without a formation section is an accepted no-op
+    Given a database with one record
+    When CJKQC is invoked with the database and "--name --el --bavg" and no --out
+    Then the table prints normally, identical to the run without --bavg
+
+  @rq-b4bcf592
+  Scenario: --bavg alone is not a visible outcome
+    When CJKQC is invoked with a database and "--bavg" and no --out and no print flag
+    Then the exit code is 2
+
+  @rq-603dd405
+  Scenario: --bavgout is a usage error
+    Given a database with one record
+    When CJKQC is invoked with the database and "--formation --bavgout" and no --out
+    Then the exit code is 2
 ```

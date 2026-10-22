@@ -4020,12 +4020,19 @@ fn sorting_never_changes_population_values() {
 fn a_print_only_run_sees_every_loaded_record() {
     let dir = temp_dir();
     let gap = pop_kbt();
+    // The failed record keeps its full observables: it is excluded by
+    // status, not by definedness — and its lower energy would dominate
+    // the group's partition sum if the ok-gate regressed.
+    let mut broken: Record =
+        serde_json::from_str(&thermo_line("broken", -70.0, &[("am", 1)], None)).expect("template");
+    broken.status = RecordStatus::Failed;
+    broken.error = Some("boom".to_string());
     let db = database_in(
         &dir,
         &[
             conformer_line("low", Some(-50.0), &[("am", 1)], None),
             conformer_line("high", Some(-50.0 + gap), &[("am", 1)], None),
-            comp_line("broken", Some(-70.0), &[("am", 1)], RecordStatus::Failed),
+            serde_json::to_string(&broken).expect("serialization"),
         ],
     );
     let run = cjkqc(&[&db, "--pop"]);
@@ -4163,4 +4170,341 @@ fn conc_leaves_populations_alone() {
     assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
     assert_eq!(shifted.status.code(), Some(0), "{}", stderr(&shifted));
     assert_eq!(stdout(&plain), stdout(&shifted));
+}
+
+// ---------------------------------------------------------------------------
+// Boltzmann-averaged formation sections (`rqm/formation.md`,
+// Boltzmann-Averaged Sections).
+// ---------------------------------------------------------------------------
+
+/// A full-thermochemistry record line with the given spin multiplicity:
+/// the electronic entropy term R*ln(m) shifts the Gibbs value by exactly
+/// k_B*T*ln(m) against the multiplicity-1 record with the same energy
+/// (rqm/thermo.md).
+fn multiplicity_thermo_line(
+    name: &str,
+    energy: f64,
+    comps: &[(&str, u32)],
+    multiplicity: u32,
+) -> String {
+    let mut record: Record =
+        serde_json::from_str(&thermo_line(name, energy, comps, None)).expect("template");
+    record.multiplicity = Some(multiplicity);
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// A single-point record line: full thermochemistry inputs minus the
+/// frequencies, so no Gibbs level is defined.
+fn frequencyless_line(name: &str, energy: f64, comps: &[(&str, u32)]) -> String {
+    let mut record: Record =
+        serde_json::from_str(&thermo_line(name, energy, comps, None)).expect("template");
+    record.vibrational_frequencies = None;
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// The tokens of the section's data rows, in print order — up to the
+/// next section header, so a later section's rows never join in.
+fn section_tokens(section: &str) -> Vec<&str> {
+    section
+        .lines()
+        .skip(1)
+        .take_while(|line| !line.starts_with("ct "))
+        .map(|line| line.split(' ').next().expect("token"))
+        .collect()
+}
+
+#[test] // rq-85dab208
+fn bavg_prints_one_row_per_composition() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("c1", -91.0, &[("am", 2), ("sa", 1)], None),
+            thermo_line("c2", -90.9, &[("am", 2), ("sa", 1)], None),
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--bavg"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stdout(&run).starts_with("ct el g\n"), "{}", stdout(&run));
+    assert_eq!(
+        section_tokens(formation_section(&stdout(&run))),
+        ["2am1sa", "1am", "1sa"]
+    );
+}
+
+#[test] // rq-c39939f4
+fn ensemble_references_make_the_cluster_less_favorable_than_its_best_conformer() {
+    let dir = temp_dir();
+    // Two am monomers with equal electronic energies whose Gibbs values
+    // differ by exactly kB*T*ln(3): the multiplicity-3 copy holds
+    // R*ln(3) more electronic entropy, so it is the best conformer.
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am_low", -50.0, &[("am", 1)], None),
+            multiplicity_thermo_line("am_high", -50.0, &[("am", 1)], 3),
+            thermo_line("cluster", -101.0, &[("am", 2)], None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--formation", "--sort", "g"]);
+    let bavg = cjkqc(&[&db, "--formation", "--sort", "g", "--bavg"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(bavg.status.code(), Some(0), "{}", stderr(&bavg));
+    let plain_row = formation_row(formation_section(&stdout(&plain)), "2am");
+    let bavg_row = formation_row(formation_section(&stdout(&bavg)), "2am");
+    // The cluster el formation values are equal: the monomer ensemble's
+    // electronic mean of equal energies is that energy. The parsed cells
+    // carry 10 decimals, so the comparisons tolerate the print rounding.
+    let plain_el: f64 = plain_row[1].parse().expect("number");
+    let bavg_el: f64 = bavg_row[1].parse().expect("number");
+    assert!(
+        (bavg_el - plain_el).abs() < 1e-9,
+        "{plain_row:?} {bavg_row:?}"
+    );
+    // The averaged g formation value is 2*k_B*T*ln(4/3) above the
+    // uncollapsed run's.
+    let plain_g: f64 = plain_row[2].parse().expect("number");
+    let bavg_g: f64 = bavg_row[2].parse().expect("number");
+    let expected = 2.0 * kbt_eh(298.15) * (4.0f64 / 3.0).ln();
+    assert!(
+        (bavg_g - plain_g - expected).abs() < 1e-9,
+        "{plain_row:?} {bavg_row:?}"
+    );
+    // The 1am row prints 0 at both levels in both runs.
+    for out in [&plain, &bavg] {
+        let row = formation_row(formation_section(&stdout(out)), "1am");
+        let elcorr: f64 = row[1].parse().expect("number");
+        let gcorr: f64 = row[2].parse().expect("number");
+        assert!(elcorr.abs() < 1e-9 && gcorr.abs() < 1e-9, "{row:?}");
+    }
+}
+
+#[test] // rq-e1615410
+fn a_single_point_only_group_prints_dashes_under_bavg() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            frequencyless_line("sp1", -91.0, &[("am", 2), ("sa", 1)]),
+            frequencyless_line("sp2", -91.1, &[("am", 2), ("sa", 1)]),
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+        ],
+    );
+    let bavg = cjkqc(&[&db, "--formation", "--bavg"]);
+    assert_eq!(bavg.status.code(), Some(0), "{}", stderr(&bavg));
+    let row = formation_row(formation_section(&stdout(&bavg)), "2am1sa");
+    assert_eq!(row[1], "-");
+    assert_eq!(row[2], "-");
+    // Without --bavg the same run prints the cluster's el formation
+    // value (its g stays undefined without frequencies).
+    let plain = cjkqc(&[&db, "--formation"]);
+    let row = formation_row(formation_section(&stdout(&plain)), "2am1sa");
+    assert_ne!(row[1], "-");
+    assert_eq!(row[2], "-");
+}
+
+#[test] // rq-30bd57ee
+fn glob_makes_the_collapse_the_identity() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("c1", -91.0, &[("am", 2), ("sa", 1)], None),
+            thermo_line("c2", -90.9, &[("am", 2), ("sa", 1)], None),
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--glob", "--formation"]);
+    let bavg = cjkqc(&[&db, "--glob", "--formation", "--bavg"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(bavg.status.code(), Some(0), "{}", stderr(&bavg));
+    assert_eq!(stdout(&plain), stdout(&bavg));
+}
+
+#[test] // rq-f0980405
+fn the_collapsed_row_carries_the_concentration_term() {
+    let dir = temp_dir();
+    // Two 2sa conformers whose Gibbs values differ by kB*T*ln(3): the
+    // multiplicity-3 copy holds R*ln(3) more electronic entropy.
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("c1", -80.0, &[("sa", 2)], None),
+            multiplicity_thermo_line("c2", -80.0, &[("sa", 2)], 3),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--formation", "--bavg"]);
+    let conc = cjkqc(&[&db, "--formation", "--bavg", "--conc", "sa", "100ppt"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(conc.status.code(), Some(0), "{}", stderr(&conc));
+    let plain_g: f64 = formation_row(formation_section(&stdout(&plain)), "2sa")[2]
+        .parse()
+        .expect("number");
+    let conc_g: f64 = formation_row(formation_section(&stdout(&conc)), "2sa")[2]
+        .parse()
+        .expect("number");
+    // Two molecules of sa: the conc run sits 2*R*T*ln(10^10) above. The
+    // parsed cells carry 10 decimals, so the comparison tolerates the
+    // print rounding.
+    assert!(
+        (conc_g - plain_g - 2.0 * ppt_shift(100.0)).abs() < 1e-9,
+        "plain {plain_g} conc {conc_g}"
+    );
+}
+
+#[test] // rq-a74b25aa
+fn cnt_scales_the_collapsed_concentration_term_by_n_minus_one_over_n() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("c1", -80.0, &[("sa", 2)], None),
+            multiplicity_thermo_line("c2", -80.0, &[("sa", 2)], 3),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+        ],
+    );
+    let conc = cjkqc(&[&db, "--formation", "--bavg", "--conc", "sa", "100ppt"]);
+    let cnt = cjkqc(&[
+        &db,
+        "--formation",
+        "--bavg",
+        "--cnt",
+        "--conc",
+        "sa",
+        "100ppt",
+    ]);
+    assert_eq!(conc.status.code(), Some(0), "{}", stderr(&conc));
+    assert_eq!(cnt.status.code(), Some(0), "{}", stderr(&cnt));
+    let conc_g: f64 = formation_row(formation_section(&stdout(&conc)), "2sa")[2]
+        .parse()
+        .expect("number");
+    let cnt_g: f64 = formation_row(formation_section(&stdout(&cnt)), "2sa")[2]
+        .parse()
+        .expect("number");
+    // The term 2*(N-1)/N = 1: the cnt run sits one R*T*ln(10^10) below
+    // the conc run's.
+    assert!(
+        (cnt_g - conc_g + ppt_shift(100.0)).abs() < 1e-9,
+        "conc {conc_g} cnt {cnt_g}"
+    );
+}
+
+#[test] // rq-de842863
+fn noname_does_not_pool_the_collapse() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("c1", -91.0, &[("am", 2)], None),
+            thermo_line("s1", -40.0, &[("sa", 1)], None),
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.5, &[("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--noname", "--formation", "--bavg"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(
+        section_tokens(formation_section(&stdout(&run))),
+        ["2am", "1sa", "1am"]
+    );
+}
+
+#[test] // rq-94cec13a
+fn bavg_leaves_the_main_table_per_record() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("c1", -91.0, &[("am", 2), ("sa", 1)], None),
+            thermo_line("c2", -90.9, &[("am", 2), ("sa", 1)], None),
+            thermo_line("c3", -90.8, &[("am", 2), ("sa", 1)], None),
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--ct", "--g", "--formation", "--bavg"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let table: Vec<&str> = text.lines().take(4).collect();
+    // The main table's columns follow the canonical column order, so
+    // --ct --g prints `g ct`.
+    assert_eq!(table[0], "g ct", "{text}");
+    assert_eq!(table.len(), 4, "the main table prints three rows: {text}");
+    assert_eq!(
+        section_tokens(formation_section(&text)),
+        ["2am1sa", "1am", "1sa"],
+        "the formation section prints one row per composition"
+    );
+}
+
+#[test] // rq-9f5be6e0
+fn bavg_without_a_formation_section_is_an_accepted_no_op() {
+    let dir = temp_dir();
+    let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
+    let plain = cjkqc(&[&db, "--name", "--el"]);
+    let bavg = cjkqc(&[&db, "--name", "--el", "--bavg"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(bavg.status.code(), Some(0), "{}", stderr(&bavg));
+    assert_eq!(stdout(&plain), stdout(&bavg));
+}
+
+#[test] // rq-b4bcf592
+fn bavg_alone_is_not_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
+    let run = cjkqc(&[&db, "--bavg"]);
+    assert_eq!(run.status.code(), Some(2));
+}
+
+#[test] // rq-603dd405
+fn bavgout_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
+    let run = cjkqc(&[&db, "--formation", "--bavgout"]);
+    assert_eq!(run.status.code(), Some(2));
+}
+
+#[test] // rq-c959877c
+fn both_sections_collapse_when_both_are_printed() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("c1", -91.0, &[("am", 2), ("sa", 1)], Some(-5.0)),
+            thermo_line("c2", -90.9, &[("am", 2), ("sa", 1)], Some(-5.0)),
+            thermo_line("am1", -50.0, &[("am", 1)], Some(-5.0)),
+            thermo_line("sa1", -40.0, &[("sa", 1)], Some(-5.0)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--formation-corr", "--bavg"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    // Each section's header is the section's own.
+    assert_eq!(formation_section(&text).lines().next(), Some("ct el g"));
+    assert_eq!(
+        corrected_section(&text).lines().next(),
+        Some("ct elcorr gcorr")
+    );
+    assert_eq!(
+        section_tokens(formation_section(&text)),
+        ["2am1sa", "1am", "1sa"]
+    );
+    assert_eq!(
+        section_tokens(corrected_section(&text)),
+        ["2am1sa", "1am", "1sa"]
+    );
 }

@@ -5,7 +5,7 @@
 //! stored (`rqm/ARCHITECTURE.md`).
 
 use crate::filter::Grouping;
-use crate::record::Record;
+use crate::record::{Record, RecordStatus};
 use crate::thermo::{ThermoMemo, E_HARTREE, K_B};
 
 /// A population energy basis: `el`, `g`, `elcorr`, or `gcorr`; bare
@@ -72,14 +72,42 @@ pub fn pop_level_value(record: &Record, level: PopLevel, memo: &ThermoMemo) -> O
         .filter(|value| value.is_finite())
 }
 
+/// The Boltzmann weights of the given values in Eh at `kbt`
+/// (`rqm/population.md` Computation): p_i = exp(-(v_i - v_min)/(k_B T)) /
+/// Z over the defined values, with v_min the minimum defined value and Z
+/// the partition sum. The weights align index-wise with `values` (`None`
+/// stays `None`); the result is `None` when no value is defined, with the
+/// partition sum returned alongside for the ensemble free energy of
+/// `rqm/formation.md` Boltzmann-Averaged Sections. The exponent is <= 0
+/// by construction, so every factor lies in [0, 1] and the minimum's own
+/// factor is exactly 1: the partition sum is at least 1 and overflow and
+/// division by zero are unreachable (`rqm/population.md` Numerics).
+// rq-540b4c18 rq-18dba668
+pub(crate) fn boltzmann_weights(
+    values: &[Option<f64>],
+    kbt: f64,
+) -> Option<(Vec<Option<f64>>, f64)> {
+    let minimum = values.iter().filter_map(|value| *value).reduce(f64::min)?;
+    let factors: Vec<Option<f64>> = values
+        .iter()
+        .map(|value| value.map(|value| (-(value - minimum) / kbt).exp()))
+        .collect();
+    let partition: f64 = factors.iter().filter_map(|factor| *factor).sum();
+    let weights = factors
+        .into_iter()
+        .map(|factor| factor.map(|factor| factor / partition))
+        .collect();
+    Some((weights, partition))
+}
+
 /// Per-record populations aligned index-wise with `records` over the
 /// given (printed) set: groups per the run's grouping, Boltzmann weights
-/// at the memo's temperature, `None` when the record's level value is
-/// undefined or no member of its group defines the level
-/// (`rqm/population.md` Computation).
+/// at the memo's temperature, `None` when the record is not `ok`, its
+/// level value is undefined, or no `ok` member of its group defines the
+/// level (`rqm/population.md` Computation).
 ///
 /// p_i = exp(-(v_i - v_min)/(k_B T)) / sum_j exp(-(v_j - v_min)/(k_B T))
-/// over the group's defined members, with v_min the group's minimum
+/// over the group's defined `ok` members, with v_min the group's minimum
 /// defined value. The exponent is <= 0 by construction, so every factor
 /// lies in [0, 1] and the minimum's own factor is exactly 1: the
 /// partition sum is at least 1 and overflow and division by zero are
@@ -99,20 +127,26 @@ pub fn populations(
         .collect();
     let kbt = K_B * memo.temperature() / E_HARTREE;
     for members in crate::filter::group_indices(records, grouping) {
-        let defined: Vec<(usize, f64)> = members
+        // A record contributes to the partition sum only when its status
+        // is `ok`: failed and truncated records are excluded exactly as
+        // the pipeline excludes them (`rqm/filtering.md`), even when they
+        // still carry observables.
+        // rq-b7d07857
+        let group_values: Vec<Option<f64>> = members
             .iter()
-            .filter_map(|&index| values[index].map(|value| (index, value)))
+            .map(|&index| {
+                if records[index].status == RecordStatus::Ok {
+                    values[index]
+                } else {
+                    None
+                }
+            })
             .collect();
-        let Some(minimum) = defined.iter().map(|&(_, value)| value).reduce(f64::min) else {
+        let Some((weights, _)) = boltzmann_weights(&group_values, kbt) else {
             continue;
         };
-        let weights: Vec<(usize, f64)> = defined
-            .iter()
-            .map(|&(index, value)| (index, (-(value - minimum) / kbt).exp()))
-            .collect();
-        let sum: f64 = weights.iter().map(|&(_, weight)| weight).sum();
-        for (index, weight) in weights {
-            result[index] = Some(weight / sum);
+        for (&index, weight) in members.iter().zip(&weights) {
+            result[index] = *weight;
         }
     }
     result
