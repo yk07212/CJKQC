@@ -633,13 +633,27 @@ fn energy_columns_print_kcal_mol_under_unit() {
     );
     let thermo = thermochemistry(&record, &default_conditions()).unwrap();
     let per_hartree = complied_jkqc::KCAL_MOL_PER_HARTREE;
-    let expected = format!(
-        "name el zpe h s g\nwarm {:.4} {:.4} {:.4} {:.4} {:.4}",
-        record.electronic_energy.unwrap() * per_hartree,
-        thermo.zpe * per_hartree,
-        thermo.enthalpy * per_hartree,
-        thermo.entropy_term * per_hartree,
-        thermo.gibbs * per_hartree
+    let lines: Vec<Vec<String>> = kcal
+        .lines()
+        .map(|line| line.split_whitespace().map(str::to_string).collect())
+        .collect();
+    assert_eq!(
+        lines[0],
+        ["name", "el", "zpe", "h", "s", "g"]
+            .map(str::to_string)
+            .to_vec()
     );
-    assert_eq!(kcal, expected);
+    assert_eq!(
+        lines[1],
+        [
+            "warm",
+            &format!("{:.4}", record.electronic_energy.unwrap() * per_hartree),
+            &format!("{:.4}", thermo.zpe * per_hartree),
+            &format!("{:.4}", thermo.enthalpy * per_hartree),
+            &format!("{:.4}", thermo.entropy_term * per_hartree),
+            &format!("{:.4}", thermo.gibbs * per_hartree),
+        ]
+        .map(str::to_string)
+        .to_vec()
+    );
 }

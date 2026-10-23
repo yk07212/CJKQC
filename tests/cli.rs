@@ -28,6 +28,60 @@ fn stderr(out: &Output) -> String {
     String::from_utf8_lossy(&out.stderr).into_owned()
 }
 
+/// The whitespace-separated cells of a table line: aligned tables pad
+/// their cells, so cell comparisons split on runs of whitespace.
+fn cells(line: &str) -> Vec<&str> {
+    line.split_whitespace().collect()
+}
+
+/// A table's lines as whitespace-split cells, the `cells` view of every
+/// line: aligned tables pad their cells, so cell comparisons split on
+/// runs of whitespace.
+fn rows(text: &str) -> Vec<Vec<&str>> {
+    text.trim().lines().map(cells).collect()
+}
+
+/// The line index of the first line whose cells equal `header`, so a
+/// section header is found however wide its aligned columns print.
+fn find_line(text: &str, header: &[&str]) -> Option<usize> {
+    text.lines().position(|line| cells(line) == header)
+}
+
+/// The substring of `text` from the first line whose cells equal
+/// `header` onward, so a section's rows are sliced whatever widths the
+/// aligned table printed.
+fn section_from<'a>(text: &'a str, header: &[&str]) -> &'a str {
+    let mut offset = 0usize;
+    for line in text.lines() {
+        if cells(line) == header {
+            return &text[offset..];
+        }
+        offset += line.len() + 1;
+    }
+    panic!("no {header:?} section in:\n{text}");
+}
+
+/// The (start, end) byte spans of a line's whitespace-separated cells,
+/// so alignment (where a cell sits, not just what it says) is checked.
+fn cell_spans(line: &str) -> Vec<(usize, usize)> {
+    let bytes = line.as_bytes();
+    let mut spans = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        let start = i;
+        while i < bytes.len() && !bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        if i > start {
+            spans.push((start, i));
+        }
+    }
+    spans
+}
+
 #[test] // rq-f9a3759e
 fn help_prints_usage() {
     let out = cjkqc(&["--help"]);
@@ -706,8 +760,11 @@ fn print_flags_print_the_table_while_out_writes() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     assert_eq!(loaded(&out).len(), 1);
     let text = stdout(&run);
-    assert!(text.starts_with("name el\n"), "{text}");
-    assert!(text.contains("1dma -38.5100000000"), "{text}");
+    assert_eq!(cells(text.lines().next().unwrap()), ["name", "el"]);
+    assert_eq!(
+        cells(text.lines().nth(1).unwrap()),
+        ["1dma", "-38.5100000000"]
+    );
 }
 
 #[test] // rq-acf714ae
@@ -724,7 +781,38 @@ fn print_columns_follow_canonical_order_regardless_of_flag_order() {
     let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
     let run = cjkqc(&[&db, "--mass", "--rg", "--name"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name rg mass\nunknown - -");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["name", "rg", "mass"]);
+    assert_eq!(lines[1], ["unknown", "-", "-"]);
+}
+
+#[test] // rq-be8df504
+fn the_table_aligns_its_columns_like_column_t() {
+    let dir = temp_dir();
+    let nameless = Record {
+        name: Some("1".to_string()),
+        ..Record::default()
+    };
+    let db = database_in(
+        &dir,
+        &[
+            // Two H atoms 4.69 Å apart: a radius of gyration of 2.345 Å.
+            geom_line("1dma", &[], &["H", "H"], &[0.0, 0.0, 0.0, 4.69, 0.0, 0.0]),
+            serde_json::to_string(&nameless).expect("serialization"),
+        ],
+    );
+    let run = cjkqc(&[&db, "--name", "--rg"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // name is a text column (left-aligned), rg a numeric column
+    // (right-aligned, header included): the rg column is as wide as its
+    // widest cell, so the header pads and the dash right-aligns.
+    assert_eq!(
+        stdout(&run).trim(),
+        "name    rg\n1dma 2.345\n1        -",
+        "{}",
+        stdout(&run)
+    );
 }
 
 #[test] // rq-207aec4d
@@ -737,7 +825,10 @@ fn lf_column_prints_the_lowest_raw_frequency() {
     let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
     let run = cjkqc(&[&db, "--lf"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "lf\n-300.0");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["lf"]);
+    assert_eq!(lines[1], ["-300.0"]);
 }
 
 #[test] // rq-4633531a
@@ -749,7 +840,10 @@ fn lf_column_is_undefined_without_stored_frequencies() {
     );
     let run = cjkqc(&[&db, "--lf"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "lf\n-");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["lf"]);
+    assert_eq!(lines[1], ["-"]);
 }
 
 #[test] // rq-1f63ac38
@@ -861,7 +955,12 @@ fn a_print_only_run_prints_every_record_without_writing() {
     );
     let run = cjkqc(&[&db, "--status", "--name"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name status\na ok\nb ok\nc failed");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["name", "status"]);
+    assert_eq!(lines[1], ["a", "ok"]);
+    assert_eq!(lines[2], ["b", "ok"]);
+    assert_eq!(lines[3], ["c", "failed"]);
     assert_eq!(
         fs::read_to_string(&db).expect("db").lines().count(),
         3,
@@ -1338,7 +1437,7 @@ fn db_with(dir: &TempDir, filename: &str, lines: &[String]) -> String {
 
 fn formation_row(stdout_text: &str, token: &str) -> Vec<String> {
     for line in stdout_text.lines().skip(1) {
-        let cells: Vec<&str> = line.split(' ').collect();
+        let cells: Vec<&str> = line.split_whitespace().collect();
         if cells.first() == Some(&token) {
             return cells.iter().map(|cell| cell.to_string()).collect();
         }
@@ -1361,7 +1460,10 @@ fn a_saddle_point_s_thermochemistry_columns_print_dashes() {
     );
     let run = cjkqc(&[&db, "--name", "--zpe", "--h", "--s", "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name zpe h s g\nsaddle - - - -");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["name", "zpe", "h", "s", "g"]);
+    assert_eq!(lines[1], ["saddle", "-", "-", "-", "-"]);
 }
 
 #[test] // rq-d04cc134
@@ -1383,7 +1485,10 @@ fn a_degenerate_geometry_prints_dashes_not_infinities() {
     );
     let run = cjkqc(&[&db, "--name", "--zpe", "--h", "--s", "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name zpe h s g\ncollapsed - - - -");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["name", "zpe", "h", "s", "g"]);
+    assert_eq!(lines[1], ["collapsed", "-", "-", "-", "-"]);
 }
 
 #[test] // rq-64567efa
@@ -1420,7 +1525,11 @@ fn absurd_temperature_records_drop_out_of_glob() {
     // The same records also print - for g, like any undefined value.
     let printed = cjkqc(&[&db, "--temp", "1e17", "--name", "--g"]);
     assert_eq!(printed.status.code(), Some(0), "{}", stderr(&printed));
-    assert_eq!(stdout(&printed).trim(), "name g\nhot -\ncooler -");
+    let text = stdout(&printed);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["name", "g"]);
+    assert_eq!(lines[1], ["hot", "-"]);
+    assert_eq!(lines[2], ["cooler", "-"]);
 }
 
 #[test] // rq-9a4270bc
@@ -1439,7 +1548,13 @@ fn makereal_prints_the_saddle_point_s_thermochemistry() {
     let run = cjkqc(&[&db, "--name", "--g", "--makereal"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let row: Vec<&str> = text.trim().lines().nth(1).unwrap().split(' ').collect();
+    let row: Vec<&str> = text
+        .trim()
+        .lines()
+        .nth(1)
+        .unwrap()
+        .split_whitespace()
+        .collect();
     assert_eq!(row[0], "saddle");
     assert_ne!(row[1], "-", "the g cell must be defined: {}", row[1]);
     assert!(row[1].parse::<f64>().is_ok());
@@ -1461,7 +1576,13 @@ fn makereal_leaves_the_raw_observables_alone() {
     let run = cjkqc(&[&db, "--name", "--nimag", "--g", "--makereal"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let row: Vec<&str> = text.trim().lines().nth(1).unwrap().split(' ').collect();
+    let row: Vec<&str> = text
+        .trim()
+        .lines()
+        .nth(1)
+        .unwrap()
+        .split_whitespace()
+        .collect();
     assert_eq!(row[0], "saddle");
     assert_ne!(row[1], "-", "g derives under --makereal");
     assert!(row[1].parse::<f64>().is_ok());
@@ -1489,7 +1610,13 @@ fn ignoreimag_prints_the_saddle_point_s_thermochemistry() {
     let run = cjkqc(&[&db, "--name", "--g", "--ignoreimag"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let row: Vec<&str> = text.trim().lines().nth(1).unwrap().split(' ').collect();
+    let row: Vec<&str> = text
+        .trim()
+        .lines()
+        .nth(1)
+        .unwrap()
+        .split_whitespace()
+        .collect();
     assert_eq!(row[0], "saddle");
     assert_ne!(row[1], "-", "the g cell must be defined: {}", row[1]);
     assert!(row[1].parse::<f64>().is_ok());
@@ -1511,7 +1638,13 @@ fn ignoreimag_leaves_the_raw_observables_alone() {
     let run = cjkqc(&[&db, "--name", "--nimag", "--g", "--ignoreimag"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let row: Vec<&str> = text.trim().lines().nth(1).unwrap().split(' ').collect();
+    let row: Vec<&str> = text
+        .trim()
+        .lines()
+        .nth(1)
+        .unwrap()
+        .split_whitespace()
+        .collect();
     assert_eq!(row[0], "saddle");
     assert_ne!(row[1], "-", "g derives under --ignoreimag");
     assert!(row[1].parse::<f64>().is_ok());
@@ -1586,7 +1719,10 @@ fn undefined_thermochemistry_prints_as_a_dash() {
     );
     let run = cjkqc(&[&db, "--name", "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name g\nundef -");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["name", "g"]);
+    assert_eq!(lines[1], ["undef", "-"]);
 }
 
 #[test] // rq-c879d42f
@@ -1604,11 +1740,11 @@ fn sorting_by_gibbs_orders_undefined_values_last() {
     let run = cjkqc(&[&db, "--sort", "g", "--name", "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let text = text.trim();
-    assert_eq!(
-        text, "name g\ncold -100.5000000000\nwarm -100.0000000000\nempty -",
-        "{text}"
-    );
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["name", "g"]);
+    assert_eq!(lines[1], ["cold", "-100.5000000000"]);
+    assert_eq!(lines[2], ["warm", "-100.0000000000"]);
+    assert_eq!(lines[3], ["empty", "-"]);
 }
 
 #[test] // rq-573f5674
@@ -1676,15 +1812,26 @@ fn the_unit_flag_converts_the_energy_columns_to_kcal_mol() {
     let record: Record = serde_json::from_str(&db_line(&db, 0)).expect("record deserializes");
     let thermo = thermochemistry(&record, &ThermoConditions::default()).unwrap();
     let per_hartree = complied_jkqc::KCAL_MOL_PER_HARTREE;
-    let expected = format!(
-        "el zpe h s g\n{:.4} {:.4} {:.4} {:.4} {:.4}",
-        -1.5 * per_hartree,
-        thermo.zpe * per_hartree,
-        thermo.enthalpy * per_hartree,
-        thermo.entropy_term * per_hartree,
-        thermo.gibbs * per_hartree
+    let lines: Vec<Vec<String>> = stdout(&run)
+        .trim()
+        .lines()
+        .map(|line| line.split_whitespace().map(str::to_string).collect())
+        .collect();
+    assert_eq!(
+        lines[0],
+        ["el", "zpe", "h", "s", "g"].map(str::to_string).to_vec()
     );
-    assert_eq!(stdout(&run).trim(), expected);
+    assert_eq!(
+        lines[1],
+        [
+            format!("{:.4}", -1.5 * per_hartree),
+            format!("{:.4}", thermo.zpe * per_hartree),
+            format!("{:.4}", thermo.enthalpy * per_hartree),
+            format!("{:.4}", thermo.entropy_term * per_hartree),
+            format!("{:.4}", thermo.gibbs * per_hartree),
+        ]
+        .to_vec()
+    );
 }
 
 #[test] // rq-8b4b5dc5
@@ -1699,8 +1846,13 @@ fn without_unit_the_energies_remain_hartree() {
     let run = cjkqc(&[&db, "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let thermo = thermochemistry(&record, &ThermoConditions::default()).unwrap();
-    let expected = format!("g\n{:.10}", thermo.gibbs);
-    assert_eq!(stdout(&run).trim(), expected);
+    let lines: Vec<Vec<String>> = stdout(&run)
+        .trim()
+        .lines()
+        .map(|line| line.split_whitespace().map(str::to_string).collect())
+        .collect();
+    assert_eq!(lines[0], ["g"]);
+    assert_eq!(lines[1], [format!("{:.10}", thermo.gibbs)]);
 }
 
 #[test] // rq-48b6dd65
@@ -1777,8 +1929,12 @@ fn the_formation_section_follows_the_table_and_precedes_the_summary() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(lines[0], "name el", "the table comes first");
-    assert_eq!(lines[4], "ct el g", "the section follows the table");
+    assert_eq!(cells(lines[0]), ["name", "el"], "the table comes first");
+    assert_eq!(
+        cells(lines[4]),
+        ["ct", "el", "g"],
+        "the section follows the table"
+    );
     let _ = &out;
     assert!(
         lines.last().unwrap().contains("filtered 3 records into"),
@@ -1809,7 +1965,12 @@ fn formation_alone_is_a_visible_outcome() {
     );
     let run = cjkqc(&[&db, "--formation"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert!(stdout(&run).starts_with("ct el g"), "{}", stdout(&run));
+    assert_eq!(
+        cells(stdout(&run).lines().next().unwrap()),
+        ["ct", "el", "g"],
+        "{}",
+        stdout(&run)
+    );
     // No database file is written: the only file in the directory is the
     // input itself.
     let entries: Vec<_> = fs::read_dir(&dir)
@@ -1856,11 +2017,80 @@ fn formation_section_identifies_rows_by_composition_token() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(lines[0], "ct el g", "{text}");
-    assert!(
-        lines[1].starts_with("2am1sa "),
+    assert_eq!(cells(lines[0]), ["ct", "el", "g"], "{text}");
+    assert_eq!(
+        cells(lines[1]).first(),
+        Some(&"2am1sa"),
         "the cluster row leads with its composition token: {}",
         lines[1]
+    );
+}
+
+#[test] // rq-27c4fe8e
+fn the_section_aligns_its_columns_like_the_main_table() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("cluster", -141.0, &[("am", 2), ("sa", 1)], None),
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let section = formation_section(&text);
+    let lines: Vec<&str> = section.lines().collect();
+    assert_eq!(cells(lines[0]), ["ct", "el", "g"], "{section}");
+    let spans: Vec<Vec<(usize, usize)>> = lines.iter().map(|line| cell_spans(line)).collect();
+    // Three columns on every row.
+    assert!(spans.iter().all(|row| row.len() == 3), "{section}");
+    // ct is a text column: every cell, header included, starts at 0.
+    assert!(spans.iter().all(|row| row[0].0 == 0), "{section}");
+    // el and g are numeric columns: every cell, header included, ends at
+    // its column's right edge, and the last column ends the line.
+    let el_end = spans[0][1].1;
+    let g_end = spans[0][2].1;
+    assert!(
+        spans
+            .iter()
+            .all(|row| row[1].1 == el_end && row[2].1 == g_end),
+        "{section}"
+    );
+    assert!(
+        lines
+            .iter()
+            .zip(&spans)
+            .all(|(line, row)| row[2].1 == line.len()),
+        "{section}"
+    );
+    // Every column is as wide as its widest cell (header included): the
+    // widest cell starts right after the preceding column's separator,
+    // so no column carries slack beyond its widest cell.
+    let ct_width = spans.iter().map(|row| row[0].1).max().unwrap();
+    let el_width = el_end - (ct_width + 1);
+    assert_eq!(
+        spans.iter().map(|row| row[1].1 - row[1].0).max().unwrap(),
+        el_width,
+        "{section}"
+    );
+    assert!(
+        spans.iter().any(|row| row[1].0 == ct_width + 1),
+        "{section}"
+    );
+    let g_width = g_end - (ct_width + 1 + el_width + 1);
+    assert_eq!(
+        spans.iter().map(|row| row[2].1 - row[2].0).max().unwrap(),
+        g_width,
+        "{section}"
+    );
+    assert!(
+        spans
+            .iter()
+            .any(|row| row[2].0 == ct_width + 1 + el_width + 1),
+        "{section}"
     );
 }
 
@@ -1874,7 +2104,10 @@ fn record_without_components_has_dash_composition_token() {
     );
     let run = cjkqc(&[&db, "--formation"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "ct el g\n- - -");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["ct", "el", "g"]);
+    assert_eq!(lines[1], ["-", "-", "-"]);
 }
 
 #[test] // rq-043c29fe
@@ -1938,7 +2171,7 @@ fn filtered_away_monomers_serve_as_no_references() {
     let text = text.trim();
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines.len(), 2, "only the cluster row prints: {text}");
-    assert_eq!(lines[1], "1am1sa - -", "{text}");
+    assert_eq!(cells(lines[1]), ["1am1sa", "-", "-"], "{text}");
 }
 
 #[test] // rq-b46a6e05
@@ -2215,7 +2448,7 @@ fn data_rows(stdout_text: &str) -> Vec<Vec<String>> {
         .lines()
         .skip(1)
         .filter(|line| !line.trim().is_empty())
-        .map(|line| line.split(' ').map(str::to_string).collect())
+        .map(|line| line.split_whitespace().map(str::to_string).collect())
         .collect()
 }
 
@@ -2889,7 +3122,7 @@ fn unit_converts_the_corrected_energy_columns() {
         "{}",
         stdout(&run)
     );
-    let cells: Vec<&str> = row.split(' ').collect();
+    let cells: Vec<&str> = row.split_whitespace().collect();
     let numbers = &cells[cells.len() - 3..];
     for cell in numbers {
         let value: f64 = cell.parse().expect("number");
@@ -3026,8 +3259,8 @@ fn the_corrected_formation_section_follows_the_raw_one() {
     let run = cjkqc(&[&db, "--formation", "--formation-corr"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let raw = text.find("ct el g").expect("raw header");
-    let corrected = text.find("ct elcorr gcorr").expect("corrected header");
+    let raw = find_line(&text, &["ct", "el", "g"]).expect("raw header");
+    let corrected = find_line(&text, &["ct", "elcorr", "gcorr"]).expect("corrected header");
     assert!(raw < corrected, "{text}");
 }
 
@@ -3043,7 +3276,9 @@ fn formation_corr_alone_is_a_visible_outcome() {
     );
     let run = cjkqc(&[&db, "--formation-corr"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert!(stdout(&run).contains("ct elcorr gcorr"), "{}", stdout(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["ct", "elcorr", "gcorr"], "{}", stdout(&run));
 }
 
 // --- correction hardening (PR review findings) ---
@@ -3071,11 +3306,12 @@ fn a_correcting_run_can_print_the_corrected_formation_section() {
     let run = cjkqc(&[&db, "--add-correction", &sp, "--formation-corr"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    assert!(text.contains("ct elcorr gcorr"), "{text}");
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["ct", "elcorr", "gcorr"], "{text}");
     // The cluster's corrected electronic formation: -167.5 - 2*(-76.5).
     let mut found = false;
     for line in text.lines().skip(1) {
-        let cells: Vec<&str> = line.split(' ').collect();
+        let cells: Vec<&str> = line.split_whitespace().collect();
         if cells.first() == Some(&"2am") {
             found = true;
             assert_eq!(cells[1], "-14.5000000000", "{text}");
@@ -3164,18 +3400,12 @@ fn kbt_eh(temperature: f64) -> f64 {
 /// The stdout from the formation section's header onward, so
 /// `formation_row` never matches a main-table row of the same token.
 fn formation_section(stdout_text: &str) -> &str {
-    match stdout_text.find("ct el g") {
-        Some(index) => &stdout_text[index..],
-        None => panic!("no formation section in:\n{stdout_text}"),
-    }
+    section_from(stdout_text, &["ct", "el", "g"])
 }
 
 /// The stdout from the corrected formation section's header onward.
 fn corrected_section(stdout_text: &str) -> &str {
-    match stdout_text.find("ct elcorr gcorr") {
-        Some(index) => &stdout_text[index..],
-        None => panic!("no corrected formation section in:\n{stdout_text}"),
-    }
+    section_from(stdout_text, &["ct", "elcorr", "gcorr"])
 }
 
 /// The amount added to a formation free energy per molecule of a
@@ -3460,7 +3690,7 @@ fn undefined_thermochemistry_stays_undefined_under_conc() {
         .lines()
         .skip(1)
         .filter(|line| line.starts_with("1sa "))
-        .map(|line| line.split(' ').map(str::to_string).collect())
+        .map(|line| line.split_whitespace().map(str::to_string).collect())
         .collect();
     assert_eq!(rows.len(), 2, "{}", stdout(&run));
     let reference: f64 = rows[0][2].parse().expect("reference monomer gibbs");
@@ -3602,7 +3832,7 @@ fn the_main_table_and_glob_ignore_the_concentrations() {
     assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     // The main tables are identical; only the formation section moves.
-    let table_end = |text: &str| text.find("ct el g").expect("formation header");
+    let table_end = |text: &str| find_line(text, &["ct", "el", "g"]).expect("formation header");
     assert_eq!(
         &stdout(&base)[..table_end(&stdout(&base))],
         &stdout(&run)[..table_end(&stdout(&run))]
@@ -3767,7 +3997,7 @@ fn single_point_line(name: &str, energy: f64) -> String {
 fn pop_column(text: &str, column: usize) -> Vec<Option<f64>> {
     let mut values = Vec::new();
     for line in text.lines().skip(1) {
-        let cell = line.split(' ').nth(column).expect("cell");
+        let cell = line.split_whitespace().nth(column).expect("cell");
         values.push(if cell == "-" {
             None
         } else {
@@ -3815,7 +4045,10 @@ fn the_corrected_levels_print_their_own_columns() {
     );
     let run = cjkqc(&[&db, "--pop", "elcorr", "--pop", "gcorr"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "popelcorr popgcorr\n1.0000 1.0000");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["popelcorr", "popgcorr"]);
+    assert_eq!(lines[1], ["1.0000", "1.0000"]);
 }
 
 #[test]
@@ -3828,7 +4061,10 @@ fn repeating_pop_prints_one_column_per_level_in_canonical_order() {
     );
     let run = cjkqc(&[&db, "--pop", "el", "--pop"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "pop popel\n1.0000 1.0000");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["pop", "popel"]);
+    assert_eq!(lines[1], ["1.0000", "1.0000"]);
 }
 
 #[test]
@@ -3841,7 +4077,10 @@ fn repeating_one_level_prints_its_column_once() {
     );
     let run = cjkqc(&[&db, "--pop", "--pop", "g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "pop\n1.0000");
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["pop"]);
+    assert_eq!(lines[1], ["1.0000"]);
 }
 
 #[test]
@@ -3866,7 +4105,12 @@ fn pop_alone_is_a_visible_outcome() {
     );
     let run = cjkqc(&[&db, "--pop"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert!(stdout(&run).starts_with("pop\n"), "{}", stdout(&run));
+    assert_eq!(
+        cells(stdout(&run).lines().next().unwrap()),
+        ["pop"],
+        "{}",
+        stdout(&run)
+    );
     assert!(!dir.join("out.jsonl").exists());
 }
 
@@ -3880,8 +4124,9 @@ fn the_population_columns_sit_in_canonical_order() {
     );
     let run = cjkqc(&[&db, "--rg", "--pop", "--pop", "el", "--el"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    let header = stdout(&run).lines().next().unwrap().to_string();
-    assert_eq!(header, "el pop popel rg");
+    let text = stdout(&run);
+    let header = cells(text.lines().next().unwrap());
+    assert_eq!(header, ["el", "pop", "popel", "rg"]);
 }
 
 #[test]
@@ -4228,7 +4473,12 @@ fn bavg_prints_one_row_per_composition() {
     );
     let run = cjkqc(&[&db, "--formation", "--bavg"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert!(stdout(&run).starts_with("ct el g\n"), "{}", stdout(&run));
+    assert_eq!(
+        cells(stdout(&run).lines().next().unwrap()),
+        ["ct", "el", "g"],
+        "{}",
+        stdout(&run)
+    );
     assert_eq!(
         section_tokens(formation_section(&stdout(&run))),
         ["2am1sa", "1am", "1sa"]
@@ -4441,7 +4691,7 @@ fn bavg_leaves_the_main_table_per_record() {
     let table: Vec<&str> = text.lines().take(4).collect();
     // The main table's columns follow the canonical column order, so
     // --ct --g prints `g ct`.
-    assert_eq!(table[0], "g ct", "{text}");
+    assert_eq!(cells(table[0]), ["g", "ct"], "{text}");
     assert_eq!(table.len(), 4, "the main table prints three rows: {text}");
     assert_eq!(
         section_tokens(formation_section(&text)),
@@ -4494,10 +4744,13 @@ fn both_sections_collapse_when_both_are_printed() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     // Each section's header is the section's own.
-    assert_eq!(formation_section(&text).lines().next(), Some("ct el g"));
     assert_eq!(
-        corrected_section(&text).lines().next(),
-        Some("ct elcorr gcorr")
+        cells(formation_section(&text).lines().next().unwrap()),
+        ["ct", "el", "g"]
+    );
+    assert_eq!(
+        cells(corrected_section(&text).lines().next().unwrap()),
+        ["ct", "elcorr", "gcorr"]
     );
     assert_eq!(
         section_tokens(formation_section(&text)),
@@ -5235,10 +5488,8 @@ fn the_section_prints_after_the_formation_sections_and_before_the_summary() {
     ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let formation = text.find("ct el g").expect("the formation section");
-    let corrected = text
-        .find("ct elcorr gcorr")
-        .expect("the corrected formation section");
+    let formation = text.len() - section_from(&text, &["ct", "el", "g"]).len();
+    let corrected = text.len() - section_from(&text, &["ct", "elcorr", "gcorr"]).len();
     // The hydration sections' percentage rows are the only rows indented
     // by the section's column alignment; --sort el may reorder the
     // states within a group, so the marker is the row, not the tokens.

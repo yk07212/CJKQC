@@ -1793,6 +1793,18 @@
     "title": "ensemble_references",
     "type": "api-item"
   },
+  "rq-27c4fe8e": {
+    "decl": "Scenario: The section aligns its columns like the main table",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The section aligns its columns like the main table",
+    "type": "scenario"
+  },
   "rq-27c965f2": {
     "decl": "Scenario: A list of only trivial modes filters to empty",
     "file": "parser-framework",
@@ -8485,6 +8497,18 @@
       }
     ],
     "title": "after_last_line_where stops at the window boundary",
+    "type": "scenario"
+  },
+  "rq-be8df504": {
+    "decl": "Scenario: The table aligns its columns like column -t",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The table aligns its columns like column -t",
     "type": "scenario"
   },
   "rq-bed9e94b": {

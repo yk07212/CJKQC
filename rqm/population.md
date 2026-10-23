@@ -154,31 +154,31 @@ Feature: Boltzmann population columns
   Scenario: Bare --pop prints the Gibbs-based column
     Given a database with one ok record with defined thermochemistry
     When CJKQC is invoked with the database and "--pop" and no --out
-    Then the header is "pop" and the column prints 1.0000
+    Then the column is headed pop and prints 1.0000
 
   @rq-032b5e42
   Scenario: --pop el prints the electronic-based column
     Given a database with one ok record with an electronic energy and no frequencies
     When CJKQC is invoked with the database and "--pop el" and no --out
-    Then the header is "popel" and the column prints a defined value
+    Then the column is headed popel and prints a defined value
 
   @rq-4d3ba8f2
   Scenario: The corrected levels print their own columns
     Given a database with one corrected ok record with defined thermochemistry
     When CJKQC is invoked with the database and "--pop elcorr --pop gcorr" and no --out
-    Then the header is "popelcorr popgcorr" and both columns print 1.0000
+    Then the columns are headed popelcorr and popgcorr in that order and both print 1.0000
 
   @rq-9c420929
   Scenario: Repeating --pop prints one column per level in canonical order
     Given a database with one ok record with defined thermochemistry
     When CJKQC is invoked with the database and "--pop el --pop" and no --out
-    Then the header is "pop popel"
+    Then the columns are headed pop and popel in that order
 
   @rq-0c93ce7a
   Scenario: Repeating one level prints its column once
     Given a database with one ok record with defined thermochemistry
     When CJKQC is invoked with the database and "--pop --pop g" and no --out
-    Then the header is "pop" with a single pop column
+    Then a single pop column is headed pop
 
   @rq-09f8b051
   Scenario: An unknown level is a usage error
@@ -196,7 +196,7 @@ Feature: Boltzmann population columns
   Scenario: The population columns sit in canonical order
     Given a database with one ok record with defined thermochemistry
     When CJKQC is invoked with the database and "--rg --pop --pop el --el" and no --out
-    Then the header is "el pop popel rg"
+    Then the columns order el, pop, popel, rg
 
   # --- Grouping and normalization ---
 

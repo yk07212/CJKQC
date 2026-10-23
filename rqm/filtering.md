@@ -192,7 +192,18 @@ the property set and units:
   model (`rqm/ARCHITECTURE.md`) must keep distinct names when they
   arrive.
 - The table is text: a header row of column names, then one row per
-  record in run order, values separated by a single space. `el` prints
+  record in run order, laid out `column -t` style — every column is as
+  wide as its widest cell (the header cell included; a cell's width is
+  its whole printed string, internal spaces included), with a single
+  space between columns and no trailing whitespace: a line ends with
+  its last cell, whatever that cell's alignment. The text columns
+  `name`, `status`, `program`,
+  `command`, `correction`, `components`, and `ct` align left; the
+  numeric columns — the energy columns, the population columns, `rg`,
+  `mass`, `dip`, `charge`, `multiplicity`, `natoms`, `lf`, `nfreq`, and
+  `nimag` — align right; in both cases the header cell aligns with its
+  column, so numbers line up under their header. Cells keep their
+  per-column formats: `el` prints
   in hartree with 10 decimals; the thermochemistry columns `zpe`, `h`,
   `s`, `g` (`rqm/thermo.md`; `s` is the T·S entropy term) print like
   `el`, as do the corrected columns `elcorr`, `hcorr`, and `gcorr`
@@ -209,10 +220,9 @@ the property set and units:
   4 decimals. The `program` column prints the program token and the
   version joined by one space (`xtb 6.7.1`), and the token alone when the
   version is absent. The `command` column wraps the stored command line
-  in double quotes, since the value contains spaces and the table's
-  values are separated by single spaces; an absent command prints a bare
-  unquoted `-`. The `correction` column prints a record's correction
-  provenance (`rqm/correction.md`).
+  in double quotes, since the value contains spaces; an absent command
+  prints a bare unquoted `-`. The `correction` column prints a record's
+  correction provenance (`rqm/correction.md`).
 - `--unit` converts every Hartree-valued print quantity — the energy
   columns (`el`, `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, `gcorr`) and the
   `--formation` section's values (`rqm/formation.md`) — from hartree to
@@ -539,7 +549,7 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record named "1dma" and energy -38.51
     When CJKQC is invoked with the database and "--sort el --name --el --out kept.jsonl"
     Then kept.jsonl contains the single record
-    And stdout starts with a header row "name el"
+    And stdout starts with a header row naming the columns name and el
     And the record's row prints the energy with 10 decimals in hartree
 
   @rq-acf714ae
@@ -547,6 +557,14 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record whose geometry has an unknown element symbol
     When CJKQC is invoked with the database, "--mass --rg --name" and no --out
     Then the table columns are name, rg, mass in that order, undefined values printed as -
+
+  @rq-be8df504
+  Scenario: The table aligns its columns like column -t
+    Given a database with one ok record named "1dma" whose radius of gyration is 2.345 and one ok record named "1" without a geometry
+    When CJKQC is invoked with the database and "--name --rg" and no --out
+    Then the rg column is as wide as its widest cell, header included, and its cells right-align under the right-aligned header
+    And the name cells left-align under the left-aligned header
+    And the undefined rg cell prints - right-aligned with the numbers
 
   @rq-207aec4d
   Scenario: The lf column prints the lowest raw frequency

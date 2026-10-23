@@ -13,7 +13,9 @@
 
 use std::collections::BTreeMap;
 
-use crate::filter::{composition_token, format_energy, sort_value_for, Grouping, Unit};
+use crate::filter::{
+    align_table, composition_token, format_energy, sort_value_for, Alignment, Grouping, Unit,
+};
 use crate::population::{boltzmann_weights, pop_level_value, PopLevel};
 use crate::record::{Components, Record, RecordStatus};
 use crate::thermo::{ThermoMemo, E_HARTREE, K_B, P_STANDARD};
@@ -430,7 +432,7 @@ pub fn print_formation_section(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, "ct el g")
+    print_formation_table(&rows, unit, &["ct", "el", "g"])
 }
 
 /// The corrected formation section (`rqm/formation.md`): the raw
@@ -454,15 +456,19 @@ pub fn print_formation_corr_section(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, "ct elcorr gcorr")
+    print_formation_table(&rows, unit, &["ct", "elcorr", "gcorr"])
 }
 
 /// The shared section table: a header row, then one `ct el g`-shaped row
 /// per `(token, formation)` pair in the given order — shared with the
 /// collapsed sections (`rqm/formation.md` Boltzmann-Averaged Sections).
+/// Aligned like the main table (`rqm/filtering.md` Printing): `ct` a
+/// text column (left), the energy columns numeric (right), header cells
+/// aligning with their columns.
 // rq-9503bcb2
-fn print_formation_table(rows: &[(String, Formation)], unit: Unit, header: &str) -> String {
-    let mut lines = vec![header.to_string()];
+fn print_formation_table(rows: &[(String, Formation)], unit: Unit, header: &[&str]) -> String {
+    let header_cells: Vec<String> = header.iter().map(|cell| cell.to_string()).collect();
+    let mut table = vec![header_cells];
     for (token, formation) in rows {
         let electronic = formation
             .electronic
@@ -470,9 +476,10 @@ fn print_formation_table(rows: &[(String, Formation)], unit: Unit, header: &str)
         let gibbs = formation
             .gibbs
             .map_or_else(|| "-".to_string(), |value| format_energy(value, unit));
-        lines.push(format!("{token} {electronic} {gibbs}"));
+        table.push(vec![token.clone(), electronic, gibbs]);
     }
-    lines.join("\n")
+    let aligns = [Alignment::Left, Alignment::Right, Alignment::Right];
+    align_table(&table, &aligns)
 }
 
 /// Whether an ensemble is a code's monomer ensemble: its components map
@@ -779,7 +786,7 @@ pub fn print_formation_ensembles(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, "ct el g")
+    print_formation_table(&rows, unit, &["ct", "el", "g"])
 }
 
 /// The collapsed corrected section (Boltzmann-Averaged Sections): the
@@ -803,5 +810,5 @@ pub fn print_formation_corr_ensembles(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, "ct elcorr gcorr")
+    print_formation_table(&rows, unit, &["ct", "elcorr", "gcorr"])
 }

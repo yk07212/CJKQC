@@ -361,10 +361,16 @@ fn the_corrected_section_prints_in_the_runs_unit() {
     );
     // The corrected formation energy is -167.5 - 2*(-76.5) = -14.5 Eh.
     let expected = -14.5 * KCAL_MOL_PER_HARTREE;
-    assert!(hartree.starts_with("ct elcorr gcorr"));
+    let header: Vec<&str> = hartree
+        .lines()
+        .next()
+        .expect("header row")
+        .split_whitespace()
+        .collect();
+    assert_eq!(header, ["ct", "elcorr", "gcorr"]);
     let row = kcal.lines().nth(1).expect("one row");
     let value: f64 = row
-        .split(' ')
+        .split_whitespace()
         .nth(1)
         .expect("elcorr cell")
         .parse()
@@ -733,7 +739,7 @@ fn monomer_rows_print_exactly_zero() {
         .find(|line| line.starts_with("1am "))
         .expect("1am row");
     let values: Vec<f64> = row
-        .split(' ')
+        .split_whitespace()
         .skip(1)
         .map(|cell| cell.parse::<f64>().expect("number"))
         .collect();

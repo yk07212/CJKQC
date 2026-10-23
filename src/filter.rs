@@ -475,6 +475,25 @@ impl Column {
             Column::Ct => "ct",
         }
     }
+
+    /// The column's alignment in the table: the text columns
+    /// (`name`, `status`, `program`, `command`, `correction`,
+    /// `components`, `ct`) align left, every numeric column aligns right
+    /// (`rqm/filtering.md` Printing).
+    ///
+    /// (rq-4ea8ca35)
+    pub(crate) fn alignment(&self) -> Alignment {
+        match self {
+            Column::Name
+            | Column::Status
+            | Column::Program
+            | Column::Command
+            | Column::Correction
+            | Column::Components
+            | Column::Ct => Alignment::Left,
+            _ => Alignment::Right,
+        }
+    }
 }
 
 /// The record's defined value for a cutoff property; `None` marks it
@@ -643,8 +662,66 @@ pub fn apply_filters(
     Ok(current)
 }
 
+/// A column's cell alignment in the aligned tables: text columns
+/// (`name`, `status`, `program`, `command`, `correction`, `components`,
+/// `ct`) align left, numeric columns align right (`rqm/filtering.md`
+/// Printing).
+///
+/// (rq-4ea8ca35)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Alignment {
+    /// Pad the cell on the right.
+    Left,
+    /// Pad the cell on the left.
+    Right,
+}
+
+/// Join a header row and data rows into an aligned table: every column
+/// as wide as its widest cell (header included; a cell's width is its
+/// whole printed string, internal spaces included), single space between
+/// columns, each cell padded per its column's alignment, header cells
+/// aligning with their column, and no trailing whitespace
+/// (`rqm/filtering.md` Printing). `rows[0]` is the header row.
+///
+/// (rq-4ea8ca35 rq-8dee4f4e)
+pub(crate) fn align_table(rows: &[Vec<String>], aligns: &[Alignment]) -> String {
+    let mut widths = vec![0usize; aligns.len()];
+    for row in rows {
+        debug_assert_eq!(
+            row.len(),
+            aligns.len(),
+            "table row has {} cells for {} alignments",
+            row.len(),
+            aligns.len()
+        );
+        for (cell, width) in row.iter().zip(widths.iter_mut()) {
+            *width = (*width).max(cell.chars().count());
+        }
+    }
+    rows.iter()
+        .map(|row| {
+            let line = row
+                .iter()
+                .zip(&widths)
+                .zip(aligns)
+                .map(|((cell, width), align)| match align {
+                    Alignment::Left => format!("{cell:<width$}"),
+                    Alignment::Right => format!("{cell:>width$}"),
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            line.trim_end().to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// A text table: a header row of column names, then one row per record in
-/// order, single-space separated; undefined values print `-`. The energy
+/// order, laid out `column -t` style (`rqm/filtering.md` Printing):
+/// every column as wide as its widest cell with a single space between
+/// columns, text columns left-aligned, numeric columns right-aligned,
+/// header cells aligning with their column. Undefined values print `-`.
+/// The energy
 /// columns resolve through the derived-property registry on the run's
 /// memo, which derives each record's thermochemistry once across all
 /// thermo columns (`rqm/thermo.md` Performance); `unit` converts every
@@ -673,13 +750,12 @@ pub fn print_table(
                 .map(|level| (*column, populations(records, level, memo, grouping)))
         })
         .collect();
-    let mut lines = Vec::with_capacity(records.len() + 1);
-    lines.push(
+    let mut rows = Vec::with_capacity(records.len() + 1);
+    rows.push(
         columns
             .iter()
-            .map(|column| column.label())
-            .collect::<Vec<_>>()
-            .join(" "),
+            .map(|column| column.label().to_string())
+            .collect(),
     );
     for (row, record) in records.iter().enumerate() {
         let mut cells = Vec::with_capacity(columns.len());
@@ -698,9 +774,10 @@ pub fn print_table(
                 None => cells.push(format_cell(record, *column, memo, unit)),
             }
         }
-        lines.push(cells.join(" "));
+        rows.push(cells);
     }
-    lines.join("\n")
+    let aligns: Vec<Alignment> = columns.iter().map(|column| column.alignment()).collect();
+    align_table(&rows, &aligns)
 }
 
 /// One energy cell: hartree with 10 decimals, or kcal/mol with 4 under

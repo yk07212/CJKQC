@@ -78,7 +78,11 @@ binding column exists.
   always: main table, formation section, summary. A run with `--formation`
   but no column flags prints only the formation section.
 - The section is a table: a header row `ct el g`, then one row per
-  printed record in run order. `ct` is the record's composition token —
+  printed record in run order, aligned like the main table
+  (`rqm/filtering.md` Printing): `ct` a text column, `el` and `g`
+  numeric ones, each column as wide as its widest cell (header
+  included), header cells aligning with their columns. `ct` is the
+  record's composition token —
   the same alphabetical `2am3sa`-style pairs the `--ct` column prints
   (`rqm/filtering.md` Printing) — and `-` when the record has no
   components; `el` and `g` are the formation energy and formation free
@@ -117,8 +121,9 @@ binding column exists.
   section, summary. A run with `--formation-corr` but no other print flag
   prints only the corrected section.
 - The section is a table: a header row `ct elcorr gcorr`, then one row per
-  printed record in run order. The composition token and the number
-  formatting — the run's energy unit, kcal/mol under `--unit`
+  printed record in run order, aligned like the raw section's table. The
+  composition token and the number formatting — the run's energy unit,
+  kcal/mol under `--unit`
   (`rqm/filtering.md` Printing), formatted like the corresponding energy
   columns, `-` when undefined — are exactly the raw section's rules.
 
@@ -501,14 +506,20 @@ Feature: Formation energies from monomer references
   Scenario: The section identifies rows by composition token
     Given a database with a 2am1sa cluster and am and sa monomers
     When CJKQC is invoked with the database and "--formation" and no --out
-    Then the section header is "ct el g"
+    Then the section header names the columns ct, el, g in that order
     And the cluster's row starts with the composition token 2am1sa
 
   @rq-ed9e179c
   Scenario: A record without components has a dash composition token
     Given a database with a single ok record without components
     When CJKQC is invoked with the database and "--formation" and no --out
-    Then its section row is "- - -"
+    Then its section row prints - at all three columns
+
+  @rq-27c4fe8e
+  Scenario: The section aligns its columns like the main table
+    Given a database with a 2am1sa cluster with defined formation values and am and sa monomers
+    When CJKQC is invoked with the database and "--formation" and no --out
+    Then the ct cells left-align and the el and g cells right-align, header included, each column as wide as its widest cell
 
   @rq-1b6b5757
   Scenario: The formation section follows the table and precedes the summary
@@ -559,13 +570,13 @@ Feature: Formation energies from monomer references
   Scenario: The corrected section evaluates the attached corrections
     Given a 1am1sa cluster and am and sa monomers all carrying corrections
     When CJKQC is invoked with the database and "--formation-corr" and no --out
-    Then the header is "ct elcorr gcorr" and the cluster's row shows defined values
+    Then the header names the columns ct, elcorr, gcorr in that order and the cluster's row shows defined values
 
   @rq-20ab3295
   Scenario: A record without a correction has dashes in the corrected section
     Given a 1am1sa cluster without a correction and corrected am and sa monomers
     When CJKQC is invoked with the database and "--formation-corr" and no --out
-    Then the cluster's row is "1am1sa - -"
+    Then the cluster's row prints the token 1am1sa with dashes at both levels
 
   @rq-5ca4f95d
   Scenario: A reference monomer without a correction leaves both levels undefined
@@ -773,7 +784,7 @@ Feature: Formation energies from monomer references
   Scenario: --bavg prints one row per composition
     Given a database with two 2am1sa conformers, an am monomer, and an sa monomer
     When CJKQC is invoked with the database and "--formation --bavg" and no --out
-    Then the section header is "ct el g"
+    Then the section header names the columns ct, el, g in that order
     And the section prints three rows: 2am1sa, 1am, and 1sa
 
   @rq-7d43ccc9
@@ -821,7 +832,7 @@ Feature: Formation energies from monomer references
   Scenario: Records without components form one unnamed ensemble
     Given two records without components and an am monomer
     When CJKQC is invoked with the database and "--formation --bavg" and no --out
-    Then the section prints exactly two rows: 1am and one row of "- - -"
+    Then the section prints exactly two rows: 1am and one all-dash row
 
   @rq-30bd57ee
   Scenario: --glob makes the collapse the identity
