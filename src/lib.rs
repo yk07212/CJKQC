@@ -11,6 +11,7 @@ pub mod correction;
 pub mod db;
 pub mod filter;
 pub mod formation;
+pub mod hydration;
 pub mod metrics;
 pub mod parser;
 pub mod population;
@@ -61,6 +62,13 @@ pub use formation::{
 
 // rq-9e28654c population surface (rqm/population.md)
 pub use population::{parse_pop_level, pop_level_value, populations, PopLevel};
+
+// rq-84386009 hydration + solvation distribution surface (rqm/hydration.md)
+pub use hydration::{
+    corrected_hydration_states, corrected_hydration_states_from_ensembles, hydration_percentages,
+    hydration_states, hydration_states_from_ensembles, print_hydration_section,
+    saturation_pressure_water, HydrationGroup, HydrationState, SolventConditions,
+};
 
 // rq-bf062c8f filtering surface (rqm/filtering.md)
 pub use filter::{

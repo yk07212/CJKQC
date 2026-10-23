@@ -21,7 +21,12 @@ use complied_jkqc::formation::{
     collapse_ensembles, collect_monomers, corrected_collapse_ensembles,
     corrected_ensemble_references, corrected_monomer_references, ensemble_references,
     parse_conc_value, print_formation_corr_ensembles, print_formation_corr_section,
-    print_formation_ensembles, print_formation_section, ConcConditions, ConcSpec,
+    print_formation_ensembles, print_formation_section, ConcConditions, ConcSpec, ConcUnit,
+};
+use complied_jkqc::hydration::{
+    corrected_hydration_states, corrected_hydration_states_from_ensembles, hydration_states,
+    hydration_states_from_ensembles, print_hydration_section, saturation_pressure_water,
+    HydrationGroup, SolventConditions,
 };
 use complied_jkqc::metrics::parse_uniq_mode;
 use complied_jkqc::parser::WindowBudget;
@@ -157,6 +162,26 @@ struct Cli {
     #[arg(long = "formation-corr")]
     formation_corr: bool,
 
+    /// Print the hydration distribution section after the formation
+    /// sections (rqm/hydration.md): the Boltzmann distribution of the
+    /// water count within each core composition. The solvent code is `w`.
+    #[arg(long = "hydration")]
+    hydration: bool,
+
+    /// Print the corrected hydration distribution section after the raw
+    /// one (needs corrections, attached or stored).
+    #[arg(long = "hydration-corr")]
+    hydration_corr: bool,
+
+    /// Print the solvation distribution section for the named solvent
+    /// CODE instead of water (rqm/hydration.md).
+    #[arg(long = "solvation", value_name = "CODE")]
+    solvation: Option<String>,
+
+    /// Print the corrected solvation distribution section for CODE.
+    #[arg(long = "solvation-corr", value_name = "CODE")]
+    solvation_corr: Option<String>,
+
     /// Evaluate the formation free energies at vapors of the named
     /// component at the given concentration (repeatable; VALUE in Pa, or
     /// a ppt/ppb mole fraction, or cmmc molecules/cm^3). A settings flag
@@ -175,6 +200,18 @@ struct Cli {
     /// like --conc: without a formation section it is an accepted no-op.
     #[arg(long = "bavg")]
     bavg: bool,
+
+    /// Relative humidity of the vapor for the hydration sections
+    /// (rqm/hydration.md): 0.5 is 50 %. A settings flag; an accepted
+    /// no-op without a hydration section.
+    #[arg(long = "rh", allow_hyphen_values = true)]
+    rh: Option<f64>,
+
+    /// The solvent's partial pressure for the hydration sections, VALUE
+    /// in the --conc grammar (rqm/formation.md); overrides --rh. A
+    /// settings flag; an accepted no-op without a hydration section.
+    #[arg(long = "psolvent", value_name = "VALUE", allow_hyphen_values = true)]
+    psolvent: Option<String>,
 
     /// Attach single-point corrections from the named database, matching
     /// correction records to run records by exact case-sensitive name
@@ -505,6 +542,145 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         });
     }
 
+    // --psolvent VALUE parses through the --conc grammar whether or not a
+    // hydration section is requested, like --conc's own values
+    // (`rqm/hydration.md` Flag Surface).
+    // rq-bcb7acc5
+    let psolvent = match &cli.psolvent {
+        Some(value) => {
+            let Some((magnitude, unit)) = parse_conc_value(value) else {
+                return usage(&format!(
+                    "`--psolvent {value}`: the value must be a positive Pa pressure, optionally suffixed ppt, ppb, or cmmc{}",
+                    forgotten_value_hint(value)
+                ));
+            };
+            // The pressure resolves once the temperature is known; the
+            // magnitude-unit pair is a value in the --conc grammar, not
+            // a spec for any component (`rqm/hydration.md` Solvent
+            // Pressure).
+            Some((magnitude, unit))
+        }
+        None => None,
+    };
+    // --rh VALUE must be a finite fraction above zero; supersaturation
+    // (values above 1) is accepted (`rqm/hydration.md` Flag Surface).
+    // rq-bcb7acc5
+    if let Some(rh) = cli.rh {
+        if !rh.is_finite() || rh <= 0.0 {
+            return usage("--rh must be a fraction above zero");
+        }
+    }
+
+    // The hydration solvent flags resolve up front (`rqm/hydration.md`
+    // Flag Surface): the `--hydration` spellings fix the code to `w`, the
+    // `--solvation` spellings take it, and all flags given together must
+    // agree on one code — a second, different code is a usage error,
+    // while repeated spellings of the same code are redundant.
+    // rq-bcb7acc5
+    let mut solvent_flags: Vec<(&'static str, String, bool)> = Vec::new();
+    if cli.hydration {
+        solvent_flags.push(("--hydration", "w".to_string(), false));
+    }
+    if cli.hydration_corr {
+        solvent_flags.push(("--hydration-corr", "w".to_string(), true));
+    }
+    if let Some(code) = &cli.solvation {
+        solvent_flags.push(("--solvation", code.clone(), false));
+    }
+    if let Some(code) = &cli.solvation_corr {
+        solvent_flags.push(("--solvation-corr", code.clone(), true));
+    }
+    let hydration_raw = solvent_flags.iter().any(|(_, _, corrected)| !corrected);
+    let hydration_corr = solvent_flags.iter().any(|(_, _, corrected)| *corrected);
+    let solvent: Option<SolventConditions> = if solvent_flags.is_empty() {
+        None
+    } else {
+        // The code is a non-empty, letter-only code, case-significant
+        // (`rqm/record.md` component validation).
+        // rq-bcb7acc5
+        for (flag, code, _) in &solvent_flags {
+            if code.is_empty() || !code.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+                return usage(&format!("{flag} solvent code `{code}` must be letter-only"));
+            }
+        }
+        let (_, first, _) = &solvent_flags[0];
+        if let Some((flag, code, _)) = solvent_flags
+            .iter()
+            .find(|(_, code, _)| code.as_str() != first.as_str())
+        {
+            return usage(&format!(
+                "{flag} names the solvent code `{code}`, but another solvent flag names `{first}`; one solvent per run"
+            ));
+        }
+        let code = first.clone();
+        // --rh is water physics: with any solvent code other than `w` it
+        // is a usage error (`rqm/hydration.md` Flag Surface).
+        // rq-bcb7acc5
+        if cli.rh.is_some() && code != "w" {
+            return usage(&format!(
+                "--rh is water physics and cannot combine with the solvent code `{code}`"
+            ));
+        }
+        // Resolution order: --psolvent wins over --rh; with neither, the
+        // default is the saturated vapor — valid for water only
+        // (`rqm/hydration.md` Solvent Pressure).
+        // rq-d36686ec
+        let pressure = match &psolvent {
+            // The psolvent value paired with the resolved code is the
+            // implied spec under construction; its pressure resolves
+            // through the --conc grammar's conversion
+            // (`rqm/hydration.md` Solvent Pressure).
+            Some((magnitude, unit)) => ConcSpec {
+                code: code.clone(),
+                magnitude: *magnitude,
+                unit: *unit,
+            }
+            .pressure(temperature),
+            None => match cli.rh {
+                Some(rh) => rh * saturation_pressure_water(temperature),
+                None => {
+                    if code != "w" {
+                        return usage(&format!(
+                            "the solvent code `{code}` needs --psolvent; only water carries the saturation-vapor correlation"
+                        ));
+                    }
+                    saturation_pressure_water(temperature)
+                }
+            },
+        };
+        // The pressure must resolve to a finite positive number before
+        // the run starts (Solvent Pressure).
+        // rq-d36686ec
+        if !pressure.is_finite() || pressure <= 0.0 {
+            return usage(
+                "the resolved solvent pressure is not a finite positive number (check --rh, --psolvent, and --temp)",
+            );
+        }
+        Some(SolventConditions { code, pressure })
+    };
+    // The resolved pressure enters the run as an implied concentration
+    // spec: a hydration section behaves as if `--conc CODE p` had been
+    // given, so the formation sections' solvent term shifts by it, --cnt
+    // scales it like any spec, and the distribution values carry it
+    // (`rqm/hydration.md` Solvent Pressure). Naming the solvent code in
+    // an explicit --conc is a usage error; specs for other components
+    // ride along untouched.
+    // rq-d36686ec
+    if let Some(solvent) = &solvent {
+        if concs.specs.iter().any(|spec| spec.code == solvent.code) {
+            return usage(&format!(
+                "--conc already names the solvent code `{}`",
+                solvent.code
+            ));
+        }
+        concs.specs.push(ConcSpec {
+            code: solvent.code.clone(),
+            magnitude: solvent.pressure,
+            unit: ConcUnit::Pa,
+        });
+    }
+    let hydration_requested = hydration_raw || hydration_corr;
+
     let extract = if !cli.extract.is_empty() {
         Some((cli.extract.clone(), ExtractMode::Keep))
     } else if !cli.nextract.is_empty() {
@@ -570,10 +746,12 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             None => set_print(*column),
         })
         .collect();
-    // `--formation` and `--formation-corr` print sections instead of
-    // columns but still count as print flags for the visible-outcome rule
-    // (`rqm/formation.md`).
-    let has_print = !columns.is_empty() || cli.formation || cli.formation_corr;
+    // `--formation`, `--formation-corr`, and the hydration flags print
+    // sections instead of columns but still count as print flags for the
+    // visible-outcome rule (`rqm/formation.md`, `rqm/hydration.md`).
+    // rq-2dbfbb9a
+    let has_print =
+        !columns.is_empty() || cli.formation || cli.formation_corr || hydration_requested;
 
     // A run must have a visible outcome (`rqm/filtering.md`); `has_manipulation`
     // and `has_print` are the single source of truth for the rule.
@@ -604,9 +782,19 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 Gathered::Build { records } => records,
                 Gathered::Merge { records, .. } => records,
             };
-            // Every --conc code must appear in the record set the
-            // formation sections evaluate (`rqm/formation.md`).
-            // rq-10341821
+            // The hydration section's solvent code must appear in the
+            // record set (`rqm/hydration.md` Flag Surface), validated
+            // first so a combined `--formation --hydration` run names
+            // the solvent, not the implied `--conc` spec that carries
+            // it (`rqm/hydration.md` Solvent Pressure). Every --conc
+            // code must appear in the record set the formation
+            // sections evaluate (`rqm/formation.md`).
+            // rq-10341821 rq-bcb7acc5
+            if let Some(solvent) = &solvent {
+                if let Err(error) = validate_solvent_code(solvent, &records) {
+                    return usage(&error);
+                }
+            }
             if cli.formation || cli.formation_corr {
                 if let Err(error) = validate_conc_codes(&concs, &records) {
                     return usage(&error);
@@ -621,47 +809,33 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             // into one ensemble per composition first
             // (rqm/formation.md Boltzmann-Averaged Sections).
             // rq-dd65e289
-            if cli.formation {
-                if cli.bavg {
-                    let ensembles = collapse_ensembles(&records, &memo);
-                    let references = ensemble_references(&ensembles);
-                    println!(
-                        "{}",
-                        print_formation_ensembles(&ensembles, &references, &memo, unit, &concs)
-                    );
-                } else {
-                    let references = collect_monomers(&records, &memo, SortKey::El);
-                    println!(
-                        "{}",
-                        print_formation_section(&records, &references, &memo, unit, &concs)
-                    );
-                }
-            }
-            // The corrected section prints after the raw section, from
-            // the stored corrections (`rqm/formation.md`), collapsing at
-            // its own level under --bavg.
-            // rq-dd65e289
-            if cli.formation_corr {
-                if cli.bavg {
-                    let ensembles = corrected_collapse_ensembles(&records, &memo);
-                    let references = corrected_ensemble_references(&ensembles);
-                    println!(
-                        "{}",
-                        print_formation_corr_ensembles(
-                            &ensembles,
-                            &references,
-                            &memo,
-                            unit,
-                            &concs
-                        )
-                    );
-                } else {
-                    let references = corrected_monomer_references(&records, &memo, SortKey::El);
-                    println!(
-                        "{}",
-                        print_formation_corr_section(&records, &references, &memo, unit, &concs)
-                    );
-                }
+            print_formation_sections(
+                &records,
+                &memo,
+                &concs,
+                unit,
+                cli.formation,
+                cli.formation_corr,
+                cli.bavg,
+                SortKey::El,
+            );
+            // The hydration sections print after the formation sections,
+            // over the same record set, raw before corrected
+            // (`rqm/hydration.md` Printing); a print-only run has no
+            // --sort, so the references use the el ordering like the
+            // formation sections.
+            // rq-5e154b92
+            if let Some(solvent) = &solvent {
+                print_hydration_sections(
+                    &records,
+                    &memo,
+                    &concs,
+                    &solvent.code,
+                    hydration_raw,
+                    hydration_corr,
+                    cli.bavg,
+                    SortKey::El,
+                );
             }
         }
         return match &cli.out {
@@ -747,9 +921,19 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         }
     };
 
-    // Every --conc code must appear in the record set the formation
-    // sections evaluate — the pipeline survivors (`rqm/formation.md`).
-    // rq-10341821
+    // The hydration section's solvent code must appear in the record
+    // set (`rqm/hydration.md` Flag Surface), validated first so a
+    // combined `--formation --hydration` run names the solvent, not
+    // the implied `--conc` spec that carries it (`rqm/hydration.md`
+    // Solvent Pressure). Every --conc code must appear in the record
+    // set the formation sections evaluate — the pipeline survivors
+    // (`rqm/formation.md`).
+    // rq-10341821 rq-bcb7acc5
+    if let Some(solvent) = &solvent {
+        if let Err(error) = validate_solvent_code(solvent, &records) {
+            return usage(&error);
+        }
+    }
     if cli.formation || cli.formation_corr {
         if let Err(error) = validate_conc_codes(&concs, &records) {
             return usage(&error);
@@ -764,43 +948,32 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     // ensembles under --bavg (rqm/formation.md Boltzmann-Averaged
     // Sections).
     // rq-dd65e289
-    if cli.formation {
-        if cli.bavg {
-            let ensembles = collapse_ensembles(&records, &memo);
-            let references = ensemble_references(&ensembles);
-            println!(
-                "{}",
-                print_formation_ensembles(&ensembles, &references, &memo, unit, &concs)
-            );
-        } else {
-            let sort_key = spec.sort.unwrap_or(SortKey::El);
-            let references = collect_monomers(&records, &memo, sort_key);
-            println!(
-                "{}",
-                print_formation_section(&records, &references, &memo, unit, &concs)
-            );
-        }
-    }
-    // The corrected section prints after the raw one, from the same
-    // reference selection (`rqm/formation.md`), collapsing at its own
-    // level under --bavg.
-    // rq-dd65e289
-    if cli.formation_corr {
-        if cli.bavg {
-            let ensembles = corrected_collapse_ensembles(&records, &memo);
-            let references = corrected_ensemble_references(&ensembles);
-            println!(
-                "{}",
-                print_formation_corr_ensembles(&ensembles, &references, &memo, unit, &concs)
-            );
-        } else {
-            let sort_key = spec.sort.unwrap_or(SortKey::El);
-            let references = corrected_monomer_references(&records, &memo, sort_key);
-            println!(
-                "{}",
-                print_formation_corr_section(&records, &references, &memo, unit, &concs)
-            );
-        }
+    let sort_key = spec.sort.unwrap_or(SortKey::El);
+    print_formation_sections(
+        &records,
+        &memo,
+        &concs,
+        unit,
+        cli.formation,
+        cli.formation_corr,
+        cli.bavg,
+        sort_key,
+    );
+    // The hydration sections print after the formation sections, over
+    // the pipeline survivors, raw before corrected
+    // (`rqm/hydration.md` Printing), with the run's sort ordering.
+    // rq-5e154b92
+    if let Some(solvent) = &solvent {
+        print_hydration_sections(
+            &records,
+            &memo,
+            &concs,
+            &solvent.code,
+            hydration_raw,
+            hydration_corr,
+            cli.bavg,
+            sort_key,
+        );
     }
 
     if let Some(out) = &cli.out {
@@ -1115,6 +1288,126 @@ fn validate_conc_codes(concs: &ConcConditions, records: &[Record]) -> Result<(),
     Ok(())
 }
 
+/// The hydration section's solvent code must appear as a component of at
+/// least one record in the section's record set — the run's final record
+/// set — or the run is a usage error (the `--conc` code-validation rule
+/// of `rqm/formation.md`, `rqm/hydration.md` Flag Surface).
+///
+/// (rq-bcb7acc5)
+fn validate_solvent_code(solvent: &SolventConditions, records: &[Record]) -> Result<(), String> {
+    let present = records.iter().any(|record| {
+        record
+            .components
+            .as_ref()
+            .is_some_and(|components| components.contains_key(&solvent.code))
+    });
+    if present {
+        Ok(())
+    } else {
+        Err(format!(
+            "the solvent code `{}` appears in no record's composition",
+            solvent.code
+        ))
+    }
+}
+
+/// The formation sections: raw before corrected, over the collapsed
+/// ensembles when `bavg` is set (`rqm/formation.md`, Boltzmann-Averaged
+/// Sections). A print-only run passes the el ordering — no --sort is a
+/// manipulation — a pipeline run the run's sort ordering.
+// rq-dd65e289
+#[allow(clippy::too_many_arguments)]
+fn print_formation_sections(
+    records: &[Record],
+    memo: &ThermoMemo,
+    concs: &ConcConditions,
+    unit: Unit,
+    raw: bool,
+    corr: bool,
+    bavg: bool,
+    sort_key: SortKey,
+) {
+    if raw {
+        if bavg {
+            let ensembles = collapse_ensembles(records, memo);
+            let references = ensemble_references(&ensembles);
+            println!(
+                "{}",
+                print_formation_ensembles(&ensembles, &references, memo, unit, concs)
+            );
+        } else {
+            let references = collect_monomers(records, memo, sort_key);
+            println!(
+                "{}",
+                print_formation_section(records, &references, memo, unit, concs)
+            );
+        }
+    }
+    if corr {
+        if bavg {
+            let ensembles = corrected_collapse_ensembles(records, memo);
+            let references = corrected_ensemble_references(&ensembles);
+            println!(
+                "{}",
+                print_formation_corr_ensembles(&ensembles, &references, memo, unit, concs)
+            );
+        } else {
+            let references = corrected_monomer_references(records, memo, sort_key);
+            println!(
+                "{}",
+                print_formation_corr_section(records, &references, memo, unit, concs)
+            );
+        }
+    }
+}
+
+/// The hydration sections: raw before corrected, over the collapsed
+/// ensembles when `bavg` is set (`rqm/hydration.md` Printing, Hydration
+/// States). The uncollapsed sections read the formation free energies
+/// under the given sort ordering; the averaged ones the ensembles'
+/// formation values. A section with no core groups prints nothing.
+// rq-5e154b92
+#[allow(clippy::too_many_arguments)]
+fn print_hydration_sections(
+    records: &[Record],
+    memo: &ThermoMemo,
+    concs: &ConcConditions,
+    solvent: &str,
+    raw: bool,
+    corr: bool,
+    bavg: bool,
+    sort_key: SortKey,
+) {
+    let print_block = |groups: &[HydrationGroup]| {
+        let section = print_hydration_section(groups, memo.temperature());
+        if !section.is_empty() {
+            println!("{section}");
+        }
+    };
+    if bavg {
+        if raw {
+            let ensembles = collapse_ensembles(records, memo);
+            let groups = hydration_states_from_ensembles(&ensembles, memo, concs, solvent);
+            print_block(&groups);
+        }
+        if corr {
+            let ensembles = corrected_collapse_ensembles(records, memo);
+            let groups =
+                corrected_hydration_states_from_ensembles(&ensembles, memo, concs, solvent);
+            print_block(&groups);
+        }
+    } else {
+        if raw {
+            let groups = hydration_states(records, sort_key, memo, concs, solvent);
+            print_block(&groups);
+        }
+        if corr {
+            let groups = corrected_hydration_states(records, sort_key, memo, concs, solvent);
+            print_block(&groups);
+        }
+    }
+}
+
 /// The ids of manipulation flags actually set on `cli` (`rqm/filtering.md`).
 /// `run` derives `has_manipulation` from this and the consistency test
 /// checks it against the declared flags, so every manipulation flag must be
@@ -1168,9 +1461,9 @@ mod tests {
 
     /// Flags exempt from the manipulation/print accounting: settings flags
     /// are read into the conditions, window budget, unit, and the
-    /// concentration conditions, `--formation` and `--formation-corr`
-    /// into the formation sections, and the rest never affect the
-    /// outcome rule.
+    /// concentration and solvent conditions, `--formation`,
+    /// `--formation-corr`, and the hydration flags into the printed
+    /// sections, and the rest never affect the outcome rule.
     const EXEMPT_IDS: &[&str] = &[
         "out",
         "fout",
@@ -1187,6 +1480,12 @@ mod tests {
         "unit",
         "formation",
         "formation_corr",
+        "hydration",
+        "hydration_corr",
+        "solvation",
+        "solvation_corr",
+        "rh",
+        "psolvent",
         "conc",
         "cnt",
         "bavg",

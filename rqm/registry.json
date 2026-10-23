@@ -302,6 +302,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-09af191f": {
+    "decl": "Scenario: Bare --hydration distributes over the hydration states of water",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Bare --hydration distributes over the hydration states of water",
+    "type": "scenario"
+  },
   "rq-09e99e7b": {
     "decl": "Scenario: --formation-corr alone is a visible outcome",
     "file": "formation",
@@ -337,6 +349,18 @@
     ],
     "title": "An unwritable output directory is fatal",
     "type": "scenario"
+  },
+  "rq-0a350842": {
+    "decl": "- `hydration_percentages(group: &HydrationGroup, temperature: f64) ->",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "hydration_percentages",
+    "type": "api-item"
   },
   "rq-0a70b97d": {
     "decl": "- `read_geometry_table(lines, spec: &TableSpec) -> Option<Geometry>` — reads",
@@ -389,6 +413,18 @@
     ],
     "title": "validate rejects an empty correction kind",
     "type": "scenario"
+  },
+  "rq-0b5e2729": {
+    "decl": "- `HydrationGroup` — one core group: `core: Components`,",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "HydrationGroup",
+    "type": "api-item"
   },
   "rq-0bb4b64f": {
     "decl": "Scenario: An unrelated head is not claimed",
@@ -476,6 +512,30 @@
       }
     ],
     "title": "Program",
+    "type": "api-item"
+  },
+  "rq-0ccc07ee": {
+    "decl": "Scenario: A state far above the minimum underflows to 0.0",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A state far above the minimum underflows to 0.0",
+    "type": "scenario"
+  },
+  "rq-0cfc6832": {
+    "decl": "- `corrected_hydration_states(records: &[Record], sort: SortKey,",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "corrected_hydration_states",
     "type": "api-item"
   },
   "rq-0d722861": {
@@ -1146,6 +1206,18 @@
     "title": "--cnt scales a fully covered cluster's correction by (N-1)/N",
     "type": "scenario"
   },
+  "rq-1b2f8c5e": {
+    "decl": "- `hydration_states_from_ensembles(ensembles: &[Ensemble], memo:",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "hydration_states_from_ensembles",
+    "type": "api-item"
+  },
   "rq-1b571f91": {
     "decl": "## Monomer References",
     "file": "formation",
@@ -1209,6 +1281,22 @@
       }
     ],
     "title": "--version prints the crate version",
+    "type": "scenario"
+  },
+  "rq-1c4d88c8": {
+    "decl": "Scenario: --bavg replaces the conformer minimum with the ensemble value",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--bavg replaces the conformer minimum with the ensemble value",
     "type": "scenario"
   },
   "rq-1c86c6f3": {
@@ -1378,6 +1466,18 @@
     ],
     "title": "The last TOTAL ENERGY line wins",
     "type": "scenario"
+  },
+  "rq-206d4784": {
+    "decl": "# Feature: Hydration and Solvation Distributions",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Hydration and Solvation Distributions",
+    "type": "file"
   },
   "rq-2072b6c4": {
     "decl": "- `Cargo.toml` declares the package `complied-jkqc`, the `CJKQC` binary",
@@ -1705,6 +1805,18 @@
     "title": "A list of only trivial modes filters to empty",
     "type": "scenario"
   },
+  "rq-282ee600": {
+    "decl": "Scenario: Undefined conformers never hide a state's defined value",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined conformers never hide a state's defined value",
+    "type": "scenario"
+  },
   "rq-28e4ef6b": {
     "decl": "Scenario: --ignoreimag prints the saddle point's thermochemistry",
     "file": "thermo",
@@ -1734,6 +1846,18 @@
       }
     ],
     "title": "element_symbol",
+    "type": "api-item"
+  },
+  "rq-2959f663": {
+    "decl": "- `hydration_states(records: &[Record], sort: SortKey, memo:",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "hydration_states",
     "type": "api-item"
   },
   "rq-297b5bf7": {
@@ -1803,6 +1927,34 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-2a926651": {
+    "decl": "Scenario: Columns align within a group",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Columns align within a group",
+    "type": "scenario"
+  },
+  "rq-2b028a0d": {
+    "decl": "Scenario: --rh with a non-water solvent is a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--rh with a non-water solvent is a usage error",
+    "type": "scenario"
   },
   "rq-2b862de1": {
     "decl": "Scenario: --out writes the filtered database and prints a summary",
@@ -1941,6 +2093,22 @@
       }
     ],
     "title": "A single-point log reports no frequencies",
+    "type": "scenario"
+  },
+  "rq-2dbfbb9a": {
+    "decl": "Scenario: --hydration alone is a visible outcome",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--hydration alone is a visible outcome",
     "type": "scenario"
   },
   "rq-2e39b369": {
@@ -2485,6 +2653,18 @@
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
+  "rq-366add70": {
+    "decl": "- `corrected_hydration_states_from_ensembles(ensembles: &[Ensemble],",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "corrected_hydration_states_from_ensembles",
+    "type": "api-item"
+  },
   "rq-36de901e": {
     "decl": "Scenario: A monomer's own formation energy is zero",
     "file": "formation",
@@ -2759,6 +2939,18 @@
     "title": "atomic_mass",
     "type": "api-item"
   },
+  "rq-3f2988b7": {
+    "decl": "Scenario: Percentages print with one decimal",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Percentages print with one decimal",
+    "type": "scenario"
+  },
   "rq-3f95d2bc": {
     "decl": "Scenario: An imaginary frequency leaves thermochemistry undefined",
     "file": "thermo",
@@ -2850,6 +3042,27 @@
     ],
     "title": "CollectionMode",
     "type": "api-item"
+  },
+  "rq-42a7f0df": {
+    "decl": "## Out of Scope",
+    "file": "hydration",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
+  "rq-42cdecff": {
+    "decl": "## Hydration States",
+    "file": "hydration",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Hydration States",
+    "type": "section"
   },
   "rq-42e59efe": {
     "decl": "# Feature: Format Detection and Parser Framework",
@@ -3113,6 +3326,18 @@
     "title": "Populations are per composition group",
     "type": "scenario"
   },
+  "rq-49ef8ef3": {
+    "decl": "Scenario: Supersaturation above one is accepted",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Supersaturation above one is accepted",
+    "type": "scenario"
+  },
   "rq-49f1442c": {
     "decl": "Scenario: A label comment in a pattern is ignored",
     "file": "filtering",
@@ -3143,6 +3368,18 @@
       }
     ],
     "title": "last_line_where falls back to the head",
+    "type": "scenario"
+  },
+  "rq-4b684f8d": {
+    "decl": "Scenario: Pure solvent clusters print no distribution",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Pure solvent clusters print no distribution",
     "type": "scenario"
   },
   "rq-4b8a9f98": {
@@ -3394,6 +3631,18 @@
     "title": "A conformer label after a hyphen is ignored",
     "type": "scenario"
   },
+  "rq-524dd0dc": {
+    "decl": "Scenario: --hydration-corr prints only the corrected distribution",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--hydration-corr prints only the corrected distribution",
+    "type": "scenario"
+  },
   "rq-527a66db": {
     "decl": "- `command` — all text after `!` in the echoed keyword line of the input",
     "file": "parsers/orca",
@@ -3420,6 +3669,18 @@
       }
     ],
     "title": "Databases merge in argument order",
+    "type": "scenario"
+  },
+  "rq-534cfecc": {
+    "decl": "Scenario: --hydration and --solvation of another solvent are a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--hydration and --solvation of another solvent are a usage error",
     "type": "scenario"
   },
   "rq-535bd7b8": {
@@ -3544,6 +3805,18 @@
       }
     ],
     "title": "Multi-component and multi-count records are not monomers",
+    "type": "scenario"
+  },
+  "rq-56966bc2": {
+    "decl": "Scenario: --rh scales the saturation vapor pressure",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--rh scales the saturation vapor pressure",
     "type": "scenario"
   },
   "rq-57329ad4": {
@@ -3763,6 +4036,18 @@
     "title": "A correction object reads from a JSON object",
     "type": "scenario"
   },
+  "rq-5a7bc7d5": {
+    "decl": "Scenario: A --psolvent value outside the grammar is a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A --psolvent value outside the grammar is a usage error",
+    "type": "scenario"
+  },
   "rq-5aa5a715": {
     "decl": "Scenario: An ok record is not unrecognized",
     "file": "record",
@@ -3921,6 +4206,19 @@
     "level": 2,
     "refs": [],
     "title": "Model",
+    "type": "section"
+  },
+  "rq-5e154b92": {
+    "decl": "## Printing",
+    "file": "hydration",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Printing",
     "type": "section"
   },
   "rq-5e237eee": {
@@ -4111,6 +4409,18 @@
     "title": "Round-trip a record with every observable set",
     "type": "scenario"
   },
+  "rq-6375f775": {
+    "decl": "Scenario: A filtered-away solvent monomer dashes the hydrated states",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A filtered-away solvent monomer dashes the hydrated states",
+    "type": "scenario"
+  },
   "rq-64526ba5": {
     "decl": "Scenario: Without --sort the lowest-energy conformer is the reference",
     "file": "formation",
@@ -4266,6 +4576,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-6771a995": {
+    "decl": "Scenario: Undefined states print dashes in their columns",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined states print dashes in their columns",
+    "type": "scenario"
+  },
   "rq-67b44e63": {
     "decl": "- `CorrectedMonomerReferences` — the per-code corrected references in Eh:",
     "file": "formation",
@@ -4296,6 +4618,18 @@
       }
     ],
     "title": "A completed run yields the full observable set",
+    "type": "scenario"
+  },
+  "rq-68e223b9": {
+    "decl": "Scenario: A solvent absent from the final record set is a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A solvent absent from the final record set is a usage error",
     "type": "scenario"
   },
   "rq-69c48453": {
@@ -4354,6 +4688,18 @@
     "title": "No arguments is a usage error",
     "type": "scenario"
   },
+  "rq-6bc74daa": {
+    "decl": "- `HydrationState` — one state: `components: Components`,",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "HydrationState",
+    "type": "api-item"
+  },
   "rq-6bf96b51": {
     "decl": "## Gherkin Scenarios",
     "file": "record",
@@ -4380,6 +4726,14 @@
     "refs": [],
     "title": "rotational_symmetry_number",
     "type": "api-item"
+  },
+  "rq-6c6fec9b": {
+    "decl": "### Functions",
+    "file": "hydration",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
   },
   "rq-6cc1264d": {
     "decl": "Scenario: Adopted JKQC-era unknown flags remain usage errors",
@@ -4556,6 +4910,30 @@
       }
     ],
     "title": "formation_values",
+    "type": "api-item"
+  },
+  "rq-7067d53d": {
+    "decl": "Scenario: The corrected level reads the corrected values",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected level reads the corrected values",
+    "type": "scenario"
+  },
+  "rq-70efc347": {
+    "decl": "- `print_hydration_section(groups: &[HydrationGroup], temperature: f64)",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "print_hydration_section",
     "type": "api-item"
   },
   "rq-70fc34c2": {
@@ -4926,6 +5304,18 @@
     "title": "Extract and Nextract",
     "type": "section"
   },
+  "rq-7b9426c0": {
+    "decl": "Scenario: --cnt scales the solvent term by (N-1)/N",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--cnt scales the solvent term by (N-1)/N",
+    "type": "scenario"
+  },
   "rq-7be2650a": {
     "decl": "Scenario: A non-monatomic record without frequencies is undefined",
     "file": "thermo",
@@ -5032,6 +5422,18 @@
     "title": "Fragment Signature",
     "type": "section"
   },
+  "rq-7e9e7176": {
+    "decl": "- `saturation_pressure_water(temperature: f64) -> f64` — the Magnus",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "saturation_pressure_water",
+    "type": "api-item"
+  },
   "rq-7efc4513": {
     "decl": "Scenario: Two conformers split by their Boltzmann factors",
     "file": "population",
@@ -5062,6 +5464,14 @@
     "level": 3,
     "refs": [],
     "title": "Types",
+    "type": "section"
+  },
+  "rq-7fbc1c87": {
+    "decl": "## The Distribution",
+    "file": "hydration",
+    "level": 2,
+    "refs": [],
+    "title": "The Distribution",
     "type": "section"
   },
   "rq-7fe12cf9": {
@@ -5296,6 +5706,18 @@
     "title": "A missing correction database is fatal",
     "type": "scenario"
   },
+  "rq-83eaf0d1": {
+    "decl": "Scenario: --psolvent reuses the concentration grammar",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--psolvent reuses the concentration grammar",
+    "type": "scenario"
+  },
   "rq-8420b870": {
     "decl": "- `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit, grouping: Grouping) -> String`",
     "file": "filtering",
@@ -5307,6 +5729,19 @@
     ],
     "title": "print_table",
     "type": "api-item"
+  },
+  "rq-84386009": {
+    "decl": "## Feature API",
+    "file": "hydration",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature API",
+    "type": "section"
   },
   "rq-843d152e": {
     "decl": "Scenario: Short version flag behaves like --version",
@@ -5713,6 +6148,18 @@
     "title": "Record",
     "type": "api-item"
   },
+  "rq-8ed6c203": {
+    "decl": "Scenario: A group without defined states prints all dashes",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A group without defined states prints all dashes",
+    "type": "scenario"
+  },
   "rq-8f1add9c": {
     "decl": "Scenario: Loading a directory is an error",
     "file": "database",
@@ -5832,6 +6279,18 @@
     "title": "A recorded failed run is classified failed",
     "type": "scenario"
   },
+  "rq-91512869": {
+    "decl": "Scenario: saturation_pressure_water matches its reference values",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "saturation_pressure_water matches its reference values",
+    "type": "scenario"
+  },
   "rq-918b7b58": {
     "decl": "### Detection",
     "file": "parsers/gaussian",
@@ -5895,6 +6354,18 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-93c3be03": {
+    "decl": "Scenario: --psolvent without a hydration section is an accepted no-op",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--psolvent without a hydration section is an accepted no-op",
+    "type": "scenario"
   },
   "rq-93f2fd85": {
     "decl": "### Detection",
@@ -6234,6 +6705,18 @@
     "title": "geometry",
     "type": "api-item"
   },
+  "rq-9a225d69": {
+    "decl": "Scenario: Two states one k_B*T apart split about 73.1 and 26.9",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Two states one k_B*T apart split about 73.1 and 26.9",
+    "type": "scenario"
+  },
   "rq-9a4270bc": {
     "decl": "Scenario: --makereal prints the saddle point's thermochemistry",
     "file": "thermo",
@@ -6505,6 +6988,18 @@
     "title": "GaussianParser",
     "type": "api-item"
   },
+  "rq-9ee7ff9c": {
+    "decl": "Scenario: --solvation of a non-water solvent without --psolvent is a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--solvation of a non-water solvent without --psolvent is a usage error",
+    "type": "scenario"
+  },
   "rq-9f4db37a": {
     "decl": "- `metric_total_mass(record: &Record) -> Option<f64>`",
     "file": "uniqueness",
@@ -6731,6 +7226,18 @@
     "title": "Rg of a two-atom system matches the hand-verified value",
     "type": "scenario"
   },
+  "rq-a396d259": {
+    "decl": "Scenario: The section prints after the formation sections and before the summary",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The section prints after the formation sections and before the summary",
+    "type": "scenario"
+  },
   "rq-a3a948bc": {
     "decl": "Scenario: A record gains components from its resolvable name",
     "file": "composition",
@@ -6905,6 +7412,18 @@
     "title": "filter_reacted",
     "type": "api-item"
   },
+  "rq-a99a27e1": {
+    "decl": "Scenario: States group by core composition",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "States group by core composition",
+    "type": "scenario"
+  },
   "rq-a9dae115": {
     "decl": "- `attach_corrections(records: &[Record], corrections: &[Record]) ->",
     "file": "correction",
@@ -7005,6 +7524,18 @@
     ],
     "title": "Definedness",
     "type": "section"
+  },
+  "rq-acc842e9": {
+    "decl": "Scenario: The implied spec shifts the formation section's solvent term",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The implied spec shifts the formation section's solvent term",
+    "type": "scenario"
   },
   "rq-acd8f4f9": {
     "decl": "### Functions",
@@ -7137,6 +7668,18 @@
     ],
     "title": "validate rejects multiplicity zero",
     "type": "scenario"
+  },
+  "rq-af47884f": {
+    "decl": "- `SolventConditions` — the run's resolved solvent setting:",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "SolventConditions",
+    "type": "api-item"
   },
   "rq-afe58819": {
     "decl": "Scenario: A hidden final structure leaves geometry absent",
@@ -7340,6 +7883,18 @@
     "refs": [],
     "title": "Status Classification",
     "type": "section"
+  },
+  "rq-b457ce50": {
+    "decl": "Scenario: --psolvent overrides --rh",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--psolvent overrides --rh",
+    "type": "scenario"
   },
   "rq-b46a6e05": {
     "decl": "Scenario: A print-only run sees every loaded monomer",
@@ -7655,6 +8210,26 @@
     "title": "PopLevel",
     "type": "api-item"
   },
+  "rq-b97304bb": {
+    "decl": "## Crate Layout",
+    "file": "hydration",
+    "level": 2,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
+  "rq-b9897f33": {
+    "decl": "Scenario: The lowest free conformer represents a state",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The lowest free conformer represents a state",
+    "type": "scenario"
+  },
   "rq-b992e561": {
     "decl": "Scenario: A nameless record is left unchanged",
     "file": "composition",
@@ -7667,6 +8242,18 @@
     "title": "A nameless record is left unchanged",
     "type": "scenario"
   },
+  "rq-b994d13a": {
+    "decl": "Scenario: --conc naming the solvent code is a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--conc naming the solvent code is a usage error",
+    "type": "scenario"
+  },
   "rq-b9eeedfe": {
     "decl": "## Feature API",
     "file": "database",
@@ -7674,6 +8261,18 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-b9f78565": {
+    "decl": "Scenario: A non-positive --rh is a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-positive --rh is a usage error",
+    "type": "scenario"
   },
   "rq-bb4d61fb": {
     "decl": "Scenario: A zero window budget is a usage error",
@@ -7737,6 +8336,31 @@
       }
     ],
     "title": "The corrected columns print - without a correction",
+    "type": "scenario"
+  },
+  "rq-bcb7acc5": {
+    "decl": "## Flag Surface",
+    "file": "hydration",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Flag Surface",
+    "type": "section"
+  },
+  "rq-bd08eb6c": {
+    "decl": "Scenario: A state without corrections dashes at the corrected level",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A state without corrections dashes at the corrected level",
     "type": "scenario"
   },
   "rq-bd3986f2": {
@@ -7988,6 +8612,18 @@
     "title": "Unknown keys do not survive a correcting run",
     "type": "scenario"
   },
+  "rq-c0dea4f9": {
+    "decl": "Scenario: --rh without a hydration section is an accepted no-op",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--rh without a hydration section is an accepted no-op",
+    "type": "scenario"
+  },
   "rq-c1056d55": {
     "decl": "# Feature: Collection Command Line",
     "file": "collection",
@@ -8078,6 +8714,18 @@
       }
     ],
     "title": "Ensemble references make the cluster less favorable than its best conformer",
+    "type": "scenario"
+  },
+  "rq-c3e34342": {
+    "decl": "Scenario: The raw and corrected sections print together, raw first",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The raw and corrected sections print together, raw first",
     "type": "scenario"
   },
   "rq-c411edfa": {
@@ -8421,6 +9069,18 @@
     "title": "Non-ok records are excluded and counted",
     "type": "scenario"
   },
+  "rq-cd509d24": {
+    "decl": "Scenario: The layout is a token row and a percentage row per group",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The layout is a token row and a percentage row per group",
+    "type": "scenario"
+  },
   "rq-cd5bd6c0": {
     "decl": "# Feature: XTB Parser",
     "file": "parsers/xtb",
@@ -8563,6 +9223,14 @@
     "title": "The XTB corpus fixture reproduces the JKQC ground truth",
     "type": "scenario"
   },
+  "rq-d2b5c941": {
+    "decl": "## Gherkin Scenarios",
+    "file": "hydration",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
   "rq-d2ba6fbf": {
     "decl": "Scenario: Every format directory covers all three outcomes",
     "file": "parsers/conformance",
@@ -8593,6 +9261,19 @@
     ],
     "title": "A block of only trivial eigenvalues leaves the field absent",
     "type": "scenario"
+  },
+  "rq-d36686ec": {
+    "decl": "## Solvent Pressure",
+    "file": "hydration",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Solvent Pressure",
+    "type": "section"
   },
   "rq-d431309b": {
     "decl": "Scenario: A corrupt line in a merged input is skipped and reported",
@@ -8698,6 +9379,18 @@
     "title": "Unknown keys are ignored on read",
     "type": "scenario"
   },
+  "rq-d60ca773": {
+    "decl": "Scenario: The temperature shifts the split",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The temperature shifts the split",
+    "type": "scenario"
+  },
   "rq-d6e00bdf": {
     "decl": "### Functions",
     "file": "filtering",
@@ -8794,6 +9487,14 @@
     "title": "An opt+freq log yields the final job's observables",
     "type": "scenario"
   },
+  "rq-d8a5bbaf": {
+    "decl": "### Types",
+    "file": "hydration",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-d993628d": {
     "decl": "# Architecture",
     "file": "ARCHITECTURE",
@@ -8823,6 +9524,18 @@
       }
     ],
     "title": "validate rejects an empty geometry",
+    "type": "scenario"
+  },
+  "rq-da98d00b": {
+    "decl": "Scenario: --noname does not pool the core groups",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--noname does not pool the core groups",
     "type": "scenario"
   },
   "rq-daa8d422": {
@@ -9037,6 +9750,18 @@
     "title": "locate prefers the head for first and the tail for last",
     "type": "scenario"
   },
+  "rq-e0cba629": {
+    "decl": "Scenario: Records without components are excluded",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Records without components are excluded",
+    "type": "scenario"
+  },
   "rq-e15a3e2d": {
     "decl": "Scenario: A correction record without a command attaches without commands",
     "file": "correction",
@@ -9242,6 +9967,22 @@
       }
     ],
     "title": "An empty input file aborts the run and writes nothing",
+    "type": "scenario"
+  },
+  "rq-e52f165b": {
+    "decl": "Scenario: A blank line separates the groups",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A blank line separates the groups",
     "type": "scenario"
   },
   "rq-e59918d8": {
@@ -9529,6 +10270,18 @@
     "title": "ensemble_formation_values",
     "type": "api-item"
   },
+  "rq-eb09ca63": {
+    "decl": "Scenario: Without --rh and --psolvent the vapor is saturated",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Without --rh and --psolvent the vapor is saturated",
+    "type": "scenario"
+  },
   "rq-eb256ed1": {
     "decl": "- `geometry` — the table under the header line",
     "file": "parsers/mrcc",
@@ -9687,6 +10440,18 @@
     "title": "A record without components has a dash composition token",
     "type": "scenario"
   },
+  "rq-ee3e38de": {
+    "decl": "Scenario: A temperature outside the correlation's domain is a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A temperature outside the correlation's domain is a usage error",
+    "type": "scenario"
+  },
   "rq-ef146284": {
     "decl": "- `ReactedMode` — `Consensus` (`--reacted`, keep the majority pattern) or",
     "file": "detection",
@@ -9769,6 +10534,18 @@
       }
     ],
     "title": "The symmetry number divides the rotational partition function",
+    "type": "scenario"
+  },
+  "rq-f0751abd": {
+    "decl": "Scenario: --solvation picks the solvent code",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--solvation picks the solvent code",
     "type": "scenario"
   },
   "rq-f0785bb1": {
@@ -10216,6 +10993,18 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-fa54bb5b": {
+    "decl": "Scenario: A non-letter solvent code is a usage error",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-letter solvent code is a usage error",
+    "type": "scenario"
+  },
   "rq-fa8178d7": {
     "decl": "## Gherkin Scenarios",
     "file": "parsers/conformance",
@@ -10271,6 +11060,18 @@
     ],
     "title": "corrected_formation_values",
     "type": "api-item"
+  },
+  "rq-fbfe30a4": {
+    "decl": "Scenario: Rounded percentages need not sum to exactly 100",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Rounded percentages need not sum to exactly 100",
+    "type": "scenario"
   },
   "rq-fc9218b9": {
     "decl": "- `corrected_energy(record: &Record) -> Option<f64>` — the attached",
@@ -10414,6 +11215,18 @@
     "title": "tests",
     "type": "api-item"
   },
+  "rq-fea096b0": {
+    "decl": "Scenario: A non-solvent --conc spec cancels within a core group",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-solvent --conc spec cancels within a core group",
+    "type": "scenario"
+  },
   "rq-fecf8cb9": {
     "decl": "Scenario: Naming one code twice is a usage error",
     "file": "formation",
@@ -10449,6 +11262,18 @@
     ],
     "title": "LinePattern",
     "type": "api-item"
+  },
+  "rq-ff1f09cb": {
+    "decl": "Scenario: A state without any defined member prints a dash and drops out",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A state without any defined member prints a dash and drops out",
+    "type": "scenario"
   },
   "rq-ffaf4e5b": {
     "decl": "Scenario: A signature anywhere in a covered file is detected",

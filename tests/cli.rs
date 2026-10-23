@@ -4508,3 +4508,795 @@ fn both_sections_collapse_when_both_are_printed() {
         ["2am1sa", "1am", "1sa"]
     );
 }
+
+// ---------------------------------------------------------------------------
+// Milestone 8: hydration and solvation distribution scenarios from
+// `rqm/hydration.md` that are CLI-shaped.
+// ---------------------------------------------------------------------------
+
+use complied_jkqc::hydration::saturation_pressure_water;
+use complied_jkqc::P_STANDARD;
+
+/// k_B T in Eh at the default conditions.
+fn hydration_kbt() -> f64 {
+    K_B * 298.15 / E_HARTREE
+}
+
+/// The vapor term per water at relative humidity `rh`, in Eh: the
+/// concentration correction the implied `--conc w p` spec adds per water
+/// (rqm/hydration.md Solvent Pressure).
+fn hydration_vapor_term(rh: f64) -> f64 {
+    K_B * 298.15 * (P_STANDARD / (rh * saturation_pressure_water(298.15))).ln() / E_HARTREE
+}
+
+/// A full-thermochemistry record line whose raw and corrected Gibbs free
+/// energies hit the given targets at the default conditions; `corrected`
+/// attaches a stored correction (the corrected gibbs is linear in the
+/// correction energy, offset by the energy-free template gibbs).
+fn hydration_line(name: &str, comps: &[(&str, u32)], raw: f64, corrected: Option<f64>) -> String {
+    let mut record = gibbs_record(name, raw, comps);
+    if let Some(target) = corrected {
+        let template: Record = serde_json::from_str(&thermo_record_json(
+            name,
+            Some(0.0),
+            comps,
+            Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+        ))
+        .expect("template deserializes");
+        let gibbs0 = thermochemistry(&template, &ThermoConditions::default())
+            .expect("defined")
+            .gibbs;
+        record.correction = Some(Correction {
+            energy: target - gibbs0,
+            program: None,
+            program_version: None,
+            commands: None,
+            kind: "sp".to_string(),
+        });
+    }
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// The Gibbs target for a hydrated state that should carry the
+/// distribution value `value` at relative humidity `rh`, given the
+/// monomers' gibbs targets: the standard-state formation value is
+/// `value` minus the vapor term of its waters.
+fn hydration_target(refs: &[f64], value: f64, waters: u32, rh: f64) -> f64 {
+    refs.iter().sum::<f64>() + value - f64::from(waters) * hydration_vapor_term(rh)
+}
+
+/// The section blocks of stdout: the blank-line-separated groups after
+/// the (optional) table and formation sections.
+fn hydration_blocks(stdout_text: &str) -> Vec<String> {
+    stdout_text
+        .trim_end_matches('\n')
+        .split("\n\n")
+        .map(str::to_string)
+        .collect()
+}
+
+#[test] // rq-09af191f
+fn bare_hydration_distributes_over_the_hydration_states_of_water() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1)], -60.0, None),
+            hydration_line(
+                "c2",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], hydration_kbt() * 3.0f64.ln(), 1, 1.0),
+                None,
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // One group: the states 1sa (75.0) and 1sa1w (25.0), one k_B T ln(3)
+    // apart at the saturated vapor.
+    assert_eq!(stdout(&run), " 1sa 1sa1w\n75.0  25.0\n\n");
+}
+
+#[test] // rq-f0751abd
+fn solvation_picks_the_solvent_code() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("am", 1)], -50.0, None),
+            hydration_line(
+                "c2",
+                &[("am", 1), ("sa", 1)],
+                -50.0 + -40.0 + hydration_kbt(),
+                None,
+            ),
+            hydration_line("am1", &[("am", 1)], -50.0, None),
+            hydration_line("sa1", &[("sa", 1)], -40.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--solvation", "sa", "--psolvent", "101325"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // At p° the vapor term is zero, so the one-k_B T gap splits 73.1/26.9.
+    let text = stdout(&run);
+    let cells: Vec<&str> = text
+        .lines()
+        .nth(1)
+        .expect("two rows")
+        .split(' ')
+        .filter(|cell| !cell.is_empty())
+        .collect();
+    assert_eq!(cells, ["73.1", "26.9"], "{text}");
+    let tokens: Vec<&str> = text
+        .lines()
+        .next()
+        .expect("two rows")
+        .split(' ')
+        .filter(|cell| !cell.is_empty())
+        .collect();
+    assert_eq!(tokens, ["1am", "1am1sa"]);
+}
+
+#[test]
+fn solvation_corr_prints_only_the_corrected_distribution() {
+    // The --solvation-corr spelling routes the corrected level at the
+    // CLI, the raw/corrected convention of the Flag Surface over the
+    // --solvation solvent code.
+    let dir = temp_dir();
+    let refs = -50.0 + -40.0;
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("am", 1)], -50.0, Some(-50.0)),
+            hydration_line(
+                "c2",
+                &[("am", 1), ("sa", 1)],
+                refs + hydration_kbt(),
+                Some(refs - 0.01),
+            ),
+            hydration_line("am1", &[("am", 1)], -50.0, Some(-50.0)),
+            hydration_line("sa1", &[("sa", 1)], -40.0, Some(-40.0)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--solvation-corr", "sa", "--psolvent", "101325"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // At p° the vapor term is zero. The corrected level favors 1am1sa;
+    // the raw level (73.1 for 1am) prints nowhere.
+    let text = stdout(&run);
+    assert_eq!(text, "1am 1am1sa\n0.0  100.0\n\n", "{text:?}");
+}
+
+#[test] // rq-524dd0dc
+fn hydration_corr_prints_only_the_corrected_distribution() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1)], -60.0, Some(-60.0)),
+            hydration_line(
+                "c2",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.2, 1, 1.0),
+                Some(hydration_target(&[-60.0, -76.0], -0.01, 1, 1.0)),
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, Some(-60.0)),
+            hydration_line("w1", &[("w", 1)], -76.0, Some(-76.0)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration-corr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    // The corrected level favors 1sa1w; the raw level (100.0 for 1sa)
+    // prints nowhere.
+    let text = stdout(&run);
+    assert_eq!(text, "1sa 1sa1w\n0.0 100.0\n\n", "{text:?}");
+}
+
+#[test] // rq-c3e34342
+fn the_raw_and_corrected_sections_print_together_raw_first() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1)], -60.0, Some(-60.0)),
+            hydration_line(
+                "c2",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.2, 1, 1.0),
+                Some(hydration_target(&[-60.0, -76.0], -0.01, 1, 1.0)),
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, Some(-60.0)),
+            hydration_line("w1", &[("w", 1)], -76.0, Some(-76.0)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration-corr", "--hydration"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let raw_position = text.find("100.0").expect("the raw section favors 1sa");
+    let corrected_position = text
+        .find("\n0.0 100.0")
+        .expect("the corrected section favors 1sa1w");
+    assert!(
+        raw_position < corrected_position,
+        "the raw section prints before the corrected one: {text:?}"
+    );
+    assert_eq!(
+        text.matches("100.0").count(),
+        2,
+        "each section prints exactly once: {text:?}"
+    );
+    // Repeated spellings of the same code are redundant, not conflicting.
+    let redundant = cjkqc(&[&db, "--hydration", "--solvation", "w"]);
+    assert_eq!(redundant.status.code(), Some(0), "{}", stderr(&redundant));
+    assert_eq!(stdout(&redundant), "  1sa 1sa1w\n100.0   0.0\n\n");
+}
+
+#[test] // rq-534cfecc
+fn hydration_and_solvation_of_another_solvent_are_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration", "--solvation", "sa"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-fa54bb5b
+fn a_non_letter_solvent_code_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--solvation", "2sa"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-2dbfbb9a
+fn hydration_alone_is_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(stdout(&run).contains("1sa"), "{}", stdout(&run));
+    let entries: Vec<_> = fs::read_dir(&dir)
+        .expect("read dir")
+        .map(|entry| {
+            entry
+                .expect("entry")
+                .file_name()
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect();
+    assert_eq!(entries, ["db.jsonl"], "{entries:?}");
+}
+
+#[test] // rq-c0dea4f9
+fn rh_without_a_hydration_section_is_an_accepted_no_op() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[hydration_line("c1", &[("sa", 1)], -60.0, None)],
+    );
+    let plain = cjkqc(&[&db, "--name", "--el"]);
+    let with_rh = cjkqc(&[&db, "--name", "--el", "--rh", "0.5"]);
+    assert_eq!(with_rh.status.code(), Some(0), "{}", stderr(&with_rh));
+    assert_eq!(stdout(&plain), stdout(&with_rh));
+}
+
+#[test] // rq-93c3be03
+fn psolvent_without_a_hydration_section_is_an_accepted_no_op() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[hydration_line("c1", &[("sa", 1)], -60.0, None)],
+    );
+    let plain = cjkqc(&[&db, "--name", "--el"]);
+    let with_p = cjkqc(&[&db, "--name", "--el", "--psolvent", "100ppt"]);
+    assert_eq!(with_p.status.code(), Some(0), "{}", stderr(&with_p));
+    assert_eq!(stdout(&plain), stdout(&with_p));
+}
+
+#[test] // rq-eb09ca63
+fn without_rh_and_psolvent_the_vapor_is_saturated() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line(
+                "c1",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0),
+                None,
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let bare = cjkqc(&[&db, "--hydration"]);
+    let explicit = cjkqc(&[&db, "--hydration", "--rh", "1"]);
+    assert_eq!(bare.status.code(), Some(0), "{}", stderr(&bare));
+    assert_eq!(explicit.status.code(), Some(0), "{}", stderr(&explicit));
+    assert_eq!(stdout(&bare), stdout(&explicit));
+}
+
+#[test] // rq-56966bc2
+fn rh_scales_the_saturation_vapor_pressure() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line(
+                "c1",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0),
+                None,
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--formation"]);
+    let run = cjkqc(&[&db, "--formation", "--hydration", "--rh", "0.5"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let plain_row = formation_row(&stdout(&plain), "1sa1w");
+    let hydrate = formation_row(&stdout(&run), "1sa1w");
+    let shift = hydrate[2].parse::<f64>().expect("the g cell")
+        - plain_row[2].parse::<f64>().expect("the g cell");
+    let expected = hydration_vapor_term(0.5);
+    assert!(
+        (shift - expected).abs() < 1.0e-9,
+        "g = g_form + R T ln(p°/(0.5 p_sat)): {shift} vs {expected}"
+    );
+}
+
+#[test] // rq-b457ce50
+fn psolvent_overrides_rh() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line(
+                "c1",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0),
+                None,
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let both = cjkqc(&[&db, "--hydration", "--rh", "0.5", "--psolvent", "101325"]);
+    let only_p = cjkqc(&[&db, "--hydration", "--psolvent", "101325"]);
+    assert_eq!(both.status.code(), Some(0), "{}", stderr(&both));
+    assert_eq!(only_p.status.code(), Some(0), "{}", stderr(&only_p));
+    assert_eq!(stdout(&both), stdout(&only_p));
+}
+
+#[test] // rq-83eaf0d1
+fn psolvent_reuses_the_concentration_grammar() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line(
+                "c1",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0),
+                None,
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let suffixed = cjkqc(&[&db, "--hydration", "--psolvent", "100ppt"]);
+    let plain = cjkqc(&[&db, "--hydration", "--psolvent", "1.01325e-5"]);
+    assert_eq!(suffixed.status.code(), Some(0), "{}", stderr(&suffixed));
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(stdout(&suffixed), stdout(&plain));
+}
+
+#[test] // rq-5a7bc7d5
+fn a_psolvent_value_outside_the_grammar_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration", "--psolvent", "10^3ppt"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-b9f78565
+fn a_non_positive_rh_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let zero = cjkqc(&[&db, "--hydration", "--rh", "0"]);
+    assert_eq!(zero.status.code(), Some(2), "{}", stderr(&zero));
+    let negative = cjkqc(&[&db, "--hydration", "--rh", "-0.5"]);
+    assert_eq!(negative.status.code(), Some(2), "{}", stderr(&negative));
+}
+
+#[test] // rq-49ef8ef3
+fn supersaturation_above_one_is_accepted() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line(
+                "c1",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0),
+                None,
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration", "--rh", "1.5"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+}
+
+#[test] // rq-ee3e38de
+fn a_temperature_outside_the_correlation_s_domain_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--temp", "30", "--hydration"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-9ee7ff9c
+fn solvation_of_a_non_water_solvent_without_psolvent_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1), ("dma", 1)], -100.0, None),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("dma1", &[("dma", 1)], -66.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--solvation", "dma"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-2b028a0d
+fn rh_with_a_non_water_solvent_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1), ("dma", 1)], -100.0, None),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("dma1", &[("dma", 1)], -66.0, None),
+        ],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--solvation",
+        "dma",
+        "--psolvent",
+        "100ppt",
+        "--rh",
+        "0.5",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-b994d13a
+fn conc_naming_the_solvent_code_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration", "--conc", "w", "100ppt"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-acc842e9
+fn the_implied_spec_shifts_the_formation_section_s_solvent_term() {
+    let dir = temp_dir();
+    let plain_target = hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0);
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1), ("w", 1)], plain_target, None),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--formation"]);
+    let hydrated = cjkqc(&[&db, "--formation", "--hydration", "--rh", "0.5"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(hydrated.status.code(), Some(0), "{}", stderr(&hydrated));
+    // The 1sa rows are equal; the 1sa1w g shifts by the vapor term.
+    let plain_row = formation_row(&stdout(&plain), "1sa1w");
+    let hydrated_row = formation_row(&stdout(&hydrated), "1sa1w");
+    let plain_sa = formation_row(&stdout(&plain), "1sa");
+    let hydrated_sa = formation_row(&stdout(&hydrated), "1sa");
+    assert_eq!(plain_sa[2], hydrated_sa[2], "the 1sa rows are equal");
+    let shift = hydrated_row[2].parse::<f64>().expect("the g cell")
+        - plain_row[2].parse::<f64>().expect("the g cell");
+    let expected = hydration_vapor_term(0.5);
+    assert!(
+        (shift - expected).abs() < 1.0e-9,
+        "about 2.46 kcal/mol: {shift} vs {expected}"
+    );
+}
+
+#[test] // rq-68e223b9
+fn a_solvent_absent_from_the_final_record_set_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("am", 1), ("sa", 1)], -100.0, None),
+            hydration_line("am1", &[("am", 1)], -50.0, None),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--hydration"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test]
+fn a_combined_formation_hydration_run_names_the_solvent_not_the_implied_spec() {
+    // The implied `--conc w p` spec rides inside `concs`, but the
+    // solvent-absent error must name the solvent flag the user gave,
+    // not `--conc` (`rqm/hydration.md` Flag Surface, Solvent
+    // Pressure).
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--hydration"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    let text = stderr(&run);
+    assert!(
+        text.contains("the solvent code `w` appears in no record's composition"),
+        "{text}"
+    );
+    assert!(!text.contains("--conc"), "{text}");
+}
+
+#[test] // rq-6375f775
+fn a_filtered_away_solvent_monomer_dashes_the_hydrated_states() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1), ("w", 1)], -140.0, None),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let extracted = cjkqc(&[&db, "--extract", "1sa1w", "--hydration"]);
+    assert_eq!(extracted.status.code(), Some(0), "{}", stderr(&extracted));
+    let text = stdout(&extracted);
+    let cells: Vec<&str> = text
+        .lines()
+        .nth(1)
+        .expect("two rows")
+        .split(' ')
+        .filter(|cell| !cell.is_empty())
+        .collect();
+    assert_eq!(cells, ["-"], "the 1sa1w state prints -: {text}");
+    let unextracted = cjkqc(&[&db, "--hydration"]);
+    assert_eq!(
+        unextracted.status.code(),
+        Some(0),
+        "{}",
+        stderr(&unextracted)
+    );
+    let defined = stdout(&unextracted)
+        .lines()
+        .nth(1)
+        .expect("two rows")
+        .contains('.');
+    assert!(
+        defined,
+        "a defined percentage prints: {}",
+        stdout(&unextracted)
+    );
+}
+
+#[test] // rq-da98d00b
+fn noname_does_not_pool_the_core_groups() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1)], -60.0, None),
+            hydration_line(
+                "c2",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0),
+                None,
+            ),
+            hydration_line("c3", &[("am", 2)], -100.0, None),
+            hydration_line(
+                "c4",
+                &[("am", 2), ("w", 1)],
+                hydration_target(&[-50.0, -50.0, -76.0], 0.01, 1, 1.0),
+                None,
+            ),
+            hydration_line("am1", &[("am", 1)], -50.0, None),
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--noname", "--hydration"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let blocks = hydration_blocks(&stdout(&run));
+    assert_eq!(
+        blocks.len(),
+        3,
+        "one group per core composition, not one global group: {:?}",
+        stdout(&run)
+    );
+    assert!(blocks[0].contains("1sa") && blocks[0].contains("1sa1w"));
+    assert!(blocks[1].contains("2am") && blocks[1].contains("2am1w"));
+}
+
+#[test] // rq-a396d259
+fn the_section_prints_after_the_formation_sections_and_before_the_summary() {
+    let dir = temp_dir();
+    let out = dir.join("kept.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("c1", &[("sa", 1)], -60.0, Some(-60.0)),
+            hydration_line(
+                "c2",
+                &[("sa", 1), ("w", 1)],
+                hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0),
+                Some(hydration_target(&[-60.0, -76.0], 0.01, 1, 1.0)),
+            ),
+            hydration_line("sa1", &[("sa", 1)], -60.0, Some(-60.0)),
+            hydration_line("w1", &[("w", 1)], -76.0, Some(-76.0)),
+        ],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--sort",
+        "el",
+        "--formation",
+        "--formation-corr",
+        "--hydration",
+        "--hydration-corr",
+        "--out",
+        &out_text,
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let formation = text.find("ct el g").expect("the formation section");
+    let corrected = text
+        .find("ct elcorr gcorr")
+        .expect("the corrected formation section");
+    // The hydration sections' percentage rows are the only rows indented
+    // by the section's column alignment; --sort el may reorder the
+    // states within a group, so the marker is the row, not the tokens.
+    let hydration = text
+        .find("\n  0.0 100.0")
+        .expect("the raw hydration section");
+    let hydration_corr = text
+        .rfind("\n  0.0 100.0")
+        .expect("the corrected hydration section");
+    let summary = text.find("filtered 4 records into").expect("the summary");
+    assert!(formation < corrected, "{text}");
+    assert!(corrected < hydration, "{text}");
+    assert!(hydration < hydration_corr, "{text}");
+    assert!(hydration_corr < summary, "{text}");
+    assert!(
+        text.contains(&out_text),
+        "the summary names the database: {text}"
+    );
+}
+
+#[test]
+fn hydration_sections_collapse_under_bavg() {
+    // The --bavg ensemble path at the CLI level, supporting
+    // rq-1c4d88c8's averaged run: the 1sa1w ensemble of two conformers
+    // one k_B T ln(3) apart carries k_B T ln(4/3) of conformational
+    // entropy, so its distribution value moves from k_B T ln(3) down to
+    // k_B T ln(9/4) and its percentage exceeds the uncollapsed run's
+    // 25.0.
+    let dir = temp_dir();
+    let kbt = hydration_kbt();
+    let conformer = hydration_target(&[-60.0, -76.0], kbt * 3.0f64.ln(), 1, 1.0);
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            hydration_line("sa1", &[("sa", 1)], -60.0, None),
+            hydration_line("c1", &[("sa", 1), ("w", 1)], conformer, None),
+            hydration_line(
+                "c2",
+                &[("sa", 1), ("w", 1)],
+                conformer + kbt * 3.0f64.ln(),
+                None,
+            ),
+            hydration_line("w1", &[("w", 1)], -76.0, None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--hydration"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    // The uncollapsed run takes the lowest conformer: one k_B T ln(3)
+    // gap, 75.0/25.0.
+    assert_eq!(stdout(&plain), " 1sa 1sa1w\n75.0  25.0\n\n");
+    let averaged = cjkqc(&[&db, "--hydration", "--bavg"]);
+    assert_eq!(averaged.status.code(), Some(0), "{}", stderr(&averaged));
+    // The ensemble's free energy sits k_B T ln(4/3) below the lowest
+    // conformer, moving the gap to k_B T ln(9/4): the 1sa1w percentage
+    // 100·(4/9)/(13/9) exceeds 25.0.
+    let weight = 4.0f64 / 9.0;
+    let hydrated = 100.0 * weight / (1.0 + weight);
+    let expected = format!(" 1sa 1sa1w\n{:.1}  {:.1}\n\n", 100.0 - hydrated, hydrated);
+    assert_eq!(stdout(&averaged), expected);
+}
