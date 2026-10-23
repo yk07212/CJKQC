@@ -1,7 +1,12 @@
 // Riprap-managed required-location adapter. Do not edit; use copier update.
+// Locally adapted to the OpenCode V2 plugin API: OpenCode >= 2 requires a
+// default export with an id and a setup function (the shipped V1 form — a
+// named export returning hooks — fails to load and logs a PluginLoadError on
+// every reload).
 
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 
 const message =
   'Riprap: OpenCode must run inside the project development container. ' +
@@ -26,19 +31,35 @@ function locateCheck(roots) {
   return undefined
 }
 
-function rejectOutsideContainer({ directory, worktree }) {
+// Fail closed: with no managed check to consult, refuse rather than assume a
+// container. On a host the check is found and reports failure, so the refusal
+// is the same either way. Throwing from the prompt hook stops admission, which
+// is the V2 equivalent of the V1 chat.message refusal.
+function rejectOutsideContainer(roots) {
   if (process.platform === 'win32') throw new Error(message)
 
-  // Fail closed: with no managed check to consult, refuse rather than assume a
-  // container. On a host the check is found and reports failure, so the refusal
-  // is the same either way.
-  const script = locateCheck([directory, worktree, process.cwd()])
+  const script = locateCheck(roots)
   if (!script) throw new Error(message)
 
-  const result = Bun.spawnSync(['bash', script])
-  if (result.exitCode !== 0) throw new Error(message)
+  let result
+  try {
+    result = spawnSync('bash', [script], { encoding: 'utf8' })
+  } catch {
+    throw new Error(message)
+  }
+  if (!result || result.error || result.status !== 0) throw new Error(message)
 }
 
-export const RiprapContainerCheck = async ({ directory, worktree }) => ({
-  'chat.message': async () => rejectOutsideContainer({ directory, worktree }),
-})
+export default {
+  id: 'riprap-container-check',
+  async setup(ctx) {
+    const roots = [
+      ctx?.location?.directory,
+      ctx?.location?.project?.directory,
+      process.cwd(),
+    ]
+    await ctx.session.hook('prompt', () => {
+      rejectOutsideContainer(roots)
+    })
+  },
+}
