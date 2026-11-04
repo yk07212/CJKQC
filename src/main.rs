@@ -342,12 +342,19 @@ struct Cli {
     /// Print the dipole moment magnitude (atomic units).
     #[arg(long = "dip")]
     dip: bool,
+    /// Print the dipole moment vector (atomic units, x,y,z
+    /// comma-separated).
+    #[arg(long = "dips")]
+    dips: bool,
     /// Print the net charge (elementary charges).
     #[arg(long = "charge")]
     charge: bool,
     /// Print the spin multiplicity column.
     #[arg(long = "multiplicity")]
     multiplicity: bool,
+    /// Print the rotational symmetry number.
+    #[arg(long = "rsn")]
+    rsn: bool,
     /// Print the geometry atom count.
     #[arg(long = "natoms")]
     natoms: bool,
@@ -355,12 +362,20 @@ struct Cli {
     /// raw values, so imaginary modes print negative).
     #[arg(long = "lf")]
     lf: bool,
+    /// Print all stored vibrational frequencies (cm^-1, 1 decimal each,
+    /// comma-separated; raw values, so imaginary modes print negative).
+    #[arg(long = "freqs")]
+    freqs: bool,
     /// Print the vibrational frequency count.
     #[arg(long = "nfreq")]
     nfreq: bool,
     /// Print the negative (imaginary) frequency count.
     #[arg(long = "nimag")]
     nimag: bool,
+    /// Print the rotational constants (cm^-1, descending, 6 decimals
+    /// each, comma-separated).
+    #[arg(long = "rots")]
+    rots: bool,
     /// Print the resolved composition as 2am+3sa-style pairs.
     #[arg(long = "components")]
     components: bool,
@@ -775,12 +790,16 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         Column::Rg => cli.rg,
         Column::Mass => cli.mass,
         Column::Dip => cli.dip,
+        Column::Dips => cli.dips,
         Column::Charge => cli.charge,
         Column::Multiplicity => cli.multiplicity,
+        Column::Rsn => cli.rsn,
         Column::Natoms => cli.natoms,
         Column::Lf => cli.lf,
+        Column::Freqs => cli.freqs,
         Column::Nfreq => cli.nfreq,
         Column::Nimag => cli.nimag,
+        Column::RotS => cli.rots,
         Column::Components => cli.components,
         Column::Ct => cli.ct,
     };

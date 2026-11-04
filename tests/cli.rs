@@ -846,6 +846,212 @@ fn lf_column_is_undefined_without_stored_frequencies() {
     assert_eq!(lines[1], ["-"]);
 }
 
+#[test] // rq-c08f088e
+fn rsn_column_prints_the_rotational_symmetry_number() {
+    let dir = temp_dir();
+    let record = Record {
+        rotational_symmetry_number: Some(12),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--rsn"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["rsn"]);
+    assert_eq!(lines[1], ["12"]);
+}
+
+#[test] // rq-1014452e
+fn rsn_column_is_undefined_without_a_rotational_symmetry_number() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--rsn"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["rsn"]);
+    assert_eq!(lines[1], ["-"]);
+}
+
+#[test] // rq-c14b6917
+fn dips_column_prints_the_dipole_vector_components() {
+    let dir = temp_dir();
+    let record = Record {
+        dipole_moment: Some([0.1234, -0.4567, 0.7891]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--dips"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["dips"]);
+    assert_eq!(lines[1], ["0.123,-0.457,0.789"]);
+}
+
+#[test] // rq-93f9d560
+fn dips_column_is_undefined_without_a_dipole_moment() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--dips"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["dips"]);
+    assert_eq!(lines[1], ["-"]);
+}
+
+#[test] // rq-003218f8
+fn freqs_column_prints_every_stored_frequency_in_stored_order() {
+    let dir = temp_dir();
+    let record = Record {
+        vibrational_frequencies: Some(vec![1000.0, -300.0, 150.0]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--freqs"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["freqs"]);
+    assert_eq!(lines[1], ["1000.0,-300.0,150.0"]);
+}
+
+#[test] // rq-27634d1a
+fn freqs_column_is_undefined_without_stored_frequencies() {
+    let dir = temp_dir();
+    let record = Record {
+        vibrational_frequencies: Some(Vec::new()),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--freqs"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["freqs"]);
+    assert_eq!(lines[1], ["-"]);
+}
+
+#[test] // rq-f321c97b
+fn rots_column_prints_the_descending_rotational_constants() {
+    let dir = temp_dir();
+    let db = dir.join("db.jsonl");
+    let db_text = db.to_string_lossy().into_owned();
+    let collected = cjkqc(&[
+        &fixture("orca/1pinic1sa-110_1_9-str9.out"),
+        "--out",
+        &db_text,
+    ]);
+    assert_eq!(collected.status.code(), Some(0), "{}", stderr(&collected));
+    let run = cjkqc(&[&db_text, "--rots"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["rots"]);
+    assert_eq!(lines[1], ["0.024157,0.008371,0.007528"]);
+}
+
+#[test] // rq-b04ab918
+fn rots_column_prints_one_constant_for_a_linear_record() {
+    let dir = temp_dir();
+    let record = Record {
+        geometry: Some(complied_jkqc::Geometry {
+            symbols: vec!["H".to_string(), "O".to_string(), "H".to_string()],
+            coordinates: vec![-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        }),
+        ..Record::default()
+    };
+    let expected = complied_jkqc::rotational_constants(&record).expect("linear constants");
+    assert_eq!(expected.len(), 1);
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--rots"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["rots"]);
+    assert_eq!(lines[1], [format!("{:.6}", expected[0])]);
+}
+
+#[test] // rq-3d385e42
+fn rots_column_is_undefined_when_the_rotational_constants_are_undefined() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--rots"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["rots"]);
+    assert_eq!(lines[1], ["-"]);
+}
+
+#[test] // rq-96b5a37a
+fn rots_column_is_undefined_for_a_degenerate_geometry() {
+    let dir = temp_dir();
+    let record = Record {
+        geometry: Some(complied_jkqc::Geometry {
+            symbols: vec!["O".to_string(), "O".to_string()],
+            coordinates: vec![0.0; 6],
+        }),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--rots"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["rots"]);
+    assert_eq!(lines[1], ["-"]);
+}
+
+#[test] // rq-2550fa8c
+fn rots_column_is_undefined_for_a_monatomic_record() {
+    let dir = temp_dir();
+    let record = Record {
+        geometry: Some(complied_jkqc::Geometry {
+            symbols: vec!["H".to_string()],
+            coordinates: vec![0.0, 0.0, 0.0],
+        }),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--rots"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["rots"]);
+    assert_eq!(lines[1], ["-"]);
+}
+
+#[test] // rq-af106fa7
+fn new_print_columns_follow_canonical_order() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[
+        &db, "--rots", "--rsn", "--freqs", "--dips", "--dip", "--lf", "--name",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(
+        lines[0],
+        ["name", "dip", "dips", "rsn", "lf", "freqs", "rots"]
+    );
+}
+
 #[test] // rq-1f63ac38
 fn ct_column_prints_components_without_separators() {
     let dir = temp_dir();

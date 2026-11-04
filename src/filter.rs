@@ -14,7 +14,7 @@ use crate::metrics::{
 use crate::population::{populations, PopLevel};
 use crate::reacted::{reacted_mask, ReactedMode};
 use crate::record::{Components, Record, RecordStatus};
-use crate::thermo::{ThermoMemo, KCAL_MOL_PER_HARTREE};
+use crate::thermo::{rotational_constants, ThermoMemo, KCAL_MOL_PER_HARTREE};
 
 /// Whether `--extract` keeps matches (`Keep`) or `--nextract` drops them
 /// (`Drop`).
@@ -349,10 +349,18 @@ pub enum Column {
     Mass,
     /// Dipole magnitude, 3 decimals.
     Dip,
+    /// Dipole moment vector components, 3 decimals each, comma-separated.
+    ///
+    /// (rq-4ea8ca35)
+    Dips,
     /// Net charge.
     Charge,
     /// Spin multiplicity.
     Multiplicity,
+    /// Rotational symmetry number.
+    ///
+    /// (rq-4ea8ca35)
+    Rsn,
     /// Atom count.
     Natoms,
     /// Lowest stored vibrational frequency in cm⁻¹, raw values, 1 decimal
@@ -360,10 +368,20 @@ pub enum Column {
     ///
     /// (rq-38b619ff)
     Lf,
+    /// All stored vibrational frequencies in cm⁻¹, raw values, 1 decimal
+    /// each, comma-separated.
+    ///
+    /// (rq-4ea8ca35)
+    Freqs,
     /// Frequency count.
     Nfreq,
     /// Negative frequency count.
     Nimag,
+    /// Rotational constants in cm⁻¹, descending, 6 decimals each,
+    /// comma-separated (`rqm/thermo.md`).
+    ///
+    /// (rq-4ea8ca35)
+    RotS,
     /// Components as `2am+3sa`.
     Components,
     /// Composition token: alphabetical pairs without separators
@@ -375,7 +393,7 @@ pub enum Column {
 
 impl Column {
     /// All columns in canonical print order.
-    pub const ALL: [Column; 28] = [
+    pub const ALL: [Column; 32] = [
         Column::Name,
         Column::Status,
         Column::Program,
@@ -396,12 +414,16 @@ impl Column {
         Column::Rg,
         Column::Mass,
         Column::Dip,
+        Column::Dips,
         Column::Charge,
         Column::Multiplicity,
+        Column::Rsn,
         Column::Natoms,
         Column::Lf,
+        Column::Freqs,
         Column::Nfreq,
         Column::Nimag,
+        Column::RotS,
         Column::Components,
         Column::Ct,
     ];
@@ -465,12 +487,16 @@ impl Column {
             Column::Rg => "rg",
             Column::Mass => "mass",
             Column::Dip => "dip",
+            Column::Dips => "dips",
             Column::Charge => "charge",
             Column::Multiplicity => "multiplicity",
+            Column::Rsn => "rsn",
             Column::Natoms => "natoms",
             Column::Lf => "lf",
+            Column::Freqs => "freqs",
             Column::Nfreq => "nfreq",
             Column::Nimag => "nimag",
+            Column::RotS => "rots",
             Column::Components => "components",
             Column::Ct => "ct",
         }
@@ -863,11 +889,19 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
             Some(value) => format!("{value:.3}"),
             None => undefined(),
         },
+        Column::Dips => match record.dipole_moment {
+            Some([x, y, z]) => format!("{x:.3},{y:.3},{z:.3}"),
+            None => undefined(),
+        },
         Column::Charge => match record.charge {
             Some(value) => value.to_string(),
             None => undefined(),
         },
         Column::Multiplicity => match record.multiplicity {
+            Some(value) => value.to_string(),
+            None => undefined(),
+        },
+        Column::Rsn => match record.rotational_symmetry_number {
             Some(value) => value.to_string(),
             None => undefined(),
         },
@@ -879,6 +913,14 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
         // (rq-4ea8ca35).
         Column::Lf => property_value(record, Property::Lf, memo)
             .map_or_else(undefined, |value| format!("{value:.1}")),
+        Column::Freqs => match &record.vibrational_frequencies {
+            Some(values) if !values.is_empty() => values
+                .iter()
+                .map(|value| format!("{value:.1}"))
+                .collect::<Vec<_>>()
+                .join(","),
+            _ => undefined(),
+        },
         Column::Nfreq => match &record.vibrational_frequencies {
             Some(values) => values.len().to_string(),
             None => undefined(),
@@ -890,6 +932,14 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
                 .count()
                 .to_string(),
             None => undefined(),
+        },
+        Column::RotS => match rotational_constants(record) {
+            Some(values) if !values.is_empty() => values
+                .iter()
+                .map(|value| format!("{value:.6}"))
+                .collect::<Vec<_>>()
+                .join(","),
+            _ => undefined(),
         },
         Column::Components => match &record.components {
             Some(components) if !components.is_empty() => components

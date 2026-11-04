@@ -23,6 +23,18 @@
     "title": "Hydrogen bonded only under 0.80 Å to another H",
     "type": "scenario"
   },
+  "rq-003218f8": {
+    "decl": "Scenario: The freqs column prints every stored frequency in stored order",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The freqs column prints every stored frequency in stored order",
+    "type": "scenario"
+  },
   "rq-009c7dab": {
     "decl": "Scenario: Geometry serializes as parallel arrays",
     "file": "record",
@@ -735,6 +747,18 @@
       }
     ],
     "title": "The combined form attaches a cbs-cps correction",
+    "type": "scenario"
+  },
+  "rq-1014452e": {
+    "decl": "Scenario: The rsn column is undefined without a rotational symmetry number",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The rsn column is undefined without a rotational symmetry number",
     "type": "scenario"
   },
   "rq-10341821": {
@@ -1914,6 +1938,18 @@
     "title": "The build produces the exact executable name",
     "type": "scenario"
   },
+  "rq-2550fa8c": {
+    "decl": "Scenario: The rots column is undefined for a monatomic record",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The rots column is undefined for a monatomic record",
+    "type": "scenario"
+  },
   "rq-26ba140d": {
     "decl": "### Functions",
     "file": "composition",
@@ -1956,6 +1992,18 @@
       }
     ],
     "title": "A linear species uses the linear rotational terms",
+    "type": "scenario"
+  },
+  "rq-27634d1a": {
+    "decl": "Scenario: The freqs column is undefined without stored frequencies",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The freqs column is undefined without stored frequencies",
     "type": "scenario"
   },
   "rq-276adb9e": {
@@ -3167,6 +3215,18 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-3d385e42": {
+    "decl": "Scenario: The rots column is undefined when the rotational constants are undefined",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The rots column is undefined when the rotational constants are undefined",
+    "type": "scenario"
   },
   "rq-3d76ed40": {
     "decl": "## Feature API",
@@ -7043,6 +7103,18 @@
     "title": "Detection",
     "type": "section"
   },
+  "rq-93f9d560": {
+    "decl": "Scenario: The dips column is undefined without a dipole moment",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The dips column is undefined without a dipole moment",
+    "type": "scenario"
+  },
   "rq-9423306b": {
     "decl": "Scenario: A value outside the grammar is a usage error",
     "file": "formation",
@@ -7208,6 +7280,18 @@
       }
     ],
     "title": "Undefined Gibbs metrics are mutually equal",
+    "type": "scenario"
+  },
+  "rq-96b5a37a": {
+    "decl": "Scenario: The rots column is undefined for a degenerate geometry",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The rots column is undefined for a degenerate geometry",
     "type": "scenario"
   },
   "rq-96b8c74d": {
@@ -8434,6 +8518,18 @@
     "title": "A symbol table in Ångström parses to a Geometry",
     "type": "scenario"
   },
+  "rq-af106fa7": {
+    "decl": "Scenario: The new print columns follow canonical order",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The new print columns follow canonical order",
+    "type": "scenario"
+  },
   "rq-af1baabc": {
     "decl": "Scenario: validate rejects multiplicity zero",
     "file": "record",
@@ -8496,6 +8592,18 @@
       }
     ],
     "title": "Merge can write onto an input path",
+    "type": "scenario"
+  },
+  "rq-b04ab918": {
+    "decl": "Scenario: The rots column prints one constant for a linear record",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The rots column prints one constant for a linear record",
     "type": "scenario"
   },
   "rq-b07a1042": {
@@ -9470,6 +9578,18 @@
     "title": "Testing Strategy",
     "type": "section"
   },
+  "rq-c08f088e": {
+    "decl": "Scenario: The rsn column prints the rotational symmetry number",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The rsn column prints the rotational symmetry number",
+    "type": "scenario"
+  },
   "rq-c0c3a1af": {
     "decl": "Scenario: Unknown keys do not survive a correcting run",
     "file": "correction",
@@ -9505,6 +9625,18 @@
     ],
     "title": "Feature: Collection Command Line",
     "type": "file"
+  },
+  "rq-c14b6917": {
+    "decl": "Scenario: The dips column prints the dipole vector components",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The dips column prints the dipole vector components",
+    "type": "scenario"
   },
   "rq-c2963543": {
     "decl": "Scenario: A leading imaginary mode survives the trivial-mode drop",
@@ -11762,6 +11894,18 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-f321c97b": {
+    "decl": "Scenario: The rots column prints the descending rotational constants",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The rots column prints the descending rotational constants",
+    "type": "scenario"
   },
   "rq-f3233093": {
     "decl": "Scenario: The correction column prints - without a correction",

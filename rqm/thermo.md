@@ -86,7 +86,8 @@ still needs `--out` or a print flag (`rqm/filtering.md`).
   moments; B̃ decreases as I increases. A `Linear` species has one
   constant B̃_b (I_a ≈ 0); a `Nonlinear` species has
   B̃_a ≥ B̃_b ≥ B̃_c, listed in that descending order alongside the
-  ascending moments.
+  ascending moments. The `--rots` print flag (`rqm/filtering.md`)
+  reports these constants.
 - **Average moment** Ī (kg·m²) is the mean of the nonzero principal
   moments — (I_a+I_b+I_c)/3 for `Nonlinear`, I for `Linear`; a `Monatomic`
   record has no vibrational modes and never uses it.

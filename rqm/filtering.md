@@ -177,9 +177,11 @@ the property set and units:
 - Printing follows JKQC: every printable column has its own flag —
   `--name`, `--status`, `--program`, `--command`, `--correction`, `--el`,
   `--zpe`, `--h`, `--s`, `--g`, `--elcorr`, `--hcorr`, `--gcorr`, `--pop`,
-  `--rg`, `--mass`, `--dip`, `--charge`, `--multiplicity`, `--natoms`,
-  `--lf`, `--nfreq`, `--nimag`, `--components`, `--ct`.
-  There is no default
+  `--rg`, `--mass`, `--dip`, `--dips`, `--charge`, `--multiplicity`,
+  `--rsn`, `--natoms`, `--lf`, `--freqs`, `--nfreq`, `--nimag`,
+  `--rots`, `--components`, `--ct`.
+  `--dip` prints the dipole magnitude; `--dips` prints the dipole
+  vector. There is no default
   selection: no print flag means no table is printed at all. The
   `--formation` flag (`rqm/formation.md`) prints a section after the
   table; it selects no column and counts as a print flag for the
@@ -201,24 +203,33 @@ the property set and units:
   `name`, `status`, `program`,
   `command`, `correction`, `components`, and `ct` align left; the
   numeric columns — the energy columns, the population columns, `rg`,
-  `mass`, `dip`, `charge`, `multiplicity`, `natoms`, `lf`, `nfreq`, and
-  `nimag` — align right; in both cases the header cell aligns with its
-  column, so numbers line up under their header. Cells keep their
-  per-column formats: `el` prints
-  in hartree with 10 decimals; the thermochemistry columns `zpe`, `h`,
-  `s`, `g` (`rqm/thermo.md`; `s` is the T·S entropy term) print like
-  `el`, as do the corrected columns `elcorr`, `hcorr`, and `gcorr`
-  (`rqm/correction.md`); `rg`, `mass`, `dip` with 3; `lf` with 1 — the lowest stored
-  vibrational frequency in cm⁻¹, a raw observable so imaginary modes
-  print negative whatever `--makereal` or `--ignoreimag` does, undefined
-  when the record stores no frequencies; integer fields plainly;
-  `components`
-  as `2am+3sa`-style alphabetical pairs; `ct` as the same alphabetical
-  pairs with the `+` separators dropped (`2am3sa`), undefined when the
-  record has no components or an empty map; an undefined or absent value
-  prints `-`. The population columns `pop`, `popel`, `popelcorr`,
-  `popgcorr` (`rqm/population.md`) print dimensionless probabilities with
-  4 decimals. The `program` column prints the program token and the
+  `mass`, `dip`, `dips`, `charge`, `multiplicity`, `rsn`, `natoms`, `lf`,
+  `freqs`, `nfreq`, `nimag`, and `rots` — align right; in both cases the
+  header cell aligns with its column, so numbers line up under their
+  header. Cells keep their per-column formats. The energy columns `el`,
+  `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, and `gcorr` print in hartree
+  with 10 decimals (`s` is the T·S entropy term; `rqm/thermo.md` and
+  `rqm/correction.md`). `rg`, `mass`, `dip`, and each component of
+  `dips` print with 3 decimals; `dips` lists the stored dipole vector's
+  x, y, z components in that order, comma-separated without spaces. `lf`
+  prints with 1 decimal — the lowest stored vibrational frequency in
+  cm⁻¹, a raw observable so imaginary modes print negative whatever
+  `--makereal` or `--ignoreimag` does, undefined when the record stores
+  no frequencies. `freqs` prints every stored vibrational frequency in
+  stored order with 1 decimal each, comma-separated without spaces, with
+  the same raw-sign rule as `lf`. `rots` prints the rotational constants
+  of `rqm/thermo.md` in their descending cm⁻¹ order with 6 decimals
+  each, comma-separated without spaces. `rsn`, `charge`, `multiplicity`,
+  `natoms`, and the frequency counts print as plain integers.
+  `components` prints as `2am+3sa`-style alphabetical pairs; `ct` as the
+  same alphabetical pairs with the `+` separators dropped (`2am3sa`),
+  undefined when the record has no components or an empty map. An
+  undefined or absent value prints `-`; a list-valued column (`dips`,
+  `freqs`, `rots`) with no values also prints `-`, including a monatomic
+  record's empty rotational constant list. The population columns `pop`,
+  `popel`, `popelcorr`, `popgcorr` (`rqm/population.md`) print
+  dimensionless probabilities with 4 decimals. The `program` column
+  prints the program token and the
   version joined by one space (`xtb 6.7.1`), and the token alone when the
   version is absent. The `command` column wraps the stored command line
   in double quotes, since the value contains spaces; an absent command
@@ -268,7 +279,8 @@ the property set and units:
   `ElCorr` and `GCorr` via `rqm/correction.md`.
 - `SortKey` — `El | G | ElCorr | GCorr | Rg | Mass | Name`. <!-- rq-953da4ce -->
 - `Column` — the print columns above, `Zpe | H | S | G | ElCorr | <!-- rq-38b619ff -->
-  HCorr | GCorr | Correction` included, plus the population columns
+  HCorr | GCorr | Correction | Dips | Rsn | Freqs | RotS` included,
+  plus the population columns
   `Pop | PopEl | PopElCorr | PopGCorr` (`rqm/population.md`).
 - `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the <!-- rq-8718aee5 -->
   `--unit` flag is present, `Au` (hartree) otherwise.
@@ -578,6 +590,78 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record with no vibrational_frequencies
     When CJKQC is invoked with the database and "--lf" and no --out
     Then the lf column prints -
+
+  @rq-c08f088e
+  Scenario: The rsn column prints the rotational symmetry number
+    Given a database with one ok record whose rotational_symmetry_number is 12
+    When CJKQC is invoked with the database and "--rsn" and no --out
+    Then the rsn column prints 12
+
+  @rq-1014452e
+  Scenario: The rsn column is undefined without a rotational symmetry number
+    Given a database with one ok record without a rotational_symmetry_number
+    When CJKQC is invoked with the database and "--rsn" and no --out
+    Then the rsn column prints -
+
+  @rq-c14b6917
+  Scenario: The dips column prints the dipole vector components
+    Given a database with one ok record whose dipole_moment is [0.1234, -0.4567, 0.7891]
+    When CJKQC is invoked with the database and "--dips" and no --out
+    Then the dips column prints 0.123,-0.457,0.789
+
+  @rq-93f9d560
+  Scenario: The dips column is undefined without a dipole moment
+    Given a database with one ok record without a dipole_moment
+    When CJKQC is invoked with the database and "--dips" and no --out
+    Then the dips column prints -
+
+  @rq-003218f8
+  Scenario: The freqs column prints every stored frequency in stored order
+    Given a database with one ok record whose frequencies are [1000.0, -300.0, 150.0]
+    When CJKQC is invoked with the database and "--freqs" and no --out
+    Then the freqs column prints 1000.0,-300.0,150.0
+
+  @rq-27634d1a
+  Scenario: The freqs column is undefined without stored frequencies
+    Given a database with one ok record with no vibrational_frequencies or an empty frequency list
+    When CJKQC is invoked with the database and "--freqs" and no --out
+    Then the freqs column prints -
+
+  @rq-f321c97b
+  Scenario: The rots column prints the descending rotational constants
+    Given the record parsed from tests/fixtures/orca/1pinic1sa-110_1_9-str9.out
+    When CJKQC is invoked with the database and "--rots" and no --out
+    Then the rots column prints 0.024157,0.008371,0.007528
+
+  @rq-b04ab918
+  Scenario: The rots column prints one constant for a linear record
+    Given a database with one ok linear record
+    When CJKQC is invoked with the database and "--rots" and no --out
+    Then the rots column prints one comma-separated constant
+
+  @rq-3d385e42
+  Scenario: The rots column is undefined when the rotational constants are undefined
+    Given a database with one ok record without a geometry
+    When CJKQC is invoked with the database and "--rots" and no --out
+    Then the rots column prints -
+
+  @rq-96b5a37a
+  Scenario: The rots column is undefined for a degenerate geometry
+    Given a database with one ok record whose atoms all coincide at the origin
+    When CJKQC is invoked with the database and "--rots" and no --out
+    Then the rots column prints -
+
+  @rq-2550fa8c
+  Scenario: The rots column is undefined for a monatomic record
+    Given a database with one ok monatomic record
+    When CJKQC is invoked with the database and "--rots" and no --out
+    Then the rots column prints -
+
+  @rq-af106fa7
+  Scenario: The new print columns follow canonical order
+    Given a database with one ok record
+    When CJKQC is invoked with the database, "--rots --rsn --freqs --dips --dip --lf --name" and no --out
+    Then the table columns are name, dip, dips, rsn, lf, freqs, rots in that order
 
   @rq-1f63ac38
   Scenario: The ct column prints components without separators
