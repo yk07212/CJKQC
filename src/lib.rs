@@ -9,6 +9,7 @@ pub mod collect;
 pub mod composition;
 pub mod correction;
 pub mod db;
+pub mod extrapolate;
 pub mod filter;
 pub mod formation;
 pub mod hydration;
@@ -24,6 +25,12 @@ pub use record::{Components, Correction, Geometry, Record, RecordInvalidity, Rec
 
 // rq-f8ab9d1b single-point correction surface (rqm/correction.md)
 pub use correction::{attach_corrections, corrected_energy, Attachment, CorrectionError};
+
+// rq-b0a418c4 extrapolation correction surface (rqm/extrapolation.md)
+pub use extrapolate::{
+    blend_energy, extrapolate_corrections, parse_extrapolation, two_point_energy, ExtrapMode,
+    Extrapolation, ExtrapolationError, ExtrapolationSpec,
+};
 
 // rq-fe2700dc
 pub use composition::{parse_jkqc_name, resolve_components};

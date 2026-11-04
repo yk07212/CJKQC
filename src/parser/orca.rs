@@ -58,6 +58,27 @@ fn is_orca_abort(line: &str) -> bool {
     line.contains("ORCA TERMINATED DUE TO") || line.trim_start().starts_with("ERROR")
 }
 
+/// The converged SCF total line, in either printed spelling: the SCF
+/// summary box of newer printings (`| TOTAL ENERGY <value> Eh |`) or the
+/// section-end line of older ones (`Total Energy : <value> Eh`). The
+/// field shapes distinguish them from every other energy line — the
+/// `TOTAL SCF ENERGY` section's `Total energy after final integration`
+/// echo (lowercase `energy`, no colon) and the box neighbors never match.
+// rq-7331508e
+fn is_scf_total_line(line: &str) -> bool {
+    match line.split_whitespace().collect::<Vec<&str>>().as_slice() {
+        ["|", "TOTAL", "ENERGY", value, "Eh", ..] => parse_fortran_f64(value).is_some(),
+        ["Total", "Energy", ":", value, "Eh", ..] => parse_fortran_f64(value).is_some(),
+        _ => false,
+    }
+}
+
+/// The SCF total value of a matched line: the fourth whitespace field in
+/// both spellings.
+fn scf_total_value(line: &str) -> Option<f64> {
+    parse_fortran_f64(line.split_whitespace().nth(3)?)
+}
+
 /// The locate-pattern indices of the markers ORCA prints.
 ///
 /// (rq-15b1763d)
@@ -72,11 +93,12 @@ const DIPOLE_HEADER: usize = 7;
 const MULLIKEN_HEADER: usize = 8;
 const POINT_GROUP: usize = 9;
 const ABORT: usize = 10;
+const SCF_TOTAL: usize = 11;
 
 /// Every marker line ORCA's parse path needs, located in one walk of
 /// the windows. The index constants above key this table by position;
 /// the alignment unit test pins each constant to its entry.
-const PATTERNS: [LinePattern<'static>; 11] = [
+const PATTERNS: [LinePattern<'static>; 12] = [
     LinePattern::Contains("Program Version"),
     LinePattern::Where(&is_input_echo),
     LinePattern::Contains("Total Charge"),
@@ -88,6 +110,7 @@ const PATTERNS: [LinePattern<'static>; 11] = [
     LinePattern::TrimmedEquals("MULLIKEN ATOMIC CHARGES"),
     LinePattern::Where(&is_point_group_line),
     LinePattern::Where(&is_orca_abort),
+    LinePattern::Where(&is_scf_total_line),
 ];
 
 /// The command: all text after `!` in the echoed keyword line,
@@ -179,6 +202,14 @@ impl Parser for OrcaParser {
         let electronic_energy = matches
             .last(SINGLE_POINT_ENERGY)
             .and_then(|line| parse_fortran_f64(line.split_whitespace().last()?));
+
+        // The converged SCF total of the final job's last SCF section —
+        // the Hartree–Fock energy of a correlated job, the DFT energy of
+        // a density-functional one — distinct from the final single
+        // point energy, which adds the correlation treatment and any
+        // additive corrections on top.
+        // rq-7331508e
+        let scf_energy = matches.last(SCF_TOTAL).and_then(scf_total_value);
 
         // The final geometry: the last Ångström coordinate table.
         let geometry_rows = rows_following(matches.after_last(GEOMETRY_HEADER), |fields| {
@@ -281,6 +312,7 @@ impl Parser for OrcaParser {
             charge,
             multiplicity,
             electronic_energy,
+            scf_energy,
             geometry,
             vibrational_frequencies: if frequencies.is_empty() {
                 None
@@ -313,7 +345,7 @@ mod tests {
     /// of this format: the located answer for a constant must be the
     /// line written for its entry, so a constant and a table entry that
     /// drift apart fail here rather than silently misreading markers.
-    const MARKER_LINES: [(&str, usize); 11] = [
+    const MARKER_LINES: [(&str, usize); 12] = [
         ("Program Version 6.0.0  -   RELEASE  -", VERSION),
         ("|  1> ! wB97x-3c marker", INPUT_ECHO),
         (
@@ -334,6 +366,10 @@ mod tests {
         ("MULLIKEN ATOMIC CHARGES", MULLIKEN_HEADER),
         ("Point Group:  C1, Symmetry Number:   1", POINT_GROUP),
         ("ORCA TERMINATED DUE TO AN ERROR", ABORT),
+        (
+            "| TOTAL ENERGY              -28.322836452494 Eh   |",
+            SCF_TOTAL,
+        ),
     ];
 
     #[test]

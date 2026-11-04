@@ -28,6 +28,7 @@ fn round_trip_a_record_with_every_observable_set() {
         program_version: Some("6.7.1".to_string()),
         command: Some("xtb 1dma.xyz --gxtb --acc 0.01".to_string()),
         electronic_energy: Some(-38.51),
+        scf_energy: Some(-37.9),
         charge: Some(0),
         multiplicity: Some(1),
         geometry: Some(geometry(
@@ -399,6 +400,40 @@ fn validate_rejects_an_empty_correction_kind() {
         Err(RecordInvalidity::InvalidScalar {
             field: "correction.kind",
             reason: "must not be empty".to_string(),
+        })
+    );
+}
+
+// rq-be6c9218
+#[test]
+fn scf_energy_round_trips_and_serializes_after_electronic_energy() {
+    let record = Record {
+        status: RecordStatus::Ok,
+        electronic_energy: Some(-76.15),
+        scf_energy: Some(-76.1),
+        ..Record::default()
+    };
+    let line = serde_json::to_string(&record).expect("serialize");
+    let back: Record = serde_json::from_str(&line).expect("deserialize");
+    assert_eq!(back, record);
+    let electronic = line
+        .find("\"electronic_energy\"")
+        .expect("electronic_energy key");
+    let scf = line.find("\"scf_energy\"").expect("scf_energy key");
+    assert!(electronic < scf, "{line}");
+}
+
+// rq-f7572661
+#[test]
+fn validate_rejects_a_non_finite_scf_energy() {
+    let record = Record {
+        scf_energy: Some(f64::NAN),
+        ..Record::default()
+    };
+    assert_eq!(
+        record.validate(),
+        Err(RecordInvalidity::NonFiniteFloat {
+            field: "scf_energy"
         })
     );
 }

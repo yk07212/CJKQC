@@ -201,3 +201,27 @@ fn corpus_fixture_conforms() {
         geometry.coordinates[0]
     );
 }
+
+// rq-d82e314a
+#[test]
+fn scf_energy_is_the_final_hartree_fock_energy() {
+    let hf = " ***FINAL HARTREE-FOCK ENERGY:       -134.2943930780812707 [AU]\n\n";
+    let content = format!("{}{}{}{}", run_body(), hf, ENERGY, TERMINATION);
+    let record = parse(&content);
+    assert_eq!(record.scf_energy, Some(-134.294_393_078_081_27));
+    assert_eq!(record.electronic_energy, Some(-134.936294839321));
+}
+
+// rq-16ad220b
+#[test]
+fn a_run_without_the_final_hf_line_carries_no_scf_energy() {
+    // The per-step energy echo is not the final Hartree-Fock line.
+    let step = " ***HARTREE-FOCK ENERGY IN STEP  11 IS       -134.2943930780812707 [AU]\n\n";
+    let content = format!("{}{}{}{}", run_body(), step, ENERGY, TERMINATION);
+    let record = parse(&content);
+    assert_eq!(record.scf_energy, None);
+    // No HF line at all behaves the same.
+    let content = format!("{}{}{}", run_body(), ENERGY, TERMINATION);
+    let record = parse(&content);
+    assert_eq!(record.scf_energy, None);
+}

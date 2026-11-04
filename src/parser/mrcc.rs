@@ -70,6 +70,23 @@ fn is_charge_line(line: &str) -> bool {
     fields.next() == Some("Charge:") && fields.next().is_some() && fields.next().is_none()
 }
 
+/// The final Hartree-Fock energy line's value: the converged HF total
+/// the correlation method builds on, from the
+/// `***FINAL HARTREE-FOCK ENERGY: <value> [AU]` line.
+// rq-ef61dab4
+fn hf_energy_value(line: &str) -> Option<f64> {
+    let fields: Vec<&str> = line.split_whitespace().collect();
+    match fields.as_slice() {
+        ["***FINAL", "HARTREE-FOCK", "ENERGY:", value, ..] => parse_fortran_f64(value),
+        _ => None,
+    }
+}
+
+/// Whether the line is the final Hartree-Fock energy line.
+fn is_hf_energy_line(line: &str) -> bool {
+    hf_energy_value(line).is_some()
+}
+
 /// An MRCC abort or error-termination line.
 fn is_mrcc_abort(line: &str) -> bool {
     let trimmed = line.trim();
@@ -91,11 +108,12 @@ const GEOMETRY_HEADER: usize = 3;
 const NUMBER_OF_ATOMS: usize = 4;
 const TOTAL_ENERGY: usize = 5;
 const ABORT: usize = 6;
+const HF_ENERGY: usize = 7;
 
 /// Every marker line MRCC's parse path needs, located in one walk of
 /// the windows. The index constants above key this table by position;
 /// the alignment unit test pins each constant to its entry.
-const PATTERNS: [LinePattern<'static>; 7] = [
+const PATTERNS: [LinePattern<'static>; 8] = [
     LinePattern::TrimmedStartsWith("Version:"),
     LinePattern::Where(&is_charge_line),
     LinePattern::TrimmedStartsWith("Spin multiplicity:"),
@@ -103,6 +121,7 @@ const PATTERNS: [LinePattern<'static>; 7] = [
     LinePattern::TrimmedStartsWith("Number of atoms:"),
     LinePattern::Where(&is_total_energy_line),
     LinePattern::Where(&is_mrcc_abort),
+    LinePattern::Where(&is_hf_energy_line),
 ];
 
 // rq-d72bb4c5
@@ -168,6 +187,10 @@ impl Parser for MrccParser {
         // rq-e719ddf4 rq-a60f442f
         let electronic_energy = matches.last(TOTAL_ENERGY).and_then(total_energy_line);
 
+        // The converged HF total the correlation method builds on.
+        // rq-ef61dab4
+        let scf_energy = matches.last(HF_ENERGY).and_then(hf_energy_value);
+
         // Status: the run's own termination banner governs it.
         // rq-be38168f rq-91435a73 rq-97790ec7 rq-5825f5e3
         let (status, error) = if windows.tail.contains("Normal termination of mrcc") {
@@ -195,6 +218,7 @@ impl Parser for MrccParser {
             charge,
             multiplicity,
             electronic_energy,
+            scf_energy,
             geometry,
             ..Record::default()
         }
@@ -210,7 +234,7 @@ mod tests {
     /// of this format: the located answer for a constant must be the
     /// line written for its entry, so a constant and a table entry that
     /// drift apart fail here rather than silently misreading markers.
-    const MARKER_LINES: [(&str, usize); 7] = [
+    const MARKER_LINES: [(&str, usize); 8] = [
         ("Version:   2021.1 marker", VERSION),
         ("Charge:  0", CHARGE),
         ("Spin multiplicity: 1", SPIN_MULTIPLICITY),
@@ -218,6 +242,10 @@ mod tests {
         ("Number of atoms: 3", NUMBER_OF_ATOMS),
         ("Total energy [au]: -1.0", TOTAL_ENERGY),
         ("Aborting marker", ABORT),
+        (
+            "***FINAL HARTREE-FOCK ENERGY:       -134.2943930780812707 [AU]",
+            HF_ENERGY,
+        ),
     ];
 
     #[test]

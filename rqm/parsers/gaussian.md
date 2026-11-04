@@ -53,6 +53,12 @@ in an elided window yields an absent observable, never a guess.
   `Charge = <c> Multiplicity = <m>` line (each job echoes one).
 - `electronic_energy` — the value after `=` in the last <!-- rq-d1446f61 -->
   `SCF Done:  E(<model>) = <value>` line.
+- `scf_energy` — the value of the same last <!-- rq-8caf5900 -->
+  `SCF Done:  E(<model>) = <value>` line as `electronic_energy`: for
+  Hartree–Fock and density-functional jobs the two coincide; the total
+  energy of a post-HF job is a different marker this parser does not read,
+  so a post-HF record carries the SCF value in both fields. No visible
+  `SCF Done` line → both absent.
 - `geometry` — the table under the last `Standard orientation:` header: <!-- rq-28fce0b1 -->
   columns are center number, atomic number, type, x, y, z; read with
   `read_geometry_table` using `AtomicNumber(1)`, coordinate columns 3–5,
@@ -158,6 +164,19 @@ Feature: Gaussian parser
     Given two SCF Done lines with values -1526.66238486 and -1526.66937796
     When the content is parsed
     Then the record has electronic_energy -1526.66937796
+
+  @rq-b425579e
+  Scenario: scf_energy comes from the same last SCF Done line
+    Given two SCF Done lines with values -1526.66238486 and -1526.66937796
+    When the content is parsed
+    Then the record has scf_energy -1526.66937796
+    And the record's scf_energy equals its electronic_energy
+
+  @rq-c2c04659
+  Scenario: A log without an SCF Done line carries neither energy
+    Given a log with no "SCF Done" line
+    When the content is parsed
+    Then the record has no electronic_energy and no scf_energy
 
   @rq-c7886a80
   Scenario: An imaginary frequency keeps its sign

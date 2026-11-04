@@ -214,6 +214,13 @@ pub struct Record {
     /// Total electronic energy of the final structure, in hartree.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub electronic_energy: Option<f64>,
+    /// The converged self-consistent-field energy of the final structure,
+    /// in hartree: the Hartree–Fock total for wavefunction methods, the
+    /// final SCF-cycle total for density-functional ones. Extracted where
+    /// the program prints one (`rqm/parsers/`); an input to basis-set
+    /// extrapolation (`rqm/extrapolation.md`) and to no other derivation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scf_energy: Option<f64>,
     /// Net charge in elementary charges.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub charge: Option<i32>,
@@ -317,6 +324,9 @@ impl Record {
 
         if let Some(value) = self.electronic_energy {
             finite("electronic_energy", value)?;
+        }
+        if let Some(value) = self.scf_energy {
+            finite("scf_energy", value)?;
         }
         if let Some(geometry) = &self.geometry {
             for &value in &geometry.coordinates {

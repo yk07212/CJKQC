@@ -377,3 +377,55 @@ fn seam_cut_frequency_section_is_stored_truncated() {
         .is_some_and(|error| error.contains("frequency table may be incomplete")));
     assert_eq!(record.vibrational_frequencies, Some(vec![1601.0]));
 }
+
+// rq-7bca16e5
+#[test]
+fn scf_energy_is_the_scf_total_distinct_from_the_final_single_point_energy() {
+    // The summary box of newer printings.
+    let content = completed_log().replace(
+        ENERGY.trim_end(),
+        "| TOTAL ENERGY              -28.322836452494 Eh   |\n\
+         FINAL SINGLE POINT ENERGY       -28.322836452490",
+    );
+    let record = parse(&content);
+    assert_eq!(record.scf_energy, Some(-28.322836452494));
+    assert_eq!(record.electronic_energy, Some(-28.322836452490));
+    // The section-end line of older ones; the last section wins.
+    let content = completed_log().replace(
+        ENERGY.trim_end(),
+        "----------------\n\
+         TOTAL SCF ENERGY\n\
+         ----------------\n\
+         \n\
+         Total Energy       :       -199.58434234097697 Eh           -5430.96606 eV\n\
+         \n\
+         FINAL SINGLE POINT ENERGY      -199.634522052117\n\
+         \n\
+         ----------------\n\
+         TOTAL SCF ENERGY\n\
+         ----------------\n\
+         \n\
+         Total Energy       :       -199.59380288816905 Eh           -5431.22349 eV\n\
+         \n\
+         FINAL SINGLE POINT ENERGY      -199.642065483666",
+    );
+    let record = parse(&content);
+    assert_eq!(record.scf_energy, Some(-199.59380288816905));
+    assert_eq!(record.electronic_energy, Some(-199.642065483666));
+}
+
+// rq-97f5385b
+#[test]
+fn a_job_without_an_scf_section_carries_no_scf_energy() {
+    let record = parse(&completed_log());
+    assert_eq!(record.scf_energy, None);
+    // The per-iteration echo is not a SCF total in any spelling.
+    let content = completed_log().replace(
+        ENERGY.trim_end(),
+        "Total energy after final integration           :    -76.402725158 Eh\n\
+         FINAL SINGLE POINT ENERGY       -76.402725158737",
+    );
+    let record = parse(&content);
+    assert_eq!(record.scf_energy, None);
+    assert_eq!(record.electronic_energy, Some(-76.402725158737));
+}

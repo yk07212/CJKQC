@@ -198,8 +198,11 @@ impl Parser for GaussianParser {
             .map(|(charge, multiplicity)| (Some(charge), Some(multiplicity)))
             .unwrap_or((None, None));
 
-        // The final job's energy: the last converged SCF value.
-        // rq-d8a0968b rq-bf318b99
+        // The final job's energy: the last converged SCF value. The SCF
+        // energy is the value of the same line: for Hartree–Fock and
+        // density-functional jobs the two coincide, and a post-HF job's
+        // total is a different marker this parser does not read.
+        // rq-d8a0968b rq-bf318b99 rq-8caf5900
         let electronic_energy = matches.last(SCF_DONE).and_then(|line| {
             let mut following_equals = false;
             for field in line.split_whitespace() {
@@ -210,6 +213,7 @@ impl Parser for GaussianParser {
             }
             None
         });
+        let scf_energy = electronic_energy;
 
         // The final job's geometry: the Standard orientation table reads
         // its element from the atomic-number column.
@@ -337,6 +341,7 @@ impl Parser for GaussianParser {
             charge,
             multiplicity,
             electronic_energy,
+            scf_energy,
             geometry,
             vibrational_frequencies: if frequencies.is_empty() {
                 None

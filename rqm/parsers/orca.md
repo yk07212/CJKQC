@@ -54,6 +54,18 @@ in an elided window yields an absent observable, never a guess.
   (the summary form; the per-cycle `Multiplicity assumed :` lines are not
   the source).
 - `electronic_energy` — the last `FINAL SINGLE POINT ENERGY <value>`. <!-- rq-610cdd9d -->
+- `scf_energy` — the converged SCF total of the last SCF section, in <!-- rq-7331508e -->
+  hartree: the `TOTAL ENERGY` value of the SCF summary box
+  (`| TOTAL ENERGY  <value> Eh |`) in newer printings, the
+  `Total Energy       :  <value> Eh` line at the section's end in older
+  ones — the corpus pins both spellings against density-functional and
+  xtb-in-ORCA printings; no correlated-method ORCA output pins them, so
+  a post-SCF block that reused either shape would be read as the SCF
+  total. This is the SCF cycle's own total
+  (the Hartree–Fock energy of a correlated job, the DFT energy of a
+  density-functional one), not the `FINAL SINGLE POINT ENERGY` value,
+  which adds the method's correlation and any additive corrections on
+  top. No visible SCF total → absent.
 - `geometry` — the table under the last `CARTESIAN COORDINATES <!-- rq-8d91e753 -->
   (ANGSTROEM)` header (between its dashed rules): `read_geometry_table`
   with `Symbol(0)`, coordinate columns 1–3, Ångström.
@@ -169,6 +181,20 @@ Feature: ORCA parser
     Given a VIBRATIONAL FREQUENCIES line "     6:     -42.13 cm**-1"
     When the content is parsed
     Then the stored frequencies include -42.13
+
+  @rq-7bca16e5
+  Scenario: scf_energy is the SCF total, distinct from the final single point energy
+    Given output whose last SCF summary box prints TOTAL ENERGY -28.322836452494 Eh
+    and whose last FINAL SINGLE POINT ENERGY line prints -28.322836452490
+    When the content is parsed
+    Then the record has scf_energy -28.322836452494
+    And the record has electronic_energy -28.322836452490
+
+  @rq-97f5385b
+  Scenario: A job without an SCF section carries no scf_energy
+    Given output with no SCF total line in any spelling
+    When the content is parsed
+    Then the record has no scf_energy
 
   @rq-a5fee06d
   Scenario: A frequency calculation without a terminated run is truncated

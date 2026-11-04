@@ -111,6 +111,7 @@
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": -199.642065483666,
+   "scf_energy": -199.59380288816905,
    "geometry": {
     "symbols": [
      "S",
@@ -405,6 +406,7 @@
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": -1526.66937796,
+   "scf_energy": -1526.66937796,
    "geometry": {
     "symbols": [
      "C",
@@ -846,6 +848,7 @@
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": -134.936294839321,
+   "scf_energy": -134.2943930780812707,
    "geometry": {
     "symbols": [
      "H",
@@ -942,6 +945,7 @@
   "status": "truncated",
   "expect": {
    "electronic_energy": -199.642065483666,
+   "scf_energy": -199.59380288816905,
    "geometry": {
     "atoms": 34
    },
@@ -957,6 +961,7 @@
   "status": "truncated",
   "expect": {
    "electronic_energy": -1526.66937796,
+   "scf_energy": -1526.66937796,
    "geometry": {
     "atoms": 52
    },
@@ -1027,6 +1032,7 @@
    "charge": 0,
    "multiplicity": 1,
    "electronic_energy": null,
+   "scf_energy": -134.2943930780812707,
    "geometry": {
     "symbols": [
      "H",
@@ -1736,6 +1742,7 @@
    "program_version": "6.1.0",
    "command": "XTB1 Opt Anfreq ExtremeSCF VeryTightOPT",
    "electronic_energy": -28.32283645249,
+   "scf_energy": -28.322836452494,
    "charge": null,
    "multiplicity": null,
    "geometry": {

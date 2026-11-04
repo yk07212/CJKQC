@@ -13,6 +13,10 @@ use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser};
 use complied_jkqc::collect::{gather_inputs_with, CollectError, CollectOutcome, Gathered};
 use complied_jkqc::correction::{attach_corrections, CorrectionError};
 use complied_jkqc::db::{self, DbError, LoadProblem};
+use complied_jkqc::extrapolate::{
+    correction_for, is_candidate, parse_extrapolation, skip_reason, source_paths,
+    ExtrapolationError, ExtrapolationSpec,
+};
 use complied_jkqc::filter::{
     apply_filters, parse_extract_query, print_table, CmpOp, Column, Cutoff, ExtractMode,
     FilterSpec, Grouping, Mode, Property, SortKey, Unit,
@@ -218,6 +222,23 @@ struct Cli {
     /// (a manipulation flag).
     #[arg(long = "add-correction", value_name = "PATH")]
     add_correction: Vec<PathBuf>,
+
+    /// Attach an extrapolated electronic-energy correction built from
+    /// the named source databases, matching their records to run records
+    /// by exact case-sensitive name (a manipulation flag). The mode
+    /// token leads: `2p LOW HIGH N ALPHA BETA`, `2s LOW HIGH F`, or the
+    /// combined `2p LOWPAIR HIGHPAIR N ALPHA BETA F` with comma-joined
+    /// path pairs. Like --pop for its single value, the flag eats the
+    /// values that follow it until the next --flag, so place it after
+    /// the positional inputs.
+    // rq-24294fd5
+    #[arg(
+        long = "extrapolate",
+        num_args = 1..,
+        value_name = "MODE VALUES",
+        allow_negative_numbers = true
+    )]
+    extrapolate: Vec<String>,
 
     // --- cutoff flags: `--<flag> PROPERTY VALUE` (repeatable) ---
     /// Absolute cutoff: keep records whose PROPERTY <= VALUE (energies
@@ -700,11 +721,39 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     let has_other_manipulation = !cutoffs.is_empty()
         || active_manipulations
             .iter()
-            .any(|id| *id != "add_correction");
+            .any(|id| *id != "add_correction" && *id != "extrapolate");
     // Repeating --add-correction is a usage error (`rqm/correction.md`).
     if cli.add_correction.len() > 1 {
         return usage("cannot repeat --add-correction; give one correction database");
     }
+    // One --extrapolate per run (`rqm/extrapolation.md`). clap flattens a
+    // repeated flag's values into one list, so a repeat is detected by
+    // occurrence count before the grammar can misread the merged values
+    // as one valid invocation.
+    // rq-24294fd5
+    if matches
+        .get_occurrences::<String>("extrapolate")
+        .is_some_and(|mut occurrences| occurrences.nth(1).is_some())
+    {
+        return usage("cannot repeat --extrapolate; give one extrapolation");
+    }
+    // One --extrapolate per run, never alongside --add-correction; the
+    // grammar and parameter bounds are usage errors reported before any
+    // input is read (`rqm/extrapolation.md`).
+    // rq-24294fd5
+    if !cli.add_correction.is_empty() && !cli.extrapolate.is_empty() {
+        return usage(
+            "cannot combine --add-correction with --extrapolate; a record carries one correction",
+        );
+    }
+    let extrapolation = if cli.extrapolate.is_empty() {
+        None
+    } else {
+        match parse_extrapolation(&cli.extrapolate) {
+            Ok(spec) => Some(spec),
+            Err(message) => return usage(&message),
+        }
+    };
 
     let set_print = |column: Column| match column {
         Column::Name => cli.name,
@@ -848,12 +897,32 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     // collection semantics — every record written, the collection summary
     // line with the corrected suffix (`rqm/correction.md`).
     if cli.add_correction.len() == 1 && !has_other_manipulation && !has_print {
-        return run_correcting_collection(
+        let correction_path = cli.add_correction[0].clone();
+        return run_enriching_collection(
             &inputs,
-            cli.add_correction[0].as_path(),
             cli.out.as_deref(),
             cli.fout,
             &budget,
+            |records| {
+                attach_from_path(records, &correction_path)
+                    .map(|(enriched, problems)| (enriched, !problems.is_empty()))
+            },
+        );
+    }
+
+    // A run whose only enrichment is extrapolation, printing nothing:
+    // collection semantics — every record written, the collected or
+    // merged summary line with the corrected suffix
+    // (`rqm/extrapolation.md`).
+    // rq-c7255c36
+    if !cli.extrapolate.is_empty() && !has_other_manipulation && !has_print {
+        let spec = extrapolation.as_ref().expect("extrapolation parsed");
+        return run_enriching_collection(
+            &inputs,
+            cli.out.as_deref(),
+            cli.fout,
+            &budget,
+            |records| extrapolate_from_paths(records, spec),
         );
     }
 
@@ -886,6 +955,19 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         };
         records = enriched;
         correction_problems = loaded;
+    }
+
+    // Extrapolation, like attachment, precedes every pipeline stage, so
+    // cutoffs, sorts, and the corrected sections see the extrapolated
+    // values (`rqm/extrapolation.md`).
+    // rq-a757e0f8
+    let mut extrapolation_problems = false;
+    if let Some(spec) = &extrapolation {
+        let Some((enriched, problems)) = extrapolate_from_paths(&records, spec) else {
+            return ExitCode::FAILURE;
+        };
+        records = enriched;
+        extrapolation_problems = problems;
     }
 
     let excluded = records
@@ -984,9 +1066,10 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         }
         warn_if_replacing(replacing, cli.fout, out);
         // The filtered summary reports the enrichment when the run
-        // carried --add-correction (`rqm/correction.md`).
+        // carried --add-correction or --extrapolate
+        // (`rqm/correction.md`, `rqm/extrapolation.md`).
         // rq-58d85e68
-        let suffix = if cli.add_correction.is_empty() {
+        let suffix = if cli.add_correction.is_empty() && cli.extrapolate.is_empty() {
             String::new()
         } else {
             let corrected = records
@@ -1003,7 +1086,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         );
     }
 
-    if problems.is_empty() && correction_problems.is_empty() {
+    if problems.is_empty() && correction_problems.is_empty() && !extrapolation_problems {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
@@ -1061,25 +1144,29 @@ fn warn_if_replacing(replacing: bool, forced: bool, out: &Path) {
     }
 }
 
-/// A correcting collection run (`rqm/correction.md`): the plain collection
-/// flow with attachment inserted before the write — every record is
-/// written, and the collection summary line carries the corrected suffix.
+/// An enriching collection run (`rqm/correction.md`,
+/// `rqm/extrapolation.md`): the plain collection flow with the
+/// enrichment inserted before the write — every record is written, and
+/// the collection summary line carries the corrected suffix. `enrich`
+/// maps the gathered records to their enriched copies and whether it
+/// reported problems; a `None` enrichment (a fatal error, already
+/// printed) ends the run before anything is written.
 ///
-/// (rq-58d85e68 rq-66e4cb89)
-fn run_correcting_collection(
+/// (rq-58d85e68 rq-66e4cb89 rq-c7255c36)
+fn run_enriching_collection(
     inputs: &[&Path],
-    correction_path: &Path,
     out: Option<&Path>,
     fout: bool,
     budget: &WindowBudget,
+    enrich: impl FnOnce(&[Record]) -> Option<(Vec<Record>, bool)>,
 ) -> ExitCode {
     // Unreachable via the visible-outcome rule, which demands --out on a
     // run with no print flags and no other manipulation — but fail loudly
     // rather than silently succeeding if that rule is ever relaxed
-    // (`rqm/correction.md`).
+    // (`rqm/correction.md`, `rqm/extrapolation.md`).
     // rq-3fd0b9bb
     let Some(out) = out else {
-        eprintln!("error: a correcting collection run needs --out");
+        eprintln!("error: an enriching collection run needs --out");
         return ExitCode::from(2);
     };
     let (records, problems, is_build) = match gather_inputs_with(inputs, budget) {
@@ -1098,7 +1185,7 @@ fn run_correcting_collection(
             problem.reason
         );
     }
-    let Some((records, correction_problems)) = attach_from_path(&records, correction_path) else {
+    let Some((records, enrichment_problems)) = enrich(&records) else {
         return ExitCode::FAILURE;
     };
     let replacing = out.exists();
@@ -1107,7 +1194,8 @@ fn run_correcting_collection(
         return ExitCode::FAILURE;
     }
     warn_if_replacing(replacing, fout, out);
-    // The collection summary reports the enrichment (`rqm/correction.md`).
+    // The collection summary reports the enrichment
+    // (`rqm/correction.md`, `rqm/extrapolation.md`).
     // rq-58d85e68
     let corrected = records
         .iter()
@@ -1138,7 +1226,7 @@ fn run_correcting_collection(
             corrected
         );
     }
-    if problems.is_empty() && correction_problems.is_empty() {
+    if problems.is_empty() && !enrichment_problems {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
@@ -1212,6 +1300,174 @@ fn attach_from_path(records: &[Record], path: &Path) -> Option<(Vec<Record>, Vec
         );
     }
     Some((attachment.records, problems))
+}
+
+/// Loads every extrapolation source — always through `load_database`,
+/// never classified like the positional inputs (`rqm/extrapolation.md`)
+/// — runs the extrapolation pass over the run's records, and prints the
+/// per-record warnings. A fatal failure (an unreadable source, duplicate
+/// candidate names, mixed programs or versions, repeated calculations)
+/// prints its error and returns `None`.
+///
+/// (rq-c68c02b0)
+fn extrapolate_from_paths(
+    records: &[Record],
+    spec: &ExtrapolationSpec,
+) -> Option<(Vec<Record>, bool)> {
+    let paths = source_paths(spec);
+    let needs_scf = spec.needs_scf();
+    let mut source_records: Vec<Vec<Record>> = Vec::with_capacity(paths.len());
+    let mut any_problems = false;
+    for path in &paths {
+        let (loaded, problems) = match db::load_database(path) {
+            Ok(outcome) => (outcome.records, outcome.problems),
+            Err(error) => {
+                eprintln!("error: {error}");
+                return None;
+            }
+        };
+        for problem in &problems {
+            eprintln!(
+                "warning: {} line {}: {}",
+                path.display(),
+                problem.line,
+                problem.reason
+            );
+        }
+        // A source that loads no record at all while reporting load
+        // problems is fatal: the error is reported and nothing is
+        // written (`rqm/extrapolation.md`).
+        if loaded.is_empty() && !problems.is_empty() {
+            eprintln!(
+                "error: {}: no valid record loads from the extrapolation source database",
+                path.display()
+            );
+            return None;
+        }
+        any_problems |= !problems.is_empty();
+        source_records.push(loaded);
+    }
+    let slices: Vec<&[Record]> = source_records.iter().map(Vec::as_slice).collect();
+    let extrapolation =
+        match complied_jkqc::extrapolate::extrapolate_corrections(records, &slices, spec) {
+            Ok(extrapolation) => extrapolation,
+            Err(error) => {
+                print_extrapolation_error(&error, &paths);
+                return None;
+            }
+        };
+    // A non-candidate source record is skipped and warned individually,
+    // naming its name (`(unnamed)` when absent)
+    // (`rqm/extrapolation.md`). The skip reason comes from the same
+    // helper the pass counts with.
+    // rq-c68c02b0
+    for source in &source_records {
+        for record in source {
+            if let Some(reason) = skip_reason(record, needs_scf) {
+                let name = record.name.as_deref().unwrap_or("(unnamed)");
+                eprintln!("warning: skipped extrapolation record \"{name}\": {reason}");
+            }
+        }
+    }
+    // A run record whose name is not fully covered is skipped with a
+    // warning naming the name and the first source database missing it;
+    // a covered name whose result is not finite warns like any skip.
+    // (`rqm/extrapolation.md`)
+    // rq-925967be rq-a4fc7526
+    for record in records {
+        let Some(name) = record.name.as_deref() else {
+            eprintln!(
+                "warning: record \"(unnamed)\" is uncovered: no extrapolation candidate in {}",
+                paths[0].display()
+            );
+            continue;
+        };
+        let first_missing = source_records
+            .iter()
+            .zip(&paths)
+            .find_map(|(source, path)| {
+                (!source.iter().any(|candidate| {
+                    is_candidate(candidate, needs_scf) && candidate.name.as_deref() == Some(name)
+                }))
+                .then_some(path.clone())
+            });
+        match first_missing {
+            Some(path) => eprintln!(
+                "warning: record \"{name}\" is uncovered: no extrapolation candidate in {}",
+                path.display()
+            ),
+            None => {
+                if correction_for(&slices, spec, name).is_none() {
+                    eprintln!(
+                        "warning: record \"{name}\": the extrapolated energy is not finite; \
+                         no correction attached"
+                    );
+                }
+            }
+        }
+    }
+    // The unmatched candidates are reported as one aggregate warning
+    // (`rqm/extrapolation.md`).
+    // rq-3bad508e
+    if extrapolation.unmatched > 0 {
+        let noun = if extrapolation.unmatched == 1 {
+            "record"
+        } else {
+            "records"
+        };
+        eprintln!(
+            "warning: {} unmatched extrapolation {}",
+            extrapolation.unmatched, noun
+        );
+    }
+    Some((extrapolation.records, any_problems))
+}
+
+/// Prints a fatal extrapolation error, naming the databases the
+/// error's source indices refer to (`rqm/extrapolation.md`).
+// rq-73d8ed95
+fn print_extrapolation_error(error: &ExtrapolationError, paths: &[PathBuf]) {
+    match error {
+        ExtrapolationError::SourceCount { .. } => eprintln!("error: {error}"),
+        ExtrapolationError::DuplicateName { source, name } => eprintln!(
+            "error: {}: extrapolation database holds multiple records named \"{name}\"",
+            paths[*source].display()
+        ),
+        ExtrapolationError::ProgramMismatch {
+            name,
+            source_a,
+            source_b,
+            program_a,
+            program_b,
+        } => eprintln!(
+            "error: extrapolation contributors for \"{name}\" mix programs: \
+             {program_a} ({}) and {program_b} ({})",
+            paths[*source_a].display(),
+            paths[*source_b].display()
+        ),
+        ExtrapolationError::VersionMismatch {
+            name,
+            source_a,
+            source_b,
+            version_a,
+            version_b,
+        } => eprintln!(
+            "error: extrapolation contributors for \"{name}\" mix program versions: \
+             {version_a} ({}) and {version_b} ({})",
+            paths[*source_a].display(),
+            paths[*source_b].display()
+        ),
+        ExtrapolationError::DuplicateEnergy {
+            name,
+            source_a,
+            source_b,
+        } => eprintln!(
+            "error: extrapolation contributors for \"{name}\" carry exactly equal \
+             electronic energies ({} and {})",
+            paths[*source_a].display(),
+            paths[*source_b].display()
+        ),
+    }
 }
 
 /// Loads the correction database through `load_database`, mapping the
@@ -1427,6 +1683,7 @@ fn manipulation_ids(cli: &Cli) -> Vec<&'static str> {
         ("shuffle", cli.shuffle),
         ("noname", cli.noname),
         ("add_correction", !cli.add_correction.is_empty()),
+        ("extrapolate", !cli.extrapolate.is_empty()),
     ] {
         if set {
             ids.push(id);
@@ -1519,6 +1776,11 @@ mod tests {
             "--noname",
             "--add-correction",
             "corr.jsonl",
+            "--extrapolate",
+            "2s",
+            "low.jsonl",
+            "high.jsonl",
+            "1.5",
         ]);
         let active = manipulation_ids(&all_manipulations);
         for arg in command.get_arguments() {

@@ -54,6 +54,10 @@ shared `BOHR_TO_ANGSTROM` constant at extraction time
 - `electronic_energy` — the last line of the energy summary matching <!-- rq-3028c385 -->
   `Total <...> energy <...> [au]: <value>` whose text does not contain
   `correlation energy`; its value, in hartree. No such line → absent.
+- `scf_energy` — the value of the last <!-- rq-ef61dab4 -->
+  `***FINAL HARTREE-FOCK ENERGY: <value> [AU]` line, in hartree: the
+  converged HF total the correlation method builds on. No such line →
+  absent.
 
 ### Status Classification <!-- rq-b41a1001 -->
 
@@ -69,8 +73,6 @@ shared `BOHR_TO_ANGSTROM` constant at extraction time
 - Gradient and geometry-relaxation outputs, frequency calculations, and
   per-property printouts (dipoles, densities): the corpus covers
   single-point energy runs only, and no other situation is claimed.
-- `scf_energy` / `correlation_energy` style bookkeeping: the record keeps a
-  single total electronic energy (`rqm/record.md`).
 - Multi-run files (several programs appended into one output): the final
   run's summary is the record, under the same last-occurrence rule.
 
@@ -122,6 +124,21 @@ Feature: MRCC parser
     "Total CCSD(T) energy [au]: -134.934017249766"
     When the content is parsed
     Then the record has electronic_energy -134.934017249766
+
+  @rq-d82e314a
+  Scenario: scf_energy is the final Hartree-Fock energy
+    Given output whose last "***FINAL HARTREE-FOCK ENERGY:" line prints -134.2943930780812707
+    and whose energy summary ends with
+    "Total LNO-CCSD(T) energy with MP2 corrections [au]: -134.936294839321"
+    When the content is parsed
+    Then the record has scf_energy -134.2943930780812707
+    And the record has electronic_energy -134.936294839321
+
+  @rq-16ad220b
+  Scenario: A run without the HF energy line carries no scf_energy
+    Given an energy summary with no "***FINAL HARTREE-FOCK ENERGY:" line
+    When the content is parsed
+    Then the record has no scf_energy
 
   @rq-b8a853f8
   Scenario: The command block stops at the first resource or geometry key

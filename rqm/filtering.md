@@ -15,7 +15,8 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
   ): all program outputs build, all databases merge, a mixture is a usage
   error. The collected/merged records then flow through the pipeline.
 - **Manipulation flags** are: `--add-correction`
-  (`rqm/correction.md`), `--extract`, `--nextract`, `--cut`,
+  (`rqm/correction.md`), `--extrapolate`
+  (`rqm/extrapolation.md`), `--extract`, `--nextract`, `--cut`,
   `--cutr`, `--pass`, `--passr`, `--is`, `--isnot`, `--filter-lt`,
   `--filter-ge`, `--rel-filter-lt`, `--rel-filter-ge`, `--uniq`,
   `--reacted`, `--reacted2`, `--sort`, `--reverse`, `--select`,

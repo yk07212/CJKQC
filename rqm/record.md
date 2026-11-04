@@ -43,6 +43,15 @@ else", `rqm/ARCHITECTURE.md`).
     lives in `rqm/parsers/`.
   - `electronic_energy: Option<f64>` — total electronic energy of the final
     structure, in hartree.
+  - `scf_energy: Option<f64>` — the converged self-consistent-field energy
+    of the final structure, in hartree: the Hartree–Fock total for
+    wavefunction methods, the final SCF-cycle total for density-functional
+    ones. Extracted where the program prints it (`rqm/parsers/`); programs
+    without an SCF cycle (xtb's semiempirical energies, plain xyz) leave it
+    absent. It is an input to basis-set extrapolation
+    (`rqm/extrapolation.md`) and to no other derivation; the
+    correlation-like residual `electronic_energy − scf_energy` is derived
+    on demand, never stored.
   - `charge: Option<i32>` — net charge in elementary charges.
   - `multiplicity: Option<u32>` — spin multiplicity, at least 1.
   - `geometry: Option<Geometry>` — the structure (see `Geometry`).
@@ -102,8 +111,9 @@ else", `rqm/ARCHITECTURE.md`).
     record.
   - `commands: Option<Vec<String>>` — the command line(s) that produced the
     energy, copied from the correction record's `command` as a one-element
-    list and omitted when unknown; an extrapolation correction lists one
-    entry per contributing calculation.
+    list and omitted when unknown; an extrapolation correction
+    (`rqm/extrapolation.md`) lists its contributing records' commands in
+    contributor order, omitting the records without one.
   - `kind: String` — non-empty token describing how the energy was obtained;
     `sp` when attached from a parsed single-point record. The vocabulary is
     open: tokens are stored verbatim, so databases written by later versions
@@ -168,10 +178,10 @@ records and databases always carry the canonical units above.
 - Field names are snake_case and stable.
 - The writer emits keys in a fixed order — `status`, `error`, `name`,
   `source_path`, `program`, `program_version`, `command`, `electronic_energy`,
-  `charge`, `multiplicity`, `geometry`, `vibrational_frequencies`, `gradient`,
-  `dipole_moment`, `mulliken_charges`, `rotational_symmetry_number`,
-  `components`, `correction` — with absent observables omitted. The reader accepts keys in
-  any order.
+  `scf_energy`, `charge`, `multiplicity`, `geometry`, `vibrational_frequencies`,
+  `gradient`, `dipole_moment`, `mulliken_charges`,
+  `rotational_symmetry_number`, `components`, `correction` — with absent
+  observables omitted. The reader accepts keys in any order.
 - `geometry` serializes as nested parallel arrays:
   `{"symbols": [...], "coordinates": [...]}`.
 - `components` serializes as a JSON object, keys in alphabetical order:
@@ -402,4 +412,19 @@ Feature: Record schema
     Given a record whose correction kind is ""
     When validate is called
     Then it returns Err(RecordInvalidity::InvalidScalar { field: "correction.kind" })
+
+  # --- SCF energy ---
+
+  @rq-be6c9218
+  Scenario: scf_energy round-trips and serializes after electronic_energy
+    Given a record with electronic_energy -76.15 and scf_energy -76.1
+    When the record is serialized to JSON and deserialized back
+    Then the result equals the original record
+    And the serialized line names "electronic_energy" before "scf_energy"
+
+  @rq-f7572661
+  Scenario: validate rejects a non-finite scf_energy
+    Given a record whose scf_energy is NaN
+    When validate is called
+    Then it returns Err(RecordInvalidity::NonFiniteFloat { field: "scf_energy" })
 ```

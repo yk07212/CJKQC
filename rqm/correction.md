@@ -12,7 +12,8 @@ values appear only where explicitly requested — the `--elcorr`/`--hcorr`/`--gc
 columns, the `elcorr`/`gcorr` cutoff properties and sort keys, and the
 corrected formation section (`rqm/formation.md`) — so every number's origin
 stays inspectable: the record carries the correction's program, version,
-commands, and kind.
+commands, and kind. Extrapolated corrections (`rqm/extrapolation.md`) are a
+second producer of the same object and flow through the same machinery.
 
 ## The Correction Database <!-- rq-233e0670 -->
 
@@ -173,11 +174,6 @@ commands, and kind.
 
 ## Out of Scope <!-- rq-3a687494 -->
 
-- `--extrapole`: corrections computed by CJKQC itself by combining several
-  same-name single points (two-point basis-set extrapolation and friends).
-  The open `kind` token and the `commands` list reserve the room: an
-  extrapolated correction carries one command per contributing calculation
-  and its own kind token.
 - More than one correction per record: the `correction` object holds one
   entry; an array form can arrive additively if a use appears.
 - Matching by anything but the exact `name`: no composition, geometry, or

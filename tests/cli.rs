@@ -5551,3 +5551,1587 @@ fn hydration_sections_collapse_under_bavg() {
     let expected = format!(" 1sa 1sa1w\n{:.1}  {:.1}\n\n", 100.0 - hydrated, hydrated);
     assert_eq!(stdout(&averaged), expected);
 }
+
+// --- extrapolation corrections (rqm/extrapolation.md) ---
+
+/// An extrapolation source line: a named ok candidate with an electronic
+/// energy, an optional SCF energy, and optional provenance.
+fn source_line(
+    name: &str,
+    ee: f64,
+    scf: Option<f64>,
+    program: Option<&str>,
+    version: Option<&str>,
+    command: Option<&str>,
+) -> String {
+    let record = Record {
+        status: RecordStatus::Ok,
+        name: Some(name.to_string()),
+        electronic_energy: Some(ee),
+        scf_energy: scf,
+        program: program.map(str::to_string),
+        program_version: version.map(str::to_string),
+        command: command.map(str::to_string),
+        ..Record::default()
+    };
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// A source candidate with an electronic energy only.
+fn blend_source(name: &str, ee: f64) -> String {
+    source_line(name, ee, None, None, None, None)
+}
+
+// rq-fcd67083
+#[test]
+fn extrapolating_two_point_attaches_a_cbs_correction() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line(
+            "1am",
+            -76.0,
+            Some(-76.0),
+            None,
+            None,
+            Some("! def2-SVP Sp"),
+        )],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line(
+            "1am",
+            -76.15,
+            Some(-76.1),
+            Some("orca"),
+            Some("6.0.0"),
+            Some("! def2-TZVPP Sp"),
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let loaded = loaded(&out);
+    assert_eq!(loaded.len(), 1);
+    let correction = loaded[0].correction.as_ref().expect("attached");
+    assert!(
+        (correction.energy - -76.21251721253894).abs() < 1e-9,
+        "{}",
+        correction.energy
+    );
+    assert_eq!(correction.kind, "cbs");
+    assert_eq!(
+        correction.commands.as_deref(),
+        Some(&["! def2-SVP Sp".to_string(), "! def2-TZVPP Sp".to_string()][..])
+    );
+    assert_eq!(correction.program.as_deref(), Some("orca"));
+    assert_eq!(correction.program_version.as_deref(), Some("6.0.0"));
+    assert_eq!(loaded[0].electronic_energy, Some(-38.51));
+}
+
+// rq-8f40cd00
+#[test]
+fn extrapolating_two_s_attaches_a_cps_correction() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let correction = loaded(&out)[0].correction.clone().expect("attached");
+    assert_eq!(correction.kind, "cps");
+    assert!(
+        (correction.energy - -76.15).abs() < 1e-12,
+        "{}",
+        correction.energy
+    );
+}
+
+// rq-0f8f7fcd
+#[test]
+fn extrapolating_combined_form_attaches_a_cbs_cps_correction() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let lbl = db_with(
+        &dir,
+        "lbl.jsonl",
+        &[source_line(
+            "1am",
+            -76.0,
+            Some(-76.0),
+            None,
+            None,
+            Some("c1"),
+        )],
+    );
+    let hbl = db_with(
+        &dir,
+        "hbl.jsonl",
+        &[source_line(
+            "1am",
+            -76.15,
+            Some(-76.1),
+            None,
+            None,
+            Some("c2"),
+        )],
+    );
+    let lbh = db_with(
+        &dir,
+        "lbh.jsonl",
+        &[source_line(
+            "1am",
+            -76.02,
+            Some(-76.0),
+            None,
+            None,
+            Some("c3"),
+        )],
+    );
+    let hbh = db_with(
+        &dir,
+        "hbh.jsonl",
+        &[source_line(
+            "1am",
+            -76.17,
+            Some(-76.1),
+            Some("orca"),
+            Some("6.0.0"),
+            Some("c4"),
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let pairs = format!("{lbl},{lbh} {hbl},{hbh}");
+    let values: Vec<&str> = pairs.split(' ').collect();
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        values[0],
+        values[1],
+        "2",
+        "4.3",
+        "2.51",
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let correction = loaded(&out)[0].correction.clone().expect("attached");
+    assert!(
+        (correction.energy - -76.24251721253893).abs() < 1e-9,
+        "{}",
+        correction.energy
+    );
+    assert_eq!(correction.kind, "cbs-cps");
+    assert_eq!(
+        correction.commands.as_deref(),
+        Some(
+            &[
+                "c1".to_string(),
+                "c2".to_string(),
+                "c3".to_string(),
+                "c4".to_string()
+            ][..]
+        )
+    );
+    assert_eq!(correction.program.as_deref(), Some("orca"));
+    assert_eq!(correction.program_version.as_deref(), Some("6.0.0"));
+}
+
+// rq-4c238015
+#[test]
+fn extrapolating_a_dft_zero_residual_uses_the_scf_term() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line("1am", -76.0, Some(-76.0), None, None, None)],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line("1am", -76.1, Some(-76.1), None, None, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let correction = loaded(&out)[0].correction.clone().expect("attached");
+    assert!(
+        (correction.energy - -76.13421861395366).abs() < 1e-9,
+        "{}",
+        correction.energy
+    );
+}
+
+#[test] // rq-6c7136f0
+fn an_unknown_extrapolation_mode_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "3p",
+        "low.jsonl",
+        "high.jsonl",
+        "2",
+        "4.3",
+        "2.51",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(stderr(&run).contains("3p"), "{}", stderr(&run));
+}
+
+#[test] // rq-e18bdb98
+fn a_wrong_extrapolation_value_count_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let short = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        "low.jsonl",
+        "high.jsonl",
+        "2",
+        "4.3",
+    ]);
+    assert_eq!(short.status.code(), Some(2), "{}", stderr(&short));
+    let blend_short = cjkqc(&[&db, "--extrapolate", "2s", "low.jsonl", "high.jsonl"]);
+    assert_eq!(
+        blend_short.status.code(),
+        Some(2),
+        "{}",
+        stderr(&blend_short)
+    );
+}
+
+#[test] // rq-3981f145
+fn a_non_numeric_extrapolation_parameter_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        "low.jsonl",
+        "high.jsonl",
+        "2",
+        "alpha",
+        "2.51",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-08954513
+fn extrapolation_parameter_bounds_are_enforced() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    for values in [
+        &["2p", "low.jsonl", "high.jsonl", "0", "4.3", "2.51"][..],
+        &["2p", "low.jsonl", "high.jsonl", "2.5", "4.3", "2.51"][..],
+        &["2p", "low.jsonl", "high.jsonl", "2", "0", "2.51"][..],
+        &["2p", "low.jsonl", "high.jsonl", "2", "4.3", "-1"][..],
+        &["2s", "low.jsonl", "high.jsonl", "inf"][..],
+    ] {
+        let mut args = vec![db.as_str(), "--extrapolate"];
+        args.extend(values.iter().copied());
+        let run = cjkqc(&args);
+        assert_eq!(run.status.code(), Some(2), "{values:?}: {}", stderr(&run));
+    }
+}
+
+#[test] // rq-7728825b
+fn a_trailing_extrapolation_f_without_comma_pairs_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        "low.jsonl",
+        "high.jsonl",
+        "2",
+        "4.3",
+        "2.51",
+        "1.5",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-1527f9fe
+fn a_half_paired_combined_form_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        "low1.jsonl,low2.jsonl",
+        "high.jsonl",
+        "2",
+        "4.3",
+        "2.51",
+        "1.5",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-17ef3709
+fn an_over_full_extrapolation_comma_group_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        "a.jsonl,b.jsonl,c.jsonl",
+        "d.jsonl,e.jsonl",
+        "2",
+        "4.3",
+        "2.51",
+        "1.5",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-7ecf0b87
+fn a_comma_pair_where_a_single_path_is_required_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        "low1.jsonl,low2.jsonl",
+        "high.jsonl",
+        "1.5",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-50c53556
+fn repeating_extrapolate_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        "low.jsonl",
+        "high.jsonl",
+        "1.5",
+        "--extrapolate",
+        "2s",
+        "low.jsonl",
+        "high.jsonl",
+        "1.5",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    // Even a repeated flag whose merged values would parse as one valid
+    // invocation is caught by the occurrence count.
+    let merged = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        "low.jsonl",
+        "high.jsonl",
+        "1.5",
+        "--extrapolate",
+        "2",
+    ]);
+    assert_eq!(merged.status.code(), Some(2), "{}", stderr(&merged));
+}
+
+#[test] // rq-d576647e
+fn extrapolate_with_add_correction_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[
+        &db,
+        "--add-correction",
+        "sp.jsonl",
+        "--extrapolate",
+        "2s",
+        "low.jsonl",
+        "high.jsonl",
+        "1.5",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-c492a677
+fn extrapolate_alone_is_not_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let run = cjkqc(&[&db, "--extrapolate", "2s", "low.jsonl", "high.jsonl", "1.5"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+// rq-925967be
+#[test]
+fn a_name_missing_from_one_extrapolation_source_is_uncovered() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line("1am", -76.0, Some(-76.0), None, None, None)],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line("2am", -76.1, Some(-76.1), None, None, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_none());
+    let errors = stderr(&run);
+    assert!(errors.contains("1am"), "{errors}");
+    assert!(errors.contains("high.jsonl"), "{errors}");
+}
+
+// rq-0ec3ddc5
+#[test]
+fn extrapolation_matching_is_exact_and_case_sensitive() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1AM", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1AM", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_none());
+    assert!(stderr(&run).contains("1am"), "{}", stderr(&run));
+}
+
+// rq-41bd180a
+#[test]
+fn every_run_record_sharing_a_covered_name_receives_the_extrapolated_correction() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_line("1am", -38.51), sample_line("1am", -38.52)],
+    );
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let loaded = loaded(&out);
+    assert_eq!(loaded.len(), 2);
+    for record in &loaded {
+        assert!(record.correction.is_some());
+    }
+}
+
+// rq-7786c735
+#[test]
+fn an_unnamed_run_record_never_matches_an_extrapolation() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_line("placeholder", -38.51).replace("\"name\":\"placeholder\",", "")],
+    );
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_none());
+}
+
+// rq-73d8ed95
+#[test]
+fn duplicate_extrapolation_candidate_names_in_one_source_are_fatal() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[
+            source_line("1am", -76.0, Some(-76.0), None, None, None),
+            source_line("1am", -76.01, Some(-76.0), None, None, None),
+        ],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line("1am", -76.1, Some(-76.1), None, None, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    let errors = stderr(&run);
+    assert!(errors.contains("1am"), "{errors}");
+    assert!(errors.contains("low.jsonl"), "{errors}");
+    assert!(!out.exists());
+}
+
+// rq-ccc8ed3a
+#[test]
+fn mixed_extrapolation_programs_are_fatal() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line(
+            "1am",
+            -76.0,
+            Some(-76.0),
+            Some("orca"),
+            None,
+            None,
+        )],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line(
+            "1am",
+            -76.1,
+            Some(-76.1),
+            Some("mrcc"),
+            None,
+            None,
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    let errors = stderr(&run);
+    for token in ["1am", "orca", "mrcc"] {
+        assert!(errors.contains(token), "{errors}");
+    }
+    assert!(!out.exists());
+}
+
+// rq-c4c4e1d7
+#[test]
+fn the_combined_form_rejects_one_mixed_extrapolation_contributor() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let orca = |ee: f64, scf: f64, path: &str| {
+        db_with(
+            &dir,
+            path,
+            &[source_line("1am", ee, Some(scf), Some("orca"), None, None)],
+        )
+    };
+    let lbl = orca(-76.0, -76.0, "lbl.jsonl");
+    let hbl = orca(-76.15, -76.1, "hbl.jsonl");
+    let lbh = orca(-76.02, -76.0, "lbh.jsonl");
+    let hbh = db_with(
+        &dir,
+        "hbh.jsonl",
+        &[source_line(
+            "1am",
+            -76.17,
+            Some(-76.1),
+            Some("mrcc"),
+            None,
+            None,
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let pairs = format!("{lbl},{lbh} {hbl},{hbh}");
+    let values: Vec<&str> = pairs.split(' ').collect();
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        values[0],
+        values[1],
+        "2",
+        "4.3",
+        "2.51",
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    let errors = stderr(&run);
+    for token in ["1am", "orca", "mrcc"] {
+        assert!(errors.contains(token), "{errors}");
+    }
+}
+
+// rq-41d43353
+#[test]
+fn an_extrapolation_candidate_without_a_program_never_violates() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line("1am", -76.0, Some(-76.0), None, None, None)],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line(
+            "1am",
+            -76.1,
+            Some(-76.1),
+            Some("orca"),
+            None,
+            None,
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let correction = loaded(&out)[0].correction.clone().expect("attached");
+    assert_eq!(correction.program.as_deref(), Some("orca"));
+}
+
+// rq-5f78f8a6
+#[test]
+fn an_extrapolation_version_mismatch_is_fatal() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line(
+            "1am",
+            -76.0,
+            Some(-76.0),
+            Some("orca"),
+            Some("6.0.0"),
+            None,
+        )],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line(
+            "1am",
+            -76.1,
+            Some(-76.1),
+            Some("orca"),
+            Some("6.1.0"),
+            None,
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    let errors = stderr(&run);
+    for token in ["1am", "6.0.0", "6.1.0"] {
+        assert!(errors.contains(token), "{errors}");
+    }
+    assert!(!out.exists());
+}
+
+// rq-7cb01a45
+#[test]
+fn matching_extrapolation_program_and_version_pass_the_uniformity_check() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line(
+            "1am",
+            -76.0,
+            Some(-76.0),
+            Some("orca"),
+            Some("6.1.0"),
+            None,
+        )],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line(
+            "1am",
+            -76.1,
+            Some(-76.1),
+            Some("orca"),
+            Some("6.1.0"),
+            None,
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let correction = loaded(&out)[0].correction.clone().expect("attached");
+    assert_eq!(correction.program_version.as_deref(), Some("6.1.0"));
+}
+
+// rq-edffc76e
+#[test]
+fn identical_extrapolation_electronic_energies_are_fatal() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line("1am", -76.0, Some(-76.0), None, None, None)],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line("1am", -76.0, Some(-76.1), None, None, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    let errors = stderr(&run);
+    for token in ["1am", "low.jsonl", "high.jsonl"] {
+        assert!(errors.contains(token), "{errors}");
+    }
+    assert!(!out.exists());
+}
+
+// rq-28bcea43
+#[test]
+fn the_same_extrapolation_path_twice_is_caught_by_the_energy_rule() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line("1am", -76.0, Some(-76.0), None, None, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &low,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert!(stderr(&run).contains("1am"), "{}", stderr(&run));
+}
+
+// rq-62f744ee
+#[test]
+fn a_shared_scf_energy_inside_the_extrapolation_combined_form_is_not_a_violation() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let lbl = db_with(
+        &dir,
+        "lbl.jsonl",
+        &[source_line("1am", -76.05, Some(-76.0), None, None, None)],
+    );
+    let lbh = db_with(
+        &dir,
+        "lbh.jsonl",
+        &[source_line("1am", -76.07, Some(-76.0), None, None, None)],
+    );
+    let hbl = db_with(
+        &dir,
+        "hbl.jsonl",
+        &[source_line("1am", -76.15, Some(-76.1), None, None, None)],
+    );
+    let hbh = db_with(
+        &dir,
+        "hbh.jsonl",
+        &[source_line("1am", -76.17, Some(-76.1), None, None, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let pairs = format!("{lbl},{lbh} {hbl},{hbh}");
+    let values: Vec<&str> = pairs.split(' ').collect();
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        values[0],
+        values[1],
+        "2",
+        "4.3",
+        "2.51",
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_some());
+}
+
+// rq-17e82092
+#[test]
+fn a_failed_extrapolation_rerun_does_not_collide_with_its_ok_replacement() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let mut failed = Record {
+        status: RecordStatus::Failed,
+        name: Some("1am".to_string()),
+        error: Some("did not converge".to_string()),
+        ..Record::default()
+    };
+    failed.status = RecordStatus::Failed;
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[
+            serde_json::to_string(&failed).expect("serialization"),
+            source_line("1am", -76.0, Some(-76.0), None, None, None),
+        ],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line("1am", -76.1, Some(-76.1), None, None, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_some());
+    let warnings = stderr(&run);
+    assert!(warnings.contains("1am"), "{warnings}");
+    assert!(warnings.contains("skipped"), "{warnings}");
+}
+
+// rq-69f2f193
+#[test]
+fn an_extrapolation_candidate_without_an_electronic_energy_is_skipped() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line("1am", -76.0, Some(-76.0), None, None, None)
+            .replace("\"electronic_energy\":-76.0,", "")],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line("1am", -76.1, Some(-76.1), None, None, None)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_none());
+    let warnings = stderr(&run);
+    assert!(warnings.contains("1am"), "{warnings}");
+    assert!(warnings.contains("skipped"), "{warnings}");
+}
+
+// rq-5c26081b
+#[test]
+fn an_extrapolation_candidate_without_scf_energy_is_skipped() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let qualified = source_line("1am", -76.1, Some(-76.1), None, None, None);
+    // The low source lacks scf_energy.
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", std::slice::from_ref(&qualified));
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_none());
+    let warnings = stderr(&run);
+    assert!(warnings.contains("1am"), "{warnings}");
+    assert!(warnings.contains("skipped"), "{warnings}");
+    // The same holds when the high database's candidate lacks scf_energy.
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line("1am", -76.0, Some(-76.0), None, None, None)],
+    );
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_none());
+}
+
+// rq-b92f7576
+#[test]
+fn extrapolating_two_s_needs_no_scf_energy() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_some());
+}
+
+// rq-3bad508e
+#[test]
+fn unmatched_extrapolation_candidates_are_one_aggregate_warning() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[blend_source("1am", -76.0), blend_source("2am", -70.0)],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[blend_source("1am", -76.1), blend_source("2am", -70.1)],
+    );
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_some());
+    assert!(
+        stderr(&run).contains("2 unmatched extrapolation records"),
+        "{}",
+        stderr(&run)
+    );
+}
+
+// rq-61cdb639
+#[test]
+fn a_corrupt_line_in_an_extrapolation_source_is_skipped_and_fails_the_run() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low_path = dir.join("low.jsonl");
+    write_jsonl(
+        &low_path,
+        &[&blend_source("1am", -76.0), "{ this is not a record"],
+    );
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low_path.to_string_lossy(),
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    let warnings = stderr(&run);
+    assert!(warnings.contains("low.jsonl"), "{warnings}");
+    assert!(warnings.contains("line 2"), "{warnings}");
+    assert!(loaded(&out)[0].correction.is_some());
+}
+
+// rq-ae11003d
+#[test]
+fn a_missing_extrapolation_source_is_fatal() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let out = dir.join("out.jsonl");
+    let missing = dir.join("high.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &missing.to_string_lossy(),
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert!(!out.exists());
+}
+
+// rq-03c8c0f9
+#[test]
+fn a_program_output_extrapolation_source_is_fatal() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &fixture("xtb/1dma.log"),
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert!(!out.exists());
+}
+
+// rq-9be77472
+#[test]
+fn an_empty_extrapolation_source_leaves_every_named_record_uncovered() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(&dir, "low.jsonl", &[]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(loaded(&out)[0].correction.is_none());
+    let warnings = stderr(&run);
+    assert!(warnings.contains("1am"), "{warnings}");
+    assert!(warnings.contains("low.jsonl"), "{warnings}");
+}
+
+// rq-d516398b
+#[test]
+fn an_extrapolation_match_replaces_a_stored_correction() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[thermo_line("1am", -38.51, &[], Some(-76.0))]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let correction = loaded(&out)[0].correction.clone().expect("replaced");
+    assert!(
+        (correction.energy - -76.15).abs() < 1e-12,
+        "{}",
+        correction.energy
+    );
+}
+
+// rq-54c33c26
+#[test]
+fn an_uncovered_extrapolation_record_keeps_its_stored_correction() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[thermo_line("2am", -38.51, &[], Some(-76.0))]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let correction = loaded(&out)[0].correction.clone().expect("kept");
+    assert_eq!(correction.energy, -76.0);
+}
+
+// rq-00078b6e
+#[test]
+fn the_correction_column_shows_an_extrapolated_corrections_provenance() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line(
+            "1am",
+            -76.0,
+            Some(-76.0),
+            Some("orca"),
+            Some("6.0.0"),
+            Some("! def2-SVP Sp"),
+        )],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line(
+            "1am",
+            -76.1,
+            Some(-76.1),
+            Some("orca"),
+            Some("6.0.0"),
+            Some("! def2-TZVPP Sp"),
+        )],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--correction",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(
+        stdout(&run).contains("cbs orca 6.0.0 \"! def2-SVP Sp\" \"! def2-TZVPP Sp\""),
+        "{}",
+        stdout(&run)
+    );
+}
+
+// rq-8a869bbd
+#[test]
+fn extrapolate_prints_nothing_of_its_own() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 1, "{text}");
+    assert!(lines[0].starts_with("merged 1 records"), "{text}");
+    assert!(lines[0].contains("(1 corrected)"), "{text}");
+    assert!(loaded(&out)[0].correction.is_some());
+}
+
+// rq-7de7b92a
+#[test]
+fn absent_extrapolation_commands_are_omitted_from_the_column() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_line("1am", -38.51)]);
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[source_line(
+            "1am",
+            -76.0,
+            Some(-76.0),
+            Some("orca"),
+            Some("6.0.0"),
+            None,
+        )],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[source_line(
+            "1am",
+            -76.1,
+            Some(-76.1),
+            Some("orca"),
+            Some("6.0.0"),
+            None,
+        )],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2p",
+        &low,
+        &high,
+        "2",
+        "4.3",
+        "2.51",
+        "--correction",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    assert!(text.contains("cbs orca 6.0.0"), "{text}");
+    assert!(!text.contains('"'), "{text}");
+}
+
+// rq-b2e971a9
+#[test]
+fn an_extrapolating_build_run_reports_its_corrections() {
+    let dir = temp_dir();
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1dma", -135.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1dma", -135.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &fixture("xtb/1dma.log"),
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(
+        stdout(&run).contains(&format!(
+            "collected 1 records into {} (0 failed, 0 truncated, 1 corrected)",
+            out.display()
+        )),
+        "{}",
+        stdout(&run)
+    );
+}
+
+// rq-187b51ac
+#[test]
+fn an_extrapolating_merge_run_reports_its_corrections() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_line("1am", -38.51), sample_line("2am", -38.52)],
+    );
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(
+        stdout(&run).contains(&format!(
+            "merged 2 records into {} (1 corrected)",
+            out.display()
+        )),
+        "{}",
+        stdout(&run)
+    );
+}
+
+// rq-478fad20
+#[test]
+fn a_manipulated_extrapolating_run_reports_its_corrections() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_line("1am", -38.51), sample_line("2am", -38.52)],
+    );
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--name",
+        "--out",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(
+        stdout(&run).contains(&format!(
+            "filtered 2 records into {} (1 corrected)",
+            out.display()
+        )),
+        "{}",
+        stdout(&run)
+    );
+}
+
+// rq-cca456ff
+#[test]
+fn el_stays_raw_while_elcorr_shows_the_extrapolated_energy() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[thermo_line("1am", -38.51, &[], None)]);
+    let low = db_with(&dir, "low.jsonl", &[blend_source("1am", -76.0)]);
+    let high = db_with(&dir, "high.jsonl", &[blend_source("1am", -76.1)]);
+    let run = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--el",
+        "--elcorr",
+        "--gcorr",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let rows = data_rows(&stdout(&run));
+    assert_eq!(rows.len(), 1, "{}", stdout(&run));
+    assert_eq!(rows[0][0], "-38.5100000000");
+    let el: f64 = rows[0][0].parse().expect("el");
+    let elcorr: f64 = rows[0][1].parse().expect("elcorr");
+    let gcorr: f64 = rows[0][2].parse().expect("gcorr");
+    assert!((elcorr - -76.15).abs() < 1e-12, "{}", elcorr);
+    assert!(
+        (gcorr - (-76.15 + (raw_gibbs(-38.51) - el))).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+}
+
+// rq-14e9d366
+#[test]
+fn the_extrapolated_correction_follows_the_runs_conditions() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("2am", -141.0, &[("am", 2)], None),
+        ],
+    );
+    let low = db_with(
+        &dir,
+        "low.jsonl",
+        &[blend_source("am1", -60.0), blend_source("2am", -160.0)],
+    );
+    let high = db_with(
+        &dir,
+        "high.jsonl",
+        &[blend_source("am1", -60.1), blend_source("2am", -160.1)],
+    );
+    let warm = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--elcorr",
+        "--formation-corr",
+        "--temp",
+        "298.15",
+    ]);
+    let hot = cjkqc(&[
+        &db,
+        "--extrapolate",
+        "2s",
+        &low,
+        &high,
+        "1.5",
+        "--elcorr",
+        "--formation-corr",
+        "--temp",
+        "350",
+    ]);
+    assert_eq!(warm.status.code(), Some(0), "{}", stderr(&warm));
+    assert_eq!(hot.status.code(), Some(0), "{}", stderr(&hot));
+    let warm_row = formation_row(&stdout(&warm), "2am");
+    let hot_row = formation_row(&stdout(&hot), "2am");
+    assert_eq!(
+        warm_row[1], hot_row[1],
+        "the elcorr level ignores the temperature"
+    );
+    assert_ne!(warm_row[2], hot_row[2], "the gcorr level follows it");
+}

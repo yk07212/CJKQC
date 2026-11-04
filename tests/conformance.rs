@@ -175,6 +175,14 @@ fn check(entry: &Value) -> Record {
             &format!("{file}: electronic_energy"),
         );
     }
+    if let Some(expected) = expect.get("scf_energy") {
+        expect_float(
+            record.scf_energy,
+            expected,
+            tolerance(entry, "scf_energy"),
+            &format!("{file}: scf_energy"),
+        );
+    }
     if let Some(expected) = expect.get("geometry") {
         expect_geometry(&record, expected, tolerance(entry, "geometry"));
     }

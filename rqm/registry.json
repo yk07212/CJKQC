@@ -1,4 +1,16 @@
 {
+  "rq-00078b6e": {
+    "decl": "Scenario: The --correction column shows an extrapolated correction's provenance",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The --correction column shows an extrapolated correction's provenance",
+    "type": "scenario"
+  },
   "rq-00285b24": {
     "decl": "Scenario: Hydrogen bonded only under 0.80 Å to another H",
     "file": "detection",
@@ -133,6 +145,18 @@
       }
     ],
     "title": "The count-range cap holds exactly 1000 values",
+    "type": "scenario"
+  },
+  "rq-03c8c0f9": {
+    "decl": "Scenario: A source that is a program output is fatal",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A source that is a program output is fatal",
     "type": "scenario"
   },
   "rq-03fd1a40": {
@@ -302,6 +326,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-08954513": {
+    "decl": "Scenario: Parameter bounds are enforced",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Parameter bounds are enforced",
+    "type": "scenario"
+  },
   "rq-09af191f": {
     "decl": "Scenario: Bare --hydration distributes over the hydration states of water",
     "file": "hydration",
@@ -361,6 +397,18 @@
     ],
     "title": "hydration_percentages",
     "type": "api-item"
+  },
+  "rq-0a61e5eb": {
+    "decl": "Scenario: parse_extrapolation returns the three forms",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_extrapolation returns the three forms",
+    "type": "scenario"
   },
   "rq-0a70b97d": {
     "decl": "- `read_geometry_table(lines, spec: &TableSpec) -> Option<Geometry>` — reads",
@@ -578,6 +626,22 @@
     "title": "Crate Layout",
     "type": "section"
   },
+  "rq-0ec3ddc5": {
+    "decl": "Scenario: Matching is exact and case-sensitive",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Matching is exact and case-sensitive",
+    "type": "scenario"
+  },
   "rq-0ef73ad1": {
     "decl": "## Feature API",
     "file": "parsers/gaussian",
@@ -655,6 +719,22 @@
       }
     ],
     "title": "A recorded failed run is classified failed",
+    "type": "scenario"
+  },
+  "rq-0f8f7fcd": {
+    "decl": "Scenario: The combined form attaches a cbs-cps correction",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The combined form attaches a cbs-cps correction",
     "type": "scenario"
   },
   "rq-10341821": {
@@ -825,6 +905,18 @@
     "title": "The ORCA corpus fixture reproduces the JKQC ground truth",
     "type": "scenario"
   },
+  "rq-14e9d366": {
+    "decl": "Scenario: The extrapolated correction follows the run's conditions",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The extrapolated correction follows the run's conditions",
+    "type": "scenario"
+  },
   "rq-150f26f1": {
     "decl": "- `K_B = 1.380649e-23` J/K, `P_STANDARD = 101325.0` Pa (1 atm),",
     "file": "thermo",
@@ -839,6 +931,18 @@
     "refs": [],
     "title": "Level Parity",
     "type": "section"
+  },
+  "rq-1527f9fe": {
+    "decl": "Scenario: A half-paired combined form is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A half-paired combined form is a usage error",
+    "type": "scenario"
   },
   "rq-157f85ee": {
     "decl": "- `electronic_energy` — the boxed final line `| TOTAL ENERGY <value> Eh |`",
@@ -993,6 +1097,18 @@
     "title": "Electronic entropy carries the spin degeneracy",
     "type": "scenario"
   },
+  "rq-16ad220b": {
+    "decl": "Scenario: A run without the HF energy line carries no scf_energy",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A run without the HF energy line carries no scf_energy",
+    "type": "scenario"
+  },
   "rq-16bb6b61": {
     "decl": "Scenario: Sorting by corrected Gibbs puts undefined values last",
     "file": "filtering",
@@ -1029,6 +1145,22 @@
     "title": "vibrational_frequencies",
     "type": "api-item"
   },
+  "rq-17e82092": {
+    "decl": "Scenario: A failed rerun does not collide with its ok replacement",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A failed rerun does not collide with its ok replacement",
+    "type": "scenario"
+  },
   "rq-17ea1903": {
     "decl": "## Sort, Select, Shuffle",
     "file": "filtering",
@@ -1045,6 +1177,18 @@
     ],
     "title": "Sort, Select, Shuffle",
     "type": "section"
+  },
+  "rq-17ef3709": {
+    "decl": "Scenario: An over-full comma group is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An over-full comma group is a usage error",
+    "type": "scenario"
   },
   "rq-180cebd1": {
     "decl": "Scenario: An unrecognized output aborts the run and writes nothing",
@@ -1088,6 +1232,18 @@
       }
     ],
     "title": "A ppb value is a mole fraction of the standard atmosphere",
+    "type": "scenario"
+  },
+  "rq-187b51ac": {
+    "decl": "Scenario: An extrapolating merge run reports its corrections",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An extrapolating merge run reports its corrections",
     "type": "scenario"
   },
   "rq-18ba8ffb": {
@@ -1140,6 +1296,18 @@
       }
     ],
     "title": "The reference frequency shifts the interpolation",
+    "type": "scenario"
+  },
+  "rq-19257e60": {
+    "decl": "Scenario: blend_energy scales the gap",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "blend_energy scales the gap",
     "type": "scenario"
   },
   "rq-19b11795": {
@@ -1624,6 +1792,14 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-2322ad6b": {
+    "decl": "## Gherkin Scenarios",
+    "file": "extrapolation",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
   "rq-2333d9cc": {
     "decl": "- `concentration_correction(components: &Components, concs: &ConcConditions, temperature: f64) -> f64`",
     "file": "formation",
@@ -1712,6 +1888,19 @@
     ],
     "title": "--select renormalizes over the survivors",
     "type": "scenario"
+  },
+  "rq-24294fd5": {
+    "decl": "## The Invocation",
+    "file": "extrapolation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The Invocation",
+    "type": "section"
   },
   "rq-2486bcc8": {
     "decl": "Scenario: The build produces the exact executable name",
@@ -1827,6 +2016,18 @@
       }
     ],
     "title": "Undefined conformers never hide a state's defined value",
+    "type": "scenario"
+  },
+  "rq-28bcea43": {
+    "decl": "Scenario: The same path given twice is caught by the energy rule",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The same path given twice is caught by the energy rule",
     "type": "scenario"
   },
   "rq-28e4ef6b": {
@@ -1967,6 +2168,18 @@
     ],
     "title": "--rh with a non-water solvent is a usage error",
     "type": "scenario"
+  },
+  "rq-2b4ba772": {
+    "decl": "- `ExtrapolationSpec` — one parsed `--extrapolate` invocation:",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ExtrapolationSpec",
+    "type": "api-item"
   },
   "rq-2b862de1": {
     "decl": "Scenario: --out writes the filtered database and prints a summary",
@@ -2218,6 +2431,14 @@
     ],
     "title": "A proton adduct resolves",
     "type": "scenario"
+  },
+  "rq-306e7b5d": {
+    "decl": "## Feature API",
+    "file": "extrapolation",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
   },
   "rq-3091cb1e": {
     "decl": "Scenario: Uppercase codes resolve and differ from lowercase ones",
@@ -2756,6 +2977,18 @@
     "title": "parse_fortran_f64",
     "type": "api-item"
   },
+  "rq-3981f145": {
+    "decl": "Scenario: A non-numeric parameter is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-numeric parameter is a usage error",
+    "type": "scenario"
+  },
   "rq-39867e78": {
     "decl": "- `LoadProblem` — `line: usize` (1-based) and `reason: String`.",
     "file": "database",
@@ -2887,6 +3120,26 @@
     "title": "Collect one XTB output into a new database",
     "type": "scenario"
   },
+  "rq-3bad508e": {
+    "decl": "Scenario: Candidates no run record names are one aggregate warning",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Candidates no run record names are one aggregate warning",
+    "type": "scenario"
+  },
   "rq-3bb529ad": {
     "decl": "### Types",
     "file": "parsers/orca",
@@ -3016,6 +3269,22 @@
     "title": "ORCA Reference Values",
     "type": "section"
   },
+  "rq-41bd180a": {
+    "decl": "Scenario: Every run record sharing a covered name receives the correction",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Every run record sharing a covered name receives the correction",
+    "type": "scenario"
+  },
   "rq-41bf3f48": {
     "decl": "Scenario: A relative corrected-energy window is per composition group",
     "file": "filtering",
@@ -3026,6 +3295,22 @@
       }
     ],
     "title": "A relative corrected-energy window is per composition group",
+    "type": "scenario"
+  },
+  "rq-41d43353": {
+    "decl": "Scenario: A candidate without a program never violates",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A candidate without a program never violates",
     "type": "scenario"
   },
   "rq-41e77e57": {
@@ -3139,6 +3424,18 @@
     ],
     "title": "The standard registry holds all five parsers in detection order",
     "type": "scenario"
+  },
+  "rq-443ba191": {
+    "decl": "- `two_point_energy(scf_low: f64, corr_low: f64, scf_high: f64, corr_high:",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "two_point_energy",
+    "type": "api-item"
   },
   "rq-443f2709": {
     "decl": "Scenario: nextract inverts the selection",
@@ -3265,6 +3562,18 @@
       }
     ],
     "title": "Fractional decimal counts are accepted",
+    "type": "scenario"
+  },
+  "rq-478fad20": {
+    "decl": "Scenario: A manipulated run reports its corrections",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A manipulated run reports its corrections",
     "type": "scenario"
   },
   "rq-482ab490": {
@@ -3417,6 +3726,22 @@
     ],
     "title": "print_formation_corr_ensembles",
     "type": "api-item"
+  },
+  "rq-4c238015": {
+    "decl": "Scenario: A DFT record's zero residual extrapolates through the SCF term",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A DFT record's zero residual extrapolates through the SCF term",
+    "type": "scenario"
   },
   "rq-4c429ba4": {
     "decl": "Scenario: The corrected basis splits like the plain basis at equal gaps",
@@ -3619,6 +3944,18 @@
     "title": "A partially written last line is skipped and reported",
     "type": "scenario"
   },
+  "rq-50c53556": {
+    "decl": "Scenario: Repeating --extrapolate is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Repeating --extrapolate is a usage error",
+    "type": "scenario"
+  },
   "rq-516d24b1": {
     "decl": "Scenario: Deviants mode keeps exactly the deviants",
     "file": "detection",
@@ -3669,6 +4006,18 @@
       }
     ],
     "title": "command",
+    "type": "api-item"
+  },
+  "rq-52f7d9a4": {
+    "decl": "- `parse_extrapolation(values: &[String]) -> Result<ExtrapolationSpec, String>`",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_extrapolation",
     "type": "api-item"
   },
   "rq-53463f17": {
@@ -3783,6 +4132,22 @@
     "title": "Feature: MRCC Parser",
     "type": "file"
   },
+  "rq-54c33c26": {
+    "decl": "Scenario: An uncovered record keeps its stored correction",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An uncovered record keeps its stored correction",
+    "type": "scenario"
+  },
   "rq-550ff715": {
     "decl": "- `classify_inputs(inputs: &[&Path]) -> Result<CollectionMode, CollectError>`",
     "file": "collection",
@@ -3854,6 +4219,14 @@
     ],
     "title": "--glob keeps each group's lowest Gibbs record",
     "type": "scenario"
+  },
+  "rq-57568392": {
+    "decl": "### Types",
+    "file": "extrapolation",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
   },
   "rq-5825f5e3": {
     "decl": "- `failed` — no normal marker and the tail carries MRCC's own error or",
@@ -4144,6 +4517,22 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-5c26081b": {
+    "decl": "Scenario: A 2p candidate without scf_energy is skipped with a warning",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A 2p candidate without scf_energy is skipped with a warning",
+    "type": "scenario"
+  },
   "rq-5c68d6cb": {
     "decl": "Scenario: A count range expands inclusively",
     "file": "filtering",
@@ -4286,6 +4675,22 @@
     "title": "Unknown element leaves mass-based metrics undefined",
     "type": "scenario"
   },
+  "rq-5f78f8a6": {
+    "decl": "Scenario: A version mismatch is fatal",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A version mismatch is fatal",
+    "type": "scenario"
+  },
   "rq-602d347c": {
     "decl": "## Gherkin Scenarios",
     "file": "scaffolding",
@@ -4326,6 +4731,18 @@
     "title": "A count-star-code wildcard combines both restrictions",
     "type": "scenario"
   },
+  "rq-60ca0795": {
+    "decl": "- `Extrapolation` — what a pass did, mirroring `Attachment`",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Extrapolation",
+    "type": "api-item"
+  },
   "rq-60d713bc": {
     "decl": "Scenario: A relative Gibbs cutoff window works per group in kcal/mol",
     "file": "thermo",
@@ -4344,6 +4761,18 @@
     "refs": [],
     "title": "electronic_energy",
     "type": "api-item"
+  },
+  "rq-61cdb639": {
+    "decl": "Scenario: A corrupt line in a source is skipped and fails the run",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A corrupt line in a source is skipped and fails the run",
+    "type": "scenario"
   },
   "rq-61efc73e": {
     "decl": "Scenario: Loading a missing file is an error",
@@ -4407,6 +4836,22 @@
       }
     ],
     "title": "A recorded failed run is classified failed",
+    "type": "scenario"
+  },
+  "rq-62f744ee": {
+    "decl": "Scenario: A shared SCF energy inside the combined form is not a violation",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A shared SCF energy inside the combined form is not a violation",
     "type": "scenario"
   },
   "rq-636984f8": {
@@ -4660,6 +5105,22 @@
     "title": "A single-point file reports no frequencies or symmetry number",
     "type": "scenario"
   },
+  "rq-69f2f193": {
+    "decl": "Scenario: A candidate without an electronic energy is skipped with a warning",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A candidate without an electronic energy is skipped with a warning",
+    "type": "scenario"
+  },
   "rq-6a872802": {
     "decl": "Scenario: Shuffle is deterministic per seed",
     "file": "filtering",
@@ -4746,6 +5207,25 @@
     "refs": [],
     "title": "Functions",
     "type": "section"
+  },
+  "rq-6c7136f0": {
+    "decl": "Scenario: An unknown mode is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unknown mode is a usage error",
+    "type": "scenario"
+  },
+  "rq-6c98665a": {
+    "decl": "- `tests/extrapolate.rs` tests the grammar (modes, arities, parameter",
+    "file": "extrapolation",
+    "refs": [],
+    "title": "tests",
+    "type": "api-item"
   },
   "rq-6cc1264d": {
     "decl": "Scenario: Adopted JKQC-era unknown flags remain usage errors",
@@ -5024,6 +5504,38 @@
     "title": "Canonical Units and Values",
     "type": "section"
   },
+  "rq-7331508e": {
+    "decl": "- `scf_energy` — the converged SCF total of the last SCF section, in",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "scf_energy",
+    "type": "api-item"
+  },
+  "rq-73d8ed95": {
+    "decl": "Scenario: Duplicate candidate names in one source are fatal",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Duplicate candidate names in one source are fatal",
+    "type": "scenario"
+  },
   "rq-7415b243": {
     "decl": "## Feature API",
     "file": "parsers/mrcc",
@@ -5163,6 +5675,18 @@
     "title": "The collapse preserves first-appearance order",
     "type": "scenario"
   },
+  "rq-7728825b": {
+    "decl": "Scenario: A trailing F without comma pairs is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A trailing F without comma pairs is a usage error",
+    "type": "scenario"
+  },
   "rq-773db11b": {
     "decl": "- `FilterSpec` — the whole manipulation: `extract: Option<(Vec<String>,",
     "file": "filtering",
@@ -5201,6 +5725,22 @@
       }
     ],
     "title": "The command column quotes its value",
+    "type": "scenario"
+  },
+  "rq-7786c735": {
+    "decl": "Scenario: A run record without a name never matches",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A run record without a name never matches",
     "type": "scenario"
   },
   "rq-77c19ef4": {
@@ -5328,6 +5868,18 @@
     "title": "--cnt scales the solvent term by (N-1)/N",
     "type": "scenario"
   },
+  "rq-7bca16e5": {
+    "decl": "Scenario: scf_energy is the SCF total, distinct from the final single point energy",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "scf_energy is the SCF total, distinct from the final single point energy",
+    "type": "scenario"
+  },
   "rq-7be2650a": {
     "decl": "Scenario: A non-monatomic record without frequencies is undefined",
     "file": "thermo",
@@ -5354,6 +5906,22 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-7cb01a45": {
+    "decl": "Scenario: Matching program and version pass the uniformity check",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Matching program and version pass the uniformity check",
+    "type": "scenario"
   },
   "rq-7d43ccc9": {
     "decl": "Scenario: The collapsed g includes the conformational entropy term",
@@ -5421,6 +5989,22 @@
     "title": "Numerics",
     "type": "section"
   },
+  "rq-7de7b92a": {
+    "decl": "Scenario: Absent commands are omitted",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Absent commands are omitted",
+    "type": "scenario"
+  },
   "rq-7e73da19": {
     "decl": "## Fragment Signature",
     "file": "detection",
@@ -5445,6 +6029,18 @@
     ],
     "title": "saturation_pressure_water",
     "type": "api-item"
+  },
+  "rq-7ecf0b87": {
+    "decl": "Scenario: A comma pair where a single path is required is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A comma pair where a single path is required is a usage error",
+    "type": "scenario"
   },
   "rq-7efc4513": {
     "decl": "Scenario: Two conformers split by their Boltzmann factors",
@@ -5990,6 +6586,18 @@
     "title": "rotational_symmetry_number",
     "type": "api-item"
   },
+  "rq-8a869bbd": {
+    "decl": "Scenario: --extrapolate prints nothing of its own",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--extrapolate prints nothing of its own",
+    "type": "scenario"
+  },
   "rq-8ad5063d": {
     "decl": "## Input Classification",
     "file": "collection",
@@ -6091,6 +6699,18 @@
     "title": "src",
     "type": "api-item"
   },
+  "rq-8caf5900": {
+    "decl": "- `scf_energy` — the value of the same last",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "src/parser/gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "scf_energy",
+    "type": "api-item"
+  },
   "rq-8ce96e45": {
     "decl": "Scenario: The registry exposes the corrected keys",
     "file": "correction",
@@ -6182,6 +6802,22 @@
       }
     ],
     "title": "Loading a directory is an error",
+    "type": "scenario"
+  },
+  "rq-8f40cd00": {
+    "decl": "Scenario: 2s attaches a cps correction",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "2s attaches a cps correction",
     "type": "scenario"
   },
   "rq-8f6da1c2": {
@@ -6345,6 +6981,26 @@
       }
     ],
     "title": "A corrupt line in the correction database is skipped and fails the run",
+    "type": "scenario"
+  },
+  "rq-925967be": {
+    "decl": "Scenario: A name missing from one source is uncovered",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A name missing from one source is uncovered",
     "type": "scenario"
   },
   "rq-927eb1c6": {
@@ -6614,6 +7270,18 @@
     "title": "a covered window is walked once per locate call",
     "type": "scenario"
   },
+  "rq-97f5385b": {
+    "decl": "Scenario: A job without an SCF section carries no scf_energy",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A job without an SCF section carries no scf_energy",
+    "type": "scenario"
+  },
   "rq-98440673": {
     "decl": "Scenario: The named component shifts the g level by its chemical potential",
     "file": "formation",
@@ -6820,6 +7488,18 @@
     "title": "failed",
     "type": "api-item"
   },
+  "rq-9be77472": {
+    "decl": "Scenario: An empty source leaves every named record uncovered",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An empty source leaves every named record uncovered",
+    "type": "scenario"
+  },
   "rq-9c076f14": {
     "decl": "- `ok` — the tail carries `finished run` (xtb's normal-exit banner).",
     "file": "parsers/xtb",
@@ -6962,6 +7642,19 @@
     "level": 3,
     "refs": [],
     "title": "Functions",
+    "type": "section"
+  },
+  "rq-9e38e14b": {
+    "decl": "## The Attached Correction",
+    "file": "extrapolation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The Attached Correction",
     "type": "section"
   },
   "rq-9e898298": {
@@ -7182,6 +7875,14 @@
     "title": "tests",
     "type": "api-item"
   },
+  "rq-a2299e51": {
+    "decl": "### Crate Layout",
+    "file": "extrapolation",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
+  },
   "rq-a24eec14": {
     "decl": "- `detect(head)` returns the byte offset of the earliest line matching the",
     "file": "parsers/gaussian",
@@ -7275,6 +7976,26 @@
     "title": "Command Line",
     "type": "section"
   },
+  "rq-a4fc7526": {
+    "decl": "Scenario: A non-finite result leaves the record uncovered",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-finite result leaves the record uncovered",
+    "type": "scenario"
+  },
   "rq-a5c79f09": {
     "decl": "Scenario: A seam-cut eigval block is stored truncated",
     "file": "parsers/xtb",
@@ -7342,6 +8063,26 @@
     ],
     "title": "--cnt scales the collapsed concentration term by (N-1)/N",
     "type": "scenario"
+  },
+  "rq-a757e0f8": {
+    "decl": "- `extrapolate_corrections(records: &[Record], sources: &[&[Record]],",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "extrapolate_corrections",
+    "type": "api-item"
   },
   "rq-a7757bca": {
     "decl": "- `dedup_names(records: &[Record]) -> Vec<Record>`",
@@ -7621,6 +8362,18 @@
     "title": "A corrected member without thermochemistry contributes nothing",
     "type": "scenario"
   },
+  "rq-ae11003d": {
+    "decl": "Scenario: A missing source is fatal",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing source is fatal",
+    "type": "scenario"
+  },
   "rq-ae14b02d": {
     "decl": "Scenario: The caret power syntax is not part of the grammar",
     "file": "formation",
@@ -7644,6 +8397,18 @@
     ],
     "title": "Ties share the population",
     "type": "scenario"
+  },
+  "rq-ae61b293": {
+    "decl": "- `ExtrapolationError` — error type of the pass:",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ExtrapolationError",
+    "type": "api-item"
   },
   "rq-aeb0d510": {
     "decl": "- `append_records(path: &Path, records: &[Record]) -> Result<(), DbError>`",
@@ -7740,6 +8505,22 @@
     "refs": [],
     "title": "Feature API",
     "type": "section"
+  },
+  "rq-b0a418c4": {
+    "decl": "# Feature: Extrapolation Corrections (`--extrapolate`)",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Extrapolation Corrections (`--extrapolate`)",
+    "type": "file"
   },
   "rq-b0d6f2f5": {
     "decl": "- `ExtractMode` — `Keep` (`--extract`) or `Drop` (`--nextract`).",
@@ -7869,6 +8650,18 @@
     "title": "validate accepts a truncated record with partial observables",
     "type": "scenario"
   },
+  "rq-b2e971a9": {
+    "decl": "Scenario: An extrapolating build run reports its corrections",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An extrapolating build run reports its corrections",
+    "type": "scenario"
+  },
   "rq-b3135fcd": {
     "decl": "- `truncated` — neither marker present: the run never reached its end.",
     "file": "parsers/xtb",
@@ -7895,6 +8688,18 @@
     "refs": [],
     "title": "Status Classification",
     "type": "section"
+  },
+  "rq-b425579e": {
+    "decl": "Scenario: scf_energy comes from the same last SCF Done line",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "scf_energy comes from the same last SCF Done line",
+    "type": "scenario"
   },
   "rq-b457ce50": {
     "decl": "Scenario: --psolvent overrides --rh",
@@ -8210,6 +9015,22 @@
     "title": "Atomic numbers map to title-case element symbols",
     "type": "scenario"
   },
+  "rq-b92f7576": {
+    "decl": "Scenario: 2s needs no scf_energy",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "2s needs no scf_energy",
+    "type": "scenario"
+  },
   "rq-b954f3fb": {
     "decl": "- `PopLevel` — `El | G | ElCorr | GCorr`, the population bases; bare",
     "file": "population",
@@ -8285,6 +9106,19 @@
     ],
     "title": "A non-positive --rh is a usage error",
     "type": "scenario"
+  },
+  "rq-bb43d915": {
+    "decl": "## The Formulas",
+    "file": "extrapolation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The Formulas",
+    "type": "section"
   },
   "rq-bb4d61fb": {
     "decl": "Scenario: A zero window budget is a usage error",
@@ -8487,6 +9321,18 @@
     "title": "The correction column drops absent pieces",
     "type": "scenario"
   },
+  "rq-be6c9218": {
+    "decl": "Scenario: scf_energy round-trips and serializes after electronic_energy",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "scf_energy round-trips and serializes after electronic_energy",
+    "type": "scenario"
+  },
   "rq-be817932": {
     "decl": "Scenario: after_last_line_where stops at the window boundary",
     "file": "parser-framework",
@@ -8672,6 +9518,18 @@
     "title": "A leading imaginary mode survives the trivial-mode drop",
     "type": "scenario"
   },
+  "rq-c2c04659": {
+    "decl": "Scenario: A log without an SCF Done line carries neither energy",
+    "file": "parsers/gaussian",
+    "refs": [
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A log without an SCF Done line carries neither energy",
+    "type": "scenario"
+  },
   "rq-c32bf4fa": {
     "decl": "### Functions",
     "file": "thermo",
@@ -8768,6 +9626,18 @@
     "title": "Every record sharing the name receives the correction",
     "type": "scenario"
   },
+  "rq-c492a677": {
+    "decl": "Scenario: --extrapolate alone is not a visible outcome",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--extrapolate alone is not a visible outcome",
+    "type": "scenario"
+  },
   "rq-c4aff078": {
     "decl": "Scenario: validate rejects a geometry whose coordinates are not three per atom",
     "file": "record",
@@ -8778,6 +9648,22 @@
       }
     ],
     "title": "validate rejects a geometry whose coordinates are not three per atom",
+    "type": "scenario"
+  },
+  "rq-c4c4e1d7": {
+    "decl": "Scenario: The combined form rejects one mixed contributor",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The combined form rejects one mixed contributor",
     "type": "scenario"
   },
   "rq-c51906fe": {
@@ -8802,6 +9688,18 @@
       }
     ],
     "title": "A relative path is stamped as the canonical absolute path",
+    "type": "scenario"
+  },
+  "rq-c5ea8cb9": {
+    "decl": "Scenario: two_point_energy matches the closed form",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "two_point_energy matches the closed form",
     "type": "scenario"
   },
   "rq-c6367ec2": {
@@ -8837,6 +9735,27 @@
     "title": "Consensus Rule",
     "type": "section"
   },
+  "rq-c68c02b0": {
+    "decl": "## Candidates and Matching",
+    "file": "extrapolation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Candidates and Matching",
+    "type": "section"
+  },
   "rq-c6dcf9fc": {
     "decl": "- `LineMatches<'w>` — the located lines of one `locate` call, borrowed from",
     "file": "parser-framework",
@@ -8848,6 +9767,19 @@
     ],
     "title": "LineMatches",
     "type": "api-item"
+  },
+  "rq-c7255c36": {
+    "decl": "## Pipeline Semantics",
+    "file": "extrapolation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Pipeline Semantics",
+    "type": "section"
   },
   "rq-c7356b3e": {
     "decl": "Scenario: A failed record from a matched parser is not unrecognized",
@@ -8872,6 +9804,14 @@
     ],
     "title": "Custom decimals loosen the signature",
     "type": "scenario"
+  },
+  "rq-c78360ba": {
+    "decl": "## Out of Scope",
+    "file": "extrapolation",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
   },
   "rq-c7886a80": {
     "decl": "Scenario: An imaginary frequency keeps its sign",
@@ -8899,6 +9839,18 @@
       }
     ],
     "title": "Sorting by Gibbs with undefined values last",
+    "type": "scenario"
+  },
+  "rq-c8ad2edd": {
+    "decl": "Scenario: A source list of the wrong length is an error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A source list of the wrong length is an error",
     "type": "scenario"
   },
   "rq-c8bfb90d": {
@@ -9059,6 +10011,34 @@
       }
     ],
     "title": "--makereal applies the participation test after flipping",
+    "type": "scenario"
+  },
+  "rq-cca456ff": {
+    "decl": "Scenario: el stays raw while elcorr shows the extrapolated energy",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "el stays raw while elcorr shows the extrapolated energy",
+    "type": "scenario"
+  },
+  "rq-ccc8ed3a": {
+    "decl": "Scenario: Mixed programs are fatal",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Mixed programs are fatal",
     "type": "scenario"
   },
   "rq-cd221e62": {
@@ -9311,6 +10291,22 @@
     "title": "A corrupt line in a merged input is skipped and reported",
     "type": "scenario"
   },
+  "rq-d516398b": {
+    "decl": "Scenario: A match replaces a stored correction",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A match replaces a stored correction",
+    "type": "scenario"
+  },
   "rq-d519cff6": {
     "decl": "## Gherkin Scenarios",
     "file": "parsers/xyz",
@@ -9341,6 +10337,18 @@
       }
     ],
     "title": "Companion xyz files route to the plain-xyz parser",
+    "type": "scenario"
+  },
+  "rq-d576647e": {
+    "decl": "Scenario: --extrapolate with --add-correction is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--extrapolate with --add-correction is a usage error",
     "type": "scenario"
   },
   "rq-d599d450": {
@@ -9481,6 +10489,18 @@
       }
     ],
     "title": "A ppt value is a mole fraction of the standard atmosphere",
+    "type": "scenario"
+  },
+  "rq-d82e314a": {
+    "decl": "Scenario: scf_energy is the final Hartree-Fock energy",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "scf_energy is the final Hartree-Fock energy",
     "type": "scenario"
   },
   "rq-d84cf2be": {
@@ -9826,6 +10846,18 @@
     "title": "Geometry",
     "type": "api-item"
   },
+  "rq-e18bdb98": {
+    "decl": "Scenario: A wrong value count is a usage error",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A wrong value count is a usage error",
+    "type": "scenario"
+  },
   "rq-e1c07994": {
     "decl": "Scenario: Near-zero modes do not participate",
     "file": "thermo",
@@ -9956,6 +10988,18 @@
     ],
     "title": "Record Assembly",
     "type": "section"
+  },
+  "rq-e4c551ee": {
+    "decl": "- `ExtrapMode` — the three forms:",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ExtrapMode",
+    "type": "api-item"
   },
   "rq-e4f87293": {
     "decl": "Scenario: A truncated output is stored as a truncated record",
@@ -10134,6 +11178,18 @@
     ],
     "title": "The g level follows the run's temperature",
     "type": "scenario"
+  },
+  "rq-e8016516": {
+    "decl": "- `blend_energy(low: f64, high: f64, fraction: f64) -> f64` — the CPS/LAF",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "src/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "blend_energy",
+    "type": "api-item"
   },
   "rq-e814b912": {
     "decl": "## Feature API",
@@ -10348,6 +11404,14 @@
     "title": "tests",
     "type": "api-item"
   },
+  "rq-eb93937e": {
+    "decl": "### Functions",
+    "file": "extrapolation",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
   "rq-ebaddd9d": {
     "decl": "Scenario: The last complete frame of a multi-frame file wins",
     "file": "parsers/xyz",
@@ -10464,6 +11528,22 @@
     "title": "A record without components has a dash composition token",
     "type": "scenario"
   },
+  "rq-edffc76e": {
+    "decl": "Scenario: Identical electronic energies are fatal",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Identical electronic energies are fatal",
+    "type": "scenario"
+  },
   "rq-ee3e38de": {
     "decl": "Scenario: A temperature outside the correlation's domain is a usage error",
     "file": "hydration",
@@ -10486,6 +11566,18 @@
       }
     ],
     "title": "ReactedMode",
+    "type": "api-item"
+  },
+  "rq-ef61dab4": {
+    "decl": "- `scf_energy` — the value of the last",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "src/parser/mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "scf_energy",
     "type": "api-item"
   },
   "rq-ef692e86": {
@@ -10810,6 +11902,18 @@
     "title": "Monomer rows print exactly zero",
     "type": "scenario"
   },
+  "rq-f7572661": {
+    "decl": "Scenario: validate rejects a non-finite scf_energy",
+    "file": "record",
+    "refs": [
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a non-finite scf_energy",
+    "type": "scenario"
+  },
   "rq-f7dd8d6f": {
     "decl": "Scenario: An uncanonicalizable path falls back to the path as given",
     "file": "parser-framework",
@@ -11017,6 +12121,18 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-fa4b7ff4": {
+    "decl": "Scenario: parse_extrapolation rejects malformed invocations",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_extrapolation rejects malformed invocations",
+    "type": "scenario"
+  },
   "rq-fa54bb5b": {
     "decl": "Scenario: A non-letter solvent code is a usage error",
     "file": "hydration",
@@ -11120,6 +12236,22 @@
     ],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-fcd67083": {
+    "decl": "Scenario: 2p attaches a cbs correction",
+    "file": "extrapolation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/extrapolate.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "2p attaches a cbs correction",
+    "type": "scenario"
   },
   "rq-fd428ce5": {
     "decl": "Scenario: A concentration above the standard state lowers the formation free energy",

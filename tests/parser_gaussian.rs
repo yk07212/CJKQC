@@ -377,3 +377,22 @@ fn a_route_line_only_in_the_tail_never_becomes_the_command() {
     assert_eq!(record.electronic_energy, Some(-1526.66937796));
     assert_eq!(record.status, RecordStatus::Ok);
 }
+
+// rq-b425579e
+#[test]
+fn scf_energy_comes_from_the_same_last_scf_done_line() {
+    let record = parse(&completed_log());
+    assert_eq!(record.scf_energy, Some(-1526.66937796));
+    assert_eq!(record.scf_energy, record.electronic_energy);
+}
+
+// rq-c2c04659
+#[test]
+fn a_log_without_an_scf_done_line_carries_neither_energy() {
+    let content = format!(
+        "{BANNER}{ROUTE}{CHARGE}{NORMAL_1}{CHARGE}{NATOMS}{GEOMETRY}{FREQUENCIES}{DIPOLE}{MULLIKEN}{SYMMETRY}{NORMAL_2}"
+    );
+    let record = parse(&content);
+    assert_eq!(record.electronic_energy, None);
+    assert_eq!(record.scf_energy, None);
+}
