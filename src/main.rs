@@ -286,9 +286,18 @@ struct Cli {
     rel_filter_ge: Vec<String>,
 
     // --- print flags: one per column (rqm/filtering.md) ---
-    /// Print the record name column.
+    /// Print the filename column: the record's name, the stem of the
+    /// source file name.
+    #[arg(long = "filename")]
+    filename: bool,
+    /// Print the name column: the composition token, 2am3sa-style
+    /// alphabetical pairs without separators.
     #[arg(long = "name")]
     name: bool,
+    /// Print the path column: the record's source_path, the QC output
+    /// file the record was parsed from.
+    #[arg(long = "path")]
+    path: bool,
     /// Print the job status column (ok, failed, truncated).
     #[arg(long = "status")]
     status: bool,
@@ -383,10 +392,6 @@ struct Cli {
     /// Print the resolved composition as 2am+3sa-style pairs.
     #[arg(long = "components")]
     components: bool,
-    /// Print the composition token: 2am3sa-style alphabetical pairs
-    /// without separators.
-    #[arg(long = "ct")]
-    ct: bool,
 
     /// Write the final structures as xyz frames into movie.xyz
     /// (rqm/movie.md): one frame per record that is ok and carries a
@@ -783,7 +788,9 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     };
 
     let set_print = |column: Column| match column {
+        Column::Filename => cli.filename,
         Column::Name => cli.name,
+        Column::Path => cli.path,
         Column::Status => cli.status,
         Column::Program => cli.program,
         Column::Command => cli.command,
@@ -813,7 +820,6 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         Column::Nimag => cli.nimag,
         Column::RotS => cli.rots,
         Column::Components => cli.components,
-        Column::Ct => cli.ct,
     };
     let columns: Vec<Column> = Column::ALL
         .iter()

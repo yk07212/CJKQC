@@ -341,7 +341,7 @@ Feature: Thermochemistry on demand
   @rq-bf8fdacc
   Scenario: A saddle point's thermochemistry columns print dashes
     Given a database with one record holding an imaginary frequency
-    When CJKQC is invoked with the database and "--name --zpe --h --s --g" and no --out
+    When CJKQC is invoked with the database and "--filename --zpe --h --s --g" and no --out
     Then the zpe, h, s, and g columns each print -
 
   @rq-f6d24cca
@@ -353,7 +353,7 @@ Feature: Thermochemistry on demand
   @rq-9a4270bc
   Scenario: --makereal prints the saddle point's thermochemistry
     Given a database with one record holding an imaginary frequency
-    When CJKQC is invoked with the database and "--name --g --makereal" and no --out
+    When CJKQC is invoked with the database and "--filename --g --makereal" and no --out
     Then the g column prints a defined value
 
   @rq-cc73801c
@@ -365,7 +365,7 @@ Feature: Thermochemistry on demand
   @rq-0bcbeeb1
   Scenario: --makereal leaves the raw observables alone
     Given a database with one record holding frequencies [1000.0, -300.0]
-    When CJKQC is invoked with the database and "--name --nimag --g --makereal" and no --out
+    When CJKQC is invoked with the database and "--filename --nimag --g --makereal" and no --out
     Then nimag prints 1 and g prints a defined value
     And the lf cutoff property still sees -300.0, so "--filter-lt lf -200" keeps the record
 
@@ -378,13 +378,13 @@ Feature: Thermochemistry on demand
   @rq-28e4ef6b
   Scenario: --ignoreimag prints the saddle point's thermochemistry
     Given a database with one record holding an imaginary frequency
-    When CJKQC is invoked with the database and "--name --g --ignoreimag" and no --out
+    When CJKQC is invoked with the database and "--filename --g --ignoreimag" and no --out
     Then the g column prints a defined value
 
   @rq-daa8d422
   Scenario: --ignoreimag leaves the raw observables alone
     Given a database with one record holding frequencies [1000.0, -300.0]
-    When CJKQC is invoked with the database and "--name --nimag --g --ignoreimag" and no --out
+    When CJKQC is invoked with the database and "--filename --nimag --g --ignoreimag" and no --out
     Then nimag prints 1 and g prints a defined value
     And the lf cutoff property still sees -300.0, so "--filter-lt lf -200" keeps the record
 
@@ -484,7 +484,7 @@ Feature: Thermochemistry on demand
   @rq-64567efa
   Scenario: Absurd-temperature records print dashes and drop out of --glob
     Given a database whose group of records all derive to non-finite terms at 1e17 K
-    When CJKQC is invoked with the database, "--temp 1e17 --glob --name" and no --out
+    When CJKQC is invoked with the database, "--temp 1e17 --glob --filename" and no --out
     Then the printed table is only the header row
 
   @rq-cb57c609
@@ -544,13 +544,13 @@ Feature: Thermochemistry on demand
   @rq-d04cc134
   Scenario: A degenerate geometry prints dashes, not infinities
     Given a database with one record whose atoms all coincide
-    When CJKQC is invoked with the database and "--name --zpe --h --s --g" and no --out
+    When CJKQC is invoked with the database and "--filename --zpe --h --s --g" and no --out
     Then the zpe, h, s, and g columns each print -
 
   @rq-9dc99217
   Scenario: Undefined thermochemistry prints as a dash
     Given a database with one record lacking frequencies
-    When CJKQC is invoked with the database and "--name --g" and no --out
+    When CJKQC is invoked with the database and "--filename --g" and no --out
     Then the g column prints -
 
   # --- Registry and pipeline integration ---
@@ -564,7 +564,7 @@ Feature: Thermochemistry on demand
   @rq-c879d42f
   Scenario: Sorting by Gibbs with undefined values last
     Given records with gibbs -100.0, -100.5, and no electronic_energy
-    When CJKQC is invoked with the database and "--sort g --name --g" and no --out
+    When CJKQC is invoked with the database and "--sort g --filename --g" and no --out
     Then the order is -100.5, -100.0, undefined
 
   @rq-60d713bc
@@ -576,7 +576,7 @@ Feature: Thermochemistry on demand
   @rq-573f5674
   Scenario: --glob keeps each group's lowest Gibbs record
     Given a group with three records of differing gibbs and another group with one
-    When CJKQC is invoked with the database, "--glob --name" and no --out
+    When CJKQC is invoked with the database, "--glob --filename" and no --out
     Then one record per group is printed, each the group's minimum gibbs
 
   @rq-58808413
@@ -588,7 +588,7 @@ Feature: Thermochemistry on demand
   @rq-4cd891c1
   Scenario: Uniqueness rounds Gibbs like any metric
     Given two records whose gibbs values agree to 3 decimals and a third that differs
-    When CJKQC is invoked with the database and "--uniq g --name" and no --out
+    When CJKQC is invoked with the database and "--uniq g --filename" and no --out
     Then the first of the two agreeing records is kept and the other dropped
 
   # --- Units ---

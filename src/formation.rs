@@ -275,7 +275,7 @@ fn select_references<'a>(
 
 /// Whether `left` sorts strictly before `right` under the ascending
 /// ordering of `sort`; `--reverse` never applies to the reference
-/// (rqm/formation.md). Nameless monomers order first under `name`.
+/// (rqm/formation.md). Nameless monomers order first under `filename`.
 // rq-9e898298
 fn sorts_before(
     left: &Record,
@@ -284,7 +284,7 @@ fn sorts_before(
     memo: &ThermoMemo,
 ) -> bool {
     match sort {
-        crate::filter::SortKey::Name => match (left.name.as_deref(), right.name.as_deref()) {
+        crate::filter::SortKey::Filename => match (left.name.as_deref(), right.name.as_deref()) {
             (None, Some(_)) => true,
             (Some(a), Some(b)) => a < b,
             _ => false,
@@ -408,8 +408,8 @@ pub fn corrected_formation_values(
     Formation { electronic, gibbs }
 }
 
-/// The formation section: a `ct el g` header row, then one row per record
-/// in the given order. The `ct` cell is the record's composition token
+/// The formation section: a `name el g` header row, then one row per record
+/// in the given order. The `name` cell is the record's composition token
 /// (`rqm/filtering.md` Printing), `-` without components; values follow
 /// the run's energy unit (kcal/mol under `--unit`, hartree otherwise) and
 /// print through the same energy formatter as the table columns, `-` when
@@ -432,11 +432,11 @@ pub fn print_formation_section(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["ct", "el", "g"])
+    print_formation_table(&rows, unit, &["name", "el", "g"])
 }
 
 /// The corrected formation section (`rqm/formation.md`): the raw
-/// section's table with the corrected levels — header `ct elcorr gcorr`,
+/// section's table with the corrected levels — header `name elcorr gcorr`,
 /// the same composition tokens, formatting, and `-` rules.
 ///
 /// (rq-4f20e170)
@@ -456,13 +456,13 @@ pub fn print_formation_corr_section(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["ct", "elcorr", "gcorr"])
+    print_formation_table(&rows, unit, &["name", "elcorr", "gcorr"])
 }
 
-/// The shared section table: a header row, then one `ct el g`-shaped row
+/// The shared section table: a header row, then one `name el g`-shaped row
 /// per `(token, formation)` pair in the given order — shared with the
 /// collapsed sections (`rqm/formation.md` Boltzmann-Averaged Sections).
-/// Aligned like the main table (`rqm/filtering.md` Printing): `ct` a
+/// Aligned like the main table (`rqm/filtering.md` Printing): `name` a
 /// text column (left), the energy columns numeric (right), header cells
 /// aligning with their columns.
 // rq-9503bcb2
@@ -766,7 +766,7 @@ pub fn corrected_ensemble_formation_values(
 }
 
 /// The collapsed raw section (Boltzmann-Averaged Sections): header
-/// `ct el g`, one row per ensemble in the given order, `-` for undefined
+/// `name el g`, one row per ensemble in the given order, `-` for undefined
 /// values and for the unnamed ensemble's token.
 ///
 /// (rq-30ea9ebc)
@@ -786,12 +786,12 @@ pub fn print_formation_ensembles(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["ct", "el", "g"])
+    print_formation_table(&rows, unit, &["name", "el", "g"])
 }
 
 /// The collapsed corrected section (Boltzmann-Averaged Sections): the
 /// collapsed raw section's table with the corrected levels — header
-/// `ct elcorr gcorr`.
+/// `name elcorr gcorr`.
 ///
 /// (rq-4c1bcb87)
 pub fn print_formation_corr_ensembles(
@@ -810,5 +810,5 @@ pub fn print_formation_corr_ensembles(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["ct", "elcorr", "gcorr"])
+    print_formation_table(&rows, unit, &["name", "elcorr", "gcorr"])
 }

@@ -31,12 +31,12 @@ row per composition (Boltzmann-Averaged Sections).
 - For each component code present in that set, the **reference** is a
   single monomer record: the first of that code's monomers under the run's
   sort ordering (`rqm/filtering.md` Sort) — `--sort g` the lowest Gibbs
-  free energy, `--sort rg`, `--sort mass`, `--sort name` the first under
+  free energy, `--sort rg`, `--sort mass`, `--sort filename` the first under
   that key, and `--sort el` or no `--sort` at all the lowest electronic
   energy. The ordering is ascending — `--reverse` orients the table,
   never the reference — ties keep the first in load order, and for the
   numeric keys a monomer whose sort-key value is undefined orders after
-  every defined one. Under `--sort name` the undefined case is a nameless
+  every defined one. Under `--sort filename` the undefined case is a nameless
   monomer, which orders before every named one — the nameless-first
   carve-out of `rqm/filtering.md` Sort.
 - Both reference values come from that one record: the **electronic
@@ -77,13 +77,13 @@ binding column exists.
   print flags requested one) and before any summary line, so stdout is
   always: main table, formation section, summary. A run with `--formation`
   but no column flags prints only the formation section.
-- The section is a table: a header row `ct el g`, then one row per
+- The section is a table: a header row `name el g`, then one row per
   printed record in run order, aligned like the main table
-  (`rqm/filtering.md` Printing): `ct` a text column, `el` and `g`
+  (`rqm/filtering.md` Printing): `name` a text column, `el` and `g`
   numeric ones, each column as wide as its widest cell (header
-  included), header cells aligning with their columns. `ct` is the
+  included), header cells aligning with their columns. `name` is the
   record's composition token —
-  the same alphabetical `2am3sa`-style pairs the `--ct` column prints
+  the same alphabetical `2am3sa`-style pairs the `--name` column prints
   (`rqm/filtering.md` Printing) — and `-` when the record has no
   components; `el` and `g` are the formation energy and formation free
   energy in the run's energy unit — kcal/mol under `--unit`, hartree
@@ -120,7 +120,7 @@ binding column exists.
   stdout is always: main table, formation section, corrected formation
   section, summary. A run with `--formation-corr` but no other print flag
   prints only the corrected section.
-- The section is a table: a header row `ct elcorr gcorr`, then one row per
+- The section is a table: a header row `name elcorr gcorr`, then one row per
   printed record in run order, aligned like the raw section's table. The
   composition token and the number formatting — the run's energy unit,
   kcal/mol under `--unit`
@@ -251,7 +251,7 @@ binding column exists.
   as for records — the concentration term is constant within a group, so
   concentrating and collapsing produce the same numbers in either order.
   The section prints one row per ensemble in first-appearance order —
-  `ct` the ensemble's composition token, `-` for the unnamed ensemble —
+  `name` the ensemble's composition token, `-` for the unnamed ensemble —
   under the section's standing header, unit, and formatting.
 - Consequences worth naming: a composition whose records all lack the
   section's Gibbs level — a single-point-only group — prints one row of
@@ -316,7 +316,7 @@ binding column exists.
   nᵢ,eff · k_B T ln(cᵢ/p°) / E_h, with nᵢ,eff = nᵢ or, under
   `self_consistent`, nᵢ·(N−1)/N; 0 when no spec matches.
 - `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-9503bcb2 -->
-  — the section table with header `ct el g`, one row per record in the
+  — the section table with header `name el g`, one row per record in the
   given order, `-` for undefined values and for the composition token
   when the record has no components.
 - `corrected_monomer_references(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> CorrectedMonomerReferences` <!-- rq-789635d3 -->
@@ -327,7 +327,7 @@ binding column exists.
   corrected Gibbs value has the same concentration term subtracted, with
   the same non-finite guard.
 - `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4f20e170 -->
-  — the corrected section table with header `ct elcorr gcorr`.
+  — the corrected section table with header `name elcorr gcorr`.
 - `collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble>` <!-- rq-18dba668 -->
   — the raw section's collapse (Boltzmann-Averaged Sections): groups by
   components map in first-appearance order, the records without
@@ -351,11 +351,11 @@ binding column exists.
 - `corrected_ensemble_formation_values(ensemble: &Ensemble, references: &CorrectedMonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-f5583f17 -->
   — the corrected row's two levels, same rule.
 - `print_formation_ensembles(ensembles: &[Ensemble], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-30ea9ebc -->
-  — the collapsed raw section: header `ct el g`, one row per ensemble in
+  — the collapsed raw section: header `name el g`, one row per ensemble in
   the given order, `-` for undefined values and for the unnamed
   ensemble's token.
 - `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4c1bcb87 -->
-  — the collapsed corrected section: header `ct elcorr gcorr`.
+  — the collapsed corrected section: header `name elcorr gcorr`.
 
 ### Crate Layout <!-- rq-22e7999c -->
 
@@ -439,9 +439,9 @@ Feature: Formation energies from monomer references
     Then the electronic reference is conformer B's energy and the gibbs reference is conformer B's free energy
 
   @rq-90e2ea3e
-  Scenario: --sort name takes the nameless monomer as the reference
+  Scenario: --sort filename takes the nameless monomer as the reference
     Given a nameless ok monomer with components am = 1 and electronic energy -50.0 and a named ok am = 1 monomer with electronic energy -50.5
-    When collect_monomers is called with them and the name sort key
+    When collect_monomers is called with them and the filename sort key
     Then the electronic reference for "am" is -50.0
 
   @rq-feddee4c
@@ -506,7 +506,7 @@ Feature: Formation energies from monomer references
   Scenario: The section identifies rows by composition token
     Given a database with a 2am1sa cluster and am and sa monomers
     When CJKQC is invoked with the database and "--formation" and no --out
-    Then the section header names the columns ct, el, g in that order
+    Then the section header names the columns name, el, g in that order
     And the cluster's row starts with the composition token 2am1sa
 
   @rq-ed9e179c
@@ -519,12 +519,12 @@ Feature: Formation energies from monomer references
   Scenario: The section aligns its columns like the main table
     Given a database with a 2am1sa cluster with defined formation values and am and sa monomers
     When CJKQC is invoked with the database and "--formation" and no --out
-    Then the ct cells left-align and the el and g cells right-align, header included, each column as wide as its widest cell
+    Then the name cells left-align and the el and g cells right-align, header included, each column as wide as its widest cell
 
   @rq-1b6b5757
   Scenario: The formation section follows the table and precedes the summary
     Given a database with a 2am cluster and am and sa monomers
-    When CJKQC is invoked with the database and "--sort el --name --el --formation --out kept.jsonl"
+    When CJKQC is invoked with the database and "--sort el --filename --el --formation --out kept.jsonl"
     Then stdout shows the main table, then the formation section, then "filtered 3 records into kept.jsonl"
 
   @rq-0f78a33b
@@ -570,7 +570,7 @@ Feature: Formation energies from monomer references
   Scenario: The corrected section evaluates the attached corrections
     Given a 1am1sa cluster and am and sa monomers all carrying corrections
     When CJKQC is invoked with the database and "--formation-corr" and no --out
-    Then the header names the columns ct, elcorr, gcorr in that order and the cluster's row shows defined values
+    Then the header names the columns name, elcorr, gcorr in that order and the cluster's row shows defined values
 
   @rq-20ab3295
   Scenario: A record without a correction has dashes in the corrected section
@@ -750,7 +750,7 @@ Feature: Formation energies from monomer references
   @rq-75ac7572
   Scenario: --conc without a formation section is an accepted no-op
     Given a database with one record
-    When CJKQC is invoked with the database and "--name --el --conc sa 100ppt" and no --out
+    When CJKQC is invoked with the database and "--filename --el --conc sa 100ppt" and no --out
     Then the table prints normally, identical to the run without --conc
 
   @rq-d6fc375d
@@ -761,7 +761,7 @@ Feature: Formation energies from monomer references
   @rq-6f3e4732
   Scenario: The main table and --glob ignore the concentrations
     Given a database with a 2am1sa cluster and its am and sa monomers
-    When CJKQC is invoked with the database and "--ct --g --glob --formation --conc sa 100ppt" and no --out
+    When CJKQC is invoked with the database and "--name --g --glob --formation --conc sa 100ppt" and no --out
     Then the main table's g column equals the run without --conc
     And the formation section's g value carries the concentration term
 
@@ -784,7 +784,7 @@ Feature: Formation energies from monomer references
   Scenario: --bavg prints one row per composition
     Given a database with two 2am1sa conformers, an am monomer, and an sa monomer
     When CJKQC is invoked with the database and "--formation --bavg" and no --out
-    Then the section header names the columns ct, el, g in that order
+    Then the section header names the columns name, el, g in that order
     And the section prints three rows: 2am1sa, 1am, and 1sa
 
   @rq-7d43ccc9
@@ -899,14 +899,14 @@ Feature: Formation energies from monomer references
   @rq-94cec13a
   Scenario: --bavg leaves the main table per record
     Given a database with three 2am1sa conformers and the am and sa monomers
-    When CJKQC is invoked with the database and "--ct --g --formation --bavg" and no --out
+    When CJKQC is invoked with the database and "--name --g --formation --bavg" and no --out
     Then the main table prints three rows
     And the formation section prints one row per composition
 
   @rq-9f5be6e0
   Scenario: --bavg without a formation section is an accepted no-op
     Given a database with one record
-    When CJKQC is invoked with the database and "--name --el --bavg" and no --out
+    When CJKQC is invoked with the database and "--filename --el --bavg" and no --out
     Then the table prints normally, identical to the run without --bavg
 
   @rq-b4bcf592

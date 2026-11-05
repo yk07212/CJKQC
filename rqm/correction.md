@@ -408,21 +408,21 @@ Feature: Single-point energy corrections
   @rq-bdac8cdb
   Scenario: --sort elcorr orders ascending with undefined last
     Given records with corrected energies -76.5 and -76.4 and one without a correction
-    When CJKQC is invoked with the database and "--sort elcorr --name" and no --out
+    When CJKQC is invoked with the database and "--sort elcorr --filename" and no --out
     Then the order is -76.5, -76.4, uncorrected
     And with --reverse the uncorrected record sorts first
 
   @rq-d84cf2be
   Scenario: --sort gcorr orders ascending with undefined last
     Given records with corrected Gibbs -100.5 and -100.0 and one without a correction
-    When CJKQC is invoked with the database and "--sort gcorr --name" and no --out
+    When CJKQC is invoked with the database and "--sort gcorr --filename" and no --out
     Then the order is -100.5, -100.0, uncorrected
     And with --reverse the uncorrected record sorts first
 
   @rq-86219849
   Scenario: Stored corrections work without --add-correction
     Given a database whose records already carry corrections
-    When CJKQC is invoked with the database and "--cutr elcorr 5 --name" and no --out
+    When CJKQC is invoked with the database and "--cutr elcorr 5 --filename" and no --out
     Then the cutoff applies to the stored corrections
 
   # --- Registry ---

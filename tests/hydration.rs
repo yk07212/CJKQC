@@ -647,7 +647,7 @@ fn the_layout_is_a_token_row_and_a_percentage_row_per_group() {
     let lines: Vec<&str> = section.lines().collect();
     assert_eq!(lines[0], " 1sa 1sa1w 1sa2w", "{section}");
     assert!(
-        !lines[0].starts_with("ct "),
+        !lines[0].starts_with("name "),
         "no header line prints: {section}"
     );
     assert!(

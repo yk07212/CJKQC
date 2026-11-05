@@ -638,7 +638,7 @@ Feature: Extrapolation corrections
   @rq-478fad20
   Scenario: A manipulated run reports its corrections
     Given database "a.jsonl" with 2 records and two source databases with a candidate matching one of them
-    When CJKQC is invoked with "a.jsonl --extrapolate 2s low.jsonl high.jsonl 1.5 --name --out out.jsonl"
+    When CJKQC is invoked with "a.jsonl --extrapolate 2s low.jsonl high.jsonl 1.5 --filename --out out.jsonl"
     Then stdout contains "filtered 2 records into out.jsonl (1 corrected)"
 
   @rq-cca456ff

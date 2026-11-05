@@ -285,7 +285,7 @@ pub fn hydration_percentages(group: &HydrationGroup, temperature: f64) -> Vec<Op
 
 /// The paired-row layout of one or more core groups
 /// (`rqm/hydration.md` Printing): per group the states' composition
-/// tokens — the same alphabetical pairs the `--ct` column prints — then
+/// tokens — the same alphabetical pairs the `--name` column prints — then
 /// their percentages with one decimal, `-` for an undefined state. No
 /// header row; columns align within a group, each as wide as the wider
 /// of its token and percentage cell, cells right-aligned, single space

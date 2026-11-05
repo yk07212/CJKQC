@@ -126,7 +126,7 @@ fn sort_name_takes_the_nameless_monomer_as_the_reference() {
     let mut nameless = monomer("z", Some(-50.0), "am", 1000.0);
     nameless.name = None;
     let named = monomer("a", Some(-50.5), "am", 1000.0);
-    let references = collect_monomers(&[nameless, named], &memo(), SortKey::Name);
+    let references = collect_monomers(&[nameless, named], &memo(), SortKey::Filename);
     assert_eq!(references.electronic.get("am"), Some(&-50.0));
 }
 
@@ -367,7 +367,7 @@ fn the_corrected_section_prints_in_the_runs_unit() {
         .expect("header row")
         .split_whitespace()
         .collect();
-    assert_eq!(header, ["ct", "elcorr", "gcorr"]);
+    assert_eq!(header, ["name", "elcorr", "gcorr"]);
     let row = kcal.lines().nth(1).expect("one row");
     let value: f64 = row
         .split_whitespace()

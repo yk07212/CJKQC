@@ -154,7 +154,7 @@ remainder cancels.
 ## Printing <!-- rq-5e154b92 -->
 
 - No header row. Per core group, two rows: the states' composition
-  tokens — the same alphabetical `2am3sa`-style pairs the `--ct` column
+  tokens — the same alphabetical `2am3sa`-style pairs the `--name` column
   prints (`rqm/filtering.md` Printing) — then their percentages. The
   percentages print with one decimal, `-` for an undefined state; they
   are rounded for display and need not sum to exactly 100.0. A blank
@@ -323,13 +323,13 @@ Feature: Hydration and solvation distributions
   @rq-c0dea4f9
   Scenario: --rh without a hydration section is an accepted no-op
     Given a database with one record
-    When CJKQC is invoked with the database and "--name --el --rh 0.5" and no --out
+    When CJKQC is invoked with the database and "--filename --el --rh 0.5" and no --out
     Then the table prints normally, identical to the run without --rh
 
   @rq-93c3be03
   Scenario: --psolvent without a hydration section is an accepted no-op
     Given a database with one record
-    When CJKQC is invoked with the database and "--name --el --psolvent 100ppt" and no --out
+    When CJKQC is invoked with the database and "--filename --el --psolvent 100ppt" and no --out
     Then the table prints normally, identical to the run without --psolvent
 
   # --- Solvent pressure ---

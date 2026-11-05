@@ -156,7 +156,7 @@ pub struct Cutoff {
     pub value: f64,
 }
 
-/// A sort key: `el`, `g`, `elcorr`, `gcorr`, `rg`, `mass`, `name`.
+/// A sort key: `el`, `g`, `elcorr`, `gcorr`, `rg`, `mass`, `filename`.
 ///
 /// (rq-953da4ce)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -175,12 +175,13 @@ pub enum SortKey {
     Rg,
     /// Total mass.
     Mass,
-    /// Record name.
-    Name,
+    /// The record's `name` — the file stem, the `filename` column.
+    Filename,
 }
 
 impl SortKey {
     /// Parses a sort key name; `None` for unknown names.
+    // rq-2371c178
     pub fn parse(name: &str) -> Option<SortKey> {
         match name {
             "el" => Some(SortKey::El),
@@ -189,7 +190,7 @@ impl SortKey {
             "gcorr" => Some(SortKey::GCorr),
             "rg" => Some(SortKey::Rg),
             "mass" => Some(SortKey::Mass),
-            "name" => Some(SortKey::Name),
+            "filename" => Some(SortKey::Filename),
             _ => None,
         }
     }
@@ -286,8 +287,20 @@ pub enum Unit {
 /// (rq-38b619ff rq-4ea8ca35)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Column {
-    /// Record name.
+    /// The record's `name`: the stem of the source file name
+    /// (`rqm/record.md`).
+    ///
+    /// (rq-38b619ff)
+    Filename,
+    /// Composition token: alphabetical pairs without separators
+    /// (`2am3sa`).
+    ///
+    /// (rq-38b619ff)
     Name,
+    /// The record's `source_path` (`rqm/record.md`), verbatim.
+    ///
+    /// (rq-4ea8ca35)
+    Path,
     /// Status (`ok`, `failed`, `truncated`).
     Status,
     /// Program token and version (`xtb 6.7.1`).
@@ -384,17 +397,15 @@ pub enum Column {
     RotS,
     /// Components as `2am+3sa`.
     Components,
-    /// Composition token: alphabetical pairs without separators
-    /// (`2am3sa`).
-    ///
-    /// (rq-38b619ff)
-    Ct,
 }
 
 impl Column {
     /// All columns in canonical print order.
-    pub const ALL: [Column; 32] = [
+    // rq-6fb14f23
+    pub const ALL: [Column; 33] = [
+        Column::Filename,
         Column::Name,
+        Column::Path,
         Column::Status,
         Column::Program,
         Column::Command,
@@ -425,7 +436,6 @@ impl Column {
         Column::Nimag,
         Column::RotS,
         Column::Components,
-        Column::Ct,
     ];
 
     /// The derived-property registry key of an energy column
@@ -467,7 +477,9 @@ impl Column {
     /// Header label (also the print flag's long name).
     pub fn label(&self) -> &'static str {
         match self {
+            Column::Filename => "filename",
             Column::Name => "name",
+            Column::Path => "path",
             Column::Status => "status",
             Column::Program => "program",
             Column::Command => "command",
@@ -498,25 +510,25 @@ impl Column {
             Column::Nimag => "nimag",
             Column::RotS => "rots",
             Column::Components => "components",
-            Column::Ct => "ct",
         }
     }
 
     /// The column's alignment in the table: the text columns
-    /// (`name`, `status`, `program`, `command`, `correction`,
-    /// `components`, `ct`) align left, every numeric column aligns right
-    /// (`rqm/filtering.md` Printing).
+    /// (`filename`, `name`, `path`, `status`, `program`, `command`,
+    /// `correction`, `components`) align left, every numeric column
+    /// aligns right (`rqm/filtering.md` Printing).
     ///
     /// (rq-4ea8ca35)
     pub(crate) fn alignment(&self) -> Alignment {
         match self {
-            Column::Name
+            Column::Filename
+            | Column::Name
+            | Column::Path
             | Column::Status
             | Column::Program
             | Column::Command
             | Column::Correction
-            | Column::Components
-            | Column::Ct => Alignment::Left,
+            | Column::Components => Alignment::Left,
             _ => Alignment::Right,
         }
     }
@@ -689,9 +701,9 @@ pub fn apply_filters(
 }
 
 /// A column's cell alignment in the aligned tables: text columns
-/// (`name`, `status`, `program`, `command`, `correction`, `components`,
-/// `ct`) align left, numeric columns align right (`rqm/filtering.md`
-/// Printing).
+/// (`filename`, `name`, `path`, `status`, `program`, `command`,
+/// `correction`, `components`) align left, numeric columns align right
+/// (`rqm/filtering.md` Printing).
 ///
 /// (rq-4ea8ca35)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -834,7 +846,13 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
             .registry_key()
             .and_then(|key| memo.value(key, record))
             .map_or_else(undefined, |value| format_energy(value, unit)),
-        Column::Name => record.name.clone().unwrap_or_else(undefined),
+        // The filename cell prints the record's `name` (the file stem),
+        // the name cell the composition token, the path cell the
+        // `source_path` verbatim (`rqm/record.md`).
+        // rq-c0c700b2 rq-9bea312b rq-1f63ac38 rq-7b0d8978 rq-5ad1c077 rq-3f2648cf
+        Column::Filename => record.name.clone().unwrap_or_else(undefined),
+        Column::Path => record.source_path.clone().unwrap_or_else(undefined),
+        Column::Name => composition_token(record.components.as_ref()).unwrap_or_else(undefined),
         Column::Status => match record.status {
             RecordStatus::Ok => "ok",
             RecordStatus::Failed => "failed",
@@ -949,7 +967,6 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
                 .join("+"),
             _ => undefined(),
         },
-        Column::Ct => composition_token(record.components.as_ref()).unwrap_or_else(undefined),
         // Population cells never reach `format_cell`: print_table renders
         // them from the precomputed ensemble vectors above
         // (`rqm/population.md` Computation). Fail loudly if a future print
@@ -1135,14 +1152,14 @@ fn apply_glob(records: &mut Vec<Record>, grouping: Grouping, memo: &ThermoMemo) 
 }
 
 /// Ascending by default; undefined keys sort last ascending and first
-/// descending; nameless records sort first ascending under `name`.
+/// descending; nameless records sort first ascending under `filename`.
 /// Numeric keys are decorated (the sort key is resolved once per record
 /// through the memo), sorted, and undecorated — one derivation per record
 /// for the `g` key, not one per comparison (`rqm/thermo.md` Performance).
 /// The sort is stable, so equal keys keep their relative order.
 // rq-8b44ad8d
 fn sort_records(records: &mut Vec<Record>, key: SortKey, reverse: bool, memo: &ThermoMemo) {
-    if key == SortKey::Name {
+    if key == SortKey::Filename {
         records.sort_by(|a, b| {
             let ordering = match (a.name.as_deref(), b.name.as_deref()) {
                 (Some(x), Some(y)) => x.cmp(y),
@@ -1189,7 +1206,7 @@ pub(crate) fn sort_value_for(record: &Record, key: SortKey, memo: &ThermoMemo) -
         SortKey::GCorr => property_value(record, Property::GCorr, memo),
         SortKey::Rg => property_value(record, Property::Rg, memo),
         SortKey::Mass => property_value(record, Property::Mass, memo),
-        SortKey::Name => None,
+        SortKey::Filename => None,
     }
 }
 

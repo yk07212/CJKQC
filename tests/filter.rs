@@ -617,7 +617,7 @@ fn glob_drops_records_with_undefined_gibbs() {
 fn energy_columns_print_kcal_mol_under_unit() {
     let record = gibbs_record("warm", -1.0, Some(components(&[("am", 1)])));
     let columns = [
-        Column::Name,
+        Column::Filename,
         Column::El,
         Column::Zpe,
         Column::H,
@@ -639,7 +639,7 @@ fn energy_columns_print_kcal_mol_under_unit() {
         .collect();
     assert_eq!(
         lines[0],
-        ["name", "el", "zpe", "h", "s", "g"]
+        ["filename", "el", "zpe", "h", "s", "g"]
             .map(str::to_string)
             .to_vec()
     );

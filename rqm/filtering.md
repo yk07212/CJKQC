@@ -20,8 +20,9 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
   `--cutr`, `--pass`, `--passr`, `--is`, `--isnot`, `--filter-lt`,
   `--filter-ge`, `--rel-filter-lt`, `--rel-filter-ge`, `--uniq`,
   `--reacted`, `--reacted2`, `--sort`, `--reverse`, `--select`,
-  `--glob`, `--shuffle`, `--seed`, `--noname`. **Print flags** (`--name`,
-  `--el`, … — see Printing) select table columns; they print and
+  `--glob`, `--shuffle`, `--seed`, `--noname`. **Print flags**
+  (`--filename`, `--name`, `--path`, `--el`, … — see Printing) select
+  table columns; they print and
   manipulate nothing. **Settings flags** — `--temp`, `--fc`, `--fscale`,
   `--makereal`, `--ignoreimag` (`rqm/thermo.md`) and `--unit` — configure
   derivations and the energy unit at printing; they never manipulate,
@@ -65,7 +66,10 @@ not trigger it.
   one separate unnamed group.
 - `--noname` collapses everything into a single global group;
   `--extract`/`--nextract` then compare their patterns verbatim against
-  each record's `name` (no ranges, wildcards, or zero-count rules).
+  each record's `name` (no ranges, wildcards, or zero-count rules). The
+  compared `name` is the record's `name` field — the `filename` column
+  (`rqm/filtering.md` Printing) — not the composition token the `name`
+  column prints.
 - The population columns (`rqm/population.md`) group by the same rule: one
   population per composition group, or one global population under
   `--noname`.
@@ -154,10 +158,10 @@ the property set and units:
 
 - `--sort <key>` with keys `el`, `g` (Gibbs free energy derived at the
   run's conditions, `rqm/thermo.md`), `elcorr`, `gcorr` (the corrected
-  levels, `rqm/correction.md`), `rg`, `mass`, `name`.
+  levels, `rqm/correction.md`), `rg`, `mass`, `filename`.
   Ascending unless `--reverse`. A record whose sort key is undefined sorts
   last ascending, first descending; records without a `name` sort first
-  ascending under `name`. `--reverse` only orients a sort (explicit
+  ascending under `filename`. `--reverse` only orients a sort (explicit
   `--sort` or the implicit sort); given with no sort in effect it changes
   nothing, though it still counts the run as a manipulation.
 - `--select <n>` keeps the first `n` records of each group (after the
@@ -175,11 +179,11 @@ the property set and units:
 ## Printing <!-- rq-4ea8ca35 -->
 
 - Printing follows JKQC: every printable column has its own flag —
-  `--name`, `--status`, `--program`, `--command`, `--correction`, `--el`,
-  `--zpe`, `--h`, `--s`, `--g`, `--elcorr`, `--hcorr`, `--gcorr`, `--pop`,
-  `--rg`, `--mass`, `--dip`, `--dips`, `--charge`, `--multiplicity`,
-  `--rsn`, `--natoms`, `--lf`, `--freqs`, `--nfreq`, `--nimag`,
-  `--rots`, `--components`, `--ct`.
+  `--filename`, `--name`, `--path`, `--status`, `--program`, `--command`,
+  `--correction`, `--el`, `--zpe`, `--h`, `--s`, `--g`, `--elcorr`,
+  `--hcorr`, `--gcorr`, `--pop`, `--rg`, `--mass`, `--dip`, `--dips`,
+  `--charge`, `--multiplicity`, `--rsn`, `--natoms`, `--lf`, `--freqs`,
+  `--nfreq`, `--nimag`, `--rots`, `--components`.
   `--dip` prints the dipole magnitude; `--dips` prints the dipole
   vector. There is no default
   selection: no print flag means no table is printed at all. The
@@ -200,8 +204,8 @@ the property set and units:
   its whole printed string, internal spaces included), with a single
   space between columns and no trailing whitespace: a line ends with
   its last cell, whatever that cell's alignment. The text columns
-  `name`, `status`, `program`,
-  `command`, `correction`, `components`, and `ct` align left; the
+  `filename`, `name`, `path`, `status`, `program`, `command`,
+  `correction`, and `components` align left; the
   numeric columns — the energy columns, the population columns, `rg`,
   `mass`, `dip`, `dips`, `charge`, `multiplicity`, `rsn`, `natoms`, `lf`,
   `freqs`, `nfreq`, `nimag`, and `rots` — align right; in both cases the
@@ -221,9 +225,12 @@ the property set and units:
   of `rqm/thermo.md` in their descending cm⁻¹ order with 6 decimals
   each, comma-separated without spaces. `rsn`, `charge`, `multiplicity`,
   `natoms`, and the frequency counts print as plain integers.
-  `components` prints as `2am+3sa`-style alphabetical pairs; `ct` as the
-  same alphabetical pairs with the `+` separators dropped (`2am3sa`),
-  undefined when the record has no components or an empty map. An
+  `components` prints as `2am+3sa`-style alphabetical pairs; `name` as
+  the same alphabetical pairs with the `+` separators dropped (`2am3sa`),
+  undefined when the record has no components or an empty map. `filename`
+  prints the record's `name` — the stem of the source file name
+  (`rqm/record.md`); `path` prints the record's `source_path`
+  (`rqm/record.md`) verbatim. An
   undefined or absent value prints `-`; a list-valued column (`dips`,
   `freqs`, `rots`) with no values also prints `-`, including a monatomic
   record's empty rotational constant list. The population columns `pop`,
@@ -277,7 +284,7 @@ the property set and units:
 - `Property` — `El, G, ElCorr, GCorr, Rg, Lf, Dip, Mass, Charge, <!-- rq-d157ebb2 -->
   Multiplicity, Natoms, Nfreq, Nimag`; `G` derives via `rqm/thermo.md`;
   `ElCorr` and `GCorr` via `rqm/correction.md`.
-- `SortKey` — `El | G | ElCorr | GCorr | Rg | Mass | Name`. <!-- rq-953da4ce -->
+- `SortKey` — `El | G | ElCorr | GCorr | Rg | Mass | Filename`. <!-- rq-953da4ce -->
 - `Column` — the print columns above, `Zpe | H | S | G | ElCorr | <!-- rq-38b619ff -->
   HCorr | GCorr | Correction | Dips | Rsn | Freqs | RotS` included,
   plus the population columns
@@ -345,7 +352,7 @@ Feature: Filtering, sorting, and printing
   @rq-b73d0021
   Scenario: Exact composition extracts its records
     Given a database with records of components am = 2, sa = 3, and am = 1 sa = 1
-    When CJKQC is invoked with the database, "--extract 2am3sa --name" and no --out
+    When CJKQC is invoked with the database, "--extract 2am3sa --filename" and no --out
     Then the printed table lists exactly the am = 2 sa = 3 record
 
   @rq-9fa28264
@@ -383,7 +390,7 @@ Feature: Filtering, sorting, and printing
   @rq-443f2709
   Scenario: nextract inverts the selection
     Given a database with a record of components am = 2 and a record of components sa = 3
-    When CJKQC is invoked with the database, "--nextract 2am --name" and no --out
+    When CJKQC is invoked with the database, "--nextract 2am --filename" and no --out
     Then only the sa = 3 record is printed
 
   @rq-49f1442c
@@ -427,13 +434,13 @@ Feature: Filtering, sorting, and printing
   @rq-b6a5add7
   Scenario: Under noname, extract compares names verbatim
     Given a database with records named "2am3sa-1conf" and "2am3sa-2conf"
-    When CJKQC is invoked with the database, "--noname --extract 2am3sa-1conf --name" and no --out
+    When CJKQC is invoked with the database, "--noname --extract 2am3sa-1conf --filename" and no --out
     Then only the record named "2am3sa-1conf" is printed
 
   @rq-32c242d5
   Scenario: Under noname, extract accepts names outside the composition grammar
     Given a database with records named "conf-A" and "conf-B"
-    When CJKQC is invoked with the database, "--noname --extract conf-A --name" and no --out
+    When CJKQC is invoked with the database, "--noname --extract conf-A --filename" and no --out
     Then only the record named "conf-A" is printed
 
   # --- Cutoffs ---
@@ -547,7 +554,7 @@ Feature: Filtering, sorting, and printing
   @rq-16bb6b61
   Scenario: Sorting by corrected Gibbs puts undefined values last
     Given records with corrected Gibbs -100.0 and -100.5 and one without a correction
-    When CJKQC is invoked with the database and "--sort gcorr --name" and no --out
+    When CJKQC is invoked with the database and "--sort gcorr --filename" and no --out
     Then the order is -100.5, -100.0, uncorrected
 
   @rq-a8f483c7
@@ -561,23 +568,23 @@ Feature: Filtering, sorting, and printing
   @rq-6d5b5f10
   Scenario: Print flags print the table while --out writes
     Given a database with one ok record named "1dma" and energy -38.51
-    When CJKQC is invoked with the database and "--sort el --name --el --out kept.jsonl"
+    When CJKQC is invoked with the database and "--sort el --filename --el --out kept.jsonl"
     Then kept.jsonl contains the single record
-    And stdout starts with a header row naming the columns name and el
+    And stdout starts with a header row naming the columns filename and el
     And the record's row prints the energy with 10 decimals in hartree
 
   @rq-acf714ae
   Scenario: Print columns follow canonical order regardless of flag order
     Given a database with one ok record whose geometry has an unknown element symbol
-    When CJKQC is invoked with the database, "--mass --rg --name" and no --out
-    Then the table columns are name, rg, mass in that order, undefined values printed as -
+    When CJKQC is invoked with the database, "--mass --rg --filename" and no --out
+    Then the table columns are filename, rg, mass in that order, undefined values printed as -
 
   @rq-be8df504
   Scenario: The table aligns its columns like column -t
     Given a database with one ok record named "1dma" whose radius of gyration is 2.345 and one ok record named "1" without a geometry
-    When CJKQC is invoked with the database and "--name --rg" and no --out
+    When CJKQC is invoked with the database and "--filename --rg" and no --out
     Then the rg column is as wide as its widest cell, header included, and its cells right-align under the right-aligned header
-    And the name cells left-align under the left-aligned header
+    And the filename cells left-align under the left-aligned header
     And the undefined rg cell prints - right-aligned with the numbers
 
   @rq-207aec4d
@@ -661,20 +668,58 @@ Feature: Filtering, sorting, and printing
   @rq-af106fa7
   Scenario: The new print columns follow canonical order
     Given a database with one ok record
-    When CJKQC is invoked with the database, "--rots --rsn --freqs --dips --dip --lf --name" and no --out
-    Then the table columns are name, dip, dips, rsn, lf, freqs, rots in that order
+    When CJKQC is invoked with the database, "--rots --rsn --freqs --dips --dip --lf --filename" and no --out
+    Then the table columns are filename, dip, dips, rsn, lf, freqs, rots in that order
 
   @rq-1f63ac38
-  Scenario: The ct column prints components without separators
+  Scenario: The name column prints the composition token without separators
     Given a database with one ok record with components am = 2 sa = 3
-    When CJKQC is invoked with the database and "--ct" and no --out
-    Then the ct column prints 2am3sa
+    When CJKQC is invoked with the database and "--name" and no --out
+    Then the name column prints 2am3sa
 
   @rq-7b0d8978
-  Scenario: The ct column is undefined without components
+  Scenario: The name column is undefined without components
     Given a database with one ok record without components
-    When CJKQC is invoked with the database and "--ct" and no --out
-    Then the ct column prints -
+    When CJKQC is invoked with the database and "--name" and no --out
+    Then the name column prints -
+
+  @rq-c0c700b2
+  Scenario: The filename column prints the record's name
+    Given a database with one ok record named "2am3sa-1conf"
+    When CJKQC is invoked with the database and "--filename" and no --out
+    Then the filename column prints 2am3sa-1conf
+
+  @rq-9bea312b
+  Scenario: The filename column is undefined without a name
+    Given a database with one ok record without a name
+    When CJKQC is invoked with the database and "--filename" and no --out
+    Then the filename column prints -
+
+  @rq-5ad1c077
+  Scenario: The path column prints the record's source path
+    Given a database with one ok record with source_path "/scratch/runs/xtb/1dma.log"
+    When CJKQC is invoked with the database and "--path" and no --out
+    Then the path column prints /scratch/runs/xtb/1dma.log
+
+  @rq-3f2648cf
+  Scenario: The path column is undefined without a source path
+    Given a database with one ok record without a source_path
+    When CJKQC is invoked with the database and "--path" and no --out
+    Then the path column prints -
+
+  @rq-6fb14f23
+  Scenario: The identity columns lead the canonical order
+    Given a database with one ok record
+    When CJKQC is invoked with the database, "--status --path --name --filename" and no --out
+    Then the table columns are filename, name, path, status in that order
+
+  @rq-2371c178
+  Scenario: --sort filename sorts by the record's name
+    Given a database with records named "b" and "a" and one without a name
+    When CJKQC is invoked with the database and "--sort filename --filename" and no --out
+    Then the order is nameless, a, b
+    When --reverse is added
+    Then the order is b, a, nameless
 
   @rq-f9ccc35c
   Scenario: The program column prints the program and its version
@@ -708,7 +753,7 @@ Feature: Filtering, sorting, and printing
   @rq-6e881115
   Scenario: A print-only run prints the database without writing anything
     Given a database with 2 ok records and 1 failed record
-    When CJKQC is invoked with the database, "--status --name" and no --out
+    When CJKQC is invoked with the database, "--status --filename" and no --out
     Then all 3 records are listed in file order
     And no database file is written
 

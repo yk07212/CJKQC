@@ -685,9 +685,9 @@ fn extract_selects_the_exact_composition() {
             comp_line("small", None, &[("am", 1), ("sa", 1)], RecordStatus::Ok),
         ],
     );
-    let run = cjkqc(&[&db, "--extract", "2am3sa", "--name"]);
+    let run = cjkqc(&[&db, "--extract", "2am3sa", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name\nwide");
+    assert_eq!(stdout(&run).trim(), "filename\nwide");
 }
 
 #[test] // rq-443f2709
@@ -700,9 +700,9 @@ fn nextract_inverts_the_selection() {
             comp_line("sasa", None, &[("sa", 3)], RecordStatus::Ok),
         ],
     );
-    let run = cjkqc(&[&db, "--nextract", "2am", "--name"]);
+    let run = cjkqc(&[&db, "--nextract", "2am", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name\nsasa");
+    assert_eq!(stdout(&run).trim(), "filename\nsasa");
 }
 
 #[test] // rq-f43b5dbf
@@ -712,7 +712,7 @@ fn an_unparsable_extract_query_is_a_usage_error() {
         &dir,
         &[comp_line("a", None, &[("am", 1)], RecordStatus::Ok)],
     );
-    let run = cjkqc(&[&db, "--extract", "2am$", "--name"]);
+    let run = cjkqc(&[&db, "--extract", "2am$", "--filename"]);
     assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
 }
 
@@ -736,9 +736,9 @@ fn noname_extract_compares_names_verbatim() {
             ),
         ],
     );
-    let run = cjkqc(&[&db, "--noname", "--extract", "2am3sa-1conf", "--name"]);
+    let run = cjkqc(&[&db, "--noname", "--extract", "2am3sa-1conf", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name\n2am3sa-1conf");
+    assert_eq!(stdout(&run).trim(), "filename\n2am3sa-1conf");
 }
 
 #[test] // rq-cd33a3de
@@ -752,9 +752,9 @@ fn non_ok_records_are_excluded_and_counted() {
             comp_line("c", None, &[], RecordStatus::Failed),
         ],
     );
-    let run = cjkqc(&[&db, "--sort", "el", "--name"]);
+    let run = cjkqc(&[&db, "--sort", "el", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name\na\nb");
+    assert_eq!(stdout(&run).trim(), "filename\na\nb");
     assert!(
         stderr(&run).contains("excluded 1 records with status failed or truncated"),
         "{}",
@@ -776,11 +776,19 @@ fn print_flags_print_the_table_while_out_writes() {
     );
     let out = dir.join("kept.jsonl");
     let out_text = out.to_string_lossy().into_owned();
-    let run = cjkqc(&[&db, "--sort", "el", "--name", "--el", "--out", &out_text]);
+    let run = cjkqc(&[
+        &db,
+        "--sort",
+        "el",
+        "--filename",
+        "--el",
+        "--out",
+        &out_text,
+    ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     assert_eq!(loaded(&out).len(), 1);
     let text = stdout(&run);
-    assert_eq!(cells(text.lines().next().unwrap()), ["name", "el"]);
+    assert_eq!(cells(text.lines().next().unwrap()), ["filename", "el"]);
     assert_eq!(
         cells(text.lines().nth(1).unwrap()),
         ["1dma", "-38.5100000000"]
@@ -799,11 +807,11 @@ fn print_columns_follow_canonical_order_regardless_of_flag_order() {
         coordinates: vec![0.0, 0.0, 0.0],
     });
     let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
-    let run = cjkqc(&[&db, "--mass", "--rg", "--name"]);
+    let run = cjkqc(&[&db, "--mass", "--rg", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "rg", "mass"]);
+    assert_eq!(lines[0], ["filename", "rg", "mass"]);
     assert_eq!(lines[1], ["unknown", "-", "-"]);
 }
 
@@ -822,14 +830,14 @@ fn the_table_aligns_its_columns_like_column_t() {
             serde_json::to_string(&nameless).expect("serialization"),
         ],
     );
-    let run = cjkqc(&[&db, "--name", "--rg"]);
+    let run = cjkqc(&[&db, "--filename", "--rg"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    // name is a text column (left-aligned), rg a numeric column
+    // filename is a text column (left-aligned), rg a numeric column
     // (right-aligned, header included): the rg column is as wide as its
     // widest cell, so the header pads and the dash right-aligns.
     assert_eq!(
         stdout(&run).trim(),
-        "name    rg\n1dma 2.345\n1        -",
+        "filename    rg\n1dma     2.345\n1            -",
         "{}",
         stdout(&run)
     );
@@ -1061,19 +1069,26 @@ fn new_print_columns_follow_canonical_order() {
         &[serde_json::to_string(&Record::default()).expect("line")],
     );
     let run = cjkqc(&[
-        &db, "--rots", "--rsn", "--freqs", "--dips", "--dip", "--lf", "--name",
+        &db,
+        "--rots",
+        "--rsn",
+        "--freqs",
+        "--dips",
+        "--dip",
+        "--lf",
+        "--filename",
     ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
     assert_eq!(
         lines[0],
-        ["name", "dip", "dips", "rsn", "lf", "freqs", "rots"]
+        ["filename", "dip", "dips", "rsn", "lf", "freqs", "rots"]
     );
 }
 
 #[test] // rq-1f63ac38
-fn ct_column_prints_components_without_separators() {
+fn name_column_prints_components_without_separators() {
     let dir = temp_dir();
     let record = Record {
         components: Some(
@@ -1085,21 +1100,114 @@ fn ct_column_prints_components_without_separators() {
         ..Record::default()
     };
     let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
-    let run = cjkqc(&[&db, "--ct"]);
+    let run = cjkqc(&[&db, "--name"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "ct\n2am3sa");
+    assert_eq!(stdout(&run).trim(), "name\n2am3sa");
 }
 
 #[test] // rq-7b0d8978
-fn ct_column_is_undefined_without_components() {
+fn name_column_is_undefined_without_components() {
     let dir = temp_dir();
     let db = database_in(
         &dir,
         &[serde_json::to_string(&Record::default()).expect("line")],
     );
-    let run = cjkqc(&[&db, "--ct"]);
+    let run = cjkqc(&[&db, "--name"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "ct\n-");
+    assert_eq!(stdout(&run).trim(), "name\n-");
+}
+
+#[test] // rq-c0c700b2
+fn filename_column_prints_the_records_name() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("2am3sa-1conf", None, &[], RecordStatus::Ok)],
+    );
+    let run = cjkqc(&[&db, "--filename"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "filename\n2am3sa-1conf");
+}
+
+#[test] // rq-9bea312b
+fn filename_column_is_undefined_without_a_name() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--filename"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "filename\n-");
+}
+
+#[test] // rq-5ad1c077
+fn path_column_prints_the_records_source_path() {
+    let dir = temp_dir();
+    let record = Record {
+        source_path: Some("/scratch/runs/xtb/1dma.log".to_string()),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--path"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "path\n/scratch/runs/xtb/1dma.log");
+}
+
+#[test] // rq-3f2648cf
+fn path_column_is_undefined_without_a_source_path() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--path"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "path\n-");
+}
+
+#[test] // rq-6fb14f23
+fn identity_columns_lead_the_canonical_order() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("a", None, &[("am", 1)], RecordStatus::Ok)],
+    );
+    let run = cjkqc(&[&db, "--status", "--path", "--name", "--filename"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(
+        cells(stdout(&run).lines().next().unwrap()),
+        ["filename", "name", "path", "status"]
+    );
+}
+
+#[test] // rq-2371c178
+fn cli_sort_filename_sorts_by_the_records_name() {
+    let dir = temp_dir();
+    let nameless = Record {
+        electronic_energy: Some(-1.0),
+        components: Some(
+            [("am", 1u32)]
+                .into_iter()
+                .map(|(code, count)| (code.to_string(), count))
+                .collect(),
+        ),
+        ..Record::default()
+    };
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("b", None, &[("am", 1)], RecordStatus::Ok),
+            comp_line("a", None, &[("am", 1)], RecordStatus::Ok),
+            serde_json::to_string(&nameless).expect("nameless serializes"),
+        ],
+    );
+    let run = cjkqc(&[&db, "--sort", "filename", "--filename"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(stdout(&run).trim(), "filename\n-\na\nb");
+    let reversed = cjkqc(&[&db, "--sort", "filename", "--reverse", "--filename"]);
+    assert_eq!(reversed.status.code(), Some(0), "{}", stderr(&reversed));
+    assert_eq!(stdout(&reversed).trim(), "filename\nb\na\n-");
 }
 
 #[test] // rq-f9ccc35c
@@ -1179,11 +1287,11 @@ fn a_print_only_run_prints_every_record_without_writing() {
             comp_line("c", None, &[], RecordStatus::Failed),
         ],
     );
-    let run = cjkqc(&[&db, "--status", "--name"]);
+    let run = cjkqc(&[&db, "--status", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "status"]);
+    assert_eq!(lines[0], ["filename", "status"]);
     assert_eq!(lines[1], ["a", "ok"]);
     assert_eq!(lines[2], ["b", "ok"]);
     assert_eq!(lines[3], ["c", "failed"]);
@@ -1279,7 +1387,7 @@ fn an_underscore_in_an_extract_pattern_is_a_usage_error() {
             RecordStatus::Ok,
         )],
     );
-    let run = cjkqc(&[&db, "--extract", "2am3sa_1conf", "--name"]);
+    let run = cjkqc(&[&db, "--extract", "2am3sa_1conf", "--filename"]);
     assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
 }
 
@@ -1293,9 +1401,9 @@ fn noname_extract_accepts_names_outside_the_composition_grammar() {
             comp_line("conf-B", None, &[("am", 2)], RecordStatus::Ok),
         ],
     );
-    let run = cjkqc(&[&db, "--noname", "--extract", "conf-A", "--name"]);
+    let run = cjkqc(&[&db, "--noname", "--extract", "conf-A", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name\nconf-A");
+    assert_eq!(stdout(&run).trim(), "filename\nconf-A");
 }
 
 #[test]
@@ -1309,14 +1417,14 @@ fn cli_uniq_dup_and_keys_pick_records() {
             comp_line("y", Some(-3.0), &[("am", 1)], RecordStatus::Ok),
         ],
     );
-    let dup = cjkqc(&[&db, "--uniq", "dup", "--name"]);
+    let dup = cjkqc(&[&db, "--uniq", "dup", "--filename"]);
     assert_eq!(dup.status.code(), Some(0), "{}", stderr(&dup));
-    assert_eq!(stdout(&dup).trim(), "name\nx\ny");
-    let keys = cjkqc(&[&db, "--uniq", "el", "--name"]);
+    assert_eq!(stdout(&dup).trim(), "filename\nx\ny");
+    let keys = cjkqc(&[&db, "--uniq", "el", "--filename"]);
     assert_eq!(keys.status.code(), Some(0), "{}", stderr(&keys));
     // No two energies agree at 3 decimals, so uniq keeps all of them in
     // implicit el-ascending order.
-    assert_eq!(stdout(&keys).trim(), "name\ny\nx\nx");
+    assert_eq!(stdout(&keys).trim(), "filename\ny\nx\nx");
 }
 
 #[test]
@@ -1348,12 +1456,12 @@ fn cli_reacted_and_reacted2_use_the_fragment_consensus() {
             bonded(),
         ],
     );
-    let consensus = cjkqc(&[&db, "--reacted", "--name"]);
+    let consensus = cjkqc(&[&db, "--reacted", "--filename"]);
     assert_eq!(consensus.status.code(), Some(0), "{}", stderr(&consensus));
-    assert_eq!(stdout(&consensus).trim(), "name\na\nb");
-    let deviants = cjkqc(&[&db, "--reacted2", "--name"]);
+    assert_eq!(stdout(&consensus).trim(), "filename\na\nb");
+    let deviants = cjkqc(&[&db, "--reacted2", "--filename"]);
     assert_eq!(deviants.status.code(), Some(0), "{}", stderr(&deviants));
-    assert_eq!(stdout(&deviants).trim(), "name\nd");
+    assert_eq!(stdout(&deviants).trim(), "filename\nd");
 }
 
 #[test]
@@ -1372,10 +1480,10 @@ fn cli_shuffle_is_reproducible_per_seed() {
             })
             .collect::<Vec<_>>(),
     );
-    let first = cjkqc(&[&db, "--shuffle", "--seed", "7", "--name"]);
-    let second = cjkqc(&[&db, "--shuffle", "--seed", "7", "--name"]);
+    let first = cjkqc(&[&db, "--shuffle", "--seed", "7", "--filename"]);
+    let second = cjkqc(&[&db, "--shuffle", "--seed", "7", "--filename"]);
     assert_eq!(stdout(&first), stdout(&second));
-    assert_ne!(stdout(&first).trim(), "name\nn0\nn1\nn2\nn3\nn4");
+    assert_ne!(stdout(&first).trim(), "filename\nn0\nn1\nn2\nn3\nn4");
 }
 
 #[test]
@@ -1389,14 +1497,14 @@ fn cli_select_and_reverse_sort_apply() {
             comp_line("s", Some(-9.0), &[("sa", 1)], RecordStatus::Ok),
         ],
     );
-    let selected = cjkqc(&[&db, "--select", "1", "--name"]);
+    let selected = cjkqc(&[&db, "--select", "1", "--filename"]);
     assert_eq!(selected.status.code(), Some(0), "{}", stderr(&selected));
     // Implicit el-ascending sort puts s (-9.0) before a (-3.0); each group
     // contributes its first record.
-    assert_eq!(stdout(&selected).trim(), "name\ns\na");
-    let reversed = cjkqc(&[&db, "--sort", "el", "--reverse", "--name"]);
+    assert_eq!(stdout(&selected).trim(), "filename\ns\na");
+    let reversed = cjkqc(&[&db, "--sort", "el", "--reverse", "--filename"]);
     assert_eq!(reversed.status.code(), Some(0), "{}", stderr(&reversed));
-    assert_eq!(stdout(&reversed).trim(), "name\nb\na\ns");
+    assert_eq!(stdout(&reversed).trim(), "filename\nb\na\ns");
 }
 
 #[test]
@@ -1420,9 +1528,9 @@ fn cli_cutoff_flags_wire_their_operators() {
             ),
         ],
     );
-    let pass = cjkqc(&[&db, "--pass", "natoms", "2", "--name"]);
+    let pass = cjkqc(&[&db, "--pass", "natoms", "2", "--filename"]);
     assert_eq!(pass.status.code(), Some(0), "{}", stderr(&pass));
-    assert_eq!(stdout(&pass).trim(), "name\nbig");
+    assert_eq!(stdout(&pass).trim(), "filename\nbig");
 
     let mut imag = Record {
         name: Some("imag".to_string()),
@@ -1443,12 +1551,12 @@ fn cli_cutoff_flags_wire_their_operators() {
             serde_json::to_string(&real).expect("line"),
         ],
     );
-    let is_not = cjkqc(&[&freq_db, "--isnot", "nimag", "0", "--name"]);
+    let is_not = cjkqc(&[&freq_db, "--isnot", "nimag", "0", "--filename"]);
     assert_eq!(is_not.status.code(), Some(0), "{}", stderr(&is_not));
-    assert_eq!(stdout(&is_not).trim(), "name\nimag");
-    let is_zero = cjkqc(&[&freq_db, "--is", "nimag", "0", "--name"]);
+    assert_eq!(stdout(&is_not).trim(), "filename\nimag");
+    let is_zero = cjkqc(&[&freq_db, "--is", "nimag", "0", "--filename"]);
     assert_eq!(is_zero.status.code(), Some(0), "{}", stderr(&is_zero));
-    assert_eq!(stdout(&is_zero).trim(), "name\nreal");
+    assert_eq!(stdout(&is_zero).trim(), "filename\nreal");
 }
 
 #[test]
@@ -1471,12 +1579,12 @@ fn cli_sort_keys_cover_rg_mass_and_name() {
             ),
         ],
     );
-    let by_rg = cjkqc(&[&db, "--sort", "rg", "--name"]);
+    let by_rg = cjkqc(&[&db, "--sort", "rg", "--filename"]);
     assert_eq!(by_rg.status.code(), Some(0), "{}", stderr(&by_rg));
-    assert_eq!(stdout(&by_rg).trim(), "name\ntight\nwide");
-    let by_name = cjkqc(&[&db, "--sort", "name", "--name"]);
+    assert_eq!(stdout(&by_rg).trim(), "filename\ntight\nwide");
+    let by_name = cjkqc(&[&db, "--sort", "filename", "--filename"]);
     assert_eq!(by_name.status.code(), Some(0), "{}", stderr(&by_name));
-    assert_eq!(stdout(&by_name).trim(), "name\ntight\nwide");
+    assert_eq!(stdout(&by_name).trim(), "filename\ntight\nwide");
 
     let mass_db = database_in(
         &dir,
@@ -1485,9 +1593,9 @@ fn cli_sort_keys_cover_rg_mass_and_name() {
             geom_line("hydrogen", &[("h", 1)], &["H"], &[0.0, 0.0, 0.0]),
         ],
     );
-    let by_mass = cjkqc(&[&mass_db, "--sort", "mass", "--name"]);
+    let by_mass = cjkqc(&[&mass_db, "--sort", "mass", "--filename"]);
     assert_eq!(by_mass.status.code(), Some(0), "{}", stderr(&by_mass));
-    assert_eq!(stdout(&by_mass).trim(), "name\nhydrogen\ncarbon");
+    assert_eq!(stdout(&by_mass).trim(), "filename\nhydrogen\ncarbon");
 }
 
 #[test] // rq-17ea1903
@@ -1515,9 +1623,9 @@ fn cli_sort_name_puts_nameless_records_first() {
             ),
         ],
     );
-    let run = cjkqc(&[&db, "--sort", "name", "--name"]);
+    let run = cjkqc(&[&db, "--sort", "filename", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name\n-\nnamed");
+    assert_eq!(stdout(&run).trim(), "filename\n-\nnamed");
 }
 
 #[test]
@@ -1529,7 +1637,7 @@ fn mixed_inputs_with_print_flags_is_a_usage_error_once() {
     );
     let program = dir.join("prog.out");
     fs::write(&program, "not json at all\n").expect("write program output");
-    let run = cjkqc(&[&db, &program.to_string_lossy(), "--status", "--name"]);
+    let run = cjkqc(&[&db, &program.to_string_lossy(), "--status", "--filename"]);
     assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
     let errors = stderr(&run);
     assert_eq!(
@@ -1580,12 +1688,12 @@ fn every_cutoff_flag_wires_its_operator() {
     ];
     for (flag, db_kind, threshold, expected) in cases {
         let db = if *db_kind == "abs" { &abs_db } else { &rel_db };
-        let run = cjkqc(&[db, flag, "el", threshold, "--name"]);
+        let run = cjkqc(&[db, flag, "el", threshold, "--filename"]);
         assert_eq!(run.status.code(), Some(0), "{flag}: {}", stderr(&run));
         let want = if expected.is_empty() {
-            "name".to_string()
+            "filename".to_string()
         } else {
-            format!("name\n{expected}")
+            format!("filename\n{expected}")
         };
         assert_eq!(stdout(&run).trim(), want, "{flag} {threshold}");
     }
@@ -1684,11 +1792,11 @@ fn a_saddle_point_s_thermochemistry_columns_print_dashes() {
             Some(&[1000.0, -300.0]),
         )],
     );
-    let run = cjkqc(&[&db, "--name", "--zpe", "--h", "--s", "--g"]);
+    let run = cjkqc(&[&db, "--filename", "--zpe", "--h", "--s", "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "zpe", "h", "s", "g"]);
+    assert_eq!(lines[0], ["filename", "zpe", "h", "s", "g"]);
     assert_eq!(lines[1], ["saddle", "-", "-", "-", "-"]);
 }
 
@@ -1709,11 +1817,11 @@ fn a_degenerate_geometry_prints_dashes_not_infinities() {
         &dir,
         &[serde_json::to_string(&collapsed).expect("collapses serializes")],
     );
-    let run = cjkqc(&[&db, "--name", "--zpe", "--h", "--s", "--g"]);
+    let run = cjkqc(&[&db, "--filename", "--zpe", "--h", "--s", "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "zpe", "h", "s", "g"]);
+    assert_eq!(lines[0], ["filename", "zpe", "h", "s", "g"]);
     assert_eq!(lines[1], ["collapsed", "-", "-", "-", "-"]);
 }
 
@@ -1745,15 +1853,15 @@ fn absurd_temperature_records_drop_out_of_glob() {
         serde_json::to_string(&record).expect("record serializes")
     };
     let db = database_in(&dir, &[line("hot", -75.99), line("cooler", -75.98)]);
-    let run = cjkqc(&[&db, "--temp", "1e17", "--glob", "--name"]);
+    let run = cjkqc(&[&db, "--temp", "1e17", "--glob", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name");
+    assert_eq!(stdout(&run).trim(), "filename");
     // The same records also print - for g, like any undefined value.
-    let printed = cjkqc(&[&db, "--temp", "1e17", "--name", "--g"]);
+    let printed = cjkqc(&[&db, "--temp", "1e17", "--filename", "--g"]);
     assert_eq!(printed.status.code(), Some(0), "{}", stderr(&printed));
     let text = stdout(&printed);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "g"]);
+    assert_eq!(lines[0], ["filename", "g"]);
     assert_eq!(lines[1], ["hot", "-"]);
     assert_eq!(lines[2], ["cooler", "-"]);
 }
@@ -1771,7 +1879,7 @@ fn makereal_prints_the_saddle_point_s_thermochemistry() {
             Some(&[1000.0, -300.0]),
         )],
     );
-    let run = cjkqc(&[&db, "--name", "--g", "--makereal"]);
+    let run = cjkqc(&[&db, "--filename", "--g", "--makereal"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let row: Vec<&str> = text
@@ -1799,7 +1907,7 @@ fn makereal_leaves_the_raw_observables_alone() {
             Some(&[1000.0, -300.0]),
         )],
     );
-    let run = cjkqc(&[&db, "--name", "--nimag", "--g", "--makereal"]);
+    let run = cjkqc(&[&db, "--filename", "--nimag", "--g", "--makereal"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let row: Vec<&str> = text
@@ -1815,9 +1923,9 @@ fn makereal_leaves_the_raw_observables_alone() {
     assert_eq!(row[2], "1", "nimag still counts the imaginary mode");
     // The lf cutoff property still sees the raw -300.0, so a window that
     // only admits values below -200 keeps the record.
-    let kept = cjkqc(&[&db, "--name", "--filter-lt", "lf", "-200", "--makereal"]);
+    let kept = cjkqc(&[&db, "--filename", "--filter-lt", "lf", "-200", "--makereal"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&kept));
-    assert_eq!(stdout(&kept).trim(), "name\nsaddle");
+    assert_eq!(stdout(&kept).trim(), "filename\nsaddle");
 }
 
 #[test] // rq-28e4ef6b
@@ -1833,7 +1941,7 @@ fn ignoreimag_prints_the_saddle_point_s_thermochemistry() {
             Some(&[1000.0, -300.0]),
         )],
     );
-    let run = cjkqc(&[&db, "--name", "--g", "--ignoreimag"]);
+    let run = cjkqc(&[&db, "--filename", "--g", "--ignoreimag"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let row: Vec<&str> = text
@@ -1861,7 +1969,7 @@ fn ignoreimag_leaves_the_raw_observables_alone() {
             Some(&[1000.0, -300.0]),
         )],
     );
-    let run = cjkqc(&[&db, "--name", "--nimag", "--g", "--ignoreimag"]);
+    let run = cjkqc(&[&db, "--filename", "--nimag", "--g", "--ignoreimag"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let row: Vec<&str> = text
@@ -1877,9 +1985,16 @@ fn ignoreimag_leaves_the_raw_observables_alone() {
     assert_eq!(row[2], "1", "nimag still counts the imaginary mode");
     // The lf cutoff property still sees the raw -300.0, so a window that
     // only admits values below -200 keeps the record.
-    let kept = cjkqc(&[&db, "--name", "--filter-lt", "lf", "-200", "--ignoreimag"]);
+    let kept = cjkqc(&[
+        &db,
+        "--filename",
+        "--filter-lt",
+        "lf",
+        "-200",
+        "--ignoreimag",
+    ]);
     assert_eq!(kept.status.code(), Some(0), "{}", stderr(&kept));
-    assert_eq!(stdout(&kept).trim(), "name\nsaddle");
+    assert_eq!(stdout(&kept).trim(), "filename\nsaddle");
 }
 
 #[test] // rq-efd98e52
@@ -1903,7 +2018,7 @@ fn ignoreimag_with_makereal_is_a_usage_error() {
 fn a_nonpositive_temperature_is_a_usage_error() {
     let dir = temp_dir();
     let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
-    let run = cjkqc(&[&db, "--temp", "0", "--name"]);
+    let run = cjkqc(&[&db, "--temp", "0", "--filename"]);
     assert_eq!(run.status.code(), Some(2));
     assert!(stderr(&run).contains("--temp"), "{}", stderr(&run));
 }
@@ -1912,7 +2027,7 @@ fn a_nonpositive_temperature_is_a_usage_error() {
 fn a_negative_reference_frequency_is_a_usage_error() {
     let dir = temp_dir();
     let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
-    let run = cjkqc(&[&db, "--fc", "-100", "--name"]);
+    let run = cjkqc(&[&db, "--fc", "-100", "--filename"]);
     assert_eq!(run.status.code(), Some(2));
     assert!(stderr(&run).contains("--fc"), "{}", stderr(&run));
 }
@@ -1921,7 +2036,7 @@ fn a_negative_reference_frequency_is_a_usage_error() {
 fn a_zero_frequency_scale_is_a_usage_error() {
     let dir = temp_dir();
     let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
-    let run = cjkqc(&[&db, "--fscale", "0", "--name"]);
+    let run = cjkqc(&[&db, "--fscale", "0", "--filename"]);
     assert_eq!(run.status.code(), Some(2));
     assert!(stderr(&run).contains("--fscale"), "{}", stderr(&run));
 }
@@ -1943,11 +2058,11 @@ fn undefined_thermochemistry_prints_as_a_dash() {
         "db.jsonl",
         &[thermo_record_json("undef", Some(-76.0), &[("am", 2)], None)],
     );
-    let run = cjkqc(&[&db, "--name", "--g"]);
+    let run = cjkqc(&[&db, "--filename", "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "g"]);
+    assert_eq!(lines[0], ["filename", "g"]);
     assert_eq!(lines[1], ["undef", "-"]);
 }
 
@@ -1963,11 +2078,11 @@ fn sorting_by_gibbs_orders_undefined_values_last() {
             thermo_record_json("empty", None, &[("am", 1)], None),
         ],
     );
-    let run = cjkqc(&[&db, "--sort", "g", "--name", "--g"]);
+    let run = cjkqc(&[&db, "--sort", "g", "--filename", "--g"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "g"]);
+    assert_eq!(lines[0], ["filename", "g"]);
     assert_eq!(lines[1], ["cold", "-100.5000000000"]);
     assert_eq!(lines[2], ["warm", "-100.0000000000"]);
     assert_eq!(lines[3], ["empty", "-"]);
@@ -1986,9 +2101,9 @@ fn glob_keeps_each_group_s_lowest_gibbs_record() {
             gibbs_json("alone", 5.0, &[("sa", 1)]),
         ],
     );
-    let run = cjkqc(&[&db, "--glob", "--name"]);
+    let run = cjkqc(&[&db, "--glob", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name\nlow\nalone");
+    assert_eq!(stdout(&run).trim(), "filename\nlow\nalone");
 }
 
 #[test] // rq-58808413
@@ -1999,9 +2114,9 @@ fn glob_drops_a_group_whose_gibbs_is_all_undefined() {
         "db.jsonl",
         &[thermo_record_json("bare", None, &[("am", 2)], None)],
     );
-    let run = cjkqc(&[&db, "--glob", "--name"]);
+    let run = cjkqc(&[&db, "--glob", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    assert_eq!(stdout(&run).trim(), "name");
+    assert_eq!(stdout(&run).trim(), "filename");
 }
 
 #[test] // rq-4cd891c1
@@ -2016,11 +2131,11 @@ fn uniqueness_rounds_gibbs_like_any_metric() {
             gibbs_json("differs", -100.005, &[("am", 1)]),
         ],
     );
-    let run = cjkqc(&[&db, "--uniq", "g", "--name"]);
+    let run = cjkqc(&[&db, "--uniq", "g", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     // The implicit el sort orders the records before the collapse; the
     // first of the agreeing pair survives, the second drops.
-    assert_eq!(stdout(&run).trim(), "name\ndiffers\nagree1");
+    assert_eq!(stdout(&run).trim(), "filename\ndiffers\nagree1");
 }
 
 #[test] // rq-7f65572f
@@ -2085,7 +2200,7 @@ fn without_unit_the_energies_remain_hartree() {
 fn a_value_passed_to_unit_is_a_usage_error() {
     let dir = temp_dir();
     let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
-    let run = cjkqc(&[&db, "--unit", "kcal", "--name"]);
+    let run = cjkqc(&[&db, "--unit", "kcal", "--filename"]);
     assert_eq!(run.status.code(), Some(2));
 }
 
@@ -2146,7 +2261,7 @@ fn the_formation_section_follows_the_table_and_precedes_the_summary() {
         &db,
         "--sort",
         "el",
-        "--name",
+        "--filename",
         "--el",
         "--formation",
         "--out",
@@ -2155,10 +2270,10 @@ fn the_formation_section_follows_the_table_and_precedes_the_summary() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(cells(lines[0]), ["name", "el"], "the table comes first");
+    assert_eq!(cells(lines[0]), ["filename", "el"], "the table comes first");
     assert_eq!(
         cells(lines[4]),
-        ["ct", "el", "g"],
+        ["name", "el", "g"],
         "the section follows the table"
     );
     let _ = &out;
@@ -2193,7 +2308,7 @@ fn formation_alone_is_a_visible_outcome() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     assert_eq!(
         cells(stdout(&run).lines().next().unwrap()),
-        ["ct", "el", "g"],
+        ["name", "el", "g"],
         "{}",
         stdout(&run)
     );
@@ -2243,7 +2358,7 @@ fn formation_section_identifies_rows_by_composition_token() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(cells(lines[0]), ["ct", "el", "g"], "{text}");
+    assert_eq!(cells(lines[0]), ["name", "el", "g"], "{text}");
     assert_eq!(
         cells(lines[1]).first(),
         Some(&"2am1sa"),
@@ -2269,11 +2384,12 @@ fn the_section_aligns_its_columns_like_the_main_table() {
     let text = stdout(&run);
     let section = formation_section(&text);
     let lines: Vec<&str> = section.lines().collect();
-    assert_eq!(cells(lines[0]), ["ct", "el", "g"], "{section}");
+    assert_eq!(cells(lines[0]), ["name", "el", "g"], "{section}");
     let spans: Vec<Vec<(usize, usize)>> = lines.iter().map(|line| cell_spans(line)).collect();
     // Three columns on every row.
     assert!(spans.iter().all(|row| row.len() == 3), "{section}");
-    // ct is a text column: every cell, header included, starts at 0.
+    // The name column is a text column: every cell, header included,
+    // starts at 0.
     assert!(spans.iter().all(|row| row[0].0 == 0), "{section}");
     // el and g are numeric columns: every cell, header included, ends at
     // its column's right edge, and the last column ends the line.
@@ -2332,7 +2448,7 @@ fn record_without_components_has_dash_composition_token() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["ct", "el", "g"]);
+    assert_eq!(lines[0], ["name", "el", "g"]);
     assert_eq!(lines[1], ["-", "-", "-"]);
 }
 
@@ -3369,7 +3485,7 @@ fn a_relative_corrected_energy_window_is_per_composition_group() {
             thermo_line("bneg", 0.0, &[("sa", 1)], Some(-5.0)),
         ],
     );
-    let run = cjkqc(&[&db, "--cutr", "elcorr", "5", "--name"]);
+    let run = cjkqc(&[&db, "--cutr", "elcorr", "5", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let rows = data_rows(&stdout(&run));
     let names: Vec<&String> = rows.iter().map(|row| &row[0]).collect();
@@ -3390,13 +3506,13 @@ fn a_record_without_a_correction_fails_corrected_cutoffs_except_inequality() {
             thermo_line("bare", -38.51, &[("am", 1)], None),
         ],
     );
-    let run = cjkqc(&[&db, "--pass", "elcorr", "0", "--name"]);
+    let run = cjkqc(&[&db, "--pass", "elcorr", "0", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let rows = data_rows(&stdout(&run));
     let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
     assert_eq!(names, vec!["corr"], "{}", stdout(&run));
 
-    let run = cjkqc(&[&db, "--isnot", "elcorr", "0", "--name"]);
+    let run = cjkqc(&[&db, "--isnot", "elcorr", "0", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let rows = data_rows(&stdout(&run));
     assert_eq!(rows.len(), 2, "{}", stdout(&run));
@@ -3413,13 +3529,13 @@ fn sort_elcorr_orders_ascending_with_undefined_last() {
             corrected_db_line("mid", -38.51, -76.4, false),
         ],
     );
-    let run = cjkqc(&[&db, "--sort", "elcorr", "--name"]);
+    let run = cjkqc(&[&db, "--sort", "elcorr", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let rows = data_rows(&stdout(&run));
     let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
     assert_eq!(names, vec!["low", "mid", "high"], "{}", stdout(&run));
 
-    let run = cjkqc(&[&db, "--sort", "elcorr", "--name", "--reverse"]);
+    let run = cjkqc(&[&db, "--sort", "elcorr", "--filename", "--reverse"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let rows = data_rows(&stdout(&run));
     let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
@@ -3442,13 +3558,13 @@ fn sort_gcorr_orders_ascending_with_undefined_last() {
             simple_line(Some("bare"), Some(-38.51), RecordStatus::Ok),
         ],
     );
-    let run = cjkqc(&[&db, "--sort", "gcorr", "--name"]);
+    let run = cjkqc(&[&db, "--sort", "gcorr", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let rows = data_rows(&stdout(&run));
     let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
     assert_eq!(names, vec!["one", "two", "bare"], "{}", stdout(&run));
 
-    let run = cjkqc(&[&db, "--sort", "gcorr", "--name", "--reverse"]);
+    let run = cjkqc(&[&db, "--sort", "gcorr", "--filename", "--reverse"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let rows = data_rows(&stdout(&run));
     let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
@@ -3465,7 +3581,7 @@ fn stored_corrections_work_without_add_correction() {
             thermo_line("high", 0.0, &[("am", 1)], Some(0.02)),
         ],
     );
-    let run = cjkqc(&[&db, "--cutr", "elcorr", "5", "--name"]);
+    let run = cjkqc(&[&db, "--cutr", "elcorr", "5", "--filename"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let rows = data_rows(&stdout(&run));
     let names: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
@@ -3485,8 +3601,8 @@ fn the_corrected_formation_section_follows_the_raw_one() {
     let run = cjkqc(&[&db, "--formation", "--formation-corr"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let raw = find_line(&text, &["ct", "el", "g"]).expect("raw header");
-    let corrected = find_line(&text, &["ct", "elcorr", "gcorr"]).expect("corrected header");
+    let raw = find_line(&text, &["name", "el", "g"]).expect("raw header");
+    let corrected = find_line(&text, &["name", "elcorr", "gcorr"]).expect("corrected header");
     assert!(raw < corrected, "{text}");
 }
 
@@ -3504,7 +3620,7 @@ fn formation_corr_alone_is_a_visible_outcome() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["ct", "elcorr", "gcorr"], "{}", stdout(&run));
+    assert_eq!(lines[0], ["name", "elcorr", "gcorr"], "{}", stdout(&run));
 }
 
 // --- correction hardening (PR review findings) ---
@@ -3533,7 +3649,7 @@ fn a_correcting_run_can_print_the_corrected_formation_section() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["ct", "elcorr", "gcorr"], "{text}");
+    assert_eq!(lines[0], ["name", "elcorr", "gcorr"], "{text}");
     // The cluster's corrected electronic formation: -167.5 - 2*(-76.5).
     let mut found = false;
     for line in text.lines().skip(1) {
@@ -3564,7 +3680,7 @@ fn a_correcting_run_with_a_print_flag_writes_ok_only_survivors() {
         &db,
         "--add-correction",
         &sp,
-        "--name",
+        "--filename",
         "--out",
         &out.to_string_lossy(),
     ]);
@@ -3626,12 +3742,12 @@ fn kbt_eh(temperature: f64) -> f64 {
 /// The stdout from the formation section's header onward, so
 /// `formation_row` never matches a main-table row of the same token.
 fn formation_section(stdout_text: &str) -> &str {
-    section_from(stdout_text, &["ct", "el", "g"])
+    section_from(stdout_text, &["name", "el", "g"])
 }
 
 /// The stdout from the corrected formation section's header onward.
 fn corrected_section(stdout_text: &str) -> &str {
-    section_from(stdout_text, &["ct", "elcorr", "gcorr"])
+    section_from(stdout_text, &["name", "elcorr", "gcorr"])
 }
 
 /// The amount added to a formation free energy per molecule of a
@@ -4013,8 +4129,8 @@ fn conc_without_a_formation_section_is_an_accepted_no_op() {
         "db.jsonl",
         &[thermo_line("am1", -50.0, &[("am", 1)], None)],
     );
-    let plain = cjkqc(&[&db, "--name", "--el"]);
-    let with_conc = cjkqc(&[&db, "--name", "--el", "--conc", "sa", "100ppt"]);
+    let plain = cjkqc(&[&db, "--filename", "--el"]);
+    let with_conc = cjkqc(&[&db, "--filename", "--el", "--conc", "sa", "100ppt"]);
     assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
     assert_eq!(with_conc.status.code(), Some(0), "{}", stderr(&with_conc));
     assert_eq!(stdout(&plain), stdout(&with_conc));
@@ -4044,10 +4160,10 @@ fn the_main_table_and_glob_ignore_the_concentrations() {
             thermo_line("cluster", -131.0, &[("am", 2), ("sa", 1)], None),
         ],
     );
-    let base = cjkqc(&[&db, "--ct", "--g", "--glob", "--formation"]);
+    let base = cjkqc(&[&db, "--name", "--g", "--glob", "--formation"]);
     let run = cjkqc(&[
         &db,
-        "--ct",
+        "--name",
         "--g",
         "--glob",
         "--formation",
@@ -4058,7 +4174,7 @@ fn the_main_table_and_glob_ignore_the_concentrations() {
     assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     // The main tables are identical; only the formation section moves.
-    let table_end = |text: &str| find_line(text, &["ct", "el", "g"]).expect("formation header");
+    let table_end = |text: &str| find_line(text, &["name", "el", "g"]).expect("formation header");
     assert_eq!(
         &stdout(&base)[..table_end(&stdout(&base))],
         &stdout(&run)[..table_end(&stdout(&run))]
@@ -4679,7 +4795,7 @@ fn section_tokens(section: &str) -> Vec<&str> {
     section
         .lines()
         .skip(1)
-        .take_while(|line| !line.starts_with("ct "))
+        .take_while(|line| !line.starts_with("name "))
         .map(|line| line.split(' ').next().expect("token"))
         .collect()
 }
@@ -4701,7 +4817,7 @@ fn bavg_prints_one_row_per_composition() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     assert_eq!(
         cells(stdout(&run).lines().next().unwrap()),
-        ["ct", "el", "g"],
+        ["name", "el", "g"],
         "{}",
         stdout(&run)
     );
@@ -4911,13 +5027,13 @@ fn bavg_leaves_the_main_table_per_record() {
             thermo_line("sa1", -40.0, &[("sa", 1)], None),
         ],
     );
-    let run = cjkqc(&[&db, "--ct", "--g", "--formation", "--bavg"]);
+    let run = cjkqc(&[&db, "--name", "--g", "--formation", "--bavg"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let table: Vec<&str> = text.lines().take(4).collect();
     // The main table's columns follow the canonical column order, so
-    // --ct --g prints `g ct`.
-    assert_eq!(cells(table[0]), ["g", "ct"], "{text}");
+    // --name --g prints `name g`.
+    assert_eq!(cells(table[0]), ["name", "g"], "{text}");
     assert_eq!(table.len(), 4, "the main table prints three rows: {text}");
     assert_eq!(
         section_tokens(formation_section(&text)),
@@ -4930,8 +5046,8 @@ fn bavg_leaves_the_main_table_per_record() {
 fn bavg_without_a_formation_section_is_an_accepted_no_op() {
     let dir = temp_dir();
     let db = db_with(&dir, "db.jsonl", &[sample_line("A1", -1.0)]);
-    let plain = cjkqc(&[&db, "--name", "--el"]);
-    let bavg = cjkqc(&[&db, "--name", "--el", "--bavg"]);
+    let plain = cjkqc(&[&db, "--filename", "--el"]);
+    let bavg = cjkqc(&[&db, "--filename", "--el", "--bavg"]);
     assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
     assert_eq!(bavg.status.code(), Some(0), "{}", stderr(&bavg));
     assert_eq!(stdout(&plain), stdout(&bavg));
@@ -4972,11 +5088,11 @@ fn both_sections_collapse_when_both_are_printed() {
     // Each section's header is the section's own.
     assert_eq!(
         cells(formation_section(&text).lines().next().unwrap()),
-        ["ct", "el", "g"]
+        ["name", "el", "g"]
     );
     assert_eq!(
         cells(corrected_section(&text).lines().next().unwrap()),
-        ["ct", "elcorr", "gcorr"]
+        ["name", "elcorr", "gcorr"]
     );
     assert_eq!(
         section_tokens(formation_section(&text)),
@@ -5280,8 +5396,8 @@ fn rh_without_a_hydration_section_is_an_accepted_no_op() {
         "db.jsonl",
         &[hydration_line("c1", &[("sa", 1)], -60.0, None)],
     );
-    let plain = cjkqc(&[&db, "--name", "--el"]);
-    let with_rh = cjkqc(&[&db, "--name", "--el", "--rh", "0.5"]);
+    let plain = cjkqc(&[&db, "--filename", "--el"]);
+    let with_rh = cjkqc(&[&db, "--filename", "--el", "--rh", "0.5"]);
     assert_eq!(with_rh.status.code(), Some(0), "{}", stderr(&with_rh));
     assert_eq!(stdout(&plain), stdout(&with_rh));
 }
@@ -5294,8 +5410,8 @@ fn psolvent_without_a_hydration_section_is_an_accepted_no_op() {
         "db.jsonl",
         &[hydration_line("c1", &[("sa", 1)], -60.0, None)],
     );
-    let plain = cjkqc(&[&db, "--name", "--el"]);
-    let with_p = cjkqc(&[&db, "--name", "--el", "--psolvent", "100ppt"]);
+    let plain = cjkqc(&[&db, "--filename", "--el"]);
+    let with_p = cjkqc(&[&db, "--filename", "--el", "--psolvent", "100ppt"]);
     assert_eq!(with_p.status.code(), Some(0), "{}", stderr(&with_p));
     assert_eq!(stdout(&plain), stdout(&with_p));
 }
@@ -5714,8 +5830,8 @@ fn the_section_prints_after_the_formation_sections_and_before_the_summary() {
     ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let formation = text.len() - section_from(&text, &["ct", "el", "g"]).len();
-    let corrected = text.len() - section_from(&text, &["ct", "elcorr", "gcorr"]).len();
+    let formation = text.len() - section_from(&text, &["name", "el", "g"]).len();
+    let corrected = text.len() - section_from(&text, &["name", "elcorr", "gcorr"]).len();
     // The hydration sections' percentage rows are the only rows indented
     // by the section's column alignment; --sort el may reorder the
     // states within a group, so the marker is the row, not the tokens.
@@ -7262,7 +7378,7 @@ fn a_manipulated_extrapolating_run_reports_its_corrections() {
         &low,
         &high,
         "1.5",
-        "--name",
+        "--filename",
         "--out",
         &out.to_string_lossy(),
     ]);

@@ -1693,15 +1693,19 @@
     "type": "scenario"
   },
   "rq-1f63ac38": {
-    "decl": "Scenario: The ct column prints components without separators",
+    "decl": "Scenario: The name column prints the composition token without separators",
     "file": "filtering",
     "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
       {
         "file": "tests/cli.rs",
         "kind": "code"
       }
     ],
-    "title": "The ct column prints components without separators",
+    "title": "The name column prints the composition token without separators",
     "type": "scenario"
   },
   "rq-1fb0a352": {
@@ -1980,6 +1984,22 @@
       }
     ],
     "title": "A relative corrected-energy window is per composition group",
+    "type": "scenario"
+  },
+  "rq-2371c178": {
+    "decl": "Scenario: --sort filename sorts by the record's name",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--sort filename sorts by the record's name",
     "type": "scenario"
   },
   "rq-239fd4b8": {
@@ -3393,6 +3413,22 @@
     "title": "atomic_mass",
     "type": "api-item"
   },
+  "rq-3f2648cf": {
+    "decl": "Scenario: The path column is undefined without a source path",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The path column is undefined without a source path",
+    "type": "scenario"
+  },
   "rq-3f2988b7": {
     "decl": "Scenario: Percentages print with one decimal",
     "file": "hydration",
@@ -4754,6 +4790,22 @@
     "title": "hcorr and gcorr are undefined without defined thermochemistry",
     "type": "scenario"
   },
+  "rq-5ad1c077": {
+    "decl": "Scenario: The path column prints the record's source path",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The path column prints the record's source path",
+    "type": "scenario"
+  },
   "rq-5b33312a": {
     "decl": "### Terms",
     "file": "thermo",
@@ -5673,6 +5725,22 @@
     "title": "Window Contract",
     "type": "section"
   },
+  "rq-6fb14f23": {
+    "decl": "Scenario: The identity columns lead the canonical order",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The identity columns lead the canonical order",
+    "type": "scenario"
+  },
   "rq-6fb174a0": {
     "decl": "# Feature: Movie Export (`--movie`)",
     "file": "movie",
@@ -6157,15 +6225,19 @@
     "type": "scenario"
   },
   "rq-7b0d8978": {
-    "decl": "Scenario: The ct column is undefined without components",
+    "decl": "Scenario: The name column is undefined without components",
     "file": "filtering",
     "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
       {
         "file": "tests/cli.rs",
         "kind": "code"
       }
     ],
-    "title": "The ct column is undefined without components",
+    "title": "The name column is undefined without components",
     "type": "scenario"
   },
   "rq-7b35091a": {
@@ -7285,7 +7357,7 @@
     "type": "scenario"
   },
   "rq-90e2ea3e": {
-    "decl": "Scenario: --sort name takes the nameless monomer as the reference",
+    "decl": "Scenario: --sort filename takes the nameless monomer as the reference",
     "file": "formation",
     "refs": [
       {
@@ -7293,7 +7365,7 @@
         "kind": "code"
       }
     ],
-    "title": "--sort name takes the nameless monomer as the reference",
+    "title": "--sort filename takes the nameless monomer as the reference",
     "type": "scenario"
   },
   "rq-90ee6a06": {
@@ -7541,7 +7613,7 @@
     "type": "scenario"
   },
   "rq-953da4ce": {
-    "decl": "- `SortKey` — `El | G | ElCorr | GCorr | Rg | Mass | Name`.",
+    "decl": "- `SortKey` — `El | G | ElCorr | GCorr | Rg | Mass | Filename`.",
     "file": "filtering",
     "refs": [
       {
@@ -7943,6 +8015,22 @@
       }
     ],
     "title": "An empty source leaves every named record uncovered",
+    "type": "scenario"
+  },
+  "rq-9bea312b": {
+    "decl": "Scenario: The filename column is undefined without a name",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The filename column is undefined without a name",
     "type": "scenario"
   },
   "rq-9c076f14": {
@@ -10025,6 +10113,22 @@
       }
     ],
     "title": "Unknown keys do not survive a correcting run",
+    "type": "scenario"
+  },
+  "rq-c0c700b2": {
+    "decl": "Scenario: The filename column prints the record's name",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The filename column prints the record's name",
     "type": "scenario"
   },
   "rq-c0dea4f9": {
