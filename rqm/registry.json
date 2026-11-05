@@ -111,6 +111,18 @@
     "title": "multiplicity",
     "type": "api-item"
   },
+  "rq-02fe3cee": {
+    "decl": "Scenario: A new target is written without any question",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A new target is written without any question",
+    "type": "scenario"
+  },
   "rq-032b5e42": {
     "decl": "Scenario: --pop el prints the electronic-based column",
     "file": "population",
@@ -303,6 +315,18 @@
     "title": "An underscore in a pattern is a usage error",
     "type": "scenario"
   },
+  "rq-0727ffaf": {
+    "decl": "Scenario: A refused overwrite names --fout",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A refused overwrite names --fout",
+    "type": "scenario"
+  },
   "rq-077d9eed": {
     "decl": "## Gherkin Scenarios",
     "file": "formation",
@@ -385,6 +409,14 @@
     ],
     "title": "An unknown level is a usage error",
     "type": "scenario"
+  },
+  "rq-09ff296c": {
+    "decl": "### Functions",
+    "file": "movie",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
   },
   "rq-0a2ed6f8": {
     "decl": "Scenario: An unwritable output directory is fatal",
@@ -530,7 +562,12 @@
     "decl": "### Crate Layout",
     "file": "database",
     "level": 3,
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/atomic.rs",
+        "kind": "code"
+      }
+    ],
     "title": "Crate Layout",
     "type": "section"
   },
@@ -545,6 +582,14 @@
     ],
     "title": "The population columns sit in canonical order",
     "type": "scenario"
+  },
+  "rq-0c629a87": {
+    "decl": "## Gherkin Scenarios",
+    "file": "movie",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
   },
   "rq-0c93ce7a": {
     "decl": "Scenario: Repeating one level prints its column once",
@@ -892,6 +937,18 @@
     "title": "Feature: Composition Resolution from JKQC Names",
     "type": "file"
   },
+  "rq-13aa8b07": {
+    "decl": "Scenario: A declined overwrite aborts with the file untouched",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A declined overwrite aborts with the file untouched",
+    "type": "scenario"
+  },
   "rq-13bcad95": {
     "decl": "- `merge_databases(inputs: &[&Path], output: &Path) -> Result<MergeOutcome, DbError>`",
     "file": "database",
@@ -916,6 +973,18 @@
     ],
     "title": "Conditions",
     "type": "section"
+  },
+  "rq-146b84dd": {
+    "decl": "Scenario: Replacing movie.xyz follows the --out confirmation",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Replacing movie.xyz follows the --out confirmation",
+    "type": "scenario"
   },
   "rq-1475e428": {
     "decl": "Scenario: The ORCA corpus fixture reproduces the JKQC ground truth",
@@ -1491,6 +1560,14 @@
     "title": "--bavg replaces the conformer minimum with the ensemble value",
     "type": "scenario"
   },
+  "rq-1c79c0e4": {
+    "decl": "## Feature API",
+    "file": "movie",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
+  },
   "rq-1c86c6f3": {
     "decl": "Scenario: Quasi-harmonic entropy never exceeds harmonic entropy",
     "file": "thermo",
@@ -1583,6 +1660,18 @@
     ],
     "title": "extract_matches",
     "type": "api-item"
+  },
+  "rq-1e523f8f": {
+    "decl": "Scenario: Zero survivors write an empty movie",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Zero survivors write an empty movie",
+    "type": "scenario"
   },
   "rq-1ec71bfc": {
     "decl": "- `tests/thermo.rs` tests the derivation as pure functions against",
@@ -1720,6 +1809,22 @@
     ],
     "title": "ParserRegistry",
     "type": "api-item"
+  },
+  "rq-21313a28": {
+    "decl": "Scenario: An ok record without a geometry is skipped and counted",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An ok record without a geometry is skipped and counted",
+    "type": "scenario"
   },
   "rq-21414dd3": {
     "decl": "Scenario: The correction column prints kind, program, version, and quoted commands",
@@ -2149,6 +2254,18 @@
     "title": "Select keeps the first N per group",
     "type": "scenario"
   },
+  "rq-298c8373": {
+    "decl": "- `parse_overwrite_answer(line: &str) -> bool`",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_overwrite_answer",
+    "type": "api-item"
+  },
   "rq-29e0af6a": {
     "decl": "## Out of Scope",
     "file": "parsers/orca",
@@ -2530,6 +2647,14 @@
     "level": 2,
     "refs": [],
     "title": "Crate Layout",
+    "type": "section"
+  },
+  "rq-315762eb": {
+    "decl": "## Frame Format",
+    "file": "movie",
+    "level": 2,
+    "refs": [],
+    "title": "Frame Format",
     "type": "section"
   },
   "rq-3172eb32": {
@@ -3145,11 +3270,15 @@
     "type": "scenario"
   },
   "rq-3b5861a5": {
-    "decl": "- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget) -> Result<CollectOutcome, CollectError>` —",
+    "decl": "- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget, confirm: &mut dyn FnMut() -> bool) -> Result<CollectOutcome, CollectError>` —",
     "file": "collection",
     "refs": [
       {
         "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/collect.rs",
         "kind": "code"
       }
     ],
@@ -3421,6 +3550,18 @@
     "title": "Hydration States",
     "type": "section"
   },
+  "rq-42da75bb": {
+    "decl": "Scenario: A refusal at --out ends the run before movie.xyz",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A refusal at --out ends the run before movie.xyz",
+    "type": "scenario"
+  },
   "rq-42e59efe": {
     "decl": "# Feature: Format Detection and Parser Framework",
     "file": "parser-framework",
@@ -3432,6 +3573,18 @@
     ],
     "title": "Feature: Format Detection and Parser Framework",
     "type": "file"
+  },
+  "rq-42f7e417": {
+    "decl": "Scenario: confirm_overwrite declines at end of input",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "confirm_overwrite declines at end of input",
+    "type": "scenario"
   },
   "rq-4311126f": {
     "decl": "- `WindowBudget { head_bytes, tail_bytes }` — a pair of window sizes for",
@@ -3467,6 +3620,18 @@
       }
     ],
     "title": "Record",
+    "type": "api-item"
+  },
+  "rq-4418be27": {
+    "decl": "- `frame_text(record: &Record) -> String` — one frame's full text: the",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "frame_text",
     "type": "api-item"
   },
   "rq-441c138f": {
@@ -3612,6 +3777,18 @@
     "title": "The corpus fixture conforms",
     "type": "scenario"
   },
+  "rq-466cd609": {
+    "decl": "Scenario: confirm_overwrite refuses without a terminal",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "confirm_overwrite refuses without a terminal",
+    "type": "scenario"
+  },
   "rq-46ff4c56": {
     "decl": "Scenario: Fractional decimal counts are accepted",
     "file": "uniqueness",
@@ -3749,6 +3926,22 @@
       }
     ],
     "title": "last_line_where falls back to the head",
+    "type": "scenario"
+  },
+  "rq-4aab0ef8": {
+    "decl": "Scenario: --movie alone is a visible outcome",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--movie alone is a visible outcome",
     "type": "scenario"
   },
   "rq-4b684f8d": {
@@ -3965,7 +4158,7 @@
     "type": "section"
   },
   "rq-503eebe7": {
-    "decl": "Scenario: --fout silences the replacement warning",
+    "decl": "Scenario: --fout forces the replacement without asking",
     "file": "collection",
     "refs": [
       {
@@ -3973,7 +4166,7 @@
         "kind": "code"
       }
     ],
-    "title": "--fout silences the replacement warning",
+    "title": "--fout forces the replacement without asking",
     "type": "scenario"
   },
   "rq-509b31ed": {
@@ -4167,6 +4360,18 @@
     ],
     "title": "populations",
     "type": "api-item"
+  },
+  "rq-545321a5": {
+    "decl": "Scenario: frame_text yields an empty string for a mismatched geometry",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "frame_text yields an empty string for a mismatched geometry",
+    "type": "scenario"
   },
   "rq-54536800": {
     "decl": "Scenario: A dash argument is an ordinary path, not stdin",
@@ -4456,6 +4661,22 @@
     ],
     "title": "Partial lines at the window seams are dropped",
     "type": "scenario"
+  },
+  "rq-59b68ca8": {
+    "decl": "- `confirm_overwrite(path: &Path, prompt: &mut dyn Write, input: &mut dyn BufRead, interactive: bool) -> OverwriteDecision`",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/overwrite.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "confirm_overwrite",
+    "type": "api-item"
   },
   "rq-5a5c97f2": {
     "decl": "Scenario: pop_level_value resolves all four levels through one path",
@@ -5452,6 +5673,26 @@
     "title": "Window Contract",
     "type": "section"
   },
+  "rq-6fb174a0": {
+    "decl": "# Feature: Movie Export (`--movie`)",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Feature: Movie Export (`--movie`)",
+    "type": "file"
+  },
   "rq-6ffbf9aa": {
     "decl": "- `formation_values(record: &Record, references: &MonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation`",
     "file": "formation",
@@ -5723,6 +5964,18 @@
     "title": "A choice expands",
     "type": "scenario"
   },
+  "rq-76d13d9c": {
+    "decl": "Scenario: The frames are the pipeline survivors in run order",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The frames are the pipeline survivors in run order",
+    "type": "scenario"
+  },
   "rq-7721f6ff": {
     "decl": "Scenario: The collapse preserves first-appearance order",
     "file": "formation",
@@ -5839,6 +6092,22 @@
     "title": "corrected_monomer_references",
     "type": "api-item"
   },
+  "rq-78af10b3": {
+    "decl": "- `movie_frames(records: &[Record]) -> (Vec<&Record>, usize)` — the",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "movie_frames",
+    "type": "api-item"
+  },
   "rq-799f6155": {
     "decl": "Scenario: The version banner is detected",
     "file": "parsers/gaussian",
@@ -5853,6 +6122,18 @@
       }
     ],
     "title": "The version banner is detected",
+    "type": "scenario"
+  },
+  "rq-79e2785e": {
+    "decl": "Scenario: a name's line breaks do not split the comment line",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "a name's line breaks do not split the comment line",
     "type": "scenario"
   },
   "rq-7a42c9fb": {
@@ -6064,6 +6345,18 @@
     ],
     "title": "Absent commands are omitted",
     "type": "scenario"
+  },
+  "rq-7e0e7fa6": {
+    "decl": "- `overwrite_error(decision: OverwriteDecision, path: &Path) -> Option<String>`",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "overwrite_error",
+    "type": "api-item"
   },
   "rq-7e73da19": {
     "decl": "## Fragment Signature",
@@ -6350,6 +6643,18 @@
     "title": "Crate Layout",
     "type": "section"
   },
+  "rq-83ccc28e": {
+    "decl": "Scenario: confirm_overwrite declines on any other answer",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "confirm_overwrite declines on any other answer",
+    "type": "scenario"
+  },
   "rq-83dbd29d": {
     "decl": "Scenario: Element symbols are normalized to title case",
     "file": "parsers/xyz",
@@ -6519,6 +6824,18 @@
     "title": "Comments without the energy label carry no energy",
     "type": "scenario"
   },
+  "rq-86a3deda": {
+    "decl": "Scenario: A print-only run movies every loaded ok record",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A print-only run movies every loaded ok record",
+    "type": "scenario"
+  },
   "rq-86ee6f34": {
     "decl": "Scenario: The earliest signature wins when a wrapper embeds a foreign banner",
     "file": "parser-framework",
@@ -6624,6 +6941,18 @@
     "title": "A non-positive or non-finite value is a usage error",
     "type": "scenario"
   },
+  "rq-8918146b": {
+    "decl": "Scenario: collect_inputs_with does not consult the hook for a new output",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "collect_inputs_with does not consult the hook for a new output",
+    "type": "scenario"
+  },
   "rq-899932a2": {
     "decl": "- `CJKQC` — the only binary target of the crate `complied-jkqc`.",
     "file": "scaffolding",
@@ -6726,6 +7055,14 @@
     ],
     "title": "Without --unit the energies remain hartree",
     "type": "scenario"
+  },
+  "rq-8b51b16e": {
+    "decl": "### Crate Layout",
+    "file": "movie",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
   },
   "rq-8bae3ee9": {
     "decl": "Scenario: --unit leaves populations alone",
@@ -7073,6 +7410,18 @@
       }
     ],
     "title": "A mode at the reference frequency weighs half",
+    "type": "scenario"
+  },
+  "rq-92d5adc8": {
+    "decl": "Scenario: Atom lines carry the stored geometry",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Atom lines carry the stored geometry",
     "type": "scenario"
   },
   "rq-92e3f3e9": {
@@ -7553,6 +7902,18 @@
     "title": "The correction never creates a defined value",
     "type": "scenario"
   },
+  "rq-9b8707e4": {
+    "decl": "Scenario: A record without an electronic energy omits the E= part",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without an electronic energy omits the E= part",
+    "type": "scenario"
+  },
   "rq-9b8f2e7b": {
     "decl": "Scenario: A minimal record serializes to an exact canonical line",
     "file": "record",
@@ -7752,6 +8113,18 @@
     ],
     "title": "collect_monomers",
     "type": "api-item"
+  },
+  "rq-9e89b02f": {
+    "decl": "Scenario: The comment line names the record and its electronic energy",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The comment line names the record and its electronic energy",
+    "type": "scenario"
   },
   "rq-9ea7dfb5": {
     "decl": "Scenario: Rounding is floor-based for negative values",
@@ -8046,6 +8419,26 @@
     ],
     "title": "A record gains components from its resolvable name",
     "type": "scenario"
+  },
+  "rq-a4493f29": {
+    "decl": "Scenario: A record with neither name nor energy comments a dash",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record with neither name nor energy comments a dash",
+    "type": "scenario"
+  },
+  "rq-a4899c02": {
+    "decl": "## Out of Scope",
+    "file": "movie",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
   },
   "rq-a4e0ba89": {
     "decl": "## Command Line",
@@ -8642,6 +9035,18 @@
     "title": "ExtractMode",
     "type": "api-item"
   },
+  "rq-b0fad254": {
+    "decl": "- `OverwriteDecision` — `Proceed`, `Declined`, or `Refused`, the",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "OverwriteDecision",
+    "type": "api-item"
+  },
   "rq-b0fc2983": {
     "decl": "Scenario: Near-zero trivial modes are dropped and real modes are kept",
     "file": "parser-framework",
@@ -9001,6 +9406,18 @@
       }
     ],
     "title": "Exact composition extracts its records",
+    "type": "scenario"
+  },
+  "rq-b756a018": {
+    "decl": "Scenario: No skip note when every record becomes a frame",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "No skip note when every record becomes a frame",
     "type": "scenario"
   },
   "rq-b75cecef": {
@@ -9384,6 +9801,14 @@
     ],
     "title": "Merge skips and reports corrupt lines in inputs",
     "type": "scenario"
+  },
+  "rq-be312c87": {
+    "decl": "## File Handling",
+    "file": "movie",
+    "level": 2,
+    "refs": [],
+    "title": "File Handling",
+    "type": "section"
   },
   "rq-be35a7b3": {
     "decl": "Scenario: Positional arguments without --out are a usage error",
@@ -10575,6 +11000,18 @@
     "title": "--conc alone is not a visible outcome",
     "type": "scenario"
   },
+  "rq-d72194bc": {
+    "decl": "Scenario: The frame order follows the sort",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The frame order follows the sort",
+    "type": "scenario"
+  },
   "rq-d72bb4c5": {
     "decl": "- `MrccParser` — unit struct implementing the framework `Parser` trait with",
     "file": "parsers/mrcc",
@@ -10611,6 +11048,18 @@
     "title": "tests",
     "type": "api-item"
   },
+  "rq-d75cccd1": {
+    "decl": "Scenario: --add-correction with --movie uses pipeline semantics",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--add-correction with --movie uses pipeline semantics",
+    "type": "scenario"
+  },
   "rq-d7a0c24f": {
     "decl": "Scenario: A ppt value is a mole fraction of the standard atmosphere",
     "file": "formation",
@@ -10621,6 +11070,18 @@
       }
     ],
     "title": "A ppt value is a mole fraction of the standard atmosphere",
+    "type": "scenario"
+  },
+  "rq-d82889ab": {
+    "decl": "Scenario: --movie combines with --out",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--movie combines with --out",
     "type": "scenario"
   },
   "rq-d82e314a": {
@@ -10670,6 +11131,18 @@
     "refs": [],
     "title": "Types",
     "type": "section"
+  },
+  "rq-d8fed97e": {
+    "decl": "Scenario: A print-only run skips a failed record with a geometry",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A print-only run skips a failed record with a geometry",
+    "type": "scenario"
   },
   "rq-d993628d": {
     "decl": "# Architecture",
@@ -11046,7 +11519,7 @@
     "type": "api-item"
   },
   "rq-e2843432": {
-    "decl": "Scenario: A repeated invocation replaces the database with a warning",
+    "decl": "Scenario: A non-interactive run refuses to replace an existing database",
     "file": "collection",
     "refs": [
       {
@@ -11054,7 +11527,7 @@
         "kind": "code"
       }
     ],
-    "title": "A repeated invocation replaces the database with a warning",
+    "title": "A non-interactive run refuses to replace an existing database",
     "type": "scenario"
   },
   "rq-e2e0998d": {
@@ -11169,6 +11642,22 @@
     "title": "An empty input file aborts the run and writes nothing",
     "type": "scenario"
   },
+  "rq-e5292dca": {
+    "decl": "- `MovieError` — the write failure: `Io(String)` carries a description of",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "MovieError",
+    "type": "api-item"
+  },
   "rq-e52f165b": {
     "decl": "Scenario: A blank line separates the groups",
     "file": "hydration",
@@ -11209,6 +11698,22 @@
     "title": "A failed correction record is skipped with a warning",
     "type": "scenario"
   },
+  "rq-e5ec2a43": {
+    "decl": "- `write_movie_xyz(path: &Path, frames: &[&Record]) -> Result<(), MovieError>`",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "write_movie_xyz",
+    "type": "api-item"
+  },
   "rq-e61c2633": {
     "decl": "- `tests/` contains integration tests; the CLI tests run the built binary",
     "file": "scaffolding",
@@ -11236,6 +11741,14 @@
     ],
     "title": "An error termination is failed",
     "type": "scenario"
+  },
+  "rq-e63e8caf": {
+    "decl": "### Types",
+    "file": "movie",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
   },
   "rq-e64bbc62": {
     "decl": "Scenario: Undefined values fail comparisons except inequality",
@@ -11636,6 +12149,18 @@
     "title": "Fortran float parsing accepts E, e, D, and d exponents",
     "type": "scenario"
   },
+  "rq-ed1ff9fd": {
+    "decl": "Scenario: The interactive question names the target",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The interactive question names the target",
+    "type": "scenario"
+  },
   "rq-ed4da76f": {
     "decl": "Scenario: Temperature changes every thermal term but not zpe",
     "file": "thermo",
@@ -11686,6 +12211,18 @@
       }
     ],
     "title": "A temperature outside the correlation's domain is a usage error",
+    "type": "scenario"
+  },
+  "rq-ee9ac740": {
+    "decl": "Scenario: confirm_overwrite proceeds on yes answers",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "confirm_overwrite proceeds on yes answers",
     "type": "scenario"
   },
   "rq-ef146284": {
@@ -11747,6 +12284,31 @@
     ],
     "title": "--ignoreimag with --makereal is a usage error",
     "type": "scenario"
+  },
+  "rq-eff8dce8": {
+    "decl": "## Overwrite Confirmation",
+    "file": "collection",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/overwrite.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Overwrite Confirmation",
+    "type": "section"
   },
   "rq-f00ebeae": {
     "decl": "### Types",
@@ -12357,6 +12919,14 @@
     "title": "Rounded percentages need not sum to exactly 100",
     "type": "scenario"
   },
+  "rq-fc05e5df": {
+    "decl": "## Run Semantics",
+    "file": "movie",
+    "level": 2,
+    "refs": [],
+    "title": "Run Semantics",
+    "type": "section"
+  },
   "rq-fc9218b9": {
     "decl": "- `corrected_energy(record: &Record) -> Option<f64>` — the attached",
     "file": "correction",
@@ -12395,6 +12965,18 @@
       }
     ],
     "title": "2p attaches a cbs correction",
+    "type": "scenario"
+  },
+  "rq-fd2671de": {
+    "decl": "Scenario: A record without a name has a dash name",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without a name has a dash name",
     "type": "scenario"
   },
   "rq-fd428ce5": {

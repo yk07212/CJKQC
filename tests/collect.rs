@@ -2,13 +2,16 @@
 //! classification and `collect_inputs` over the fixture corpus and
 //! temporary databases (see `rqm/collection.md`).
 
+use std::cell::Cell;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use complied_jkqc::db::DbError;
+use complied_jkqc::parser::WindowBudget;
 use complied_jkqc::{
-    classify_inputs, collect_inputs, CollectError, CollectOutcome, CollectionMode, Record,
+    classify_inputs, collect_inputs, collect_inputs_with, CollectError, CollectOutcome,
+    CollectionMode, Record,
 };
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -279,4 +282,55 @@ fn merge_io_maps_to_collect_io() {
     // Sanity: the same failure is an Io in the database layer.
     let merged = complied_jkqc::db::merge_databases(&[dir.join("missing.jsonl").as_path()], &out);
     assert!(matches!(merged, Err(DbError::Io { .. })));
+}
+
+// rq-8918146b
+#[test]
+fn collect_inputs_with_does_not_consult_the_hook_for_a_new_output() {
+    let dir = temp_dir();
+    let consulted = Cell::new(0);
+    let mut hook = || {
+        consulted.set(consulted.get() + 1);
+        false
+    };
+
+    // Build mode: a fresh output is written even though the hook declines.
+    let inputs = vec![fixture("xtb/1dma.log")];
+    let fresh = dir.join("fresh.jsonl");
+    collect_inputs_with(&refs(&inputs), &fresh, &WindowBudget::default(), &mut hook)
+        .expect("build into a fresh output without consulting the hook");
+    assert_eq!(consulted.get(), 0);
+    assert!(fresh.exists());
+
+    // Merge mode: the same rule.
+    let db = dir.join("a.jsonl");
+    write_jsonl(&db, &[sample_line("A1", -1.0).as_str()]);
+    let merged = dir.join("merged.jsonl");
+    collect_inputs_with(&refs(&[db]), &merged, &WindowBudget::default(), &mut hook)
+        .expect("merge into a fresh output without consulting the hook");
+    assert_eq!(consulted.get(), 0);
+    assert!(merged.exists());
+}
+
+// rq-3b5861a5
+#[test]
+fn collect_inputs_with_consults_the_hook_for_an_existing_output() {
+    let dir = temp_dir();
+    let db = dir.join("a.jsonl");
+    write_jsonl(&db, &[sample_line("A1", -1.0).as_str()]);
+    let out = dir.join("merged.jsonl");
+    write_jsonl(&out, &[sample_line("OLD", 0.0).as_str()]);
+    let consulted = Cell::new(0);
+    let mut hook = || {
+        consulted.set(consulted.get() + 1);
+        false
+    };
+    match collect_inputs_with(&refs(&[db]), &out, &WindowBudget::default(), &mut hook) {
+        Err(CollectError::NotConfirmed) => {}
+        other => panic!("expected NotConfirmed, got {other:?}"),
+    }
+    assert_eq!(consulted.get(), 1);
+    // The declined write leaves the previous content intact.
+    let kept = fs::read_to_string(&out).expect("read declined output");
+    assert!(kept.contains("OLD"), "previous content replaced: {kept}");
 }

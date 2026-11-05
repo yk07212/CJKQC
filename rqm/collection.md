@@ -22,9 +22,38 @@ the run (`rqm/ARCHITECTURE.md`). A file that no parser reads at all
 (unrecognized format, empty file) is not a job: it aborts the run with an
 error and nothing is written.
 
-Replacing an existing database at `--out` prints a warning to stderr unless
-the run is forced with `--fout`; forcing changes the warning, never
-what is written.
+Replacing an existing database at `--out` is confirmed before it is
+overwritten; `--fout` forces the replacement without asking
+(Overwrite Confirmation below).
+
+## Overwrite Confirmation <!-- rq-eff8dce8 -->
+
+- A target that already exists — the `--out` database in either mode, or
+  `movie.xyz` (`rqm/movie.md`) — is never replaced silently. Immediately
+  before its atomic write the run prints the question
+  `<path> already exists; overwrite? [y/N]` to stderr and reads one answer
+  line from stdin. The line is trimmed; `y` and `yes` in any casing mean
+  yes; every other answer — an empty line, `n`, anything else, or an
+  end-of-input — means no.
+- A no answer aborts the run: stderr reports
+  `error: <path> exists; not overwriting`, the target is left untouched,
+  no later write is attempted, and the exit code is 1.
+- When stdin is not an interactive terminal the question is never printed
+  and stdin is never read: the replacement is refused with
+  `error: <path> exists; not interactive; use --fout to force`, the target
+  is left untouched, and the exit code is 1.
+- `--fout` forces the replacement in every context: no question is
+  printed, stdin is not read, and the write proceeds. It changes nothing
+  else — a target that does not exist is written the same way with or
+  without it.
+- Each target is confirmed at its own write, in write order: the `--out`
+  database before `movie.xyz` (`rqm/movie.md`), so a no or a refusal at
+  `--out` ends the run before `movie.xyz` is considered, while a confirmed
+  and written `--out` stays written when `movie.xyz` is then declined.
+- The question and the answer are CLI logic (`src/overwrite.rs`): the
+  collection pipeline invokes a caller-supplied hook immediately before
+  replacing an existing output, and every other write site asks directly.
+  The library itself never asks.
 
 ## Input Classification <!-- rq-8ad5063d -->
 
@@ -60,7 +89,8 @@ what is written.
   produced, and only then does `write_database` install the collected
   records as the complete new content of `--out`, in argument order,
   atomically (`rqm/database.md`) — a failure leaves any existing database
-  intact, and replacing one warns unless `--fout` was given. All inputs are
+  intact, and replacing one is confirmed or forced with `--fout`
+  (Overwrite Confirmation). All inputs are
   read before the target is written, so `--out` may
   name a file that is also an input.
 
@@ -87,9 +117,9 @@ CJKQC <inputs>… -o <path> [--fout]
 - `<inputs>…` — one or more input files (positional, required).
 - `--out` / `-o` — the database to write (required). Both modes replace it;
   its parent directory must already exist.
-- `--fout` — skip the "replacing existing database" warning when
-  `--out` already exists. It changes the warning, never the output; it is
-  accepted in both modes.
+- `--fout` — force the replacement of an existing `--out` (or
+  `movie.xyz`, `rqm/movie.md`) without the confirmation question
+  (Overwrite Confirmation). It is accepted in both modes.
 - A literal `-` is an ordinary path, not stdin; stdin is not collected.
 - Usage errors — no inputs, a missing `--out`, unknown flags (including JKQC
   flags that no feature has adopted, such as `-el`) — print clap's parse
@@ -108,15 +138,18 @@ CJKQC <inputs>… -o <path> [--fout]
 - Merge completion prints to stdout: `merged <n> records into <out>`. With
   `--add-correction` (`rqm/correction.md`) the line gains
   `(<k> corrected)`.
-- Replacing an existing database at `--out` prints a warning naming the path
-  to stderr, unless `--fout` was given; the run still exits 0.
+- The overwrite question prints to stderr and the answer is read from
+  stdin (Overwrite Confirmation); a replacement answered no, or refused
+  for the lack of a terminal without `--fout`, is a fatal error naming the
+  path: exit 1, the existing file untouched.
 - Each skipped corrupt line prints to stderr a warning naming the input
   path and line number.
 - Fatal errors (unreadable input, unrecognized format, empty input,
   unwritable `--out`, missing parent directory, a failed write) print an
   error naming the path to stderr.
 - Exit codes: **0** — the run completed and skipped nothing; **1** — a
-  fatal error (nothing written: IO failure, unrecognized or empty input) or
+  fatal error (nothing written: IO failure, unrecognized or empty input,
+  an overwrite answered no or refused without `--fout`) or
   a merge that skipped corrupt lines; **2** — usage error (bad flags, no
   inputs, mixed inputs). Failed and truncated records from a matched parser
   do not change the exit code.
@@ -142,6 +175,11 @@ CJKQC <inputs>… -o <path> [--fout]
     `ParseError::Io`).
   - `Db(DbError)` — the database layer failed for a non-Io reason
     (serialization, invalid record) while writing.
+  - `NotConfirmed` — the confirmation hook declined the replacement of an
+    existing output; nothing was written. The CLI prints the reason itself
+    and never surfaces this variant's own text.
+- `OverwriteDecision` — `Proceed`, `Declined`, or `Refused`, the <!-- rq-b0fad254 -->
+  confirmation verdict for one target (Overwrite Confirmation).
 
 ### Functions <!-- rq-acd8f4f9 -->
 
@@ -160,32 +198,63 @@ CJKQC <inputs>… -o <path> [--fout]
     is still intact, and a missing one was never created — parsing and
     serialization all complete before `write_database` begins, and
     `write_database` is itself atomic (`rqm/database.md`).
-  - Whether a warning precedes the replacement of an existing `output` is a
-    CLI concern (`--fout`); this function never warns.
+  - The confirmation of an existing `output` is the caller's concern
+    (`--fout`, Overwrite Confirmation): the CLI injects its hook through
+    `collect_inputs_with`; `collect_inputs` itself runs with an
+    unconditional confirmation and never asks.
   - `ParseError::Io` is reported as `CollectError::Io`; `DbError::Io` is
     reported as `CollectError::Io`; other database failures surface as `Db`.
 
-- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget) -> Result<CollectOutcome, CollectError>` — <!-- rq-3b5861a5 -->
+- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget, confirm: &mut dyn FnMut() -> bool) -> Result<CollectOutcome, CollectError>` — <!-- rq-3b5861a5 -->
   `collect_inputs` with an explicit window budget: build-mode inputs are
   read through windows of the budget's sizes (the CLI's
   `--head-bytes`/`--tail-bytes`); merge mode reads record databases and
-  ignores the budget. `collect_inputs` is this function with the default
-  budget.
+  ignores the budget. `confirm` is invoked immediately before an existing
+  output is replaced; `false` aborts with nothing written
+  (`CollectError::NotConfirmed`). `collect_inputs` is this function with
+  the default budget and an unconditional confirmation.
 
 - `gather_inputs_with(inputs: &[&Path], budget: &WindowBudget) -> Result<Gathered, CollectError>` — <!-- rq-024c9db0 -->
   `gather_inputs` (classify and read records without writing) with the
   same budget override and the same merge-mode indifference to it;
   `gather_inputs` is this function with the default budget.
 
+- `confirm_overwrite(path: &Path, prompt: &mut dyn Write, input: &mut dyn BufRead, interactive: bool) -> OverwriteDecision` <!-- rq-59b68ca8 -->
+  - The confirmation of Overwrite Confirmation for one target. Interactive:
+    the question `<path> already exists; overwrite? [y/N]` is written to
+    `prompt` (the CLI's stderr) and one answer line is read from `input`,
+    trimmed, and parsed; `Proceed` only for a yes answer, `Declined`
+    otherwise, end-of-input included. A question that cannot be written to
+    `prompt` is treated like the non-interactive case: the verdict is
+    `Refused` and `input` is untouched. Non-interactive: neither stream is
+    touched and the verdict is `Refused`.
+- `parse_overwrite_answer(line: &str) -> bool` <!-- rq-298c8373 -->
+  - The answer grammar: the trimmed line equals `y` or `yes`,
+    case-insensitively.
+- `overwrite_error(decision: OverwriteDecision, path: &Path) -> Option<String>` <!-- rq-7e0e7fa6 -->
+  - The stderr error line for a refused replacement:
+    `error: <path> exists; not overwriting` for `Declined` and
+    `error: <path> exists; not interactive; use --fout to force` for
+    `Refused`; `None` for `Proceed`.
+
 ### Crate Layout <!-- rq-336152ed -->
 
 - `src/collect.rs` holds classification and the two pipelines; the library <!-- rq-fcb0174f -->
   root re-exports its public types and functions.
+- The overwrite confirmation lives in `src/overwrite.rs` —
+  `OverwriteDecision`, `confirm_overwrite`, `parse_overwrite_answer`,
+  `overwrite_error`, re-exported by the library root; `main.rs` supplies
+  `stdin().is_terminal()` (`std::io::IsTerminal`, no new dependencies),
+  stderr as the prompt sink, and maps the decision through
+  `overwrite_error` to the exit-1 abort.
 - `src/main.rs` holds the clap definition (inputs positional, `--out` <!-- rq-70fc34c2 -->
   required) and maps outcomes and errors to the stdout/stderr reporting and
   exit codes above; the scaffold's placeholder error path is gone.
 - `tests/collect.rs` tests classification and `collect_inputs` over the <!-- rq-2d29c3a7 -->
-  fixture corpus and temporary databases; `tests/cli.rs` tests exit codes,
+  fixture corpus and temporary databases; `tests/overwrite.rs` tests the
+  confirmation decisions (answer grammar, end-of-input, the
+  non-interactive refusal, the question text) with injected streams;
+  `tests/cli.rs` tests exit codes,
   output database contents, and the summary lines through the binary.
 
 ## Out of Scope <!-- rq-92e3f3e9 -->
@@ -229,20 +298,27 @@ Feature: Collection command line
     And db.jsonl loads as 2 records, the xtb record first, the second with components pinic = 1 and sa = 1
 
   @rq-e2843432
-  Scenario: A repeated invocation replaces the database with a warning
+  Scenario: A non-interactive run refuses to replace an existing database
     Given db.jsonl was built from "tests/fixtures/xtb/1dma.log"
-    When CJKQC is invoked with "tests/fixtures/xyz/h2o.xyz --out db.jsonl"
-    Then the exit code is 0
-    And db.jsonl loads as the 1 xyz record only
-    And a stderr warning names "db.jsonl" as being replaced
+    When CJKQC is invoked with "tests/fixtures/xyz/h2o.xyz --out db.jsonl" with stdin piped, not a terminal
+    Then the exit code is 1
+    And db.jsonl still loads as the 1 xtb record only
+    And stderr contains "error: db.jsonl exists; not interactive; use --fout to force"
 
   @rq-503eebe7
-  Scenario: --fout silences the replacement warning
+  Scenario: --fout forces the replacement without asking
     Given db.jsonl was built from "tests/fixtures/xtb/1dma.log"
     When CJKQC is invoked with "tests/fixtures/xyz/h2o.xyz --out db.jsonl --fout"
     Then the exit code is 0
     And db.jsonl loads as the 1 xyz record only
-    And stderr contains no warning
+    And stderr contains no overwrite question
+
+  @rq-02fe3cee
+  Scenario: A new target is written without any question
+    Given no file exists at "db.jsonl"
+    When CJKQC is invoked with "tests/fixtures/xtb/1dma.log --out db.jsonl"
+    Then the exit code is 0
+    And stderr contains no overwrite question
 
   @rq-e4f87293
   Scenario: A truncated output is stored as a truncated record
@@ -312,14 +388,14 @@ Feature: Collection command line
   @rq-34231bdc
   Scenario: Merge truncates an existing output
     Given database "a.jsonl" with record A1 and database "old.jsonl" with 5 records
-    When CJKQC is invoked with "a.jsonl --out old.jsonl"
+    When CJKQC is invoked with "a.jsonl --out old.jsonl --fout"
     Then the exit code is 0
     And old.jsonl loads as exactly the 1 record
 
   @rq-8f9a701f
   Scenario: Merge can write onto one of its inputs
     Given database "a.jsonl" with record A1 and database "b.jsonl" with record B1
-    When CJKQC is invoked with "a.jsonl b.jsonl --out a.jsonl"
+    When CJKQC is invoked with "a.jsonl b.jsonl --out a.jsonl --fout"
     Then the exit code is 0
     And a.jsonl loads as A1 B1
 
@@ -378,4 +454,67 @@ Feature: Collection command line
     When CJKQC is invoked with "- --out db.jsonl"
     Then the exit code is 1
     And stderr names "-"
+
+  # --- Overwrite confirmation ---
+
+  @rq-ee9ac740
+  Scenario: confirm_overwrite proceeds on yes answers
+    Given an existing target "db.jsonl" and an interactive confirmation
+    When confirm_overwrite reads the answer line "y"
+    Then the decision is Proceed
+    And the same holds for "Y", "yes", "YES", and " yes "
+
+  @rq-83ccc28e
+  Scenario: confirm_overwrite declines on any other answer
+    Given an existing target "db.jsonl" and an interactive confirmation
+    When confirm_overwrite reads the answer line "n"
+    Then the decision is Declined
+    And the same holds for "", "no", and "maybe"
+
+  @rq-42f7e417
+  Scenario: confirm_overwrite declines at end of input
+    Given an existing target "db.jsonl", an interactive confirmation, and an input already at end of input
+    When confirm_overwrite is called
+    Then the decision is Declined
+
+  @rq-466cd609
+  Scenario: confirm_overwrite refuses without a terminal
+    Given an existing target "db.jsonl" and a non-interactive confirmation
+    When confirm_overwrite is called
+    Then the decision is Refused
+    And neither the prompt nor the input stream is touched
+
+  @rq-ed1ff9fd
+  Scenario: The interactive question names the target
+    Given an existing target "db.jsonl" and an interactive confirmation
+    When confirm_overwrite is called
+    Then the prompt shows "db.jsonl already exists; overwrite? [y/N]"
+
+  @rq-13aa8b07
+  Scenario: A declined overwrite aborts with the file untouched
+    Given an existing target "db.jsonl" whose confirmation is Declined
+    When overwrite_error maps the decision
+    Then the error line is "error: db.jsonl exists; not overwriting"
+    And the run exits 1
+    And db.jsonl is untouched
+
+  @rq-0727ffaf
+  Scenario: A refused overwrite names --fout
+    Given an existing target "db.jsonl" whose confirmation is Refused
+    When overwrite_error maps the decision
+    Then the error line is "error: db.jsonl exists; not interactive; use --fout to force"
+
+  @rq-42da75bb
+  Scenario: A refusal at --out ends the run before movie.xyz
+    Given an existing database "kept.jsonl", an existing file "movie.xyz", and a database with 3 ok records of one composition
+    When CJKQC is invoked with the database, "--cutr el 5 --out kept.jsonl --movie" with stdin piped, not a terminal
+    Then the exit code is 1
+    And kept.jsonl and movie.xyz are both unchanged
+    And the refusal on stderr names "kept.jsonl"
+
+  @rq-8918146b
+  Scenario: collect_inputs_with does not consult the hook for a new output
+    Given a fresh output path that does not exist
+    When collect_inputs_with is called with a hook that always declines
+    Then the collection succeeds and the output is written
 ```

@@ -9,11 +9,8 @@ use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::record::{Record, RecordInvalidity};
-
-static TEMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// The outcome of loading a database: valid records in file order, plus a
 /// problem for every skipped line.
@@ -178,55 +175,18 @@ pub fn append_records(path: &Path, records: &[Record]) -> Result<(), DbError> {
 ///
 /// (rq-96595784)
 pub fn write_database(path: &Path, lines: &[String]) -> Result<(), DbError> {
-    let file_name = path.file_name().ok_or_else(|| DbError::Io {
-        kind: std::io::ErrorKind::InvalidInput,
-        reason: format!("{}: not a database file path", path.display()),
-    })?;
-    let parent = path
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or(Path::new("."));
-    let temp = parent.join(format!(
-        ".{}.tmp-{}-{}",
-        file_name.to_string_lossy(),
-        std::process::id(),
-        TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
-    ));
-    match write_and_rename(&temp, lines, path) {
-        Ok(()) => {
-            // Persist the rename itself (the directory entry) where the
-            // platform allows syncing a directory; best effort.
-            #[cfg(unix)]
-            if let Ok(directory) = File::open(parent) {
-                let _ = directory.sync_all();
-            }
-            Ok(())
-        }
-        Err(error) => {
-            let _ = fs::remove_file(&temp);
-            Err(error)
-        }
+    if path.file_name().is_none() {
+        return Err(DbError::Io {
+            kind: std::io::ErrorKind::InvalidInput,
+            reason: format!("{}: not a database file path", path.display()),
+        });
     }
-}
-
-fn write_and_rename(temp: &Path, lines: &[String], path: &Path) -> Result<(), DbError> {
-    let file = File::create(temp).map_err(|error| DbError::from_io(path, error))?;
-    let mut writer = BufWriter::new(file);
+    let mut contents = String::new();
     for line in lines {
-        writer
-            .write_all(line.as_bytes())
-            .and_then(|()| writer.write_all(b"\n"))
-            .map_err(|error| DbError::from_io(path, error))?;
+        contents.push_str(line);
+        contents.push('\n');
     }
-    writer
-        .flush()
-        .map_err(|error| DbError::from_io(path, error))?;
-    let file = writer
-        .into_inner()
-        .map_err(|error| DbError::from_io(path, error.into()))?;
-    file.sync_all()
-        .map_err(|error| DbError::from_io(path, error))?;
-    fs::rename(temp, path).map_err(|error| DbError::from_io(path, error))
+    crate::atomic::write_atomically(path, &contents).map_err(|error| DbError::from_io(path, error))
 }
 
 /// Merges databases: loads every input in the given order with the same
@@ -240,6 +200,21 @@ fn write_and_rename(temp: &Path, lines: &[String], path: &Path) -> Result<(), Db
 ///
 /// (rq-13bcad95)
 pub fn merge_databases(inputs: &[&Path], output: &Path) -> Result<MergeOutcome, DbError> {
+    let (lines, problems) = merge_lines(inputs)?;
+    let count = lines.len();
+    write_database(output, &lines)?;
+    Ok(MergeOutcome {
+        records: count,
+        problems,
+    })
+}
+
+/// The loading phase of `merge_databases`: every input's verbatim valid
+/// lines in input order, with the skipped lines as merge problems.
+/// Crate-internal so the collection pipeline can place its confirmation
+/// hook between the load and the write (`rqm/collection.md`, Overwrite
+/// Confirmation); not public API.
+pub(crate) fn merge_lines(inputs: &[&Path]) -> Result<(Vec<String>, Vec<MergeProblem>), DbError> {
     let mut lines: Vec<String> = Vec::new();
     let mut problems = Vec::new();
     for input in inputs {
@@ -254,12 +229,7 @@ pub fn merge_databases(inputs: &[&Path], output: &Path) -> Result<MergeOutcome, 
         }
         lines.extend(loaded.into_iter().map(|valid| valid.text));
     }
-    let count = lines.len();
-    write_database(output, &lines)?;
-    Ok(MergeOutcome {
-        records: count,
-        problems,
-    })
+    Ok((lines, problems))
 }
 
 /// A database line that loaded, validated, and decoded as UTF-8, kept

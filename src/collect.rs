@@ -66,6 +66,13 @@ pub enum CollectError {
     },
     /// The database layer failed for a non-Io reason while writing.
     Db(DbError),
+    /// The caller's confirmation hook declined the replacement of an
+    /// existing output; nothing was written. The CLI reports the reason
+    /// itself and never surfaces this variant's own text
+    /// (`rqm/collection.md`, Overwrite Confirmation).
+    ///
+    /// (rq-eff8dce8)
+    NotConfirmed,
 }
 
 impl CollectError {
@@ -101,6 +108,7 @@ impl fmt::Display for CollectError {
             }
             CollectError::Io { reason, .. } => write!(f, "I/O failure: {reason}"),
             CollectError::Db(error) => write!(f, "{error}"),
+            CollectError::NotConfirmed => write!(f, "the output replacement was not confirmed"),
         }
     }
 }
@@ -164,30 +172,39 @@ fn is_database_input(path: &Path) -> Result<bool, CollectError> {
 
 /// Classifies, then performs the selected mode in full. Nothing is ever
 /// written when an error is returned: in build mode every input is read and
-/// every record produced before the output is opened. Whether a warning
-/// precedes the replacement of an existing output is a CLI concern
-/// (`--fout`); this function never warns.
+/// every record produced before the output is opened. The confirmation of
+/// an existing output is the caller's concern: `collect_inputs` runs with
+/// an unconditional confirmation and never asks
+/// (`rqm/collection.md`, Overwrite Confirmation).
 ///
 /// (rq-9d8725d5)
 pub fn collect_inputs(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
-    collect_inputs_with(inputs, output, &crate::parser::WindowBudget::default())
+    collect_inputs_with(
+        inputs,
+        output,
+        &crate::parser::WindowBudget::default(),
+        &mut || true,
+    )
 }
 
 /// `collect_inputs` with an explicit window budget (the CLI's
-/// `--head-bytes`/`--tail-bytes`): every build-mode input is read through
-/// windows of the given sizes, so a wider budget can recover data an
-/// elided seam cut. Merge mode reads record databases and ignores the
-/// budget.
+/// `--head-bytes`/`--tail-bytes`) and the caller's confirmation hook: every
+/// build-mode input is read through windows of the given sizes, so a wider
+/// budget can recover data an elided seam cut. Merge mode reads record
+/// databases and ignores the budget. `confirm` is invoked immediately
+/// before an existing output is replaced; `false` aborts with nothing
+/// written (`rqm/collection.md`, Overwrite Confirmation).
 ///
 /// (rq-3b5861a5)
 pub fn collect_inputs_with(
     inputs: &[&Path],
     output: &Path,
     budget: &crate::parser::WindowBudget,
+    confirm: &mut dyn FnMut() -> bool,
 ) -> Result<CollectOutcome, CollectError> {
     match classify_inputs(inputs)? {
-        CollectionMode::Build => build_database(inputs, output, budget),
-        CollectionMode::Merge => merge_databases(inputs, output),
+        CollectionMode::Build => build_database(inputs, output, budget, confirm),
+        CollectionMode::Merge => merge_databases(inputs, output, confirm),
     }
 }
 
@@ -221,11 +238,15 @@ fn parse_records(
 /// Parse every input with the standard registry, abort on any record the
 /// framework marked unrecognized or empty (status `failed` with no
 /// program), resolve compositions, then write the collected records as the
-/// complete new content of the output.
+/// complete new content of the output. The confirmation hook is consulted
+/// only when the output already exists and is then invoked immediately
+/// before replacing it; `false` declines the write with `NotConfirmed`
+/// (`rqm/collection.md`, Overwrite Confirmation).
 fn build_database(
     inputs: &[&Path],
     output: &Path,
     budget: &crate::parser::WindowBudget,
+    confirm: &mut dyn FnMut() -> bool,
 ) -> Result<CollectOutcome, CollectError> {
     let records = parse_records(inputs, budget)?;
 
@@ -241,6 +262,9 @@ fn build_database(
             serde_json::to_string(record)
                 .map_err(|error| CollectError::Db(DbError::Serialize(error.to_string())))?,
         );
+    }
+    if output.exists() && !confirm() {
+        return Err(CollectError::NotConfirmed);
     }
     db::write_database(output, &lines).map_err(from_db)?;
 
@@ -259,14 +283,24 @@ fn build_database(
     })
 }
 
-/// One `merge_databases` call: inputs read in order, their validated lines
-/// copied verbatim into the atomically replaced output; `DbError::Io`
-/// surfaces as `CollectError::Io`.
-fn merge_databases(inputs: &[&Path], output: &Path) -> Result<CollectOutcome, CollectError> {
-    let outcome = db::merge_databases(inputs, output).map_err(from_db)?;
+/// One merge: the inputs' verbatim lines are loaded in order, and — only
+/// when the output already exists — the confirmation hook is consulted
+/// immediately before the write and the lines are copied into the
+/// atomically replaced output; `DbError::Io` surfaces as
+/// `CollectError::Io` (`rqm/collection.md`, Overwrite Confirmation).
+fn merge_databases(
+    inputs: &[&Path],
+    output: &Path,
+    confirm: &mut dyn FnMut() -> bool,
+) -> Result<CollectOutcome, CollectError> {
+    let (lines, problems) = db::merge_lines(inputs).map_err(from_db)?;
+    if output.exists() && !confirm() {
+        return Err(CollectError::NotConfirmed);
+    }
+    db::write_database(output, &lines).map_err(from_db)?;
     Ok(CollectOutcome::Merge {
-        written: outcome.records,
-        problems: outcome.problems,
+        written: lines.len(),
+        problems,
     })
 }
 

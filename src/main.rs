@@ -5,6 +5,7 @@
 //! (`rqm/filtering.md`). Flags mirror JKQC's spelling with `--` because
 //! clap does not support single-dash long flags.
 
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -33,6 +34,8 @@ use complied_jkqc::hydration::{
     HydrationGroup, SolventConditions,
 };
 use complied_jkqc::metrics::parse_uniq_mode;
+use complied_jkqc::movie::{movie_frames, write_movie_xyz};
+use complied_jkqc::overwrite::{confirm_overwrite, overwrite_error};
 use complied_jkqc::parser::WindowBudget;
 use complied_jkqc::population::{parse_pop_level, PopLevel};
 use complied_jkqc::reacted::ReactedMode;
@@ -68,7 +71,8 @@ struct Cli {
     #[arg(short = 'o', long = "out")]
     out: Option<PathBuf>,
 
-    /// Replace an existing --out without the warning.
+    /// Force the replacement of an existing --out (or movie.xyz) without
+    /// the confirmation question (rqm/collection.md).
     #[arg(long = "fout")]
     fout: bool,
 
@@ -383,6 +387,14 @@ struct Cli {
     /// without separators.
     #[arg(long = "ct")]
     ct: bool,
+
+    /// Write the final structures as xyz frames into movie.xyz
+    /// (rqm/movie.md): one frame per record that is ok and carries a
+    /// geometry, in the order the table prints. A print flag like
+    /// --formation: it is a visible outcome on its own and manipulates
+    /// nothing.
+    #[arg(long = "movie")]
+    movie: bool,
 
     /// Input files: QC program outputs (build) or record databases (merge).
     #[arg(required = true)]
@@ -814,12 +826,16 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             None => set_print(*column),
         })
         .collect();
-    // `--formation`, `--formation-corr`, and the hydration flags print
-    // sections instead of columns but still count as print flags for the
-    // visible-outcome rule (`rqm/formation.md`, `rqm/hydration.md`).
+    // `--formation`, `--formation-corr`, `--movie`, and the hydration
+    // flags print sections or write files instead of columns but still
+    // count as print flags for the visible-outcome rule
+    // (`rqm/formation.md`, `rqm/hydration.md`, `rqm/movie.md`).
     // rq-2dbfbb9a
-    let has_print =
-        !columns.is_empty() || cli.formation || cli.formation_corr || hydration_requested;
+    let has_print = !columns.is_empty()
+        || cli.formation
+        || cli.formation_corr
+        || hydration_requested
+        || cli.movie;
 
     // A run must have a visible outcome (`rqm/filtering.md`); `has_manipulation`
     // and `has_print` are the single source of truth for the rule.
@@ -838,6 +854,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     // (Print plus --out reads the inputs twice — once to print, once to
     // write verbatim — until milestone 7 unifies the plumbing.)
     if !has_manipulation {
+        let mut gathered_records: Option<Vec<Record>> = None;
         if has_print {
             let gathered = match gather_inputs_with(&inputs, &budget) {
                 Ok(gathered) => gathered,
@@ -905,11 +922,23 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                     SortKey::El,
                 );
             }
+            gathered_records = Some(records);
         }
-        return match &cli.out {
+        // The --out write precedes the movie write (`rqm/movie.md`); a
+        // failed --out write ends the run before the movie is written.
+        let (mut code, out_written) = match &cli.out {
             Some(out) => run_collection(&inputs, out, cli.fout, &budget),
-            None => ExitCode::SUCCESS,
+            None => (ExitCode::SUCCESS, false),
         };
+        if cli.movie && (cli.out.is_none() || out_written) {
+            let records = gathered_records
+                .as_deref()
+                .expect("--movie is a print flag, so a print-only run gathers its records");
+            if write_movie_block(records, cli.fout) == ExitCode::FAILURE {
+                code = ExitCode::FAILURE;
+            }
+        }
+        return code;
     }
 
     // A run whose only enrichment is attachment, printing nothing:
@@ -1077,13 +1106,18 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         );
     }
 
+    // The --out write precedes the movie write (`rqm/movie.md`); the
+    // confirmation gate fires immediately before the atomic replacement
+    // (`rqm/collection.md`, Overwrite Confirmation), and a no answer or a
+    // refusal ends the run before the movie is considered.
     if let Some(out) = &cli.out {
-        let replacing = out.exists();
+        if !confirm_target(out, cli.fout) {
+            return ExitCode::FAILURE;
+        }
         if let Err(error) = write_records(out, &records) {
             eprintln!("error: {error}");
             return ExitCode::FAILURE;
         }
-        warn_if_replacing(replacing, cli.fout, out);
         // The filtered summary reports the enrichment when the run
         // carried --add-correction or --extrapolate
         // (`rqm/correction.md`, `rqm/extrapolation.md`).
@@ -1105,31 +1139,47 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         );
     }
 
-    if problems.is_empty() && correction_problems.is_empty() && !extrapolation_problems {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
+    // The movie writes after the --out write (`rqm/movie.md`), always the
+    // run's last stdout line; its failure fails the run.
+    // rq-6fb174a0
+    let mut code =
+        if problems.is_empty() && correction_problems.is_empty() && !extrapolation_problems {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        };
+    if cli.movie && write_movie_block(&records, cli.fout) == ExitCode::FAILURE {
+        code = ExitCode::FAILURE;
     }
+    code
 }
 
 // rq-a2681a7a — collection behaves exactly as `rqm/collection.md`.
-fn run_collection(inputs: &[&Path], out: &Path, fout: bool, budget: &WindowBudget) -> ExitCode {
-    let replacing = out.exists();
-    match complied_jkqc::collect_inputs_with(inputs, out, budget) {
+/// Returns the exit code and whether the output database was written, so
+/// the caller knows whether a movie write may still follow
+/// (`rqm/movie.md`). The confirmation hook asks immediately before the
+/// atomic replacement inside the collection pipeline
+/// (`rqm/collection.md`, Overwrite Confirmation).
+fn run_collection(
+    inputs: &[&Path],
+    out: &Path,
+    fout: bool,
+    budget: &WindowBudget,
+) -> (ExitCode, bool) {
+    let mut confirm = || confirm_target(out, fout);
+    match complied_jkqc::collect_inputs_with(inputs, out, budget, &mut confirm) {
         Ok(CollectOutcome::Build {
             written,
             failed,
             truncated,
         }) => {
-            warn_if_replacing(replacing, fout, out);
             println!(
                 "collected {written} records into {} ({failed} failed, {truncated} truncated)",
                 out.display()
             );
-            ExitCode::SUCCESS
+            (ExitCode::SUCCESS, true)
         }
         Ok(CollectOutcome::Merge { written, problems }) => {
-            warn_if_replacing(replacing, fout, out);
             for problem in &problems {
                 eprintln!(
                     "warning: {} line {}: {}",
@@ -1140,26 +1190,22 @@ fn run_collection(inputs: &[&Path], out: &Path, fout: bool, budget: &WindowBudge
             }
             println!("merged {written} records into {}", out.display());
             if problems.is_empty() {
-                ExitCode::SUCCESS
+                (ExitCode::SUCCESS, true)
             } else {
-                ExitCode::FAILURE
+                (ExitCode::FAILURE, true)
             }
         }
         Err(error @ CollectError::Mixed { .. }) => {
             eprintln!("error: {error}");
-            ExitCode::from(2)
+            (ExitCode::from(2), false)
         }
+        // The hook printed the reason; the run simply fails
+        // (`rqm/collection.md`, Overwrite Confirmation).
+        Err(CollectError::NotConfirmed) => (ExitCode::FAILURE, false),
         Err(error) => {
             eprintln!("error: {error}");
-            ExitCode::FAILURE
+            (ExitCode::FAILURE, false)
         }
-    }
-}
-
-// rq-a2681a7a
-fn warn_if_replacing(replacing: bool, forced: bool, out: &Path) {
-    if replacing && !forced {
-        eprintln!("warning: replacing existing database {}", out.display());
     }
 }
 
@@ -1207,12 +1253,16 @@ fn run_enriching_collection(
     let Some((records, enrichment_problems)) = enrich(&records) else {
         return ExitCode::FAILURE;
     };
-    let replacing = out.exists();
+    // The overwrite confirmation gate precedes the write, so the question
+    // fires immediately before the atomic replacement
+    // (`rqm/collection.md`, Overwrite Confirmation).
+    if !confirm_target(out, fout) {
+        return ExitCode::FAILURE;
+    }
     if let Err(error) = write_records(out, &records) {
         eprintln!("error: {error}");
         return ExitCode::FAILURE;
     }
-    warn_if_replacing(replacing, fout, out);
     // The collection summary reports the enrichment
     // (`rqm/correction.md`, `rqm/extrapolation.md`).
     // rq-58d85e68
@@ -1523,6 +1573,65 @@ fn write_records(out: &Path, records: &[Record]) -> Result<(), String> {
     db::write_database(out, &lines).map_err(|error| error.to_string())
 }
 
+/// The overwrite confirmation gate (`rqm/collection.md`, Overwrite
+/// Confirmation): an existing target is replaced only after a yes answer,
+/// `--fout` forces it, and a run without an interactive terminal refuses.
+/// A decline or refusal prints its error line and returns false; the
+/// caller aborts with exit 1. A target that does not exist is written the
+/// same way with or without `--fout`.
+// rq-eff8dce8
+fn confirm_target(path: &Path, forced: bool) -> bool {
+    if forced || !path.exists() {
+        return true;
+    }
+    let interactive = std::io::stdin().is_terminal();
+    let decision = confirm_overwrite(
+        path,
+        &mut std::io::stderr().lock(),
+        &mut std::io::stdin().lock(),
+        interactive,
+    );
+    match overwrite_error(decision, path) {
+        Some(message) => {
+            eprintln!("{message}");
+            false
+        }
+        None => true,
+    }
+}
+
+/// The movie export of the run's final record set (`rqm/movie.md`): the
+/// frame-eligible subset in run order, the skip note, the overwrite
+/// confirmation (`rqm/collection.md`), the atomic write, and the summary
+/// line — always the run's last stdout line.
+// rq-6fb174a0
+fn write_movie_block(records: &[Record], fout: bool) -> ExitCode {
+    let path = Path::new("movie.xyz");
+    let (frames, excluded) = movie_frames(records);
+    // The skip note counts the final-set records that could not become a
+    // frame (`rqm/movie.md`).
+    // rq-21313a28
+    if excluded > 0 {
+        eprintln!("excluded {excluded} records from movie.xyz (no geometry or not ok)");
+    }
+    if !confirm_target(path, fout) {
+        return ExitCode::FAILURE;
+    }
+    match write_movie_xyz(path, &frames) {
+        Ok(()) => {
+            // The summary line names the frames actually written
+            // (`rqm/movie.md`).
+            // rq-4aab0ef8
+            println!("wrote {} frames into movie.xyz", frames.len());
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
 fn usage(message: &str) -> ExitCode {
     eprintln!("error: {message}");
     ExitCode::from(2)
@@ -1765,6 +1874,7 @@ mod tests {
         "conc",
         "cnt",
         "bavg",
+        "movie",
     ];
 
     /// Every flag on `Cli` must be wired into `run`: a cutoff flag, a print

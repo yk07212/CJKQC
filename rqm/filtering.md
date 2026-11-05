@@ -29,7 +29,7 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
 - A run must have a visible outcome. With neither manipulation nor print
   flags, `--out` is required and behavior is exactly collection's.
   `--out` writes the final records (atomic replacement and the `--fout`
-  warning rule as in collection); print flags print the table to stdout.
+  overwrite rule as in collection); print flags print the table to stdout.
   A run with manipulation flags but neither `--out` nor a print flag is a
   usage error (exit 2): the manipulated database is stored nowhere and
   nothing prints, so the run would do nothing.
@@ -331,7 +331,8 @@ the property set and units:
   `-dropimg` (deleting imaginary modes from the record — `--makereal`
   and `--ignoreimag` (`rqm/thermo.md`) fold or skip imaginary frequencies
   inside a derivation and never edit a record).
-- `-xyz`, `-movie`, spreadsheet output: milestone 7.
+- `-xyz` and spreadsheet output: milestone 7 (`--movie` is specified in
+  `rqm/movie.md`).
 - stdin input (`rqm/collection.md`).
 
 ## Gherkin Scenarios <!-- rq-ad88b915 -->

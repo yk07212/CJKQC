@@ -315,24 +315,26 @@ fn multiple_inputs_are_written_in_argument_order() {
 }
 
 #[test] // rq-e2843432
-fn a_repeated_invocation_replaces_the_database_with_a_warning() {
+fn a_non_interactive_run_refuses_to_replace_an_existing_database() {
     let dir = temp_dir();
     let out = dir.join("db.jsonl");
     let out_text = out.to_string_lossy().into_owned();
     let first = cjkqc(&[&fixture("xtb/1dma.log"), "--out", &out_text]);
     assert_eq!(first.status.code(), Some(0));
+    // The CLI test harness runs with stdin piped, not a terminal: the
+    // question is never asked and the replacement is refused.
     let second = cjkqc(&[&fixture("xyz/h2o.xyz"), "--out", &out_text]);
-    assert_eq!(second.status.code(), Some(0), "{}", stderr(&second));
+    assert_eq!(second.status.code(), Some(1), "{}", stderr(&second));
     let records = loaded(&out);
     assert_eq!(records.len(), 1);
-    assert_eq!(records[0].program.as_deref(), Some("xyz"));
-    let warnings = stderr(&second);
-    assert!(warnings.contains("warning"), "{warnings}");
-    assert!(warnings.contains("db.jsonl"), "{warnings}");
+    assert_eq!(records[0].program.as_deref(), Some("xtb"));
+    assert!(stderr(&second).contains(&format!(
+        "error: {out_text} exists; not interactive; use --fout to force"
+    )));
 }
 
 #[test] // rq-503eebe7
-fn fout_silences_the_replacement_warning() {
+fn fout_forces_the_replacement_without_asking() {
     let dir = temp_dir();
     let out = dir.join("db.jsonl");
     let out_text = out.to_string_lossy().into_owned();
@@ -340,7 +342,19 @@ fn fout_silences_the_replacement_warning() {
     let second = cjkqc(&[&fixture("xyz/h2o.xyz"), "--out", &out_text, "--fout"]);
     assert_eq!(second.status.code(), Some(0), "{}", stderr(&second));
     assert_eq!(loaded(&out).len(), 1);
-    assert!(!stderr(&second).contains("warning"), "{}", stderr(&second));
+    let errput = stderr(&second);
+    assert!(!errput.contains("overwrite?"), "{errput}");
+    assert!(!errput.contains("warning"), "{errput}");
+}
+
+#[test] // rq-02fe3cee
+fn a_new_target_is_written_without_any_question() {
+    let dir = temp_dir();
+    let out = dir.join("db.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&fixture("xtb/1dma.log"), "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(!stderr(&run).contains("overwrite?"), "{}", stderr(&run));
 }
 
 #[test] // rq-e4f87293
@@ -469,7 +483,12 @@ fn merge_truncates_an_existing_output() {
     write_jsonl(&a, &[sample_line("A1", -1.0).as_str()]);
     let old_refs: Vec<&str> = old_lines.iter().map(String::as_str).collect();
     write_jsonl(&old, &old_refs);
-    let run = cjkqc(&[&a.to_string_lossy(), "--out", &old.to_string_lossy()]);
+    let run = cjkqc(&[
+        &a.to_string_lossy(),
+        "--out",
+        &old.to_string_lossy(),
+        "--fout",
+    ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     assert_eq!(loaded(&old).len(), 1);
 }
@@ -486,6 +505,7 @@ fn merge_can_write_onto_one_of_its_inputs() {
         &b.to_string_lossy(),
         "--out",
         &a.to_string_lossy(),
+        "--fout",
     ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let names: Vec<String> = loaded(&a)
@@ -6813,6 +6833,10 @@ fn an_extrapolation_candidate_without_scf_energy_is_skipped() {
     assert!(warnings.contains("1am"), "{warnings}");
     assert!(warnings.contains("skipped"), "{warnings}");
     // The same holds when the high database's candidate lacks scf_energy.
+    // A fresh output path: the first run's database must not stand in the
+    // way of the second (the overwrite confirmation rule,
+    // rqm/collection.md).
+    let out = dir.join("out-no-scf.jsonl");
     let low = db_with(
         &dir,
         "low.jsonl",
@@ -7340,4 +7364,303 @@ fn the_extrapolated_correction_follows_the_runs_conditions() {
         "the elcorr level ignores the temperature"
     );
     assert_ne!(warm_row[2], hot_row[2], "the gcorr level follows it");
+}
+
+// --- movie export scenarios (rqm/movie.md) ---
+
+/// Runs CJKQC with the given working directory, so the fixed-name
+/// `movie.xyz` lands in a per-test directory instead of the workspace.
+fn cjkqc_in(dir: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_CJKQC"))
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .expect("failed to start CJKQC")
+}
+
+/// A database line for an ok record with a standard two-atom geometry,
+/// for movie frames that carry both a name and an energy.
+fn sample_geometry_line(name: &str, energy: f64) -> String {
+    let record = Record {
+        name: Some(name.to_string()),
+        electronic_energy: Some(energy),
+        geometry: Some(Geometry {
+            symbols: vec!["N".to_string(), "H".to_string()],
+            coordinates: vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+        }),
+        ..Record::default()
+    };
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// A database line for a failed record with a geometry; a failed record
+/// carries a non-empty error (`rqm/record.md`), which load validation
+/// requires.
+fn failed_geometry_line(name: &str) -> String {
+    let record = Record {
+        status: RecordStatus::Failed,
+        name: Some(name.to_string()),
+        error: Some("job failed".to_string()),
+        geometry: Some(Geometry {
+            symbols: vec!["N".to_string()],
+            coordinates: vec![0.0, 0.0, 0.0],
+        }),
+        ..Record::default()
+    };
+    serde_json::to_string(&record).expect("serialization")
+}
+
+/// Parses movie.xyz into (comment, atom lines) frames; an empty file
+/// yields no frames.
+fn movie_frames_of(path: &Path) -> Vec<(String, Vec<String>)> {
+    let text = fs::read_to_string(path).expect("read movie.xyz");
+    let mut lines = text.lines();
+    let mut frames = Vec::new();
+    while let Some(count) = lines.next() {
+        let count: usize = count.trim().parse().expect("atom count line");
+        let comment = lines.next().expect("comment line").to_string();
+        let atoms: Vec<String> = (0..count)
+            .map(|_| lines.next().expect("atom line").to_string())
+            .collect();
+        frames.push((comment, atoms));
+    }
+    frames
+}
+
+#[test] // rq-76d13d9c
+fn the_frames_are_the_pipeline_survivors_in_run_order() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -40.0),
+            sample_geometry_line("b", -40.001),
+            sample_geometry_line("c", -38.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--cutr", "el", "5", "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let frames = movie_frames_of(&dir.join("movie.xyz"));
+    let comments: Vec<&str> = frames.iter().map(|(comment, _)| comment.as_str()).collect();
+    assert_eq!(comments, ["a E=-40.0000000000", "b E=-40.0010000000"]);
+}
+
+#[test] // rq-d72194bc
+fn the_frame_order_follows_the_sort() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -40.0),
+            sample_geometry_line("b", -40.001),
+            sample_geometry_line("c", -38.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--sort", "el", "--reverse", "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let frames = movie_frames_of(&dir.join("movie.xyz"));
+    let comments: Vec<&str> = frames.iter().map(|(comment, _)| comment.as_str()).collect();
+    assert_eq!(
+        comments,
+        [
+            "c E=-38.0000000000",
+            "a E=-40.0000000000",
+            "b E=-40.0010000000"
+        ]
+    );
+}
+
+#[test] // rq-86a3deda
+fn a_print_only_run_movies_every_loaded_ok_record() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -1.0),
+            sample_geometry_line("b", -2.0),
+            failed_geometry_line("f"),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let frames = movie_frames_of(&dir.join("movie.xyz"));
+    let comments: Vec<&str> = frames.iter().map(|(comment, _)| comment.as_str()).collect();
+    assert_eq!(comments, ["a E=-1.0000000000", "b E=-2.0000000000"]);
+    let out = stdout(&run);
+    assert!(!out.contains("collected"), "{out}");
+    assert!(!out.contains("merged"), "{out}");
+    assert!(!out.contains("filtered"), "{out}");
+}
+
+#[test] // rq-21313a28
+fn an_ok_record_without_a_geometry_is_skipped_and_counted() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_geometry_line("a", -1.0), sample_line("b", -2.0)],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let frames = movie_frames_of(&dir.join("movie.xyz"));
+    assert_eq!(frames.len(), 1);
+    assert!(stderr(&run).contains("excluded 1 records from movie.xyz (no geometry or not ok)"));
+}
+
+#[test] // rq-d8fed97e
+fn a_print_only_run_skips_a_failed_record_with_a_geometry() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_geometry_line("a", -1.0), failed_geometry_line("f")],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let frames = movie_frames_of(&dir.join("movie.xyz"));
+    let comments: Vec<&str> = frames.iter().map(|(comment, _)| comment.as_str()).collect();
+    assert_eq!(comments, ["a E=-1.0000000000"]);
+    assert!(stderr(&run).contains("excluded 1 records from movie.xyz (no geometry or not ok)"));
+}
+
+#[test] // rq-b756a018
+fn no_skip_note_when_every_record_becomes_a_frame() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -1.0),
+            sample_geometry_line("b", -2.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(movie_frames_of(&dir.join("movie.xyz")).len(), 2);
+    assert!(!stderr(&run).contains("excluded"), "{}", stderr(&run));
+}
+
+#[test] // rq-4aab0ef8
+fn movie_alone_is_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_geometry_line("a", -1.0)]);
+    let run = cjkqc_in(&dir, &[&db, "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(movie_frames_of(&dir.join("movie.xyz")).len() == 1);
+    assert!(
+        stdout(&run).contains("wrote 1 frames into movie.xyz"),
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-d82889ab
+fn movie_combines_with_out() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -40.0),
+            sample_geometry_line("b", -40.001),
+            sample_geometry_line("c", -38.0),
+        ],
+    );
+    let run = cjkqc_in(
+        &dir,
+        &[&db, "--cutr", "el", "5", "--movie", "--out", "kept.jsonl"],
+    );
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(loaded(&dir.join("kept.jsonl")).len(), 2);
+    let out = stdout(&run);
+    let filtered = out
+        .find("filtered 2 records into kept.jsonl")
+        .expect("filtered line");
+    let wrote = out
+        .find("wrote 2 frames into movie.xyz")
+        .expect("wrote line");
+    assert!(filtered < wrote, "{out}");
+}
+
+#[test] // rq-1e523f8f
+fn zero_survivors_write_an_empty_movie() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_geometry_line("a", -1.0)]);
+    let run = cjkqc_in(&dir, &[&db, "--extract", "9w", "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(
+        fs::read(dir.join("movie.xyz")).expect("read movie.xyz"),
+        b""
+    );
+    assert!(
+        stdout(&run).contains("wrote 0 frames into movie.xyz"),
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-146b84dd
+fn replacing_movie_xyz_follows_the_out_confirmation() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_geometry_line("a", -1.0)]);
+    fs::write(dir.join("movie.xyz"), "sentinel\n").expect("seed movie.xyz");
+    let run = cjkqc_in(&dir, &[&db, "--movie"]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert_eq!(
+        fs::read_to_string(dir.join("movie.xyz")).expect("read movie.xyz"),
+        "sentinel\n"
+    );
+    assert!(stderr(&run).contains("error: movie.xyz exists; not interactive; use --fout to force"));
+    let forced = cjkqc_in(&dir, &[&db, "--movie", "--fout"]);
+    assert_eq!(forced.status.code(), Some(0), "{}", stderr(&forced));
+    let frames = movie_frames_of(&dir.join("movie.xyz"));
+    assert_eq!(frames.len(), 1);
+    assert!(
+        !stderr(&forced).contains("overwrite?"),
+        "{}",
+        stderr(&forced)
+    );
+}
+
+#[test] // rq-d75cccd1
+fn add_correction_with_movie_uses_pipeline_semantics() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_geometry_line("a", -38.51), failed_geometry_line("f")],
+    );
+    let corr = db_with(&dir, "corr.jsonl", &[sample_line("a", -50.0)]);
+    let run = cjkqc_in(&dir, &[&db, "--add-correction", &corr, "--movie"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let frames = movie_frames_of(&dir.join("movie.xyz"));
+    let comments: Vec<&str> = frames.iter().map(|(comment, _)| comment.as_str()).collect();
+    assert_eq!(comments, ["a E=-38.5100000000"]);
+}
+
+#[test] // rq-42da75bb
+fn a_refusal_at_out_ends_the_run_before_movie_xyz() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -40.0),
+            sample_geometry_line("b", -40.001),
+            sample_geometry_line("c", -38.0),
+        ],
+    );
+    write_jsonl(
+        &dir.join("kept.jsonl"),
+        &[sample_line("OLD", -1.0).as_str()],
+    );
+    fs::write(dir.join("movie.xyz"), "sentinel\n").expect("seed movie.xyz");
+    let run = cjkqc_in(
+        &dir,
+        &[&db, "--cutr", "el", "5", "--out", "kept.jsonl", "--movie"],
+    );
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert_eq!(
+        fs::read_to_string(dir.join("movie.xyz")).expect("read movie.xyz"),
+        "sentinel\n"
+    );
+    assert_eq!(
+        loaded(&dir.join("kept.jsonl"))[0].name.as_deref(),
+        Some("OLD")
+    );
+    assert!(stderr(&run).contains("error: kept.jsonl exists; not interactive; use --fout to force"));
 }

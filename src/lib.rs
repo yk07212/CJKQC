@@ -14,11 +14,15 @@ pub mod filter;
 pub mod formation;
 pub mod hydration;
 pub mod metrics;
+pub mod movie;
+pub mod overwrite;
 pub mod parser;
 pub mod population;
 pub mod reacted;
 pub mod record;
 pub mod thermo;
+
+pub(crate) mod atomic;
 
 // rq-8c5e4002
 pub use record::{Components, Correction, Geometry, Record, RecordInvalidity, RecordStatus};
@@ -83,6 +87,14 @@ pub use filter::{
     Column, Cutoff, ExtractError, ExtractMode, ExtractPattern, FilterSpec, Grouping, Mode,
     Property, SortKey, Unit, Wildcard,
 };
+
+// rq-eff8dce8 overwrite confirmation surface (rqm/collection.md)
+pub use overwrite::{
+    confirm_overwrite, overwrite_error, parse_overwrite_answer, OverwriteDecision,
+};
+
+// rq-6fb174a0 movie export surface (rqm/movie.md)
+pub use movie::{frame_text, movie_frames, write_movie_xyz, MovieError};
 
 // rq-15f15563
 pub use parser::{
