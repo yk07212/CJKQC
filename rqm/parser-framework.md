@@ -123,8 +123,9 @@ runs (`rqm/ARCHITECTURE.md`).
   - `as_str(&self) -> &str` — the lowercase token; `Display` writes it.
 
 - `Parser` — the trait every output-format reader implements. The trait is <!-- rq-4dc770c8 -->
-  `Send + Sync` so data-parallel collection can be added later without a
-  redesign (no concurrency commitment in v1).
+  `Send + Sync` so the collection pipeline can parse inputs across
+  worker threads (`rqm/collection.md`); a parser itself holds no state
+  and touches nothing beyond its arguments.
   - `program(&self) -> Program` — the format the parser handles.
   - `detect(&self, head: &str) -> Option<usize>` — the byte offset, into
     `head`, of the earliest line that carries this format's signature, or
@@ -310,7 +311,10 @@ proportional to one walk over the windows.
   window.
 - Whole-window byte searches are cheap and permitted. `str::contains` on a
   window is one memory-bandwidth pass; it serves as the signature prefilter
-  in detection and as whole-window status tests.
+  in detection and as whole-window status tests. Whole-window substring
+  searches — the literal arm of `locate`, detection prefilters, and direct
+  window-wide status tests — run through the `memchr` crate's SIMD search,
+  never the standard library's scalar substring scan.
 - Detection rejects cheaply. A parser whose signature is absent from the
   head rejects with a constant number of whole-head `contains` searches;
   where the signature is not literal text (the ORCA banner), a single line
@@ -321,15 +325,31 @@ proportional to one walk over the windows.
   must `contains` the whole line for genuine candidates (a centered
   banner) is the accepted exception. Parsing one file never walks the head
   once per registered parser with allocation-heavy per-line predicates.
-- Per-line tests allocate nothing before admitting a candidate. A predicate
-  or `Where` pattern runs byte-level shape tests first and splits the line
-  into fields only after the line is a candidate.
+- Per-line tests allocate nothing, before or after admission. A predicate
+  or `Where` pattern runs byte-level shape tests first — cheapest reject
+  first — and admits candidates by iterating the line's leading fields;
+  it never collects fields (or any other intermediate) into a buffer,
+  candidate or not: field iteration answers every question the shipped
+  predicates ask, so a per-line `Vec` has no work to do. The field split
+  a value extraction needs happens once, on the located line, in the
+  extraction step.
+- Whole-window gathers scan, never walk. A seam fallback that cannot
+  anchor to a located header — the frequency-table fallbacks of
+  `rqm/parsers/gaussian.md`, `rqm/parsers/orca.md`, and
+  `rqm/parsers/xtb.md` — locates its candidate rows by one SIMD literal
+  scan of the row's marker text (a `Frequencies --` line, a `cm**-1` row,
+  an `eigval` line) and verifies the row shape on the located candidates
+  only, in window order; it never field-splits every line of the window.
+  The gather's answer is the one the line walk would have produced — the
+  same rows, the same section-ending rules — at the whole-window byte
+  search rate.
 - The resulting budget: every window byte is touched a small constant
-  number of times — the read, one identify pass, bounded local extraction —
-  independent of how many markers the format carries, so single-core
-  throughput approaches the whole-window byte-search rate. On commodity
-  hardware the parse path of a 3 MiB covered output runs in single-digit
-  milliseconds.
+  number of times — the read, one identify pass, bounded local extraction,
+  and, for a seam fallback, one literal-scan gather — independent of how
+  many markers the format carries, so single-core throughput approaches
+  the whole-window byte-search rate. On commodity hardware the parse path
+  of a 3 MiB covered output, and of a 10 MiB output read as head and tail
+  windows, runs in single-digit milliseconds.
 
 ## Record Assembly <!-- rq-e4a815f2 -->
 
@@ -380,8 +400,10 @@ proportional to one walk over the windows.
 - The collection command line (`CJKQC <files>`, database append) —
   `rqm/collection.md`. Stdin collection is not part of that surface yet; the
   `from_stream` reader stands ready for it.
-- Parallel parsing: the trait is `Send + Sync`, but v1 makes no concurrency
-  commitment.
+- Window loading beyond `read`: the window reader seeks and reads each
+  window in one large sequential request — the pattern parallel network
+  filesystems serve best. Memory-mapped windows (`mmap`) are out of scope
+  alongside any new dependency that would bring them.
 - Transparent decompression (`.gz` and friends); files are read as they
   are.
 - Concatenated multi-program files: a file formed by appending one program's
@@ -683,6 +705,23 @@ Feature: Format detection and parser framework
     Given a covered window of N lines
     When locate is called with two Where matchers that count their invocations
     Then each matcher is invoked exactly N times
+
+  @rq-8311db22
+  Scenario: a structural walk performs no allocation
+    Given a window of many lines, none a candidate, and a Where pattern
+    whose test iterates the line's leading fields without collecting them
+    When locate is called with that pattern under an allocation-counting
+    global allocator
+    Then every line is tested and none matches
+    And the walk itself performs no heap allocation
+
+  @rq-243c73f2
+  Scenario: a whole-window gather scans for its rows
+    Given a seam fallback that gathers rows carrying the marker text
+    "Frequencies --" from a window whose other lines are arbitrary text
+    When the fallback gathers through a literal scan of the marker
+    Then every marker line in the window is gathered, in window order
+    And no line without the marker is field-split
 
   @rq-7525d2fc
   Scenario: a pattern absent from the windows matches nothing

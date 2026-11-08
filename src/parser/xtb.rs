@@ -72,18 +72,48 @@ fn boxed_total_energy(fields: &[&str]) -> Option<f64> {
 /// word count rather than an arbitrary column.
 /// The eigenvalue columns of the `eigval ...` lines leading `lines`
 /// (the block ends at its first non-eigval line), appended to `values`.
+/// The span walk from a located header: fields are iterated, never
+/// collected, so the walk allocates nothing per line.
+// rq-15b1763d
 fn collect_eigenvalues<'a>(lines: impl Iterator<Item = &'a str>, values: &mut Vec<f64>) {
     let mut started = false;
     for line in lines {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.first() == Some(&"eigval") {
+        let mut fields = line.split_whitespace();
+        if fields.next() == Some("eigval") {
             values.extend(
                 fields
-                    .iter()
-                    .skip(2)
-                    .filter_map(|value| parse_fortran_f64(value)),
+                    .skip(1)
+                    .filter_map(parse_fortran_f64),
             );
             started = true;
+        } else if started {
+            break;
+        }
+    }
+}
+
+/// The whole-window gather of the seam fallback: the `eigval` lines of a
+/// window that carries no visible section header, located by one SIMD
+/// literal scan of the marker text and verified on the candidates only —
+/// never a field split of every line. Consecutive candidates continue the
+/// block exactly as the walk's first non-eigval break.
+// rq-15b1763d
+fn scan_eigenvalues(window: &str, values: &mut Vec<f64>) {
+    let mut started = false;
+    let mut next_row_start: Option<usize> = None;
+    for marker in crate::parser::extract::marker_lines(window, "eigval") {
+        if started && next_row_start != Some(marker.line_start) {
+            break;
+        }
+        let mut fields = marker.line.split_whitespace();
+        if fields.next() == Some("eigval") {
+            values.extend(
+                fields
+                    .skip(1)
+                    .filter_map(parse_fortran_f64),
+            );
+            started = true;
+            next_row_start = Some(marker.next_start);
         } else if started {
             break;
         }
@@ -141,9 +171,13 @@ impl Parser for XtbParser {
         // status markers included (rq-15b1763d).
         let matches = windows.locate(&PATTERNS);
 
-        // Status: the run's own end and error reporting governs it.
-        // rq-ce1b9305 rq-62e1382e rq-9c076f14 rq-a652c946
-        let (status, error) = if windows.tail.contains("finished run") {
+        // Status: the run's own end and error reporting governs it. The
+        // end test is a whole-window SIMD byte search
+        // (`rqm/parser-framework.md`, Performance Constraints).
+        // rq-ce1b9305 rq-62e1382e rq-9c076f14 rq-a652c946 rq-15b1763d
+        let (status, error) = if memchr::memmem::find(windows.tail.as_bytes(), b"finished run")
+            .is_some()
+        {
             (RecordStatus::Ok, None)
         } else if matches.last_in_tail(ERROR_LINE).is_some() {
             // Provisional error signal, pending the genuine failed
@@ -205,8 +239,9 @@ impl Parser for XtbParser {
         // genuine mode keeps its printed sign (a minus marks imaginary).
         // When the last header is not visible in the tail the block may
         // straddle the elided middle, so the head remainder and the whole
-        // tail are both gathered.
-        // rq-68850338 rq-5882d984 rq-03fd1a40
+        // tail are both gathered — the whole-tail gather by literal scan
+        // (`rqm/parser-framework.md`, Performance Constraints).
+        // rq-68850338 rq-5882d984 rq-03fd1a40 rq-15b1763d
         let mut parsed_frequencies: Vec<f64> = Vec::new();
         let header_in_tail = matches.last_in_tail(PROJECTED_FREQUENCIES).is_some();
         collect_eigenvalues(
@@ -214,7 +249,7 @@ impl Parser for XtbParser {
             &mut parsed_frequencies,
         );
         if !header_in_tail {
-            collect_eigenvalues(windows.tail.lines(), &mut parsed_frequencies);
+            scan_eigenvalues(&windows.tail, &mut parsed_frequencies);
         }
         // rq-c37111b1
         let frequencies = vibrational_modes(&parsed_frequencies);

@@ -69,7 +69,11 @@ in an elided window yields an absent observable, never a guess.
   and if the stored (post-filter) count then falls below 3N−6 while the
   geometry shows N atoms, the record is demoted to `truncated` with an
   error saying the frequency table may be incomplete and suggesting a
-  rerun with larger `--head-bytes`/`--tail-bytes` windows.
+  rerun with larger `--head-bytes`/`--tail-bytes` windows. The gather
+  locates its candidate lines by a literal scan of the marker text
+  (`eigval`) and verifies the row shape on the candidates only, in
+  window order — never a field split of every line
+  (`rqm/parser-framework.md`, Performance Constraints).
 - `dipole_moment` — the `total` row of the last `Atomic dipole moments` <!-- rq-f4c1072b -->
   block, `(x, y, z)` in atomic units (e·a₀), stored unchanged.
 - `mulliken_charges` — the charge column (`q`) of the last `Atomic charges <!-- rq-e7bbca13 -->

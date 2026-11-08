@@ -21,6 +21,7 @@ mod xyz;
 
 use std::fmt;
 use std::fs::File;
+use std::io::{Read, Seek};
 use std::path::Path;
 
 use crate::record::{Record, RecordStatus};
@@ -238,8 +239,27 @@ impl ParserRegistry {
                 reason: "is a directory".to_string(),
             });
         }
-        let windows = FileWindows::from_seekable(&mut file, budget.head_bytes, budget.tail_bytes)
-            .map_err(ParseError::from_io)?;
+        self.parse_opened(&mut file, path, budget)
+    }
+
+    /// The parse half of `parse_file_with` over a handle the caller has
+    /// already opened — the single-open collection pipeline reads each
+    /// input's classification line and its windows from one handle
+    /// (`rqm/collection.md`, Input Classification). The handle has been
+    /// read from, so a directory never reaches this entry; a caller
+    /// that opens its own handle keeps the directory check of
+    /// `parse_file_with`.
+    ///
+    /// (rq-362c1c7f rq-8ad5063d)
+    pub(crate) fn parse_opened<S: Read + Seek>(
+        &self,
+        seekable: &mut S,
+        path: &Path,
+        budget: &WindowBudget,
+    ) -> Result<Record, ParseError> {
+        let windows =
+            FileWindows::from_seekable(seekable, budget.head_bytes, budget.tail_bytes)
+                .map_err(ParseError::from_io)?;
         let mut record = self.assemble(&windows);
         record.name = path
             .file_stem()

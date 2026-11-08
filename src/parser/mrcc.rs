@@ -72,12 +72,20 @@ fn is_charge_line(line: &str) -> bool {
 
 /// The final Hartree-Fock energy line's value: the converged HF total
 /// the correlation method builds on, from the
-/// `***FINAL HARTREE-FOCK ENERGY: <value> [AU]` line.
-// rq-ef61dab4
+/// `***FINAL HARTREE-FOCK ENERGY: <value> [AU]` line. Non-candidates are
+/// rejected on the line's leading bytes — the `***FINAL` prefix — before
+/// any field is read, and fields are iterated, never collected, so the
+/// locate walk pays leading-byte cost for the window's other lines.
+// rq-ef61dab4 rq-15b1763d
 fn hf_energy_value(line: &str) -> Option<f64> {
-    let fields: Vec<&str> = line.split_whitespace().collect();
-    match fields.as_slice() {
-        ["***FINAL", "HARTREE-FOCK", "ENERGY:", value, ..] => parse_fortran_f64(value),
+    if !line.trim_start().starts_with("***FINAL") {
+        return None;
+    }
+    let mut fields = line.split_whitespace();
+    match (fields.next(), fields.next(), fields.next(), fields.next()) {
+        (Some("***FINAL"), Some("HARTREE-FOCK"), Some("ENERGY:"), Some(value)) => {
+            parse_fortran_f64(value)
+        }
         _ => None,
     }
 }
@@ -191,9 +199,16 @@ impl Parser for MrccParser {
         // rq-ef61dab4
         let scf_energy = matches.last(HF_ENERGY).and_then(hf_energy_value);
 
-        // Status: the run's own termination banner governs it.
-        // rq-be38168f rq-91435a73 rq-97790ec7 rq-5825f5e3
-        let (status, error) = if windows.tail.contains("Normal termination of mrcc") {
+        // Status: the run's own termination banner governs it. The
+        // banner test is a whole-window SIMD byte search
+        // (`rqm/parser-framework.md`, Performance Constraints).
+        // rq-be38168f rq-91435a73 rq-97790ec7 rq-5825f5e3 rq-15b1763d
+        let (status, error) = if memchr::memmem::find(
+            windows.tail.as_bytes(),
+            b"Normal termination of mrcc",
+        )
+        .is_some()
+        {
             (RecordStatus::Ok, None)
         } else if matches.last_in_tail(ABORT).is_some() {
             // Provisional error signal, pending the genuine failed

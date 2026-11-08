@@ -152,6 +152,11 @@ struct Cli {
     #[arg(long = "tail-bytes", value_name = "BYTES")]
     tail_bytes: Option<usize>,
 
+    /// Worker threads parsing build inputs (default 1, sequential).
+    /// Any count writes the same database the sequential run writes.
+    #[arg(long = "parallel", value_name = "N", default_value_t = 1)]
+    parallel: usize,
+
     /// Skip imaginary frequencies in the thermochemistry (mutually
     /// exclusive with --makereal).
     #[arg(long = "ignoreimag", conflicts_with = "makereal")]
@@ -539,6 +544,14 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     if budget.head_bytes == 0 || budget.tail_bytes == 0 {
         return usage("--head-bytes and --tail-bytes must be at least 1");
     }
+    // The worker count for build-mode collection (`rqm/collection.md`,
+    // Parallel Collection): a count below 1 is a usage error, exactly
+    // like a zero window budget.
+    // rq-27e5a6b2
+    if cli.parallel == 0 {
+        return usage("--parallel must be at least 1");
+    }
+    let workers = cli.parallel;
     // One derivation memo for the whole run: every Gibbs-valued stage and
     // every energy column shares it, so each record's thermochemistry is
     // derived at most once (`rqm/thermo.md` Performance).
@@ -862,7 +875,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     if !has_manipulation {
         let mut gathered_records: Option<Vec<Record>> = None;
         if has_print {
-            let gathered = match gather_inputs_with(&inputs, &budget) {
+            let gathered = match gather_inputs_with(&inputs, &budget, workers) {
                 Ok(gathered) => gathered,
                 Err(error) => {
                     eprintln!("error: {error}");
@@ -933,7 +946,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         // The --out write precedes the movie write (`rqm/movie.md`); a
         // failed --out write ends the run before the movie is written.
         let (mut code, out_written) = match &cli.out {
-            Some(out) => run_collection(&inputs, out, cli.fout, &budget),
+            Some(out) => run_collection(&inputs, out, cli.fout, &budget, workers),
             None => (ExitCode::SUCCESS, false),
         };
         if cli.movie && (cli.out.is_none() || out_written) {
@@ -957,6 +970,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             cli.out.as_deref(),
             cli.fout,
             &budget,
+            workers,
             |records| {
                 attach_from_path(records, &correction_path)
                     .map(|(enriched, problems)| (enriched, !problems.is_empty()))
@@ -976,12 +990,13 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             cli.out.as_deref(),
             cli.fout,
             &budget,
+            workers,
             |records| extrapolate_from_paths(records, spec),
         );
     }
 
     // Manipulation run: gather, filter, print, write.
-    let (mut records, problems) = match gather_inputs_with(&inputs, &budget) {
+    let (mut records, problems) = match gather_inputs_with(&inputs, &budget, workers) {
         Ok(Gathered::Build { records }) => (records, Vec::new()),
         Ok(Gathered::Merge { records, problems }) => (records, problems),
         Err(error) => {
@@ -1171,9 +1186,10 @@ fn run_collection(
     out: &Path,
     fout: bool,
     budget: &WindowBudget,
+    workers: usize,
 ) -> (ExitCode, bool) {
     let mut confirm = || confirm_target(out, fout);
-    match complied_jkqc::collect_inputs_with(inputs, out, budget, &mut confirm) {
+    match complied_jkqc::collect_inputs_with(inputs, out, budget, workers, &mut confirm) {
         Ok(CollectOutcome::Build {
             written,
             failed,
@@ -1229,6 +1245,7 @@ fn run_enriching_collection(
     out: Option<&Path>,
     fout: bool,
     budget: &WindowBudget,
+    workers: usize,
     enrich: impl FnOnce(&[Record]) -> Option<(Vec<Record>, bool)>,
 ) -> ExitCode {
     // Unreachable via the visible-outcome rule, which demands --out on a
@@ -1240,7 +1257,7 @@ fn run_enriching_collection(
         eprintln!("error: an enriching collection run needs --out");
         return ExitCode::from(2);
     };
-    let (records, problems, is_build) = match gather_inputs_with(inputs, budget) {
+    let (records, problems, is_build) = match gather_inputs_with(inputs, budget, workers) {
         Ok(Gathered::Build { records }) => (records, Vec::new(), true),
         Ok(Gathered::Merge { records, problems }) => (records, problems, false),
         Err(error) => {
@@ -1868,6 +1885,7 @@ mod tests {
         "ignoreimag",
         "head_bytes",
         "tail_bytes",
+        "parallel",
         "unit",
         "formation",
         "formation_corr",

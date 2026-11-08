@@ -58,17 +58,30 @@ fn is_orca_abort(line: &str) -> bool {
     line.contains("ORCA TERMINATED DUE TO") || line.trim_start().starts_with("ERROR")
 }
 
-/// The converged SCF total line, in either printed spelling: the SCF
-/// summary box of newer printings (`| TOTAL ENERGY <value> Eh |`) or the
-/// section-end line of older ones (`Total Energy : <value> Eh`). The
-/// field shapes distinguish them from every other energy line — the
-/// `TOTAL SCF ENERGY` section's `Total energy after final integration`
-/// echo (lowercase `energy`, no colon) and the box neighbors never match.
-// rq-7331508e
+/// The SCF total line, in either printed spelling: the SCF summary box
+/// of newer printings (`| TOTAL ENERGY <value> Eh |`) or the section-end
+/// line of older ones (`Total Energy : <value> Eh`). The field shapes
+/// distinguish them from every other energy line — the `TOTAL SCF ENERGY`
+/// section's `Total energy after final integration` echo (lowercase
+/// `energy`, no colon) and the box neighbors never match. Non-candidates
+/// are rejected on the line's leading bytes — the first field is `|` or
+/// `Total` — before any field is read, and fields are iterated, never
+/// collected, so the locate walk pays leading-byte cost for the window's
+/// other lines.
+// rq-7331508e rq-15b1763d
 fn is_scf_total_line(line: &str) -> bool {
-    match line.split_whitespace().collect::<Vec<&str>>().as_slice() {
-        ["|", "TOTAL", "ENERGY", value, "Eh", ..] => parse_fortran_f64(value).is_some(),
-        ["Total", "Energy", ":", value, "Eh", ..] => parse_fortran_f64(value).is_some(),
+    let trimmed = line.trim_start();
+    if !(trimmed.starts_with('|') || trimmed.starts_with("Total")) {
+        return false;
+    }
+    let mut fields = line.split_whitespace();
+    match (fields.next(), fields.next(), fields.next(), fields.next(), fields.next()) {
+        (Some("|"), Some("TOTAL"), Some("ENERGY"), Some(value), Some("Eh")) => {
+            parse_fortran_f64(value).is_some()
+        }
+        (Some("Total"), Some("Energy"), Some(":"), Some(value), Some("Eh")) => {
+            parse_fortran_f64(value).is_some()
+        }
         _ => false,
     }
 }
@@ -132,25 +145,61 @@ fn frequency_value(field: &str) -> Option<f64> {
     }
 }
 
-fn is_frequency_row(fields: &[&str]) -> bool {
-    fields.len() >= 3
-        && fields[0].ends_with(':')
-        && fields[2] == "cm**-1"
-        && frequency_value(fields[1]).is_some()
+/// The mode value of a frequency row: a decimal, optionally signed,
+/// optionally written with a trailing `i` to mark an imaginary mode.
+/// `None` when the first three fields are not `<mode>: <value> cm**-1`
+/// — the row-shape test, iterated field by field without collecting.
+// rq-15b1763d
+fn frequency_row_value(mut fields: std::str::SplitWhitespace<'_>) -> Option<f64> {
+    let mode = fields.next()?;
+    let value = frequency_value(fields.next()?)?;
+    if !mode.ends_with(':') || fields.next() != Some("cm**-1") {
+        return None;
+    }
+    Some(value)
 }
 
 /// The genuine mode values of the frequency rows leading `lines` (rows
-/// stop the section at its first non-row), appended to `values`.
+/// stop the section at its first non-row), appended to `values`. The
+/// span walk from a located header: bounded by the section's own end.
 fn collect_frequency_rows<'a>(lines: impl Iterator<Item = &'a str>, values: &mut Vec<f64>) {
     let mut started = false;
     for line in lines {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if is_frequency_row(&fields) {
-            // `is_frequency_row` has already proven the value parses.
-            values.push(frequency_value(fields[1]).expect("frequency row checked parseable"));
-            started = true;
-        } else if started {
+        match frequency_row_value(line.split_whitespace()) {
+            Some(value) => {
+                values.push(value);
+                started = true;
+            }
+            None if started => break,
+            None => {}
+        }
+    }
+}
+
+/// The whole-window gather of the seam fallback: the candidate rows of a
+/// window that carries no visible section header, located by one SIMD
+/// literal scan of the row marker (`cm**-1`) and verified in shape on
+/// the candidates only — never a field split of every line. Consecutive
+/// candidates continue the section exactly as the walk's first non-row
+/// break: a candidate not beginning where the previous candidate's next
+/// line begins ends the section, and so does a candidate that fails the
+/// row shape.
+// rq-15b1763d rq-17559f33
+fn scan_frequency_rows(window: &str, values: &mut Vec<f64>) {
+    let mut started = false;
+    let mut next_row_start: Option<usize> = None;
+    for marker in crate::parser::extract::marker_lines(window, "cm**-1") {
+        if started && next_row_start != Some(marker.line_start) {
             break;
+        }
+        match frequency_row_value(marker.line.split_whitespace()) {
+            Some(value) => {
+                values.push(value);
+                started = true;
+                next_row_start = Some(marker.next_start);
+            }
+            None if started => break,
+            None => {}
         }
     }
 }
@@ -244,7 +293,10 @@ impl Parser for OrcaParser {
             &mut parsed_frequencies,
         );
         if !header_in_tail {
-            collect_frequency_rows(windows.tail.lines(), &mut parsed_frequencies);
+            // The whole-tail fallback gathers by literal scan
+            // (`rqm/parser-framework.md`, Performance Constraints).
+            // rq-17559f33 rq-15b1763d
+            scan_frequency_rows(&windows.tail, &mut parsed_frequencies);
         }
         // rq-c37111b1
         let frequencies = vibrational_modes(&parsed_frequencies);
@@ -271,9 +323,16 @@ impl Parser for OrcaParser {
             .last(POINT_GROUP)
             .and_then(|line| line.split_whitespace().last()?.parse::<u32>().ok());
 
-        // Status: the run's own termination banner governs it.
-        // rq-a5fee06d rq-0f8ebb73 rq-f6a569e1 rq-80f193f5
-        let (status, error) = if windows.tail.contains("ORCA TERMINATED NORMALLY") {
+        // Status: the run's own termination banner governs it. The
+        // banner test is a whole-window SIMD byte search
+        // (`rqm/parser-framework.md`, Performance Constraints).
+        // rq-a5fee06d rq-0f8ebb73 rq-f6a569e1 rq-80f193f5 rq-15b1763d
+        let (status, error) = if memchr::memmem::find(
+            windows.tail.as_bytes(),
+            b"ORCA TERMINATED NORMALLY",
+        )
+        .is_some()
+        {
             (RecordStatus::Ok, None)
         } else if matches.last_in_tail(ABORT).is_some() {
             // Provisional error signal, pending the genuine failed

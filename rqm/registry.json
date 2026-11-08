@@ -93,7 +93,7 @@
     "type": "section"
   },
   "rq-024c9db0": {
-    "decl": "- `gather_inputs_with(inputs: &[&Path], budget: &WindowBudget) -> Result<Gathered, CollectError>` —",
+    "decl": "- `gather_inputs_with(inputs: &[&Path], budget: &WindowBudget, workers: usize) -> Result<Gathered, CollectError>` —",
     "file": "collection",
     "refs": [
       {
@@ -591,6 +591,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-0c8eff8b": {
+    "decl": "Scenario: A batch larger than the open-file limit collects",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A batch larger than the open-file limit collects",
+    "type": "scenario"
+  },
   "rq-0c93ce7a": {
     "decl": "Scenario: Repeating one level prints its column once",
     "file": "population",
@@ -1074,6 +1086,10 @@
     "level": 2,
     "refs": [
       {
+        "file": "src/parser/extract.rs",
+        "kind": "code"
+      },
+      {
         "file": "src/parser/gaussian.rs",
         "kind": "code"
       },
@@ -1095,6 +1111,10 @@
       },
       {
         "file": "src/parser/xtb.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
         "kind": "code"
       }
     ],
@@ -2014,6 +2034,30 @@
     "title": "Hydrogens never join the heavy skeleton",
     "type": "scenario"
   },
+  "rq-23b2c5e0": {
+    "decl": "Scenario: The SCF-total line test admits exactly the two spellings",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The SCF-total line test admits exactly the two spellings",
+    "type": "scenario"
+  },
+  "rq-23b4fd18": {
+    "decl": "Scenario: A parallel run reports the argument-order-first error",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A parallel run reports the argument-order-first error",
+    "type": "scenario"
+  },
   "rq-23fa0de7": {
     "decl": "Scenario: Merge with a missing input writes nothing",
     "file": "database",
@@ -2050,6 +2094,18 @@
     ],
     "title": "The Invocation",
     "type": "section"
+  },
+  "rq-243c73f2": {
+    "decl": "Scenario: a whole-window gather scans for its rows",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/parser_gaussian.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "a whole-window gather scans for its rows",
+    "type": "scenario"
   },
   "rq-2486bcc8": {
     "decl": "Scenario: The build produces the exact executable name",
@@ -2177,6 +2233,22 @@
       }
     ],
     "title": "A list of only trivial modes filters to empty",
+    "type": "scenario"
+  },
+  "rq-27e5a6b2": {
+    "decl": "Scenario: A zero worker count is a usage error",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A zero worker count is a usage error",
     "type": "scenario"
   },
   "rq-282ee600": {
@@ -3290,7 +3362,7 @@
     "type": "scenario"
   },
   "rq-3b5861a5": {
-    "decl": "- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget, confirm: &mut dyn FnMut() -> bool) -> Result<CollectOutcome, CollectError>` —",
+    "decl": "- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget, workers: usize, confirm: &mut dyn FnMut() -> bool) -> Result<CollectOutcome, CollectError>` —",
     "file": "collection",
     "refs": [
       {
@@ -3383,6 +3455,23 @@
     "level": 2,
     "refs": [],
     "title": "Feature API",
+    "type": "section"
+  },
+  "rq-3e15605c": {
+    "decl": "## Parallel Collection",
+    "file": "collection",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/collect.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Parallel Collection",
     "type": "section"
   },
   "rq-3e2a7cc5": {
@@ -5052,6 +5141,18 @@
     "title": "Crate Layout",
     "type": "section"
   },
+  "rq-60a23fe4": {
+    "decl": "Scenario: Merge ignores the worker count",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Merge ignores the worker count",
+    "type": "scenario"
+  },
   "rq-60c7278b": {
     "decl": "Scenario: A count-star-code wildcard combines both restrictions",
     "file": "filtering",
@@ -5846,6 +5947,18 @@
       }
     ],
     "title": "A caller-supplied budget replaces the default window sizes",
+    "type": "scenario"
+  },
+  "rq-7286bd48": {
+    "decl": "Scenario: Records keep argument order at any worker count",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Records keep argument order at any worker count",
     "type": "scenario"
   },
   "rq-72e0ded9": {
@@ -6702,6 +6815,18 @@
     "title": "--glob leaves each survivor at the full population",
     "type": "scenario"
   },
+  "rq-8311db22": {
+    "decl": "Scenario: a structural walk performs no allocation",
+    "file": "parser-framework",
+    "refs": [
+      {
+        "file": "tests/perf_contract.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "a structural walk performs no allocation",
+    "type": "scenario"
+  },
   "rq-83c62ce0": {
     "decl": "### Crate Layout",
     "file": "detection",
@@ -6854,6 +6979,22 @@
       }
     ],
     "title": "--bavg prints one row per composition",
+    "type": "scenario"
+  },
+  "rq-8617d3fb": {
+    "decl": "Scenario: An open-file-limit failure names the limit",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An open-file-limit failure names the limit",
     "type": "scenario"
   },
   "rq-86219849": {
@@ -7063,7 +7204,16 @@
     "decl": "## Input Classification",
     "file": "collection",
     "level": 2,
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/collect.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/parser/mod.rs",
+        "kind": "code"
+      }
+    ],
     "title": "Input Classification",
     "type": "section"
   },
@@ -7972,6 +8122,18 @@
       }
     ],
     "title": "The correction never creates a defined value",
+    "type": "scenario"
+  },
+  "rq-9b736232": {
+    "decl": "Scenario: A mixture is reported over an earlier parse failure",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A mixture is reported over an earlier parse failure",
     "type": "scenario"
   },
   "rq-9b8707e4": {
@@ -9700,6 +9862,18 @@
     "title": "--conc naming the solvent code is a usage error",
     "type": "scenario"
   },
+  "rq-b9d141f4": {
+    "decl": "Scenario: The HF energy line test admits only the starred spelling",
+    "file": "parsers/mrcc",
+    "refs": [
+      {
+        "file": "tests/parser_mrcc.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The HF energy line test admits only the starred spelling",
+    "type": "scenario"
+  },
   "rq-b9eeedfe": {
     "decl": "## Feature API",
     "file": "database",
@@ -10526,6 +10700,18 @@
     "title": "Absent observables are omitted, never null",
     "type": "scenario"
   },
+  "rq-c8e29272": {
+    "decl": "Scenario: Mixed inputs are refused identically in a parallel run",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Mixed inputs are refused identically in a parallel run",
+    "type": "scenario"
+  },
   "rq-c907b696": {
     "decl": "Scenario: A record without a name never matches",
     "file": "correction",
@@ -10564,6 +10750,18 @@
       }
     ],
     "title": "Both sections collapse when both are printed",
+    "type": "scenario"
+  },
+  "rq-c974ee61": {
+    "decl": "Scenario: A parallel run writes the sequential run's database",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A parallel run writes the sequential run's database",
     "type": "scenario"
   },
   "rq-c984bd29": {
@@ -12239,6 +12437,18 @@
       }
     ],
     "title": "A monatomic record with a stray imaginary mode is defined under --ignoreimag",
+    "type": "scenario"
+  },
+  "rq-ecff2560": {
+    "decl": "Scenario: A parallel run writes nothing when any input fails",
+    "file": "collection",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A parallel run writes nothing when any input fails",
     "type": "scenario"
   },
   "rq-ed0686aa": {

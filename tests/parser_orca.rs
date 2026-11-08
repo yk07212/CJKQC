@@ -429,3 +429,58 @@ fn a_job_without_an_scf_section_carries_no_scf_energy() {
     assert_eq!(record.scf_energy, None);
     assert_eq!(record.electronic_energy, Some(-76.402725158737));
 }
+
+// rq-23b2c5e0
+#[test]
+fn the_scf_total_line_test_admits_exactly_the_two_spellings() {
+    // Both genuine spellings print among near-miss lines — an
+    // un-finalized box row (no Eh), an unboxed TOTAL row, and a colonless
+    // Total row — and the later genuine spelling's value wins; the
+    // near-misses contribute nothing.
+    let content = completed_log().replace(
+        ENERGY.trim_end(),
+        "| TOTAL ENERGY              -28.322836452494 Eh   |\n\
+         | TOTAL ENERGY              -28.500000000000      |\n\
+         TOTAL ENERGY               -28.6 Eh\n\
+         Total Energy              -28.7 Eh\n\
+         Total Energy    :     -28.422836452494 Eh\n\
+         FINAL SINGLE POINT ENERGY       -28.422836452490",
+    );
+    let record = parse(&content);
+    assert_eq!(record.scf_energy, Some(-28.422836452494));
+    assert_eq!(record.electronic_energy, Some(-28.422836452490));
+}
+
+// rq-82f9c544 rq-15b1763d
+#[test]
+fn an_elided_header_fallback_stops_at_the_first_non_row_gap() {
+    // The whole-tail gather runs by literal scan, but its answer stays
+    // the line walk's own: rows stop at the first non-row line, so a
+    // later run of rows in the same window — a thermo table's cm**-1
+    // column — contributes nothing.
+    let head = format!(
+        "{}{ECHO}{SUMMARY}{GEOMETRY}{ENERGY}\
+         VIBRATIONAL FREQUENCIES\n\
+         \x20-----------------------\n\
+         \x20\n\
+         \x20  0:       0.00 cm**-1\n",
+        banner()
+    );
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        "\x20  1:     1601.00 cm**-1\n\
+         \x20  2:     1602.00 cm**-1\n\
+         \x20 an ordinary line between the two row runs\n\
+         \x20  3:     1603.00 cm**-1\n\
+         \x20  4:     1604.00 cm**-1\n\
+         {}{}\n",
+        " filler line\n".repeat(50),
+        "                    ****ORCA TERMINATED NORMALLY****"
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = std::io::Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = OrcaParser.parse(&windows);
+    assert_eq!(record.vibrational_frequencies, Some(vec![1601.0, 1602.0]));
+}

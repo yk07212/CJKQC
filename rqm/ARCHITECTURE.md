@@ -92,10 +92,14 @@ are not attempted at all:
   from the electronic energy and vibrational frequencies is the single
   source of truth. Changing temperature or a correction scheme never
   invalidates a database, and records stay lean.
-- **Concurrency.** Sequential in v1; no parallelism commitment. Internal
-  layouts avoid shared mutable state and prefer structures-of-arrays so
-  data-parallel collection (e.g. via rayon) can be added later without a
-  redesign.
+- **Concurrency.** Build-mode collection parses inputs across worker
+  threads behind the CLI's `--parallel <N>` flag (`rqm/collection.md`),
+  with 1 — fully sequential — as the default; no other stage is parallel.
+  Internal layouts avoid shared mutable state and prefer
+  structures-of-arrays, and the parse result of an input never depends on
+  which worker reads it: records and errors are ordered by argument
+  position, so a parallel run produces the same database as a sequential
+  one, byte for byte.
 - **Dependencies.** Keep the tree minimal: `clap` (CLI), `serde` +
   `serde_json` (records), and small helpers where hand-rolling would cost
   more than it saves. No heavyweight dataframe dependency (polars/arrow);

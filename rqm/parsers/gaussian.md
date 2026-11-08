@@ -79,6 +79,10 @@ in an elided window yields an absent observable, never a guess.
   window — the scan gathers the head's remainder past the header and
   every visible `Frequencies --` line of the tail in addition, which
   recovers the table whenever none of it fell in the elided middle.
+  A gather locates its candidate lines by a literal scan of the marker
+  text (`Frequencies --`) and reads the values from the located
+  candidates only, in window order — never a field split of every line
+  (`rqm/parser-framework.md`, Performance Constraints).
 - Seam honesty in the fallback case. A genuine Gaussian frequency table
   prints every normal mode: 3N−6 values, or 3N−5 for a linear molecule
   (N the atom count of the visible geometry, or of the last `NAtoms=`

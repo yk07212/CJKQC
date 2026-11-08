@@ -297,7 +297,7 @@ fn collect_inputs_with_does_not_consult_the_hook_for_a_new_output() {
     // Build mode: a fresh output is written even though the hook declines.
     let inputs = vec![fixture("xtb/1dma.log")];
     let fresh = dir.join("fresh.jsonl");
-    collect_inputs_with(&refs(&inputs), &fresh, &WindowBudget::default(), &mut hook)
+    collect_inputs_with(&refs(&inputs), &fresh, &WindowBudget::default(), 1, &mut hook)
         .expect("build into a fresh output without consulting the hook");
     assert_eq!(consulted.get(), 0);
     assert!(fresh.exists());
@@ -306,7 +306,7 @@ fn collect_inputs_with_does_not_consult_the_hook_for_a_new_output() {
     let db = dir.join("a.jsonl");
     write_jsonl(&db, &[sample_line("A1", -1.0).as_str()]);
     let merged = dir.join("merged.jsonl");
-    collect_inputs_with(&refs(&[db]), &merged, &WindowBudget::default(), &mut hook)
+    collect_inputs_with(&refs(&[db]), &merged, &WindowBudget::default(), 1, &mut hook)
         .expect("merge into a fresh output without consulting the hook");
     assert_eq!(consulted.get(), 0);
     assert!(merged.exists());
@@ -325,7 +325,7 @@ fn collect_inputs_with_consults_the_hook_for_an_existing_output() {
         consulted.set(consulted.get() + 1);
         false
     };
-    match collect_inputs_with(&refs(&[db]), &out, &WindowBudget::default(), &mut hook) {
+    match collect_inputs_with(&refs(&[db]), &out, &WindowBudget::default(), 1, &mut hook) {
         Err(CollectError::NotConfirmed) => {}
         other => panic!("expected NotConfirmed, got {other:?}"),
     }
@@ -333,4 +333,67 @@ fn collect_inputs_with_consults_the_hook_for_an_existing_output() {
     // The declined write leaves the previous content intact.
     let kept = fs::read_to_string(&out).expect("read declined output");
     assert!(kept.contains("OLD"), "previous content replaced: {kept}");
+}
+
+// rq-3e15605c
+#[test]
+fn any_worker_count_collects_the_same_database() {
+    let inputs = vec![
+        fixture("xtb/1dma.log"),
+        fixture("orca/1pinic1sa-110_1_9-str9.out"),
+        fixture("gaussian/2cha-020_1_0-str3.log"),
+    ];
+    let references = refs(&inputs);
+    let mut collected: Vec<Vec<u8>> = Vec::new();
+    for workers in [1usize, 2, 4, 8] {
+        let dir = temp_dir();
+        let out = dir.join(format!("db-{workers}.jsonl"));
+        collect_inputs_with(&references, &out, &WindowBudget::default(), workers, &mut || true)
+            .expect("collect");
+        collected.push(std::fs::read(&out).expect("read database"));
+    }
+    for database in &collected[1..] {
+        assert_eq!(
+            database, &collected[0],
+            "every worker count writes the same database"
+        );
+    }
+}
+
+// rq-3e15605c
+#[test]
+fn any_worker_count_reports_the_argument_order_first_error() {
+    let dir = temp_dir();
+    let junk = dir.join("junk.txt");
+    std::fs::write(&junk, "not a program output\n").expect("write junk");
+    let inputs = vec![
+        fixture("xtb/1dma.log"),
+        junk.clone(),
+        fixture("orca/1pinic1sa-110_1_9-str9.out"),
+        junk,
+        fixture("gaussian/2cha-020_1_0-str3.log"),
+    ];
+    let references = refs(&inputs);
+    let expected = collect_inputs_with(
+        &references,
+        &dir.join("db.jsonl"),
+        &WindowBudget::default(),
+        1,
+        &mut || true,
+    )
+    .expect_err("sequential run fails on the junk input");
+    for workers in [2usize, 4] {
+        let error = collect_inputs_with(
+            &references,
+            &dir.join(format!("db-{workers}.jsonl")),
+            &WindowBudget::default(),
+            workers,
+            &mut || true,
+        )
+        .expect_err("the parallel run fails on the same input");
+        assert_eq!(
+            error, expected,
+            "every worker count reports the sequential run's error"
+        );
+    }
 }

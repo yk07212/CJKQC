@@ -100,16 +100,28 @@ fn route_section<'a>(start: &str, following: impl Iterator<Item = &'a str>) -> O
 /// echo line.
 // rq-d8a0968b
 /// The frequency values on `Frequencies -- <v1> ...` lines of `lines`,
-/// appended to `values`.
+/// appended to `values`. The span walk from a located header: fields are
+/// iterated, never collected, so the walk allocates nothing per line.
+// rq-363a8a65 rq-15b1763d
 fn collect_frequencies<'a>(lines: impl Iterator<Item = &'a str>, values: &mut Vec<f64>) {
     for line in lines {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() >= 3 && fields[0] == "Frequencies" && fields[1] == "--" {
-            values.extend(
-                fields[2..]
-                    .iter()
-                    .filter_map(|value| parse_fortran_f64(value)),
-            );
+        let mut fields = line.split_whitespace();
+        if fields.next() == Some("Frequencies") && fields.next() == Some("--") {
+            values.extend(fields.filter_map(parse_fortran_f64));
+        }
+    }
+}
+
+/// The whole-window gather of the seam fallback: every `Frequencies --`
+/// line of a window that carries no visible geometry header, located by
+/// one SIMD literal scan of the marker text and verified on the
+/// candidates only — never a field split of every line.
+// rq-15b1763d rq-363a8a65
+fn scan_frequencies(window: &str, values: &mut Vec<f64>) {
+    for marker in crate::parser::extract::marker_lines(window, "Frequencies --") {
+        let mut fields = marker.line.split_whitespace();
+        if fields.next() == Some("Frequencies") && fields.next() == Some("--") {
+            values.extend(fields.filter_map(parse_fortran_f64));
         }
     }
 }
@@ -258,7 +270,10 @@ impl Parser for GaussianParser {
         let header_in_tail = matches.last_in_tail(GEOMETRY_HEADER).is_some();
         collect_frequencies(matches.after_last(GEOMETRY_HEADER), &mut parsed_frequencies);
         if !header_in_tail {
-            collect_frequencies(windows.tail.lines(), &mut parsed_frequencies);
+            // The whole-tail fallback gathers by literal scan
+            // (`rqm/parser-framework.md`, Performance Constraints).
+            // rq-363a8a65 rq-15b1763d
+            scan_frequencies(&windows.tail, &mut parsed_frequencies);
         }
         // rq-c37111b1
         let frequencies = vibrational_modes(&parsed_frequencies);

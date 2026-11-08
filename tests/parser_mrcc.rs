@@ -225,3 +225,18 @@ fn a_run_without_the_final_hf_line_carries_no_scf_energy() {
     let record = parse(&content);
     assert_eq!(record.scf_energy, None);
 }
+
+// rq-b9d141f4
+#[test]
+fn the_hf_energy_line_test_admits_only_the_starred_spelling() {
+    // The starred spelling prints among near-miss lines — the same line
+    // without its stars and the starred prefix without the ENERGY word —
+    // and only the starred spelling contributes.
+    let record = parse(&format!(
+        "{}{}***FINAL HARTREE-FOCK ENERGY:      -134.2900000000000 Eh\n\
+         FINAL HARTREE-FOCK ENERGY:        -134.3000000000000 Eh\n\
+         ***FINAL HARTREE-FOCK:             -134.3100000000000\n\n{}",
+        run_body(), ENERGY, TERMINATION
+    ));
+    assert_eq!(record.scf_energy, Some(-134.29));
+}

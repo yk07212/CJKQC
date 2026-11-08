@@ -396,3 +396,54 @@ fn a_log_without_an_scf_done_line_carries_neither_energy() {
     assert_eq!(record.electronic_energy, None);
     assert_eq!(record.scf_energy, None);
 }
+
+// rq-243c73f2
+#[test]
+fn a_whole_window_gather_scans_for_its_rows() {
+    // Uncovered windows with no geometry header in the tail: the
+    // fallback gathers by literal scan of the marker text. The tail
+    // carries genuine rows among arbitrary text — including a false
+    // candidate whose marker text sits mid-line with parseable numbers
+    // behind it, which a scan without candidate verification would
+    // wrongly gather — and every marker line is gathered in window
+    // order.
+    let head = format!(
+        "{BANNER}{ROUTE}{CHARGE} NAtoms=    5 NActive=    5 NUniq=    5 SFac= 1.00D+00\n\
+         {}\
+         Frequencies --     101.0000                102.0000                103.0000\n\
+         Frequencies --     104.0000                105.0000                106.0000\n\
+         Frequencies --     107.0000                108.0000                109.0000\n",
+        (1..=5).fold(
+            String::from(
+                "                         Standard orientation:\n ---------------------------------------------------------------------\n Center     Atomic      Atomic             Coordinates (Angstroms)\n Number     Number       Type             X           Y           Z\n ---------------------------------------------------------------------\n",
+            ),
+            |mut table, index| {
+                table.push_str(&format!(
+                    "      {index}          6           0       -4.061711   -1.017734   -1.010761\n"
+                ));
+                table
+            },
+        )
+    );
+    let middle = " filler line\n".repeat(200);
+    let tail = format!(
+        " Frequencies --     201.0000                202.0000                203.0000\n\
+         an ordinary line mentioning Frequencies -- 999.0 888.0 mid-line\n\
+         Frequencies --     204.0000                205.0000                206.0000\n\
+         {}{NORMAL_2}",
+        " filler line\n".repeat(50)
+    );
+    let content = format!("{head}{middle}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows =
+        FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("uncovered");
+    let record = GaussianParser.parse(&windows);
+    assert_eq!(record.status, RecordStatus::Ok);
+    assert_eq!(
+        record.vibrational_frequencies,
+        Some(vec![
+            101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0, 108.0, 109.0, 201.0, 202.0, 203.0,
+            204.0, 205.0, 206.0,
+        ])
+    );
+}

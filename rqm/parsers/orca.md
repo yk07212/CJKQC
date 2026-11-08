@@ -65,7 +65,11 @@ in an elided window yields an absent observable, never a guess.
   (the Hartree–Fock energy of a correlated job, the DFT energy of a
   density-functional one), not the `FINAL SINGLE POINT ENERGY` value,
   which adds the method's correlation and any additive corrections on
-  top. No visible SCF total → absent.
+  top. No visible SCF total → absent. The line test admits candidates on
+  the line's leading bytes — the first field is `|` or `Total` — before
+  any field iteration, and fields are iterated, never collected
+  (`rqm/parser-framework.md`, Performance Constraints); the walk rejects
+  the window's other lines at leading-byte cost.
 - `geometry` — the table under the last `CARTESIAN COORDINATES <!-- rq-8d91e753 -->
   (ANGSTROEM)` header (between its dashed rules): `read_geometry_table`
   with `Symbol(0)`, coordinate columns 1–3, Ångström.
@@ -85,7 +89,11 @@ in an elided window yields an absent observable, never a guess.
   and if the stored (post-filter) count then falls below 3N−6 while the
   geometry shows N atoms, the record is demoted to `truncated` with an
   error saying the frequency table may be incomplete and suggesting a
-  rerun with larger `--head-bytes`/`--tail-bytes` windows.
+  rerun with larger `--head-bytes`/`--tail-bytes` windows. The gather
+  locates its candidate rows by a literal scan of the row marker
+  (`cm**-1`) and verifies the row shape on the candidates only, in
+  window order — never a field split of every line
+  (`rqm/parser-framework.md`, Performance Constraints).
 - `dipole_moment` — the `Total Dipole Moment    :     <x> <y> <z>` line of <!-- rq-21041eac -->
   the last `DIPOLE MOMENT` block, in atomic units, stored unchanged.
 - `mulliken_charges` — the values of the rows `<idx> <El> : <q>` under the <!-- rq-80fdb0f3 -->
@@ -195,6 +203,18 @@ Feature: ORCA parser
     Given output with no SCF total line in any spelling
     When the content is parsed
     Then the record has no scf_energy
+
+  @rq-23b2c5e0
+  Scenario: The SCF-total line test admits exactly the two spellings
+    Given output whose SCF sections print, among ordinary output lines,
+    the box line "| TOTAL ENERGY   -28.3 Eh   |" and the section line
+    "Total Energy    :     -28.4 Eh", and near-miss lines
+    "| TOTAL ENERGY   -28.5 |" (no Eh), "TOTAL ENERGY -28.6 Eh"
+    (no leading bar), and "Total Energy   -28.7 Eh" (no colon)
+    When the content is parsed
+    Then the record's scf_energy is the later genuine spelling's value
+    And no near-miss line contributed a value
+    And the line test field-split none of the ordinary lines
 
   @rq-a5fee06d
   Scenario: A frequency calculation without a terminated run is truncated

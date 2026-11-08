@@ -57,7 +57,11 @@ shared `BOHR_TO_ANGSTROM` constant at extraction time
 - `scf_energy` — the value of the last <!-- rq-ef61dab4 -->
   `***FINAL HARTREE-FOCK ENERGY: <value> [AU]` line, in hartree: the
   converged HF total the correlation method builds on. No such line →
-  absent.
+  absent. The line test admits candidates on the line's leading bytes
+  (the `***FINAL` prefix) before any field iteration, and fields are
+  iterated, never collected (`rqm/parser-framework.md`, Performance
+  Constraints); the walk rejects the window's other lines at
+  leading-byte cost.
 
 ### Status Classification <!-- rq-b41a1001 -->
 
@@ -139,6 +143,16 @@ Feature: MRCC parser
     Given an energy summary with no "***FINAL HARTREE-FOCK ENERGY:" line
     When the content is parsed
     Then the record has no scf_energy
+
+  @rq-b9d141f4
+  Scenario: The HF energy line test admits only the starred spelling
+    Given output whose windows print, among ordinary output lines, the
+    line "***FINAL HARTREE-FOCK ENERGY: -134.29 Eh" and the near-miss
+    lines "FINAL HARTREE-FOCK ENERGY: -134.30 Eh" (no stars) and
+    "***FINAL HARTREE-FOCK: -134.31" (no ENERGY)
+    When the content is parsed
+    Then the record has scf_energy -134.29
+    And the line test field-split none of the ordinary lines
 
   @rq-b8a853f8
   Scenario: The command block stops at the first resource or geometry key

@@ -9,6 +9,70 @@
 
 use crate::record::Geometry;
 
+/// One line of a window that carries a literal marker text, located by
+/// the SIMD whole-window byte search of the gather rule: a seam fallback
+/// that cannot anchor to a located header finds its candidate rows by
+/// scanning the marker text and field-splits the candidates only — never
+/// every line of the window.
+///
+/// (rq-15b1763d)
+pub struct MarkerLine<'a> {
+    /// The candidate line's text, its line-ending bytes withheld.
+    pub line: &'a str,
+    /// The byte offset at which this line begins within the window.
+    pub line_start: usize,
+    /// The byte offset at which the next physical line begins: the
+    /// adjacency key of the consecutive-row section rules — a candidate
+    /// that does not begin exactly where the previous candidate's next
+    /// line begins has at least one line before it, so the section a
+    /// line walk would have ended at its first non-row line ends here.
+    pub next_start: usize,
+}
+
+/// Every line of `window` that carries `marker`, in window order, once
+/// each: a line holding the marker twice is yielded once. The lines are
+/// the ones a per-line walk would have tested, so a gather over the
+/// yield — verifying the row shape on each — answers exactly what the
+/// walk answered.
+///
+/// (rq-15b1763d)
+pub fn marker_lines<'a>(window: &'a str, marker: &'a str) -> impl Iterator<Item = MarkerLine<'a>> {
+    let bytes = window.as_bytes();
+    let mut hits = memchr::memmem::find_iter(bytes, marker.as_bytes());
+    let mut last_line_start: Option<usize> = None;
+    std::iter::from_fn(move || {
+        for hit in hits.by_ref() {
+            let line_start = match memchr::memrchr(b'\n', &bytes[..hit]) {
+                Some(newline) => newline + 1,
+                None => 0,
+            };
+            if last_line_start == Some(line_start) {
+                // a second marker hit on a line already yielded
+                continue;
+            }
+            last_line_start = Some(line_start);
+            let newline = memchr::memchr(b'\n', &bytes[hit..]).map(|offset| hit + offset);
+            let line_end = newline.unwrap_or(bytes.len());
+            let next_start = match newline {
+                Some(end) => end + 1,
+                None => bytes.len(),
+            };
+            // `str::lines` withholds a trailing carriage return; the
+            // located line text matches its output exactly.
+            let mut content_end = line_end;
+            if content_end > line_start && bytes[content_end - 1] == b'\r' {
+                content_end -= 1;
+            }
+            return Some(MarkerLine {
+                line: &window[line_start..content_end],
+                line_start,
+                next_start,
+            });
+        }
+        None
+    })
+}
+
 /// The bohr-to-Ångström conversion constant (CODATA 2018), defined once:
 /// every Bohr-unit extraction converts through it.
 ///

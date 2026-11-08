@@ -65,18 +65,40 @@ overwritten; `--fout` forces the replacement without asking
 - Classification never consults the file name or extension. A database saved
   under any name merges; an output that happened to start with `{` is
   classified as a database and its lines are then reported as unreadable.
-- All inputs are classified before any work begins. All databases → merge
-  mode; all outputs → build mode; any mixture → usage error naming both
-  groups (exit 2), nothing written.
+- Every input's classification decides the mode before any record is kept
+  or written: all databases → merge mode; all outputs → build mode; any
+  mixture → usage error naming both groups (exit 2), nothing written. A
+  run may read and parse an input before later inputs are classified,
+  provided every observable outcome — the mode, the reported first error,
+  the records written — is the outcome of classifying every input first.
 - An input that cannot be opened (missing file, directory, permission
-  denied) is a fatal input error (exit 1) discovered during classification,
-  before anything is read or written.
+  denied) is a fatal input error (exit 1) discovered at its input's
+  classification; the run writes nothing.
+- Classification reads concurrently when the run carries `--parallel N > 1`
+  (Parallel Collection below): the first non-blank line of each input is
+  read by one of N workers. The verdict, the `Mixed` listing, and the
+  reported first error in argument order are identical to a sequential
+  classification of the same inputs.
+- Each build pass opens each build-mode input once: the handle whose first
+  non-blank line decided the classification is the handle the window
+  reader reads the head and tail windows from, so a pass issues one open
+  per input, not one per pass — the shape that keeps metadata round-trips
+  low on parallel network filesystems. A print flag plus `--out` performs
+  the re-read, one open per input per pass. Merge inputs are opened by the
+  merge reader.
+- A run holds a small multiple of the worker count of input handles at
+  a time, plus its ordinary process handles, whatever the input count:
+  an input's handle lives from its classification to its parsed record,
+  never longer, so a batch larger than the process's open-file limit
+  collects successfully.
 
 ## Build Mode <!-- rq-5d7eda5b -->
 
 - Each input is parsed with `ParserRegistry::standard()` — content decides
   the parser, exactly one record per file, in argument order
-  (`rqm/parser-framework.md`).
+  (`rqm/parser-framework.md`). With `--parallel N > 1` the parsing runs
+  across N workers (Parallel Collection below); the records and the
+  database are the same either way.
 - A parsed record for which `Record::is_unrecognized` holds — status
   `failed` with no `program`, the framework's signature for an
   unrecognized format or an empty file (`rqm/parser-framework.md`,
@@ -93,6 +115,34 @@ overwritten; `--fout` forces the replacement without asking
   (Overwrite Confirmation). All inputs are
   read before the target is written, so `--out` may
   name a file that is also an input.
+
+## Parallel Collection <!-- rq-3e15605c -->
+
+- `--parallel <N>` sets the worker count of the run's build-mode passes —
+  classification and parsing, including the parse pass behind a print
+  flag's re-read. The default is 1: fully sequential. A value below 1 is a
+  usage error (exit 2). The flag changes nothing else in the invocation.
+- With N > 1 the inputs are distributed over N workers; each worker opens,
+  window-reads, and parses whole inputs on its own (a record is never
+  split across workers), so the per-input cost stays the sequential one
+  and the workers' reads overlap — the shape parallel network
+  filesystems (Lustre and friends) serve best, where N concurrent large
+  reads and a single metadata round-trip per input dominate the wall time.
+- The result never depends on N. Records are produced, ordered, and
+  written in argument order whatever the worker count; the database is
+  byte-identical to the one a sequential run writes.
+- Errors are sequential-identical. A parallel run aborts on exactly the
+  error a sequential run would report first in argument order — the same
+  variant, the same text naming the same path, the same exit code — and
+  writes nothing. When several inputs would fail a sequential run, the
+  reported one is the earliest in argument order, whatever the workers
+  discovered first.
+- An open that fails at the process's open-file limit is a fatal input
+  error whose message names the limit and the worker knob: fewer workers
+  or a higher open-file limit fits the batch.
+- Merge mode is sequential at any N: its inputs are the tool's own JSON
+  Lines databases, and `--parallel` governs the passes that parse program
+  outputs only.
 
 ## Merge Mode <!-- rq-f832a4fa -->
 
@@ -120,6 +170,11 @@ CJKQC <inputs>… -o <path> [--fout]
 - `--fout` — force the replacement of an existing `--out` (or
   `movie.xyz`, `rqm/movie.md`) without the confirmation question
   (Overwrite Confirmation). It is accepted in both modes.
+- `--parallel <N>` — the worker count of the run's build-mode passes
+  (Parallel Collection), an integer of 1 or more; the default is 1
+  (sequential), and a value below 1 is a usage error (exit 2). It is
+  accepted in both modes and ignored by merge. Help advertises it
+  alongside `--head-bytes`/`--tail-bytes`.
 - A literal `-` is an ordinary path, not stdin; stdin is not collected.
 - Usage errors — no inputs, a missing `--out`, unknown flags (including JKQC
   flags that no feature has adopted, such as `-el`) — print clap's parse
@@ -205,19 +260,23 @@ CJKQC <inputs>… -o <path> [--fout]
   - `ParseError::Io` is reported as `CollectError::Io`; `DbError::Io` is
     reported as `CollectError::Io`; other database failures surface as `Db`.
 
-- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget, confirm: &mut dyn FnMut() -> bool) -> Result<CollectOutcome, CollectError>` — <!-- rq-3b5861a5 -->
-  `collect_inputs` with an explicit window budget: build-mode inputs are
-  read through windows of the budget's sizes (the CLI's
-  `--head-bytes`/`--tail-bytes`); merge mode reads record databases and
-  ignores the budget. `confirm` is invoked immediately before an existing
-  output is replaced; `false` aborts with nothing written
-  (`CollectError::NotConfirmed`). `collect_inputs` is this function with
-  the default budget and an unconditional confirmation.
+- `collect_inputs_with(inputs: &[&Path], output: &Path, budget: &WindowBudget, workers: usize, confirm: &mut dyn FnMut() -> bool) -> Result<CollectOutcome, CollectError>` — <!-- rq-3b5861a5 -->
+  `collect_inputs` with an explicit window budget and worker count: the
+  budget sizes build-mode windows (the CLI's `--head-bytes`/
+  `--tail-bytes`), and `workers` sets how many worker threads run the
+  build-mode passes (the CLI's `--parallel`; `1` is sequential, and the
+  outcome is identical for any worker count — Parallel Collection); merge
+  mode reads record databases and ignores both. `confirm` is invoked
+  immediately before an existing output is replaced; `false` aborts with
+  nothing written (`CollectError::NotConfirmed`). `collect_inputs` is
+  this function with the default budget, one worker, and an
+  unconditional confirmation.
 
-- `gather_inputs_with(inputs: &[&Path], budget: &WindowBudget) -> Result<Gathered, CollectError>` — <!-- rq-024c9db0 -->
+- `gather_inputs_with(inputs: &[&Path], budget: &WindowBudget, workers: usize) -> Result<Gathered, CollectError>` — <!-- rq-024c9db0 -->
   `gather_inputs` (classify and read records without writing) with the
-  same budget override and the same merge-mode indifference to it;
-  `gather_inputs` is this function with the default budget.
+  same budget and worker-count overrides and the same merge-mode
+  indifference to them; `gather_inputs` is this function with the default
+  budget and one worker.
 
 - `confirm_overwrite(path: &Path, prompt: &mut dyn Write, input: &mut dyn BufRead, interactive: bool) -> OverwriteDecision` <!-- rq-59b68ca8 -->
   - The confirmation of Overwrite Confirmation for one target. Interactive:
@@ -251,7 +310,10 @@ CJKQC <inputs>… -o <path> [--fout]
   required) and maps outcomes and errors to the stdout/stderr reporting and
   exit codes above; the scaffold's placeholder error path is gone.
 - `tests/collect.rs` tests classification and `collect_inputs` over the <!-- rq-2d29c3a7 -->
-  fixture corpus and temporary databases; `tests/overwrite.rs` tests the
+  fixture corpus and temporary databases — the parallel pass included:
+  the same corpus collected with several worker counts yields one
+  byte-identical database, and a corpus with a failing input reports the
+  argument-order-first error at any worker count; `tests/overwrite.rs` tests the
   confirmation decisions (answer grammar, end-of-input, the
   non-interactive refusal, the question text) with injected streams;
   `tests/cli.rs` tests exit codes,
@@ -267,7 +329,12 @@ CJKQC <inputs>… -o <path> [--fout]
 - Filtering, sorting, duplicate removal (`rqm/ARCHITECTURE.md`, milestone 5),
   recursive directory expansion (the shell globs), and transparent
   decompression.
-- Parallel collection; v1 collects sequentially.
+- An automatic worker count (`--parallel` takes an explicit count; the
+  default stays 1) and parallel merge-mode reads — merge inputs are the
+  tool's own small databases, read sequentially.
+- Readahead advice (`posix_fadvise` and friends): with workers reading
+  whole inputs, a parallel run already overlaps its input reads, and a
+  sequential run reads one input at a time at the filesystem's own pace.
 - Back-filling `components` on records that lack it when their names would
   resolve — merge is verbatim.
 - Making `--out` optional. Build and merge always name a target database;
@@ -517,4 +584,83 @@ Feature: Collection command line
     Given a fresh output path that does not exist
     When collect_inputs_with is called with a hook that always declines
     Then the collection succeeds and the output is written
+
+  # --- Parallel collection ---
+
+  @rq-c974ee61
+  Scenario: A parallel run writes the sequential run's database
+    Given three program outputs of three different formats and no file at "db.jsonl"
+    When CJKQC is invoked with the outputs, "--out db.jsonl --parallel 3"
+    Then the exit code is 0
+    And db.jsonl is byte-identical to the database the same outputs
+    collected without --parallel produce
+
+  @rq-7286bd48
+  Scenario: Records keep argument order at any worker count
+    Given program outputs A, B, and C in that argument order
+    When CJKQC is invoked with "A B C --out db.jsonl --parallel 3"
+    Then db.jsonl loads as A's record, then B's, then C's
+
+  @rq-23b4fd18
+  Scenario: A parallel run reports the argument-order-first error
+    Given five program outputs of which the second and the fourth are
+    unrecognized, in that argument order
+    When CJKQC is invoked with all five, "--out db.jsonl --parallel 4"
+    Then the exit code is 1
+    And stderr names the second output
+    And db.jsonl does not exist
+
+  @rq-ecff2560
+  Scenario: A parallel run writes nothing when any input fails
+    Given program outputs of which the last cannot be read
+    When CJKQC is invoked with all of them, "--out db.jsonl --parallel 4"
+    Then the exit code is 1
+    And db.jsonl does not exist
+
+  @rq-27e5a6b2
+  Scenario: A zero worker count is a usage error
+    When CJKQC is invoked with "tests/fixtures/xtb/1dma.log --out db.jsonl --parallel 0"
+    Then the exit code is 2
+    And stderr reports that --parallel must be at least 1
+
+  @rq-60a23fe4
+  Scenario: Merge ignores the worker count
+    Given database "a.jsonl" with records A1 A2
+    When CJKQC is invoked with "a.jsonl --out merged.jsonl --parallel 4"
+    Then the exit code is 0
+    And merged.jsonl loads as A1 A2
+    And stdout contains "merged 2 records into merged.jsonl"
+
+  @rq-c8e29272
+  Scenario: Mixed inputs are refused identically in a parallel run
+    Given database "a.jsonl" with 1 record, the file "tests/fixtures/xtb/1dma.log",
+    and the file "tests/fixtures/orca/1pinic1sa-110_1_9-str9.out"
+    When CJKQC is invoked with all three, "--out out.jsonl --parallel 3"
+    Then the exit code is 2
+    And stderr names the database and both outputs
+    And out.jsonl does not exist
+
+  @rq-0c8eff8b
+  Scenario: A batch larger than the open-file limit collects
+    Given 600 program outputs and a process open-file limit of 256
+    When CJKQC is invoked with the outputs, "--out db.jsonl --parallel 8"
+    Then the exit code is 0
+    And db.jsonl holds 600 records
+
+  @rq-9b736232
+  Scenario: A mixture is reported over an earlier parse failure
+    Given an unrecognized program output first and a database input last,
+    in that order
+    When CJKQC is invoked with both, "--out db.jsonl --parallel 2"
+    Then the exit code is 2
+    And stderr reports the mixture, naming both inputs
+    And db.jsonl does not exist
+
+  @rq-8617d3fb
+  Scenario: An open-file-limit failure names the limit
+    Given a process open-file limit of 24, 128 program outputs whose
+    parses overlap under "--parallel 128"
+    When the run collects into "--out db.jsonl"
+    Then the exit code is 1
+    And stderr names the open-file limit and the worker count
 ```

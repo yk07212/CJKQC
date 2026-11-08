@@ -7780,3 +7780,287 @@ fn a_refusal_at_out_ends_the_run_before_movie_xyz() {
     );
     assert!(stderr(&run).contains("error: kept.jsonl exists; not interactive; use --fout to force"));
 }
+
+// --- parallel collection (rqm/collection.md, Parallel Collection) ---
+
+// rq-c974ee61
+#[test]
+fn a_parallel_run_writes_the_sequential_runs_database() {
+    let dir = temp_dir();
+    let inputs = [
+        fixture("xtb/1dma.log"),
+        fixture("orca/1pinic1sa-110_1_9-str9.out"),
+        fixture("gaussian/2cha-020_1_0-str3.log"),
+    ];
+    let sequential = dir.join("sequential.jsonl");
+    let parallel = dir.join("parallel.jsonl");
+    let plain = cjkqc(&[
+        &inputs[0],
+        &inputs[1],
+        &inputs[2],
+        "--out",
+        &sequential.to_string_lossy(),
+    ]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    let run = cjkqc(&[
+        &inputs[0],
+        &inputs[1],
+        &inputs[2],
+        "--out",
+        &parallel.to_string_lossy(),
+        "--parallel",
+        "3",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let plain_bytes = fs::read(&sequential).expect("sequential database");
+    let parallel_bytes = fs::read(&parallel).expect("parallel database");
+    assert_eq!(
+        plain_bytes, parallel_bytes,
+        "the parallel database must be byte-identical to the sequential one"
+    );
+}
+
+// rq-7286bd48
+#[test]
+fn records_keep_argument_order_at_any_worker_count() {
+    let dir = temp_dir();
+    let out = dir.join("db.jsonl");
+    let run = cjkqc(&[
+        &fixture("xtb/1dma.log"),
+        &fixture("orca/1pinic1sa-110_1_9-str9.out"),
+        &fixture("gaussian/2cha-020_1_0-str3.log"),
+        "--out",
+        &out.to_string_lossy(),
+        "--parallel",
+        "3",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let records = loaded(&out);
+    let programs: Vec<_> = records.iter().filter_map(|record| record.program.as_deref()).collect();
+    assert_eq!(programs, vec!["xtb", "orca", "gaussian"]);
+}
+
+// rq-23b4fd18
+#[test]
+fn a_parallel_run_reports_the_argument_order_first_error() {
+    let dir = temp_dir();
+    let out = dir.join("db.jsonl");
+    let junk = dir.join("junk.txt");
+    fs::write(&junk, "not a program output\n").expect("write junk");
+    let junk_text = junk.to_string_lossy().into_owned();
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[
+        &fixture("xtb/1dma.log"),
+        &junk_text,
+        &fixture("orca/1pinic1sa-110_1_9-str9.out"),
+        &junk_text,
+        &fixture("gaussian/2cha-020_1_0-str3.log"),
+        "--out",
+        &out_text,
+        "--parallel",
+        "4",
+    ]);
+    assert_eq!(run.status.code(), Some(1));
+    let error = stderr(&run);
+    assert!(error.contains("junk.txt"), "{error}");
+    assert!(!out.exists(), "nothing is written when an input is unrecognized");
+}
+
+// rq-ecff2560
+#[test]
+fn a_parallel_run_writes_nothing_when_any_input_fails() {
+    let dir = temp_dir();
+    let out = dir.join("db.jsonl");
+    let missing = dir.join("does-not-exist.out");
+    let run = cjkqc(&[
+        &fixture("xtb/1dma.log"),
+        &fixture("orca/1pinic1sa-110_1_9-str9.out"),
+        &missing.to_string_lossy(),
+        "--out",
+        &out.to_string_lossy(),
+        "--parallel",
+        "4",
+    ]);
+    assert_eq!(run.status.code(), Some(1));
+    assert!(stderr(&run).contains("does-not-exist.out"));
+    assert!(!out.exists(), "nothing is written when an input cannot be read");
+}
+
+// rq-27e5a6b2
+#[test]
+fn a_zero_worker_count_is_a_usage_error() {
+    let dir = temp_dir();
+    let out = dir.join("db.jsonl");
+    let run = cjkqc(&[
+        &fixture("xtb/1dma.log"),
+        "--out",
+        &out.to_string_lossy(),
+        "--parallel",
+        "0",
+    ]);
+    assert_eq!(run.status.code(), Some(2));
+    assert!(
+        stderr(&run).contains("--parallel must be at least 1"),
+        "{}",
+        stderr(&run)
+    );
+}
+
+// rq-60a23fe4
+#[test]
+fn merge_ignores_the_worker_count() {
+    let dir = temp_dir();
+    let a = dir.join("a.jsonl");
+    write_jsonl(&a, &[&sample_line("A1", -1.0), &sample_line("A2", -2.0)]);
+    let merged = dir.join("merged.jsonl");
+    let run = cjkqc(&[
+        &a.to_string_lossy(),
+        "--out",
+        &merged.to_string_lossy(),
+        "--parallel",
+        "4",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let records = loaded(&merged);
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0].name.as_deref(), Some("A1"));
+    assert_eq!(records[1].name.as_deref(), Some("A2"));
+    assert!(
+        stdout(&run).contains("merged 2 records into"),
+        "{}",
+        stdout(&run)
+    );
+}
+
+// rq-c8e29272
+#[test]
+fn mixed_inputs_are_refused_identically_in_a_parallel_run() {
+    let dir = temp_dir();
+    let a = dir.join("a.jsonl");
+    write_jsonl(&a, &[&sample_line("A1", -1.0)]);
+    let out = dir.join("out.jsonl");
+    let run = cjkqc(&[
+        &a.to_string_lossy(),
+        &fixture("xtb/1dma.log"),
+        &fixture("orca/1pinic1sa-110_1_9-str9.out"),
+        "--out",
+        &out.to_string_lossy(),
+        "--parallel",
+        "3",
+    ]);
+    assert_eq!(run.status.code(), Some(2));
+    let error = stderr(&run);
+    assert!(error.contains("a.jsonl"), "{error}");
+    assert!(error.contains("1dma.log"), "{error}");
+    assert!(error.contains("1pinic1sa"), "{error}");
+    assert!(!out.exists(), "nothing is written when inputs are mixed");
+}
+
+// --- open-file limits (rqm/collection.md, Parallel Collection) ---
+
+/// The binary under a lowered process open-file limit: the limit is a
+/// property of the process, so the test wraps the invocation in a shell
+/// that sets it before the exec. The arguments are absolute paths, passed
+/// through verbatim.
+fn cjkqc_limited(limit: u32, args: &[&str]) -> Output {
+    let script = format!("ulimit -n {limit}; exec \"$0\" \"$@\"");
+    Command::new("bash")
+        .arg("-c")
+        .arg(&script)
+        .arg(env!("CARGO_BIN_EXE_CJKQC"))
+        .args(args)
+        .output()
+        .expect("failed to start CJKQC under an open-file limit")
+}
+
+/// `count` copies of the plain-xyz fixture under `dir/batch`, their
+/// absolute paths in name order.
+fn batch_of(dir: &Path, count: usize) -> Vec<String> {
+    let batch = dir.join("batch");
+    fs::create_dir(&batch).expect("create batch dir");
+    for index in 1..=count {
+        fs::copy(
+            fixture("xyz/h2o.xyz"),
+            batch.join(format!("h2o-{index:03}.xyz")),
+        )
+        .expect("copy fixture");
+    }
+    let mut paths: Vec<String> = fs::read_dir(&batch)
+        .expect("read batch dir")
+        .map(|entry| entry.expect("batch entry").path().to_string_lossy().into_owned())
+        .collect();
+    paths.sort();
+    paths
+}
+
+// rq-0c8eff8b
+#[test]
+fn a_batch_larger_than_the_open_file_limit_collects() {
+    let dir = temp_dir();
+    let inputs = batch_of(&dir, 600);
+    let out = dir.join("db.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let mut args: Vec<&str> = inputs.iter().map(String::as_str).collect();
+    args.extend(["--out", &out_text, "--parallel", "8"]);
+    let run = cjkqc_limited(256, &args);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(loaded(&out).len(), 600);
+}
+
+// rq-9b736232
+#[test]
+fn a_mixture_is_reported_over_an_earlier_parse_failure() {
+    let dir = temp_dir();
+    let junk = dir.join("junk.txt");
+    fs::write(&junk, "not a program output\n").expect("write junk");
+    let a = dir.join("a.jsonl");
+    write_jsonl(&a, &[&sample_line("A1", -1.0)]);
+    let out = dir.join("db.jsonl");
+    let run = cjkqc(&[
+        &junk.to_string_lossy(),
+        &a.to_string_lossy(),
+        "--out",
+        &out.to_string_lossy(),
+        "--parallel",
+        "2",
+    ]);
+    assert_eq!(run.status.code(), Some(2));
+    let error = stderr(&run);
+    assert!(error.contains("cannot mix"), "{error}");
+    assert!(error.contains("junk.txt"), "{error}");
+    assert!(error.contains("a.jsonl"), "{error}");
+    assert!(!out.exists(), "nothing is written for a mixture");
+}
+
+// rq-8617d3fb
+#[test]
+fn an_open_file_limit_failure_names_the_limit() {
+    let dir = temp_dir();
+    // 128 outputs whose parses overlap: geometry tables large enough that
+    // a worker holds its input handle for milliseconds, so 128 workers
+    // under a 24-fd limit are mid-task together and the opens fail at
+    // the limit.
+    let batch = dir.join("batch");
+    fs::create_dir(&batch).expect("create batch dir");
+    let mut table = String::from("30000\nopen-file limit batch\n");
+    for row in 0..30000 {
+        table.push_str(&format!("H {row}.0 0.0 0.0\n"));
+    }
+    let mut inputs = Vec::with_capacity(128);
+    for index in 1..=128 {
+        let path = batch.join(format!("big-{index:03}.xyz"));
+        fs::write(&path, &table).expect("write batch input");
+        inputs.push(path.to_string_lossy().into_owned());
+    }
+    let out = dir.join("db.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let mut args: Vec<&str> = inputs.iter().map(String::as_str).collect();
+    args.extend(["--out", &out_text, "--parallel", "128"]);
+    let run = cjkqc_limited(24, &args);
+    assert_eq!(run.status.code(), Some(1));
+    let error = stderr(&run);
+    assert!(error.contains("Too many open files"), "{error}");
+    assert!(error.contains("open-file limit"), "{error}");
+    assert!(error.contains("workers"), "{error}");
+    assert!(!out.exists(), "nothing is written when an open fails");
+}
