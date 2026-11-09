@@ -6707,7 +6707,12 @@
   "rq-80fdb0f3": {
     "decl": "- `mulliken_charges` — the values of the rows `<idx> <El> : <q>` under the",
     "file": "parsers/orca",
-    "refs": [],
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      }
+    ],
     "title": "mulliken_charges",
     "type": "api-item"
   },
@@ -11137,6 +11142,22 @@
     ],
     "title": "Solvent Pressure",
     "type": "section"
+  },
+  "rq-d3ed1e6c": {
+    "decl": "Scenario: Mulliken rows of both symbol spellings yield every charge",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Mulliken rows of both symbol spellings yield every charge",
+    "type": "scenario"
   },
   "rq-d431309b": {
     "decl": "Scenario: A corrupt line in a merged input is skipped and reported",

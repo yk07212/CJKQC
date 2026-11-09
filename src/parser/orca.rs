@@ -312,9 +312,25 @@ impl Parser for OrcaParser {
             }
         });
 
-        // The Mulliken charges of the last population analysis.
+        // The Mulliken charges of the last population analysis. ORCA
+        // prints the symbol in a two-character field ending at the colon,
+        // so a two-character symbol reads `0 Na:    0.685633` (three
+        // fields) and a one-character symbol reads `1 I :   -0.797525`
+        // (four fields); either spelling is a row, and the charge is the
+        // row's last field.
+        // rq-80fdb0f3 rq-d3ed1e6c
         let charge_rows = rows_following(matches.after_last(MULLIKEN_HEADER), |fields| {
-            fields.len() == 4 && fields[2] == ":" && parse_fortran_f64(fields[3]).is_some()
+            (fields.len() == 3 || fields.len() == 4)
+                && fields
+                    .last()
+                    .is_some_and(|charge| parse_fortran_f64(charge).is_some())
+                && match fields.len() {
+                    3 => fields[1]
+                        .strip_suffix(':')
+                        .is_some_and(|symbol| !symbol.is_empty()),
+                    4 => fields[2] == ":",
+                    _ => false,
+                }
         });
 
         // The rotational symmetry number from the thermodynamics block.
@@ -385,7 +401,9 @@ impl Parser for OrcaParser {
                 Some(
                     charge_rows
                         .iter()
-                        .filter_map(|line| parse_fortran_f64(line.split_whitespace().nth(3)?))
+                        // Every collected row's last field is its charge,
+                        // already proven parseable by the row test.
+                        .filter_map(|line| parse_fortran_f64(line.split_whitespace().last()?))
                         .collect(),
                 )
             },

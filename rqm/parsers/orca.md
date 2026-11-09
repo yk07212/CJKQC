@@ -97,7 +97,11 @@ in an elided window yields an absent observable, never a guess.
 - `dipole_moment` — the `Total Dipole Moment    :     <x> <y> <z>` line of <!-- rq-21041eac -->
   the last `DIPOLE MOMENT` block, in atomic units, stored unchanged.
 - `mulliken_charges` — the values of the rows `<idx> <El> : <q>` under the <!-- rq-80fdb0f3 -->
-  last `MULLIKEN ATOMIC CHARGES` header, in geometry atom order.
+  last `MULLIKEN ATOMIC CHARGES` header, in geometry atom order. The symbol
+  is printed in a two-character field that ends at the colon, so a
+  two-character symbol reads `<idx> <El>: <q>` with no space before the
+  colon; a row qualifies in either spelling, and its charge is the row's
+  last field.
 - `rotational_symmetry_number` — the value of `Symmetry Number: <n>` in the <!-- rq-89cb2071 -->
   line `Point Group:  <group>, Symmetry Number:   <n>` of the last
   thermodynamics block; absent when no frequency/thermo block is visible.
@@ -171,6 +175,13 @@ Feature: ORCA parser
     a -42.13 imaginary mode and real modes 38.55 and 3641.12
     When the content is parsed
     Then the stored frequencies are -42.13, 38.55, and 3641.12
+
+  @rq-d3ed1e6c
+  Scenario: Mulliken rows of both symbol spellings yield every charge
+    Given a MULLIKEN ATOMIC CHARGES section whose rows read
+    "   0 Na:    0.861759", "   1 I :   -0.797525", and "   2 H :    0.349900"
+    When the content is parsed
+    Then the record's mulliken_charges are 0.861759, -0.797525, and 0.349900
 
   @rq-48469bb2
   Scenario: A frequency section of only trivial modes leaves the field absent

@@ -191,6 +191,27 @@ fn trivial_modes_are_dropped_and_a_genuine_imaginary_mode_is_kept() {
     );
 }
 
+// rq-d3ed1e6c
+#[test]
+fn mulliken_rows_of_both_symbol_spellings_yield_every_charge() {
+    // ORCA prints the symbol in a two-character field ending at the
+    // colon: a two-character symbol carries the colon glued to it, a
+    // one-character symbol leaves it spaced. The summary line ends the
+    // table.
+    let section = "MULLIKEN ATOMIC CHARGES\n\
+         -----------------------\n\
+         \x20  0 Na:    0.861759\n\
+         \x20  1 I :   -0.797525\n\
+         \x20  2 H :    0.349900\n\
+         Sum of atomic charges:    0.414134\n\n";
+    let content = completed_log().replace(MULLIKEN, section);
+    let record = parse(&content);
+    assert_eq!(
+        record.mulliken_charges,
+        Some(vec![0.861759, -0.797525, 0.349900])
+    );
+}
+
 // rq-48469bb2
 #[test]
 fn a_frequency_section_of_only_trivial_modes_leaves_the_field_absent() {
