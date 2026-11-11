@@ -1,0 +1,142 @@
+\section{Troubleshooting}\label{app:troubleshooting}
+
+\subsection{``Mixed inputs'' or exit code 2}
+
+An invocation is either all program outputs (build) or all databases (merge).
+Mixing the two kinds is a usage error. Run the two steps separately:
+
+\begin{verbatim}
+CJKQC *.out -o part.jsonl --fout
+CJKQC part.jsonl other.jsonl -o all.jsonl --fout
+\end{verbatim}
+
+Classification is by content, not extension, so a file whose first non-blank
+line begins with \texttt{\{} counts as a database.
+
+\subsection{An input is not recognized}
+
+A build input that matches no supported format, or is empty, aborts the run
+and writes nothing. Check:
+
+\begin{itemize}
+  \item that the file is really a program output and not, for example, a
+        shell script or a truncated header;
+  \item that the file is not empty;
+  \item that a wrapper has not hidden the program banner beyond the head
+        window; try increasing \flg{--head-bytes}.
+\end{itemize}
+
+A failed or truncated \emph{job} is different: if \CJKQC{} recognizes the
+format, the record is stored and reported in the summary line.
+
+\subsection{``cut by the window seam''}
+
+A geometry or frequency table was split between the head and tail windows.
+Widen the windows and retry:
+
+\begin{verbatim}
+CJKQC huge.out --head-bytes 1048576 --tail-bytes 8388608 -o db.jsonl --fout
+\end{verbatim}
+
+The defaults cover the shipped fixture corpus, but unusually large or
+unusually laid-out outputs may need more.
+
+\subsection{Thermochemistry prints dashes}
+
+An undefined derivation is not an error. Check for:
+
+\begin{itemize}
+  \item a missing \fld{electronic\_energy};
+  \item a missing geometry, or a degenerate geometry;
+  \item an unknown element symbol in the geometry;
+  \item a negative frequency without \flg{--makereal} or
+        \flg{--ignoreimag};
+  \item a non-monatomic record with no participating vibrational mode, such
+        as a single-point output or a plain xyz file.
+\end{itemize}
+
+Try \flg{--makereal} to treat an imaginary mode as real, or
+\flg{--ignoreimag} to drop it. Only one may be used at a time.
+
+\subsection{``\texttt{-{}-pop} db.jsonl fails''}
+
+\flg{--pop} takes an optional level, and a space-separated value is consumed
+even if it is your database path. Put \flg{--pop} after the positional inputs,
+or use the equals form:
+
+\begin{verbatim}
+CJKQC db.jsonl --pop
+CJKQC --pop=g db.jsonl
+\end{verbatim}
+
+The same value-eating behavior applies to \flg{--extrapolate}; place it after
+the positional inputs.
+
+\subsection{A correction does not attach}
+
+Matching is exact and case-sensitive on \fld{name}. Common causes:
+
+\begin{itemize}
+  \item the correction record's name differs in case or spelling;
+  \item the run record has no \fld{name};
+  \item the correction record is not \fld{ok}, or lacks
+        \fld{electronic\_energy}, so it is not a candidate;
+  \item the correction record's name is absent.
+\end{itemize}
+
+Read the standard-error warnings: skipped candidates and unmatched candidates
+are reported individually or as an aggregate count.
+
+\subsection{Extrapolation refuses to run}
+
+Extrapolation rejects ambiguity rather than producing a silent mix:
+
+\begin{itemize}
+  \item two candidates with the same name in one source database;
+  \item contributors of one name with different programs or versions;
+  \item contributors of one name with exactly equal electronic energies,
+        which usually means the same file entered two sources or the same
+        path was passed twice;
+  \item a run record whose name is missing from at least one source. A
+        partially covered name is warned and not corrected.
+\end{itemize}
+
+Every source path must be a database. Use \flg{--add-correction} for a single
+ordinary correction; a run cannot use both.
+
+\subsection{``exists; not interactive; use \texttt{-{}-fout} to force''}
+
+An output file already exists and standard input is not a terminal, so
+\CJKQC{} will not ask. Either run interactively and answer \texttt{y}, or add
+\flg{--fout}. The same rule applies to \texttt{movie.xyz}. A refusal at
+\flg{--out} ends the run before \texttt{movie.xyz} is considered.
+
+\subsection{A formation block or solvation block is missing}
+
+Formation and solvation need monomers in the run's final record set:
+
+\begin{itemize}
+  \item a monomer is an \fld{ok} record with exactly one component at count 1;
+  \item if a filter removed the monomer, it cannot serve as a reference;
+  \item for solvation, the solvent code must appear in at least one record of
+        the section's record set;
+  \item a state whose solvent monomer is absent or has no level value prints a
+        dash.
+\end{itemize}
+
+For non-water solvents, supply \flg{--psolvent}; the water saturation
+correlation is not applied to other solvents.
+
+\subsection{Sorting by name does not work}
+
+Use \flg{--sort filename}. The accepted value is \fld{filename}, which sorts
+by the record's \fld{name}. The help text's phrase ``name'' refers to that
+name, not to a separate spelling.
+
+\subsection{Populations or formation values changed after filtering}
+
+Populations, formation references, and solvation distributions are computed
+over exactly the records the run prints. Adding a filter changes the set, so
+the normalization and the selected reference monomers can change too. This is
+intended: these are ensemble properties of the printed set, not stored
+per-record values.

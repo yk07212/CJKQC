@@ -1,0 +1,291 @@
+\section{Loading data}\label{sec:loading}
+
+This chapter covers both directions of the data flow: how to turn
+quantum-chemistry outputs into a database, and how to read a database
+without programming. It also defines the standard units and the information
+each record holds, because every later chapter refers to them.
+
+\subsection{Collecting program outputs into a database}\label{sec:collecting}
+
+Build mode is used when every positional input is a quantum-chemistry output
+file. The command is simply:
+
+\begin{verbatim}
+CJKQC <output files>... -o <database.jsonl>
+\end{verbatim}
+
+For each input, in the order given, \CJKQC{}:
+
+\begin{enumerate}
+  \item opens the file and looks at its leading lines to decide how to read
+        it;
+  \item reads the head and tail windows of the file;
+  \item extracts the main calculated values of the final job (or final
+        complete xyz frame);
+  \item resolves the composition from the record's name (the file stem);
+  \item stores exactly one record.
+\end{enumerate}
+
+The output database is replaced only after the whole run succeeds: either the
+new database is installed, or an error leaves any previous database intact. A
+failed or truncated job from a recognized format is still written, with status
+\fld{failed} or \fld{truncated} and a short explanation in its error entry.
+
+\begin{warning}
+An input that matches no supported format, or an empty input, is not a job. It
+aborts the run with exit code 1 and nothing is written. If you want to mix
+databases and program outputs, merge them in a separate invocation.
+\end{warning}
+
+\subsubsection*{Windows and very large files}
+
+\CJKQC{} does not read the whole of a large output file. It reads a head
+window (default 256 KiB) and a tail window (default 4 MiB), which is where
+banners, route sections, final energies, geometries, and frequencies live.
+Files smaller than the two windows together are read whole. If a record's
+error says that a table was cut by a window seam, widen the windows:
+
+\begin{verbatim}
+CJKQC huge.out --head-bytes 1048576 --tail-bytes 8388608 -o db.jsonl
+\end{verbatim}
+
+These flags affect build-mode reads only; merging databases ignores them.
+A value below 1 is a usage error.
+
+\subsubsection*{Reading several files at once}
+
+By default collection reads one file at a time. On a shared cluster
+filesystem, or when many files are being read, you can ask \CJKQC{} to work
+on several files at once:
+
+\begin{verbatim}
+CJKQC *.log *.out --parallel 8 -o db.jsonl
+\end{verbatim}
+
+Each file is still handled as a whole, and the resulting database is identical
+to the one produced by a one-at-a-time run, regardless of the number you give.
+A value below 1 is a usage error. Merging databases always reads one file at a
+time and ignores \flg{--parallel}.
+
+\subsubsection*{Composition from file names}
+
+The record's \fld{name} is the file stem, for example \texttt{2am3sa-1conf}
+from \texttt{2am3sa-1conf.log}. When the stem follows the JKQC naming
+convention, collection also stores the composition. Section
+\ref{sec:names} explains the grammar. A name that does not follow the
+convention is kept exactly as written and simply carries no composition
+information.
+
+\subsection{Merging databases}\label{sec:merging}
+
+When every positional input is a database, \CJKQC{} runs in merge mode:
+
+\begin{verbatim}
+CJKQC part1.jsonl part2.jsonl -o combined.jsonl
+\end{verbatim}
+
+Records are concatenated in argument order and copied exactly as they were
+stored: there is no re-reading, no composition resolution, and no rewriting of
+the records. Information written by a newer version of \CJKQC{} therefore
+survives a merge through an older version. Corrupt lines are skipped, reported
+by path and line number, and make the exit code 1, but the valid records are
+still written. \flg{--out} may name one of the inputs; all inputs are read
+before the output is replaced.
+
+\subsection{Reading a database file as a non-programmer}\label{sec:jsonl}
+
+A database is a plain text file. Each line holds one complete record, written
+as a set of names and values inside curly braces. The rules are deliberately
+simple:
+
+\begin{itemize}
+  \item one record per line;
+  \item every complete line ends with a line break;
+  \item blank lines are ignored when the file is read;
+  \item the \texttt{.jsonl} ending is only a convention; the content decides
+        whether a file is a database;
+  \item a corrupt or partially written line is skipped and reported, so the
+        rest of the file remains usable;
+  \item records may repeat; duplicate removal is a filtering decision, not a
+        storage decision.
+\end{itemize}
+
+In the real file, each record is written on one long line. For readability,
+the same record is shown below spread over several lines. Information that is
+not available is left out completely; you will not see the word
+\texttt{null}.
+
+\begin{verbatim}
+{
+  "status": "ok",
+  "name": "1dma",
+  "source_path": "/scratch/runs/xtb/1dma.log",
+  "program": "xtb",
+  "program_version": "6.7.1",
+  "command": "xtb 1dma.xyz --gxtb --acc 0.01 -ohess",
+  "electronic_energy": -38.51,
+  "charge": 0,
+  "multiplicity": 1,
+  "geometry": {
+    "symbols": ["N", "H"],
+    "coordinates": [0.0, 0.0, 0.0, 0.0, 0.0, 1.01]
+  },
+  "vibrational_frequencies": [3421.1],
+  "components": {"dma": 1}
+}
+\end{verbatim}
+
+What to notice:
+
+\begin{itemize}
+  \item \fld{status} says whether the job finished. If this entry is missing,
+        it is treated as \fld{ok}.
+  \item \fld{name} is the identity used for matching corrections and monomer
+        references. \fld{source_path} is the full path of the original output
+        file, when it could be determined.
+  \item \fld{geometry.symbols} and \fld{geometry.coordinates} form two
+        matching lists: one element name per atom, and three coordinates per
+        atom in the same order. The coordinates are listed atom by atom: $x,y,z$
+        for the first atom, then $x,y,z$ for the second, and so on.
+  \item \fld{components} lists each component code together with its count.
+        The codes are written alphabetically, so the same composition always
+        looks the same.
+  \item A \fld{correction} entry appears only after a correction has been
+        attached. It never replaces \fld{electronic_energy}.
+\end{itemize}
+
+The entries may appear in any order, and unknown entries are ignored. New
+versions of \CJKQC{} only add optional entries; they never rename or
+repurpose an existing one. An older database therefore remains readable, and
+a newer one remains readable by older tools.
+
+\subsection{Record entries and standard units}\label{sec:fields}
+
+The following table lists every entry a record can hold. Energies,
+coordinates, frequencies, and dipoles are always stored in the standard units
+shown; conversion happens only when values are printed.
+
+\begin{longtable}{@{}L{5.4cm}L{2.2cm}L{5.9cm}@{}}
+\toprule
+\textbf{Entry} & \textbf{Kind of value} & \textbf{Meaning and standard unit} \\
+\midrule
+\endhead
+\fld{status} & text & \fld{ok}, \fld{failed}, or \fld{truncated}. \\
+\fld{error} & text & Plain-language reason for a failed or truncated job;
+present whenever the status is \fld{failed}. \\
+\fld{name} & text & Structure identity: the source file's stem, exactly as
+written. \\
+\fld{source_path} & text & Full path of the original output file. \\
+\fld{program} & text & Program name: \fld{gaussian}, \fld{orca}, \fld{xtb},
+\fld{mrcc}, or \fld{xyz}. \\
+\fld{program_version} & text & Version string as printed by the program. \\
+\fld{command} & text & The run's command line as echoed by the program. \\
+\fld{electronic_energy} & number & Total electronic energy of the final
+structure, in hartree. \\
+\fld{scf_energy} & number & Converged SCF energy of the final structure, in
+hartree. Used only by extrapolation. \\
+\fld{charge} & whole number & Net charge, in elementary charges. \\
+\fld{multiplicity} & whole number & Spin multiplicity, at least 1. \\
+\fld{geometry} & two lists & \fld{symbols} (element names) and
+\fld{coordinates} (angstrom, listed atom by atom). \\
+\fld{vibrational_frequencies} & list & Genuine vibrational modes in
+cm$^{-1}$; a negative value marks an imaginary mode. \\
+\fld{gradient} & list & Cartesian gradient in hartree/\AA{}, listed atom by
+atom, three values per atom. \\
+\fld{dipole_moment} & list & Dipole vector $[x,y,z]$ in atomic units
+($e\,a_0$). \\
+\fld{mulliken_charges} & list & Per-atom Mulliken charges in elementary
+charges, in geometry atom order. \\
+\fld{rotational_symmetry_number} & whole number & Point-group rotational
+symmetry number $\sigma$, at least 1. \\
+\fld{components} & code and count & Resolved composition. \\
+\fld{correction} & group of values & Attached single-point correction and its
+origin; see Chapter~\ref{sec:corrections}. \\
+\bottomrule
+\end{longtable}
+
+The standard units are summarized here once:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Quantity & Unit stored in the database \\
+\midrule
+Energy, enthalpy, Gibbs, zero-point energy & hartree \\
+Coordinates and distances & \AA{} (angstrom) \\
+Gradient & hartree/\AA{} \\
+Vibrational frequencies & cm$^{-1}$ \\
+Dipole moment & atomic units, $e\,a_0$ \\
+Charge and Mulliken charges & elementary charge $e$ \\
+Mass & unified atomic mass unit, u \\
+Multiplicity and rotational symmetry number & whole numbers \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Printing in kcal/mol is a presentation choice made with \flg{--unit}; it
+never changes the database.
+
+\subsection{Names and compositions}\label{sec:names}
+
+The JKQC naming convention encodes a composition in the file stem:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Name & Resolved components \\
+\midrule
+\texttt{1dma} & \texttt{\{"dma": 1\}} \\
+\texttt{2cha} & \texttt{\{"cha": 2\}} \\
+\texttt{1pinic1sa} & \texttt{\{"pinic": 1, "sa": 1\}} \\
+\texttt{2am3sa-1conf} & \texttt{\{"am": 2, "sa": 3\}} \\
+\texttt{1am1p} & \texttt{\{"am": 1, "p": 1\}} \\
+\texttt{h2o} & no composition (does not match the grammar) \\
+\texttt{movie} & no composition \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The grammar is:
+
+\begin{verbatim}
+name        := composition ( "-" label )?
+composition := ( count code )+        (at least one pair)
+count       := digit+                  (1 to 4294967295)
+code        := letter+                 (plain letters, either case)
+label       := any text                (never read, never stored)
+\end{verbatim}
+
+Details worth remembering:
+
+\begin{itemize}
+  \item The name splits at its \emph{first} hyphen. Everything after it is a
+        free-form label and is ignored.
+  \item Counts allow leading zeros: \texttt{02am} means two \texttt{am}.
+  \item Codes are case-sensitive: \texttt{am} and \texttt{Am} are different
+        components.
+  \item Repeated codes sum: \texttt{1am1am} resolves to
+        \texttt{\{"am": 2\}}.
+  \item A count of zero, a special character, a digit inside a code, or an
+        implicit count such as \texttt{am2sa} makes the name unresolvable.
+        This is never an error; the record simply has no \fld{components}.
+\end{itemize}
+
+Later features use the stored composition, not the raw name. This is
+why a database written once can be filtered and post-processed without
+re-reading file names.
+
+\subsection{Record statuses}\label{sec:statuses}
+
+\begin{description}
+  \item[\fld{ok}] The job converged and its values are final.
+  \item[\fld{failed}] The job did not finish. Some values may still be
+        present, and \fld{error} explains what happened.
+  \item[\fld{truncated}] The output file ends in the middle of the run. Some
+        values may still be present.
+\end{description}
+
+The filtering steps drop all non-\fld{ok} records before anything else and
+report their count as a warning. A print-only run prints the
+records as loaded, so a failed record can still appear in a table unless you
+filter it out.

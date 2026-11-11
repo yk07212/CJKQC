@@ -1,0 +1,209 @@
+\section{Solvation and hydration distributions}\label{sec:solvation}
+
+Clusters in equilibrium with a vapor exchange solvent molecules. At a given
+relative humidity, the hydrates of one core composition populate a Boltzmann
+distribution over the solvent count. \CJKQC{} prints this distribution with
+\flg{--hydration} for water and \flg{--solvation CODE} for any other solvent.
+
+The distribution is built on the formation machinery of
+Chapter~\ref{sec:formation}. A state's distribution value is its formation
+free energy with the solvent's chemical potential set to its vapor pressure.
+The distribution at a given relative humidity and the formation energy at a
+given concentration are therefore two views of the same calculation.
+
+\subsection{Flags and solvent pressure}\label{sec:solvation-flags}
+
+\begin{center}
+\begin{tabular}{@{}L{4.1cm}L{9.4cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Meaning} \\
+\midrule
+\flg{--hydration} & Print the raw distribution section for water, solvent
+code \texttt{w}. \\
+\flg{--hydration-corr} & Print the corrected distribution section for water;
+requires corrections, attached or stored. \\
+\flg{--solvation CODE} & Print the raw distribution section for the named
+solvent code. \\
+\flg{--solvation-corr CODE} & Print the corrected distribution section for
+the named solvent code. \\
+\flg{--rh VALUE} & Relative humidity as a fraction: \texttt{0.5} means 50
+\%. Water only. \\
+\flg{--psolvent VALUE} & Solvent partial pressure, using the \flg{--conc}
+VALUE grammar. Valid for every solvent and overrides \flg{--rh}. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All four section flags are print flags and each is a visible outcome on its
+own. The plain spellings print the raw-level section; the \texttt{-corr}
+spellings print the corrected-level section. The raw section prints before the
+corrected one, whatever order the flags were given.
+
+All solvent flags in one run must agree on a single solvent code. A second,
+different code is a usage error, while repeated spellings of the same code are
+redundant. Codes are non-empty, letter-only, case-significant strings.
+
+\flg{--rh} is water physics: it must be a finite fraction greater than zero,
+and values above 1 (supersaturation) are accepted. It is a usage error with a
+solvent code other than \texttt{w}. \flg{--psolvent} accepts the same values
+as \flg{--conc}: pascals, or a value suffixed with \texttt{ppt}, \texttt{ppb},
+or \texttt{cmmc}.
+
+The pressure resolution order is:
+
+\begin{enumerate}
+  \item \flg{--psolvent}, if given;
+  \item otherwise \flg{--rh}, if given;
+  \item otherwise the saturated vapor pressure, which is valid for water only.
+\end{enumerate}
+
+For a non-water solvent, neither \flg{--rh} nor the default applies: an
+explicit \flg{--psolvent} is required.
+
+For water, \flg{--rh} uses the Magnus correlation
+
+\begin{equation}
+p_{\mathrm{sat}}(T) = 610.94\,
+  \exp\!\left(\frac{17.625\,\tau}{243.04+\tau}\right)\ \mathrm{Pa},
+\qquad \tau = T - 273.15,
+\end{equation}
+
+which gives 610.94 Pa at 273.15 K and about $3.162\times10^3$ Pa at 298.15 K.
+The resolved pressure $p_w = \texttt{rh}\cdot p_{\mathrm{sat}}(T)$ must be a
+finite positive number before the run starts; a temperature at the domain edge
+that makes it non-finite is a usage error.
+
+The resolved pressure enters the run as a concentration setting supplied
+automatically, as if \flg{--conc CODE p} had been given. The formation
+sections' solvent term shifts accordingly, \flg{--cnt} scales it like any
+concentration setting, and the distribution values carry it. Naming the
+solvent code in an explicit \flg{--conc} is a usage error, because the
+automatic setting already owns it; settings for other components ride along
+untouched.
+
+\subsection{States, cores, and distribution values}\label{sec:solvation-states}
+
+The sections evaluate exactly the record set the formation sections evaluate:
+the records that remain after filtering, every loaded record for a print-only
+run, or the collapsed ensembles under \flg{--bavg}.
+
+A \textbf{state} is one composition. Its \textbf{core} is that composition
+without the solvent code. For example, with solvent \texttt{w}, the state
+\texttt{1sa2w} has core \texttt{1sa}, and the states \texttt{1sa},
+\texttt{1sa1w}, and \texttt{1sa2w} belong to the same core group. Records and
+ensembles without components are excluded. States whose core is empty, such
+as the pure solvent clusters \texttt{1w}, \texttt{2w}, and so on, are also
+excluded: the solvent monomer itself prints no distribution row.
+
+Core groups print in first-appearance order of their core among the printed
+set. States within a group print in first-appearance order of their
+composition.
+
+A state's distribution value at the section's level is:
+
+\begin{itemize}
+  \item \textbf{uncollapsed}: the lowest free conformer, that is, the minimum
+        over the state's members' defined level values. Members with an
+        undefined value are ignored; a state with no defined member is
+        undefined;
+  \item \textbf{under \flg{--bavg}}: the ensemble's level value, because the
+        collapse already provides one ensemble per composition. The
+        collapse replaces the conformer minimum, including conformational
+        entropy.
+\end{itemize}
+
+A state's formation value needs the monomer references of its full
+stoichiometry. A missing or level-less reference code leaves the state
+undefined at that level. A hydrated state whose solvent monomer was filtered
+away prints a dash, while the solvent-free states of the same core can remain
+defined.
+
+\subsection{The distribution}\label{sec:distribution}
+
+Within a core group, each defined state's weight is
+
+\begin{equation}
+w_{\mathrm{state}} = \exp\!\left(
+  -\frac{v_{\mathrm{state}} - v_{\min}}{k_B T}\right),
+\end{equation}
+
+where $v_{\min}$ is the group's minimum defined value and $T$ is the run's
+temperature. Its percentage is
+
+\begin{equation}
+100\,\frac{w_{\mathrm{state}}}{\sum_{\mathrm{defined}} w}.
+\end{equation}
+
+Undefined states contribute nothing and print \texttt{-}. A group with no
+defined states prints all dashes. A group with exactly one defined state
+prints 100.0.
+
+The pressure physics rides inside the values. The implied solvent setting's term
+$-n R T \ln(p_w/p^\circ)$ makes the weights equal the JKQC form
+$(p_w/p^\circ)^n \exp(-(G-nG^\circ_{\mathrm{solvent}})/(k_B T))$. Every
+non-solvent term common to the group cancels in the normalization.
+\flg{--cnt}'s $(N-1)/N$ scaling varies with the state's total molecule count,
+so under \flg{--cnt} the distribution simply follows the formation values.
+The minimum subtraction keeps every exponent at or below zero, so no overflow
+is reachable and a state far above the minimum underflows to zero without
+affecting the rest.
+
+\flg{--noname} never pools the core groups; the grouping is intrinsic to the
+distribution. Sorting and \flg{--reverse} reorder the main table, never the
+section, which keeps its own grouping order.
+
+\subsection{Printed layout}\label{sec:solvation-layout}
+
+There is no header row. For each core group, two rows are printed: the
+states' composition tokens, then their percentages. Percentages print with
+one decimal, \texttt{-} for an undefined state, and need not sum to exactly
+100.0 because of rounding. A blank line follows every group's percentage row,
+so groups read as blocks.
+
+Columns align within a group: each column is as wide as the wider of its label
+and percentage cell, cells are right-aligned, and there is a single space
+between columns. For example:
+
+\begin{verbatim}
+ 1sa 1sa1w 1sa2w
+40.0  45.0  15.0
+
+ 1pinic 1pinic1w
+ 72.3    27.7
+\end{verbatim}
+
+The standard-output order is: main table, raw formation section, corrected
+formation section, hydration/solvation sections (raw before corrected), then
+the completion summary. The sections print over the same record set as the
+formation sections, whether or not any formation section was requested.
+
+\subsection{Solvation examples}\label{sec:solvation-example}
+
+Print the water distribution at 50 \% relative humidity:
+
+\begin{verbatim}
+CJKQC hydrated.jsonl --hydration --rh 0.5 --filename --name
+\end{verbatim}
+
+Print both raw and corrected water distributions at 298.15 K:
+
+\begin{verbatim}
+CJKQC corrected.jsonl --hydration --hydration-corr --temp 298.15
+\end{verbatim}
+
+Print a sulfuric-acid solvation distribution at an explicit partial pressure
+of $10^{10}$ molecules per cm$^3$:
+
+\begin{verbatim}
+CJKQC clusters.jsonl --solvation sa --psolvent 1e10cmmc
+\end{verbatim}
+
+Combine a concentration for another component with the water distribution:
+
+\begin{verbatim}
+CJKQC clusters.jsonl --hydration --rh 0.8 --conc am 10ppb
+\end{verbatim}
+
+Here the \flg{--conc am ...} setting shifts the formation values of the
+ammonia component, while the automatic water setting carries the humidity; the
+distribution normalizes within each core group.

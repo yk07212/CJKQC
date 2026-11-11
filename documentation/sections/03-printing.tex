@@ -1,0 +1,239 @@
+\section{Printing}\label{sec:printing}
+
+Printing works one column at a time: every printable quantity has its own
+flag, and there is no default selection. If you pass no print flag, no table
+is printed.
+Columns always appear in the same fixed order, no matter what order the flags
+were given on the command line.
+
+\begin{verbatim}
+CJKQC db.jsonl --filename --el --g --rg
+\end{verbatim}
+
+\subsection{How the table is formatted}\label{sec:table-format}
+
+The table is plain text output: a header row of column labels,
+then one row per record in the order the run produces. Columns are as wide as
+their widest cell, with one space between columns and no trailing whitespace.
+Text columns are left-aligned; numeric columns are right-aligned; header
+cells align with their columns.
+
+An undefined or absent value prints as a single dash \texttt{-}. A
+list-valued column with no values also prints \texttt{-}. Numbers keep fixed
+per-column formats, so table columns line up and can be pasted into other
+tools.
+
+The fixed column order is:
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\multicolumn{4}{c}{\textbf{Fixed print order}} \\
+\midrule
+\fld{filename} & \fld{name} & \fld{path} & \fld{status} \\
+\fld{program} & \fld{command} & \fld{correction} & \fld{el} \\
+\fld{zpe} & \fld{h} & \fld{s} & \fld{g} \\
+\fld{elcorr} & \fld{hcorr} & \fld{gcorr} & \fld{pop} \\
+\fld{popel} & \fld{popelcorr} & \fld{popgcorr} & \fld{rg} \\
+\fld{mass} & \fld{dip} & \fld{dips} & \fld{charge} \\
+\fld{multiplicity} & \fld{rsn} & \fld{natoms} & \fld{lf} \\
+\fld{freqs} & \fld{nfreq} & \fld{nimag} & \fld{rots} \\
+\fld{components} & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Identity and source columns}\label{sec:identity-columns}
+
+\begin{longtable}{@{}L{3.1cm}L{2.4cm}L{7.7cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Header} & \textbf{What it prints} \\
+\midrule
+\endhead
+\flg{--filename} & \fld{filename} & The record's \fld{name}: the stem of the
+source file name. \\
+\flg{--name} & \fld{name} & The composition written as alphabetical pairs
+without separators, for example \texttt{2am3sa}. Undefined without
+components. \\
+\flg{--path} & \fld{path} & The record's \fld{source_path}, exactly as
+stored. \\
+\flg{--status} & \fld{status} & \fld{ok}, \fld{failed}, or \fld{truncated}. \\
+\flg{--program} & \fld{program} & The program name and version joined by one
+space, for example \texttt{xtb 6.7.1}; the name alone when the version is
+absent. \\
+\flg{--command} & \fld{command} & The stored command line in double quotes,
+because it contains spaces. An absent command prints a bare \texttt{-}. \\
+\flg{--correction} & \fld{correction} & Correction source details: the kind, then
+the program and version, then each command in double quotes. \\
+\flg{--components} & \fld{components} & The resolved composition as pairs with
+plus signs, for example \texttt{2am+3sa}. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Energy columns}\label{sec:energy-columns}
+
+The energy columns share one format: hartree with 10 decimals by default, or
+kcal/mol with 4 decimals under \flg{--unit}. The list includes derived
+thermochemistry and corrected values; each is explained in
+Chapter~\ref{sec:thermo} and Chapter~\ref{sec:corrections}.
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Flag} & \textbf{Header} & \textbf{Quantity} \\
+\midrule
+\flg{--el} & \fld{el} & Electronic energy \\
+\flg{--zpe} & \fld{zpe} & Harmonic zero-point energy \\
+\flg{--h} & \fld{h} & Enthalpy at \flg{--temp} \\
+\flg{--s} & \fld{s} & Entropy term $T\,S$ at \flg{--temp} \\
+\flg{--g} & \fld{g} & Gibbs free energy at \flg{--temp} \\
+\flg{--elcorr} & \fld{elcorr} & Attached correction energy \\
+\flg{--hcorr} & \fld{hcorr} & Enthalpy from the correction energy \\
+\flg{--gcorr} & \fld{gcorr} & Gibbs free energy from the correction energy \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\flg{--unit} is a simple on/off switch: adding it alone converts every
+hartree-valued print quantity to kcal/mol. It takes no value, and a value
+after it is a usage error. Without it, energies print in hartree. Relative
+cutoffs (Chapter~\ref{sec:filtering}) already compare in kcal/mol and are not
+affected by \flg{--unit}.
+
+\subsection{Structure and property columns}\label{sec:property-columns}
+
+\begin{longtable}{@{}L{2.9cm}L{2.5cm}L{7.8cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Header} & \textbf{What it prints} \\
+\midrule
+\endhead
+\flg{--rg} & \fld{rg} & Mass-weighted radius of gyration in \AA{}, 3
+decimals. \\
+\flg{--mass} & \fld{mass} & Total mass in u, 3 decimals. \\
+\flg{--dip} & \fld{dip} & Dipole magnitude in atomic units, 3 decimals. \\
+\flg{--dips} & \fld{dips} & The dipole vector's $x,y,z$ components in atomic
+units, 3 decimals each, comma-separated without spaces. \\
+\flg{--charge} & \fld{charge} & Net charge as a whole number. \\
+\flg{--multiplicity} & \fld{multiplicity} & Spin multiplicity as a whole
+number. \\
+\flg{--rsn} & \fld{rsn} & Rotational symmetry number as a whole number. \\
+\flg{--natoms} & \fld{natoms} & Geometry atom count. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Frequency columns}\label{sec:frequency-columns}
+
+\begin{longtable}{@{}L{2.9cm}L{2.5cm}L{7.8cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Header} & \textbf{What it prints} \\
+\midrule
+\endhead
+\flg{--lf} & \fld{lf} & The lowest stored vibrational frequency in
+cm$^{-1}$, 1 decimal. Raw values, so an imaginary mode prints negative. \\
+\flg{--freqs} & \fld{freqs} & Every stored vibrational frequency in stored
+order, 1 decimal each, comma-separated without spaces. Raw signs are kept. \\
+\flg{--nfreq} & \fld{nfreq} & Number of stored vibrational frequencies. \\
+\flg{--nimag} & \fld{nimag} & Number of negative (imaginary) frequencies. \\
+\flg{--rots} & \fld{rots} & Rotational constants in cm$^{-1}$, descending,
+6 decimals each, comma-separated without spaces. \\
+\bottomrule
+\end{longtable}
+
+\begin{note}
+The frequency columns show the \emph{raw stored values}. They are not
+changed by \flg{--makereal}, \flg{--ignoreimag}, or \flg{--fscale}; those
+settings affect only the thermochemistry derivation
+(Section~\ref{sec:freq-manipulation}). A saddle point therefore still prints
+a negative \fld{lf} and \fld{nimag} even when its Gibbs energy is made
+defined.
+\end{note}
+
+\subsection{Boltzmann population columns}\label{sec:populations}
+
+The \flg{--pop} flag prints the fraction of the thermal ensemble that each
+printed structure occupies. It is repeatable and takes an optional level:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Invocation} & \textbf{Column} & \textbf{Energy basis} \\
+\midrule
+\flg{--pop} or \flg{--pop g} & \fld{pop} & Gibbs free energy at \flg{--temp} \\
+\flg{--pop el} & \fld{popel} & Electronic energy \\
+\flg{--pop elcorr} & \fld{popelcorr} & Attached correction energy \\
+\flg{--pop gcorr} & \fld{popgcorr} & Gibbs free energy from the correction \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Populations are computed over exactly the records the run prints, grouped by
+composition, or into one global group under \flg{--noname}. For a group and a
+level with values $v_i$ in hartree,
+
+\begin{equation}
+p_i = \frac{\exp\!\left(-\dfrac{v_i - v_{\min}}{k_B T}\right)}
+           {\sum_j \exp\!\left(-\dfrac{v_j - v_{\min}}{k_B T}\right)},
+\end{equation}
+
+where $v_{\min}$ is the group's minimum defined value and $T$ is
+\flg{--temp}. Only status \fld{ok} records with a defined level value
+contribute. A record with an undefined value prints \texttt{-}; if no member
+of the group defines the level, every member prints \texttt{-}. Populations
+are dimensionless probabilities printed with 4 decimals, and \flg{--unit}
+never affects them.
+
+\begin{warning}
+A space-separated value after \flg{--pop} is consumed by the flag. That means
+\texttt{CJKQC} \flg{--pop} \texttt{db.jsonl} tries to use \texttt{db.jsonl} as a population
+level and fails. Put \flg{--pop} after the positional inputs, or write
+\flg{--pop=g}.
+\end{warning}
+
+\subsection{Sections and file output}\label{sec:sections-output}
+
+Several print flags produce a section after the main table instead of a
+column:
+
+\begin{itemize}
+  \item \flg{--formation} prints the formation-energy section
+        (Chapter~\ref{sec:formation});
+  \item \flg{--formation-corr} prints the corrected formation section;
+  \item \flg{--hydration} and \flg{--hydration-corr} print water
+        distributions (Chapter~\ref{sec:solvation});
+  \item \flg{--solvation CODE} and \flg{--solvation-corr CODE} print the
+        distribution for another solvent.
+\end{itemize}
+
+The standard-output order is always: main table, raw formation section,
+corrected formation section, hydration/solvation sections (raw before
+corrected), then the completion summary. A run with only section flags prints
+the section and no main table.
+
+\flg{--movie} writes the final structures into \texttt{movie.xyz}, one xyz
+frame per \fld{ok} record that carries a geometry, in the order the table
+prints. It is a print flag and a visible outcome on its own. Records without
+a geometry, or with a non-\fld{ok} status, are skipped and counted in a
+standard-error note. The file is always named \texttt{movie.xyz} in the
+current working directory and is subject to the same overwrite confirmation
+as \flg{--out}.
+
+\subsection{A complete example}\label{sec:printing-example}
+
+\begin{verbatim}
+CJKQC db.jsonl --filename --program --el --g --lf --nimag --pop
+\end{verbatim}
+
+This prints the file stem, program name and version, electronic energy,
+Gibbs free energy, lowest frequency, imaginary-mode count, and Gibbs-based
+population. The exact widths depend on the data; the layout is illustrated
+below with hypothetical values.
+
+\begin{verbatim}
+filename  program     el            g             lf     nimag  pop
+1dma      xtb 6.7.1   -38.5100000000 -38.4987654321 3421.1 0      0.7321
+1dma-2    xtb 6.7.1   -38.5090000000 -38.4970000000 3402.7 0      0.2679
+\end{verbatim}
+
+Everything printed here is derived from the database at the run's settings.
+Nothing in the table was stored when the database was built.

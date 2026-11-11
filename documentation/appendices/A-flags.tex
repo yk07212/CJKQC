@@ -1,0 +1,206 @@
+\section{Complete flag reference}\label{app:flags}
+
+This appendix lists every flag accepted by \CJKQC{} 0.1.0. Flags are grouped
+by purpose; within a group the order is not significant. Words in angle
+brackets are placeholders you replace with your own value, and square brackets
+mark optional values.
+
+\subsection{Inputs and output}
+
+\begin{longtable}{@{}L{4.0cm}L{9.5cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Meaning} \\
+\midrule
+\endhead
+\texttt{INPUTS...} & Positional, required. Program outputs (build mode) or
+record databases (merge mode). \\
+\flg{-o}, \flg{--out <PATH>} & Database to write. Required unless a
+manipulation or print flag makes it optional. \\
+\flg{--fout} & Force replacement of an existing \flg{--out} or
+\texttt{movie.xyz} without asking. \\
+\flg{--head-bytes <N>} & How much of the start of each program output is read,
+in bytes (default 262144, about 256 kilobytes). \\
+\flg{--tail-bytes <N>} & How much of the end of each program output is read,
+in bytes (default 4194304, about 4 megabytes). \\
+\flg{--parallel <N>} & How many files are read at once (default 1). Merge
+mode ignores it. \\
+\flg{--movie} & Write final structures to \texttt{movie.xyz}, one frame per
+\fld{ok} record with a geometry. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Print columns}
+
+There is no default column selection. Columns always appear in the fixed
+order of Section~\ref{sec:printing}.
+
+\begin{longtable}{@{}L{3.5cm}L{10.0cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Column and quantity} \\
+\midrule
+\endhead
+\flg{--filename} & \fld{filename}: the record's \fld{name} (file stem). \\
+\flg{--name} & \fld{name}: composition written without separators
+(\texttt{2am3sa}). \\
+\flg{--path} & \fld{path}: the full path of the original output file. \\
+\flg{--status} & \fld{status}: \fld{ok}, \fld{failed}, or \fld{truncated}. \\
+\flg{--program} & \fld{program}: program name and version (\texttt{xtb 6.7.1}). \\
+\flg{--command} & \fld{command}: the run's command line, double-quoted. \\
+\flg{--correction} & \fld{correction}: correction kind and source details. \\
+\flg{--el} & \fld{el}: electronic energy. \\
+\flg{--zpe} & \fld{zpe}: harmonic zero-point energy. \\
+\flg{--h} & \fld{h}: enthalpy at \flg{--temp}. \\
+\flg{--s} & \fld{s}: entropy term $T\,S$ at \flg{--temp}. \\
+\flg{--g} & \fld{g}: Gibbs free energy at \flg{--temp}. \\
+\flg{--elcorr} & \fld{elcorr}: attached correction energy. \\
+\flg{--hcorr} & \fld{hcorr}: enthalpy from the correction energy. \\
+\flg{--gcorr} & \fld{gcorr}: Gibbs free energy from the correction energy. \\
+\flg{--pop [LEVEL]} & Population column; \texttt{LEVEL} is \fld{g} (default),
+\fld{el}, \fld{elcorr}, or \fld{gcorr}. Repeatable. \\
+\flg{--rg} & \fld{rg}: mass-weighted radius of gyration in \AA{}. \\
+\flg{--mass} & \fld{mass}: total mass in u. \\
+\flg{--dip} & \fld{dip}: dipole magnitude in atomic units. \\
+\flg{--dips} & \fld{dips}: dipole vector components in atomic units. \\
+\flg{--charge} & \fld{charge}: net charge. \\
+\flg{--multiplicity} & \fld{multiplicity}: spin multiplicity. \\
+\flg{--rsn} & \fld{rsn}: rotational symmetry number. \\
+\flg{--natoms} & \fld{natoms}: geometry atom count. \\
+\flg{--lf} & \fld{lf}: lowest stored frequency in cm$^{-1}$. \\
+\flg{--freqs} & \fld{freqs}: all stored frequencies in cm$^{-1}$. \\
+\flg{--nfreq} & \fld{nfreq}: number of stored frequencies. \\
+\flg{--nimag} & \fld{nimag}: number of negative frequencies. \\
+\flg{--rots} & \fld{rots}: rotational constants in cm$^{-1}$. \\
+\flg{--components} & \fld{components}: composition as \texttt{2am+3sa}. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Filtering and manipulation}
+
+\begin{longtable}{@{}L{4.3cm}L{9.2cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Meaning} \\
+\midrule
+\endhead
+\flg{--extract <QUERY>} & Keep records whose composition matches the query. \\
+\flg{--nextract <QUERY>} & Drop records whose composition matches the query. \\
+\flg{--cut <PROP> <V>} & Absolute cutoff, property $\le V$. \\
+\flg{--filter-lt <PROP> <V>} & Absolute cutoff, property $< V$. \\
+\flg{--pass <PROP> <V>} & Absolute cutoff, property $> V$. \\
+\flg{--filter-ge <PROP> <V>} & Absolute cutoff, property $\ge V$. \\
+\flg{--is <PROP> <V>} & Absolute cutoff, property $= V$. \\
+\flg{--isnot <PROP> <V>} & Absolute cutoff, property $\ne V$. \\
+\flg{--cutr <PROP> <V>} & Relative cutoff, property $\le V$ above the group
+minimum. \\
+\flg{--rel-filter-lt <PROP> <V>} & Relative cutoff, $<V$ above the minimum. \\
+\flg{--passr <PROP> <V>} & Relative cutoff, $>V$ above the minimum. \\
+\flg{--rel-filter-ge <PROP> <V>} & Relative cutoff, $\ge V$ above the
+minimum. \\
+\flg{--uniq <MODE>} & \texttt{dup}, or a comma list of
+\fld{metric[decimals]} properties. \\
+\flg{--reacted} & Keep the composition group's majority fragment pattern. \\
+\flg{--reacted2} & Keep only the deviating fragment patterns. \\
+\flg{--sort <PROPERTY>} & Sort by \fld{el}, \fld{g}, \fld{elcorr}, \fld{gcorr},
+\fld{rg}, \fld{mass}, or \fld{filename}. \\
+\flg{--reverse} & Reverse the sort orientation. \\
+\flg{--select <N>} & Keep the first $N$ records of each group after sorting. \\
+\flg{--glob} & Keep each group's lowest-Gibbs record. \\
+\flg{--shuffle} & Put the final result in a random order; the same seed gives
+the same order. \\
+\flg{--seed <N>} & Seed for \flg{--shuffle} (default 0). \\
+\flg{--noname} & Treat the whole database as one group; \flg{--extract}
+compares names exactly. \\
+\bottomrule
+\end{longtable}
+
+\begin{note}
+The help text for \flg{--sort} mentions ``name'', but the accepted value is
+\fld{filename}, which sorts by the record's \fld{name}. Use
+\flg{--sort filename}.
+\end{note}
+
+\subsection{Thermodynamics}
+
+\begin{longtable}{@{}L{3.5cm}L{10.0cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Meaning} \\
+\midrule
+\endhead
+\flg{--temp <K>} & Temperature in K (default 298.15; must be $>0$). \\
+\flg{--fc <CM-1>} & Quasi-harmonic reference frequency (default 100; 0 selects
+pure harmonic entropy). \\
+\flg{--fscale <F>} & Vibrational frequency scale factor (default 1.0; must be
+$>0$). \\
+\flg{--makereal} & Treat imaginary frequencies as their absolute values
+inside the derivation. \\
+\flg{--ignoreimag} & Drop imaginary frequencies from the vibrational sums.
+Conflicts with \flg{--makereal}. \\
+\flg{--unit} & Print energies in kcal/mol instead of hartree. Takes no value. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Corrections and extrapolation}
+
+\begin{longtable}{@{}L{4.3cm}L{9.2cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Meaning} \\
+\midrule
+\endhead
+\flg{--add-correction <PATH>} & Attach single-point corrections from a
+database, matching by exact case-sensitive \fld{name}. One path; not
+repeatable. \\
+\flg{--extrapolate <MODE VALUES>...} & Attach an extrapolated correction.
+Modes: \texttt{2p LOW HIGH N ALPHA BETA}, \texttt{2s LOW HIGH F}, or
+\texttt{2p LOWPAIR HIGHPAIR N ALPHA BETA F}. Place it after the positional
+inputs. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Formation}
+
+\begin{longtable}{@{}L{4.3cm}L{9.2cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Meaning} \\
+\midrule
+\endhead
+\flg{--formation} & Print the raw formation-energy section. \\
+\flg{--formation-corr} & Print the corrected formation-energy section. \\
+\flg{--conc <CODE> <VALUE>} & Evaluate formation free energies at a vapor
+concentration. Repeatable; one setting per code. \\
+\flg{--cnt} & Use the self-consistent $(N-1)/N$ concentration scaling. \\
+\flg{--bavg} & Collapse each printed formation section into one
+Boltzmann-averaged row per composition. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Solvation and hydration}
+
+\begin{longtable}{@{}L{4.3cm}L{9.2cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Meaning} \\
+\midrule
+\endhead
+\flg{--hydration} & Print the raw water distribution section (solvent
+\texttt{w}). \\
+\flg{--hydration-corr} & Print the corrected water distribution section. \\
+\flg{--solvation <CODE>} & Print the raw distribution section for solvent
+\texttt{CODE}. \\
+\flg{--solvation-corr <CODE>} & Print the corrected distribution section for
+solvent \texttt{CODE}. \\
+\flg{--rh <VALUE>} & Relative humidity as a fraction (0.5 is 50 \%). Water
+only. \\
+\flg{--psolvent <VALUE>} & Solvent partial pressure in the \flg{--conc}
+VALUE grammar. Overrides \flg{--rh}; required for non-water solvents. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Help and version}
+
+\begin{longtable}{@{}L{3.5cm}L{10.0cm}@{}}
+\toprule
+\textbf{Flag} & \textbf{Meaning} \\
+\midrule
+\endhead
+\flg{-h}, \flg{--help} & Print help and exit. \\
+\flg{-V}, \flg{--version} & Print the version and exit. \\
+\bottomrule
+\end{longtable}

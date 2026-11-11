@@ -1,0 +1,286 @@
+\section{Thermodynamics}\label{sec:thermo}
+
+All thermochemistry is derived on demand. A record stores the electronic
+energy, geometry, frequencies, multiplicity, and rotational symmetry number;
+zero-point energy, enthalpy, entropy, and Gibbs free energy are recomputed
+from those stored values under the settings of the current run. Program-printed
+thermochemistry in the output file is never read or stored. This means a
+database never needs to be rebuilt when you change the temperature, the
+frequency scale factor, the low-frequency treatment, or the energy unit.
+
+The default model is the ideal-gas rigid-rotor model with Grimme's
+quasi-RRHO vibrational entropy, following the damping scheme used by ORCA,
+xtb, and GoodVibes: below a reference frequency, the harmonic-oscillator
+entropy is interpolated toward a free-rotor expression. ORCA~6 is used as the
+reference for the implementation, and the derived values reproduce ORCA's
+printed quasi-RRHO thermochemistry (Section~\ref{sec:thermo-reference}). The
+reference frequency defaults to 100 cm$^{-1}$ and is changed with
+\flg{--fc}.
+
+\subsection{What is needed for a defined result}\label{sec:definedness}
+
+A record has defined thermochemistry exactly when all of the following hold:
+
+\begin{itemize}
+  \item \fld{electronic_energy} is present;
+  \item \fld{geometry} is present and non-degenerate (the middle principal
+        moment of inertia is positive);
+  \item every geometry symbol is in the atomic-weight table;
+  \item no raw frequency is negative, unless \flg{--makereal} or
+        \flg{--ignoreimag} handles imaginary modes;
+  \item the species is monatomic, or it has at least one participating
+        vibrational mode;
+  \item every derived term is finite.
+\end{itemize}
+
+A non-monatomic record without frequencies, such as a single-point output or
+a plain xyz file, has no thermochemistry. An undefined derivation prints
+\texttt{-}, fails every cutoff comparison except $\ne$, sorts after defined
+values, and is treated as an undefined metric by uniqueness. This is normal
+and not an error.
+
+\subsection{Conditions}\label{sec:thermo-conditions}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}L{2.7cm}L{2.0cm}L{2.7cm}X@{}}
+\toprule
+\textbf{Flag} & \textbf{Default} & \textbf{Constraint} & \textbf{Effect} \\
+\midrule
+\flg{--temp} & 298.15 K & $>0$ & Temperature $T$ \\
+\flg{--fc} & 100 cm$^{-1}$ & $\ge 0$ & Quasi-harmonic reference frequency;
+0 selects pure harmonic entropy \\
+\flg{--fscale} & 1.0 & $>0$ & Multiplies every vibrational frequency before
+the vibrational formulas \\
+\flg{--makereal} & off & --- & Treats an imaginary mode as its absolute
+value \\
+\flg{--ignoreimag} & off & conflicts with \flg{--makereal} & Drops imaginary
+modes from the vibrational sums \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+These are settings flags. They configure derivations, never count as
+manipulations or print flags, and a run that passes only them still needs
+\flg{--out} or a print flag.
+
+\subsection{Frequency manipulation}\label{sec:freq-manipulation}
+
+\subsubsection*{Participation}
+
+After imaginary-mode handling, a mode participates in the vibrational sums
+only if its frequency is greater than 1.0 cm$^{-1}$. This removes the
+near-zero translational and rotational contaminant modes that some programs
+print. A stored \texttt{-0.0} never participates. A genuine soft mode above
+1.0 cm$^{-1}$ does participate, even if it is very low.
+
+\subsubsection*{Scaling}
+
+For every participating mode, the derivation uses
+
+\begin{equation}
+\tilde{\nu}'_i = \texttt{fscale} \cdot \tilde{\nu}_i .
+\end{equation}
+
+All vibrational formulas use $\tilde{\nu}'_i$. The 1.0 cm$^{-1}$
+participation test is applied to the unscaled frequency, after imaginary-mode
+handling.
+
+\subsubsection*{Imaginary modes}
+
+A negative raw frequency marks a saddle-point mode. The three behaviors are:
+
+\begin{center}
+\begin{tabular}{@{}L{3.2cm}L{4.1cm}L{6.0cm}@{}}
+\toprule
+\textbf{Setting} & \textbf{Treatment} & \textbf{Result} \\
+\midrule
+neither flag & no imaginary mode allowed & any negative frequency makes the
+whole derivation undefined; all thermochemistry columns print \texttt{-} \\
+\flg{--makereal} & each negative frequency is replaced by its absolute value
+& the mode then follows the ordinary participation test and formulas \\
+\flg{--ignoreimag} & each negative frequency is dropped before the
+participation test & the mode contributes to no vibrational term; a
+non-monatomic record with no remaining mode is undefined \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Neither flag edits the stored record. The \fld{lf} and \fld{freqs} columns,
+the \fld{nimag} count, and the \fld{lf} cutoff property keep the raw values.
+For example, a saddle point with frequencies $[1000, -300]$ still prints
+\fld{nimag} 1 and \fld{lf} $-300.0$, but its Gibbs energy becomes defined
+under \flg{--makereal} or \flg{--ignoreimag}.
+
+\subsubsection*{The quasi-harmonic reference frequency}
+
+With $\tilde{\nu}_0 = \texttt{fc} > 0$, each mode receives the free-rotor
+weight
+
+\begin{equation}
+w_i = \frac{1}{1 + (\tilde{\nu}'_i/\tilde{\nu}_0)^4},
+\end{equation}
+
+and the vibrational entropy is the weighted blend
+
+\begin{equation}
+S_{\mathrm{vib}} = \sum_i \left[(1-w_i)\,S_{\mathrm{ho},i}
+                                  + w_i\,S_{\mathrm{fr},i}\right].
+\end{equation}
+
+With \flg{--fc 0}, $w_i = 0$ and the entropy is purely harmonic. The
+interpolation is finite for arbitrarily small positive frequencies and never
+exceeds the harmonic vibrational entropy, so the quasi-harmonic Gibbs energy
+is at or above the harmonic one at the same conditions.
+
+\subsection{Species classes and rotational constants}\label{sec:species}
+
+The geometry's mass-weighted principal moments of inertia $I_a \le I_b \le
+I_c$ are computed from the coordinates and standard atomic weights.
+
+\begin{description}
+  \item[\textbf{Monatomic}] One atom. No vibrational modes and no rotational
+        terms.
+  \item[\textbf{Linear}] $I_a \le 10^{-4} I_c$. Two-atom geometries are
+        always linear under this rule.
+  \item[\textbf{Nonlinear}] Everything else with $I_b > 0$.
+\end{description}
+
+A geometry whose middle principal moment is zero or negative is degenerate:
+every atom coincides with the center of mass. It has no species class and no
+thermochemistry.
+
+Rotational constants are
+
+\begin{equation}
+\tilde{B} = \frac{h}{8\pi^2 c I}
+\end{equation}
+
+in cm$^{-1}$. A linear species has one constant, $\tilde{B}_b$. A nonlinear
+species has $\tilde{B}_a \ge \tilde{B}_b \ge \tilde{B}_c$, listed in
+descending order by \flg{--rots}. The average moment used by the free-rotor
+term is the mean of the nonzero principal moments:
+$(I_a+I_b+I_c)/3$ for nonlinear species and $I$ for linear ones.
+
+\subsection{Thermodynamic terms}\label{sec:thermo-terms}
+
+Let $T$ be the temperature, $M$ the total mass in u, $k_B$ the Boltzmann
+constant, $h$ Planck's constant, $c$ the speed of light, and
+
+\begin{equation}
+x_i = \frac{h c \tilde{\nu}'_i}{k_B T}.
+\end{equation}
+
+The terms are, in hartree per molecule:
+
+\begin{align}
+E_{\mathrm{ZPE}} &= \sum_i \tfrac{1}{2} h c \tilde{\nu}'_i / E_h, \\
+E_{\mathrm{vib}} &= \sum_i \frac{h c \tilde{\nu}'_i}{e^{x_i}-1} / E_h, \\
+E_{\mathrm{rot}} &=
+  \begin{cases}
+    0, & \text{monatomic},\\
+    k_B T / E_h, & \text{linear},\\
+    \tfrac{3}{2} k_B T / E_h, & \text{nonlinear},
+  \end{cases}\\
+E_{\mathrm{trans}} &= \tfrac{3}{2} k_B T / E_h, \\
+H &= E_{\mathrm{el}} + E_{\mathrm{ZPE}} + E_{\mathrm{vib}}
+     + E_{\mathrm{rot}} + E_{\mathrm{trans}} + k_B T / E_h .
+\end{align}
+
+The last term is the ideal-gas $pV = k_B T$ enthalpy contribution.
+
+The entropies are evaluated in J~mol$^{-1}$~K$^{-1}$ with
+$R = N_A k_B$:
+
+\begin{align}
+S_{\mathrm{trans}} &= R\left[\frac{5}{2}
+  + \ln\!\left(\left(\frac{2\pi M u k_B T}{h^2}\right)^{3/2}
+  \frac{k_B T}{p^\circ}\right)\right], \\
+S_{\mathrm{rot}} &=
+  \begin{cases}
+    0, & \text{monatomic},\\
+    R\left[\ln\!\left(\dfrac{k_B T}{\sigma h c \tilde{B}_b}\right)+1\right],
+      & \text{linear},\\
+    R\left[\ln\!\left(\dfrac{\sqrt{\pi}}{\sigma}
+      \dfrac{(k_B T)^{3/2}}
+           {\sqrt{(h c \tilde{B}_a)(h c \tilde{B}_b)(h c \tilde{B}_c)}}\right)
+      +\dfrac{3}{2}\right], & \text{nonlinear},
+  \end{cases} \\
+S_{\mathrm{el}} &= R \ln(\text{multiplicity}).
+\end{align}
+
+Here $p^\circ = 1$ atm and $u$ is the atomic mass constant. The
+quasi-harmonic vibrational entropy is
+
+\begin{align}
+S_{\mathrm{ho},i} &= R\left[
+  \frac{x_i}{e^{x_i}-1} - \ln(1-e^{-x_i})\right],\\
+S_{\mathrm{fr},i} &= R\left[
+  \frac{1}{2} + \ln\!\left(\frac{\sqrt{8\pi^3 \mu'_i k_B T}}{h}\right)\right],\\
+\mu_i &= \frac{h}{8\pi^2 c \tilde{\nu}'_i}, \qquad
+\mu'_i = \frac{\mu_i \bar{I}}{\mu_i + \bar{I}},
+\end{align}
+
+where $\bar{I}$ is the average moment of inertia. The reduced moment
+$\mu'_i$ caps a mode's rotor moment at the molecule's average moment. The
+total entropy term and the Gibbs free energy are
+
+\begin{equation}
+T S = T\left(S_{\mathrm{trans}} + S_{\mathrm{rot}}
+            + S_{\mathrm{vib}} + S_{\mathrm{el}}\right)/(N_A E_h),
+\qquad
+G = H - T S .
+\end{equation}
+
+The vibrational formulas are evaluated in the numerically stable
+$e^{-x}$ form, so stiff modes and low temperatures underflow to zero instead
+of overflowing.
+
+\subsection{Reference values and validation}\label{sec:thermo-reference}
+
+The derivation is validated against ORCA~6's printed quasi-RRHO values for
+the fixture \texttt{1pinic1sa-110\_1\_9-str9.out} (34 atoms, 96 participating
+modes, 298.15 K, reference frequency 100 cm$^{-1}$, $\sigma=1$, singlet).
+The agreement, within $1\times 10^{-4}$ hartree, is:
+
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Quantity} & \textbf{ORCA prints (Eh)} & \textbf{CJKQC entry} \\
+\midrule
+Zero-point energy & 0.27547281 & \fld{zpe} \\
+Thermal vibrational correction & 0.01541878 & \fld{thermal\_vibrational} \\
+Thermal rotational correction & 0.00141627 & \fld{thermal\_rotational} \\
+Thermal translational correction & 0.00141627 & \fld{thermal\_translational} \\
+Thermal enthalpy correction ($pV$) & 0.00094421 & $k_B T/E_h$ \\
+Total enthalpy & $-199.34739714$ & \fld{enthalpy} \\
+Translational entropy term & 0.02035094 & \fld{ts\_translational} \\
+Rotational entropy term & 0.01583464 & \fld{ts\_rotational} \\
+Vibrational entropy term & 0.02738792 & \fld{ts\_vibrational} \\
+Final entropy term & 0.06357350 & \fld{entropy\_term} \\
+Final Gibbs free energy & $-199.41097065$ & \fld{gibbs} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The rotational constants recomputed from the same geometry
+(0.024157, 0.008371, 0.007528 cm$^{-1}$) match ORCA's printed values, which
+also validates the moments-of-inertia path.
+
+\subsection{A thermochemistry example}\label{sec:thermo-example}
+
+Print the electronic energy, zero-point energy, enthalpy, entropy term, and
+Gibbs free energy at 350 K with a 50 cm$^{-1}$ reference frequency, in
+kcal/mol:
+
+\begin{verbatim}
+CJKQC db.jsonl --temp 350 --fc 50 --unit \
+  --filename --el --zpe --h --s --g
+\end{verbatim}
+
+To make a saddle point's thermochemistry defined by treating the imaginary
+mode as a real mode, add \flg{--makereal}. To drop the imaginary mode
+instead, add \flg{--ignoreimag}. Only one of the two may be used. The stored
+frequencies are not changed either way.
+
+For ensemble populations derived from these Gibbs energies, see
+Section~\ref{sec:populations}.

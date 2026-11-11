@@ -1,0 +1,112 @@
+\section{Constants, exit codes, and messages}\label{app:constants}
+
+\subsection{Physical constants}
+
+All conversions use the CODATA 2018 values below. Energies are held in
+hartree internally and converted only at the print boundary.
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Constant} & \textbf{Value} \\
+\midrule
+Planck constant $h$ & $6.62607015\times10^{-34}$ J s \\
+Speed of light $c$ & $2.99792458\times10^{10}$ cm s$^{-1}$ \\
+Boltzmann constant $k_B$ & $1.380649\times10^{-23}$ J K$^{-1}$ \\
+Avogadro constant $N_A$ & $6.02214076\times10^{23}$ mol$^{-1}$ \\
+Gas constant $R = N_A k_B$ & $8.31446261815324$ J mol$^{-1}$ K$^{-1}$ \\
+Atomic mass constant $u$ & $1.66053906660\times10^{-27}$ kg \\
+Standard pressure $p^\circ$ (1 atm) & 101325 Pa \\
+Hartree energy $E_h$ & $4.3597447222071\times10^{-18}$ J \\
+1 kcal/mol & 4184 J/mol (exact) \\
+Hartree to kcal/mol & 627.5094740631 \\
+Bohr to \AA{} & 0.529177210903 \\
+Debye per $e\,a_0$ & 2.541746473 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Exit codes}
+
+\begin{center}
+\begin{tabular}{@{}cl@{}}
+\toprule
+\textbf{Code} & \textbf{Meaning} \\
+\midrule
+0 & The run completed and skipped nothing. \\
+1 & A fatal error occurred and nothing was written, or a merge skipped
+corrupt lines. \\
+2 & Usage error: bad flags, missing \flg{--out}, mixed input kinds, or an
+invalid value. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Failed and truncated records from a recognized format do not change the exit
+code. Warnings about unmatched correction candidates also do not change it.
+
+\subsection{Normal output messages}
+
+\begin{longtable}{@{}L{6.2cm}L{7.2cm}@{}}
+\toprule
+\textbf{Message} & \textbf{When} \\
+\midrule
+\endhead
+\texttt{collected <n> records into <out> (<f> failed, <t> truncated)} &
+A build run completed. \\
+\texttt{collected <n> records into <out> (<f> failed, <t> truncated, <k>
+corrected)} & A build run with \flg{--add-correction} completed. \\
+\texttt{merged <n> records into <out>} & A merge run completed. \\
+\texttt{merged <n> records into <out> (<k> corrected)} & A merge run with
+corrections completed. \\
+\texttt{filtered <n> records into <out>} & A manipulation run wrote records. \\
+\texttt{filtered <n> records into <out> (<k> corrected)} & A manipulation run
+with corrections wrote records. \\
+\texttt{wrote <n> frames into movie.xyz} & \flg{--movie} wrote a file. \\
+\bottomrule
+\end{longtable}
+
+A table, formation section, corrected formation section, and
+hydration/solvation sections print before the completion line.
+
+\subsection{Warning and error messages}
+
+\begin{longtable}{@{}L{7.0cm}L{6.4cm}@{}}
+\toprule
+\textbf{Message} & \textbf{Meaning} \\
+\midrule
+\endhead
+\texttt{excluded <k> records with status failed or truncated} & The filtering
+steps dropped non-\fld{ok} records before any other step. \\
+\texttt{warning: <path> line <n>: <reason>} & A corrupt database line was
+skipped. \\
+\texttt{warning: ... correction ...} & A correction candidate was skipped or
+unmatched. Warnings do not fail the run. \\
+\texttt{<path> already exists; overwrite? [y/N]} & Interactive overwrite
+confirmation. \\
+\texttt{error: <path> exists; not overwriting} & The overwrite answer was not
+yes. \\
+\texttt{error: <path> exists; not interactive; use -{}-fout to force} & The
+the run is not interactive (input is not a terminal). \\
+\texttt{excluded <n> records from movie.xyz (no geometry or not ok)} & Some
+records could not become frames. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Common fatal error texts}
+
+The exact wording can evolve, but these are the recurring causes:
+
+\begin{itemize}
+  \item an input could not be opened (missing file, directory, permission
+        denied);
+  \item an input matched no supported format, or was empty;
+  \item \flg{--out} could not be written, or its parent directory does not
+        exist;
+  \item a correction or extrapolation source was missing, unreadable, or
+        ambiguous;
+  \item a correction database or source loaded no record while reporting
+        load problems;
+  \item two extrapolation candidates shared a name, mixed programs or
+        versions, or repeated an electronic energy exactly.
+\end{itemize}

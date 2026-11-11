@@ -1,0 +1,252 @@
+\section{Formation energies}\label{sec:formation}
+
+Clusters are put in context by their formation energies: how much a
+structure's energy differs from a stoichiometric mix of isolated,
+single-component reference structures. A cluster database already contains
+its own references, namely the monomers. \CJKQC{} scans the run's final
+records for monomers and prints each printed record's formation energy and
+formation free energy as a section after the main table.
+
+Nothing is stored. Formation values are derived at request time from the
+records' stored values under the run's thermochemistry conditions, so
+temperature, reference frequency, and unit changes apply to them like to any
+other derived property.
+
+The sign convention is:
+
+\begin{quote}
+\textbf{negative} = more stable than the isolated monomers.
+\end{quote}
+
+The binding energy is the same number with the opposite sign; there is no
+separate binding column.
+
+\subsection{Monomer references}\label{sec:monomer-references}
+
+A \textbf{monomer record} is an \fld{ok} record whose composition is exactly
+one component with count 1. Thus \texttt{\{"am": 1\}} qualifies, while
+\texttt{\{"am": 2\}} and \texttt{\{"am": 1, "sa": 1\}} do not. Records
+without components never qualify.
+
+Monomers are collected from exactly the records the run prints: the records
+that remain after every filtering step in a filtering run, or every loaded
+record in a print-only run. A monomer that a filter removes is gone:
+it prints no row and serves as no reference.
+
+For each component code, the reference is a single monomer record: the first
+of that code's monomers under the run's sort ordering.
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Sort} & \textbf{Reference monomer} \\
+\midrule
+\fld{el}, or no sort & lowest electronic energy \\
+\fld{g} & lowest Gibbs free energy at the run's conditions \\
+\fld{rg} & first under radius of gyration \\
+\fld{mass} & first under total mass \\
+\fld{filename} & first under the file-stem ordering (nameless first) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The ordering is always ascending; \flg{--reverse} orients the table, never
+the reference. Ties keep the first in load order. For numeric properties, a
+monomer whose sorting value is undefined orders after every defined one.
+
+Both reference values come from that one record:
+
+\begin{itemize}
+  \item the \textbf{electronic reference} is its \fld{electronic\_energy};
+  \item the \textbf{Gibbs reference} is its Gibbs free energy derived at the
+        run's conditions.
+\end{itemize}
+
+Under \flg{--sort g}, the lowest-G conformer supplies the electronic
+reference too, even when another conformer's electronic energy is lower. A
+level whose value the chosen record lacks has no reference at that level. A
+code with no qualifying monomer has no reference.
+
+\subsection{The raw formation section}\label{sec:raw-formation}
+
+\flg{--formation} is a print flag: it produces output and satisfies the
+visible-outcome rule on its own, but adds no column to the normal table. The
+section prints after the main table (if one was requested) and before any
+summary line.
+
+For a printed record with components $C = \{\text{code}_i : n_i\}$:
+
+\begin{align}
+E_{\mathrm{form}} &= E_{\mathrm{el}}
+  - \sum_i n_i\,E_{\mathrm{ref}}(\text{code}_i),\\
+G_{\mathrm{form}} &= G - \sum_i n_i\,G_{\mathrm{ref}}(\text{code}_i).
+\end{align}
+
+Both reference values are the ones selected above. A level is undefined when
+the record lacks \fld{components}, lacks the level's input energy (electronic
+energy for the electronic level, defined thermochemistry for the Gibbs
+level), or any referenced code lacks that level's monomer reference.
+Undefined is a property of the level: a record can have a defined formation
+energy and an undefined formation free energy, and vice versa.
+
+The section is a table with header \fld{name el g}, one row per printed
+record in run order. \fld{name} is the short composition label (for example
+\texttt{2am3sa}), or \texttt{-} when the record has no components.
+\fld{el} and \fld{g} are the formation energy and formation free energy in
+the run's energy unit: hartree by default, kcal/mol under \flg{--unit}. An
+undefined value prints \texttt{-}.
+
+\subsection{The corrected formation section}\label{sec:corrected-formation}
+
+\flg{--formation-corr} prints a second section evaluated at the attached
+single-point corrections. Every input energy is a corrected value; a record
+with no correction has no values at all, so corrected and raw levels are
+never mixed.
+
+The reference monomers are the same set as for the raw section, selected the
+same way. A code's corrected electronic reference is that monomer's
+correction energy, and its corrected Gibbs reference is the monomer's
+\fld{gcorr} value. A level's reference is undefined when the selected
+monomer carries no correction, or its corrected Gibbs is undefined.
+
+For a printed record:
+
+\begin{align}
+E_{\mathrm{form,corr}} &= E_{\mathrm{corr}}
+  - \sum_i n_i\,E_{\mathrm{corr,ref}}(\text{code}_i),\\
+G_{\mathrm{form,corr}} &= G_{\mathrm{corr}}
+  - \sum_i n_i\,G_{\mathrm{corr,ref}}(\text{code}_i).
+\end{align}
+
+The section has header \fld{name elcorr gcorr}. It prints after the raw
+formation section, when one was requested. A run with
+\flg{--formation-corr} but no other print flag prints only the corrected
+section.
+
+\subsection{Concentrations and \texttt{-{}-cnt}}\label{sec:concentrations}
+
+\flg{--conc CODE VALUE} evaluates the formation free energies at a vapor
+concentration different from the standard state. It may be repeated, with
+one concentration setting per code. The code must be a non-empty, letter-only
+component code. When a formation section is printed, every such code must
+appear as a component of at least one record in the section's record set.
+Specifying the same code twice is a usage error.
+
+VALUE is a partial pressure in pascals, optionally suffixed:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Form} & \textbf{Meaning} & \textbf{Pressure in Pa} \\
+\midrule
+\texttt{100} & pascals & $100$ \\
+\texttt{100ppt} & parts per trillion by mole fraction & $100\cdot10^{-12}p^\circ$ \\
+\texttt{10ppb} & parts per billion by mole fraction & $10\cdot10^{-9}p^\circ$ \\
+\texttt{1e10cmmc} & molecules per cm$^3$ & $c\cdot10^{6}k_B T$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Here $p^\circ = 101325$ Pa. The value must be finite and positive; the
+\texttt{\^{}} power syntax is not part of the grammar. For powers of ten, use
+scientific notation instead, for example \texttt{1e10} or \texttt{1E10} for
+$10^{10}$. The concentration term
+is a chemical-potential (entropy) correction, so it shifts only the Gibbs
+levels: the raw section's \fld{g} and the corrected section's \fld{gcorr}.
+The electronic levels \fld{el} and \fld{elcorr} stay at the standard state.
+
+For the set of concentration settings $S$ and a record with components $C$:
+
+\begin{equation}
+g_{\mathrm{conc}} = g_{\mathrm{form}}
+  - \sum_{\text{code}_i \in S} n_{i,\mathrm{eff}}\,
+    \frac{R T \ln(c_i/p^\circ)}{N_A E_h},
+\end{equation}
+
+where $c_i$ is the resolved partial pressure and $n_{i,\mathrm{eff}} = n_i$.
+Under \flg{--cnt}, the self-consistent form is used:
+
+\begin{equation}
+n_{i,\mathrm{eff}} = n_i\,\frac{N-1}{N},
+\qquad N = \sum_i n_i .
+\end{equation}
+
+The self-consistent form keeps the concentration term of a monomer at zero
+under any concentration, so a monomer's formation free energy stays exactly
+zero while a non-reference conformer keeps its conformer difference. A
+concentration setting whose code is absent from the record's components
+contributes nothing.
+
+\subsection{Boltzmann-averaged sections}\label{sec:bavg}
+
+\flg{--bavg} collapses each printed formation section into one
+Boltzmann-averaged row per composition. It is a settings flag: it configures
+the section's presentation, never counts as a manipulation or print flag, and
+is an accepted no-op without a printed formation section. The main table is
+never affected; it still prints one row per record.
+
+The collapse groups the section's record set by \fld{components}, always by
+composition (\flg{--noname} never pools the section), in first-appearance
+order. Records without components form one unnamed ensemble. A group's
+members are its \fld{ok} records that define the section's Gibbs level: the
+derived Gibbs for the raw section, \fld{gcorr} for the corrected one. Failed
+and truncated records contribute nothing, and an \fld{ok} record without the
+level value contributes nothing.
+
+An ensemble with members carries two values:
+
+\begin{itemize}
+  \item the \textbf{electronic value} is the members' population-weighted
+        mean $\sum_j p_j e_j$, with the members' Boltzmann populations at the
+        run's temperature. Here $e_j$ is \fld{electronic\_energy} for the raw
+        section and the correction energy for the corrected section;
+  \item the \textbf{Gibbs value} is the ensemble free energy
+        \begin{equation}
+        G_{\mathrm{ens}} = -k_B T \ln\!\left(\sum_j e^{-g_j/(k_B T)}\right)
+        = g_{\min} - k_B T \ln Z,
+        \end{equation}
+        computed against the members' minimum as in the population
+        numerics. This keeps the conformational entropy term
+        $-k_B T\ln Z$; a plain weighted mean would drop it.
+\end{itemize}
+
+The two values are defined together or not at all: a member that defines the
+Gibbs level always defines the electronic level, because the Gibbs derives
+from the electronic energy.
+
+Over the collapsed set, the standing rules apply unchanged. An ensemble whose
+composition is exactly one component with count 1 is its code's monomer
+ensemble and supplies both reference values; a monomer row's formation values
+are therefore exactly zero. An ensemble without values supplies no reference.
+
+The section prints one row per ensemble in first-appearance order, using the
+same header, unit, and formatting as the uncollapsed section. A composition
+whose records all lack the section's Gibbs level prints one row of dashes.
+Undefined members never poison their group: the surviving members define the
+ensemble.
+
+\subsection{A formation example}\label{sec:formation-example}
+
+Print formation energies and free energies for the lowest conformer of each
+composition, using the lowest-Gibbs monomer of each code as the reference:
+
+\begin{verbatim}
+CJKQC db.jsonl --sort g --glob --formation --unit \
+  --filename --name --g
+\end{verbatim}
+
+Evaluate the same formation free energies at an ammonia vapor of
+$10^{-9}$ bar-equivalent mole fraction, with the self-consistent form:
+
+\begin{verbatim}
+CJKQC db.jsonl --formation --conc am 10ppb --cnt --unit --name
+\end{verbatim}
+
+Collapse the section into one Boltzmann-averaged row per composition:
+
+\begin{verbatim}
+CJKQC db.jsonl --formation --bavg --unit --name
+\end{verbatim}
+
+In the last example the main table, if requested, would still show one row
+per record; only the formation section is collapsed.

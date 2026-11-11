@@ -1,0 +1,173 @@
+\section{Introduction and quick start}\label{sec:introduction}
+
+\CJKQC{} is a command-line program for turning folders of
+quantum-chemistry output into a compact database, and then for inspecting,
+filtering, and post-processing that database. It is a spiritual successor to JKQC from
+the JKCS2.1 framework. The practical workflow is always the same:
+
+\begin{enumerate}
+  \item \textbf{Collect} program outputs into a database file, with one
+        record per line.
+  \item \textbf{Inspect and filter} the records: print columns, select
+        compositions, apply energy or frequency cutoffs, remove duplicates,
+        and sort.
+  \item \textbf{Post-process} the survivors: derive thermochemistry,
+        attach single-point corrections, compute formation energies, and
+        print solvation distributions.
+\end{enumerate}
+
+Nothing derived is stored. A database holds only what the quantum-chemistry
+program actually printed (energies, geometries, frequencies, and so on).
+Zero-point energies, Gibbs free energies, corrections, formation energies,
+populations, and distributions are recomputed on demand from those
+stored values under the settings of the current run. This is why changing the
+temperature, a frequency scale factor, or an energy unit never invalidates a
+database.
+
+\subsection{What can be read}
+
+\CJKQC{} chooses how to read each file by looking at its \emph{content}, never
+at its name or extension. The supported formats are:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Program & Typical input \\
+\midrule
+Gaussian & \texttt{.log}, \texttt{.out} files with a Gaussian banner \\
+ORCA     & \texttt{.out} files with ORCA's text banner \\
+xtb      & log files with an \texttt{xtb version} banner \\
+MRCC     & output files containing \texttt{MRCC program system} \\
+plain xyz & an atom count, a comment line, and atom rows \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+One file becomes exactly one record. For a file that chains several jobs,
+the record describes the \emph{final} job (the last SCF energy, the final
+geometry and frequencies, the final property block). For a multi-frame xyz
+file, it describes the last complete frame. Failed and truncated jobs are
+stored as records with status \fld{failed} or \fld{truncated}; they do not
+abort a collection run. A file that matches no supported format, or an empty file,
+\emph{does} abort a build run, because it is not a quantum-chemistry job at
+all.
+
+\subsection{Command anatomy}
+
+Every invocation has the same shape:
+
+\begin{verbatim}
+CJKQC <inputs>... [filtering flags] [print flags]
+      [settings flags] [-o out.jsonl]
+\end{verbatim}
+
+The positional \texttt{<inputs>} are either quantum-chemistry output files or
+existing databases. \CJKQC{} classifies them by content:
+
+\begin{itemize}
+  \item \textbf{all inputs are databases} \(\rightarrow\) \textbf{merge mode}:
+        the databases are combined, and records are copied exactly as stored;
+  \item \textbf{all inputs are program outputs} \(\rightarrow\) \textbf{build mode}:
+        each output is read into a record, compositions are resolved, and a
+        new database is written;
+  \item \textbf{a mixture of both kinds} is a usage error (exit code 2).
+\end{itemize}
+
+The file extension is irrelevant: a database named \texttt{weird.dat} still
+merges if its first non-blank line begins with \texttt{\{}, and a Gaussian
+log named \texttt{weird.xyz} is still read as Gaussian output.
+
+\subsection{Three families of flags}
+
+Flags fall into three groups, and the distinction matters for what a run is
+allowed to do.
+
+\begin{description}
+  \item[Manipulation flags] change which records survive, or add corrected
+        values to them:
+        \flg{--extract}, \flg{--nextract}, the cutoff flags, \flg{--uniq},
+        \flg{--reacted}, \flg{--reacted2}, \flg{--sort}, \flg{--reverse},
+        \flg{--select}, \flg{--glob}, \flg{--shuffle}, \flg{--seed},
+        \flg{--noname}, \flg{--add-correction}, and \flg{--extrapolate}.
+  \item[Print flags] ask for output columns or sections: \flg{--filename},
+        \flg{--el}, \flg{--g}, \flg{--pop}, \flg{--formation},
+        \flg{--hydration}, \flg{--movie}, and the rest.
+  \item[Settings flags] configure derivations or presentation but do not
+        count as a manipulation or a print: \flg{--temp}, \flg{--fc},
+        \flg{--fscale}, \flg{--makereal}, \flg{--ignoreimag}, \flg{--unit},
+        \flg{--conc}, \flg{--cnt}, \flg{--bavg}, \flg{--rh}, and
+        \flg{--psolvent}.
+\end{description}
+
+A run must have a \emph{visible outcome}. With neither manipulation nor print
+flags, \flg{--out} is required and the run behaves exactly like a collection
+run. A run with a manipulation flag but neither \flg{--out} nor a print flag
+is a usage error, because the manipulated records would be stored nowhere and
+nothing would be printed.
+
+\begin{note}
+A settings flag on its own is not a visible outcome. For example,
+\texttt{CJKQC db.jsonl} \flg{--temp} \texttt{350} is a usage error; add a print flag or
+\flg{--out}.
+\end{note}
+
+\subsection{Overwriting, summaries, and exit codes}
+
+A file that already exists is never replaced silently. Immediately before the
+old file is replaced, \CJKQC{} asks:
+
+\begin{verbatim}
+db.jsonl already exists; overwrite? [y/N]
+\end{verbatim}
+
+Only \texttt{y} or \texttt{yes} (any casing, surrounding whitespace ignored)
+proceeds. When standard input is not an interactive terminal, the question is
+not asked and the replacement is refused with a message telling you to use
+\flg{--fout}. \flg{--fout} forces the replacement without asking.
+
+The completion line printed by the program tells you what happened:
+
+\begin{verbatim}
+collected 120 records into db.jsonl (2 failed, 1 truncated)
+merged 40 records into merged.jsonl
+filtered 17 records into kept.jsonl
+wrote 17 frames into movie.xyz
+\end{verbatim}
+
+Exit codes are:
+
+\begin{center}
+\begin{tabular}{@{}cl@{}}
+\toprule
+Code & Meaning \\
+\midrule
+0 & success, nothing skipped \\
+1 & fatal error (nothing written) or a merge that skipped corrupt lines \\
+2 & usage error (bad flag, missing \flg{--out}, mixed inputs) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Failed and truncated records from a recognized format do not change the exit
+code: they are data, not failures of the run.
+
+\subsection{Quick start}
+
+Collect every Gaussian and ORCA output in the current directory into a new
+database, then print the names, electronic energies, and Gibbs free energies
+of the structures within 10 kcal/mol of the lowest electronic energy of their
+composition group:
+
+\begin{verbatim}
+# 1. Build a database (the shell expands *.out)
+CJKQC *.out -o all.jsonl
+
+# 2. Print a table
+CJKQC all.jsonl --filename --el --g
+
+# 3. Filter, print, and store the survivors
+CJKQC all.jsonl --cutr el 10 --filename --el --g -o near-minima.jsonl
+\end{verbatim}
+
+The next chapters explain each step in detail, beginning with how data enters
+the database and how to read the resulting database file.

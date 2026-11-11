@@ -11,3 +11,9 @@
 # Architecture
 
 - See `rqm/ARCHITECTURE.md` for the high-level system design.
+
+# Documentation
+
+- The user manual lives in `documentation/`. When editing it, follow
+  `documentation/AGENTS.md`: write for chemists, not programmers, and avoid
+  programming jargon such as "row-major".

@@ -1,0 +1,159 @@
+\section{Database record reference}\label{app:record-reference}
+
+A record is the information for one calculation, written as text on one line.
+This appendix is the quick reference; Chapter~\ref{sec:jsonl} explains how to
+read a database without programming.
+
+\subsection{Entry order and presence}
+
+\CJKQC{} writes the entries in this fixed order, leaving out information that
+is not available:
+
+\begin{verbatim}
+status, error, name, source_path, program, program_version, command,
+electronic_energy, scf_energy, charge, multiplicity, geometry,
+vibrational_frequencies, gradient, dipole_moment, mulliken_charges,
+rotational_symmetry_number, components, correction
+\end{verbatim}
+
+The entries may appear in any order, and unknown entries are ignored. Missing
+information is left out completely; you will not see \texttt{null}. Entry
+names use underscores and do not change between versions.
+
+\subsection{Entries}
+
+\begin{longtable}{@{}L{6.0cm}L{2.7cm}L{5.3cm}@{}}
+\toprule
+\textbf{Entry} & \textbf{Kind of value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\fld{status} & text & \fld{ok}, \fld{failed}, or \fld{truncated}. A missing
+entry means \fld{ok}. \\
+\fld{error} & text & Reason for a failure; never empty when
+\fld{status} is \fld{failed}. \\
+\fld{name} & text & File stem, exactly as written. The name used to match
+corrections and monomer references. \\
+\fld{source\_path} & text & Full path of the original output file. \\
+\fld{program} & text & Program name: \fld{gaussian}, \fld{orca}, \fld{xtb},
+\fld{mrcc}, \fld{xyz}. \\
+\fld{program\_version} & text & Version as printed by the program. \\
+\fld{command} & text & Command line as echoed by the program. \\
+\fld{electronic\_energy} & number & Final electronic energy, hartree. \\
+\fld{scf\_energy} & number & Converged SCF energy, hartree. Used only by
+extrapolation. \\
+\fld{charge} & whole number & Net charge in elementary charges. \\
+\fld{multiplicity} & whole number & Spin multiplicity, at least 1. \\
+\fld{geometry} & two lists & \fld{symbols} and \fld{coordinates}; coordinates
+in \AA{}, listed atom by atom. \\
+\fld{vibrational\_frequencies} & list & Genuine modes in cm$^{-1}$; a negative
+value means imaginary. \\
+\fld{gradient} & list & Cartesian gradient, hartree/\AA{}, three values per
+atom. \\
+\fld{dipole\_moment} & list & $[x,y,z]$ in atomic units ($e\,a_0$). \\
+\fld{mulliken\_charges} & list & Per-atom charges in elementary charges. \\
+\fld{rotational\_symmetry\_number} & whole number & $\sigma$, at least 1. \\
+\fld{components} & code and count & Each component code with its count, in
+alphabetical order. \\
+\fld{correction} & group of values & Attached correction; see below. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Geometry entries}
+
+\begin{verbatim}
+"geometry": {
+  "symbols": ["N", "H"],
+  "coordinates": [0.0, 0.0, 0.0, 0.0, 0.0, 1.01]
+}
+\end{verbatim}
+
+\fld{symbols} holds the element names, with the first letter capital. The
+\fld{coordinates} list has exactly three numbers per symbol, in the same atom
+order: $x,y,z$ for the first atom, then $x,y,z$ for the second, and so on. The
+number of coordinate values must be exactly three times the number of symbols.
+
+\subsection{Components entry}
+
+\begin{verbatim}
+"components": {"am": 2, "sa": 3}
+\end{verbatim}
+
+Component codes are made of letters (A--Z and a--z), and upper and lower case
+matter. Counts are at least 1. The codes are written in alphabetical order.
+
+\subsection{Correction entries}
+
+\begin{verbatim}
+"correction": {
+  "energy": -76.4109,
+  "program": "orca",
+  "program_version": "6.0.0",
+  "commands": ["! wB97x-3c def2-TZVPP Sp"],
+  "kind": "sp"
+}
+\end{verbatim}
+
+\begin{longtable}{@{}L{4.2cm}L{2.3cm}L{7.0cm}@{}}
+\toprule
+\textbf{Entry} & \textbf{Kind of value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\fld{energy} & number & Correction energy in hartree. \\
+\fld{program} & text & Program name of the correction calculation. \\
+\fld{program\_version} & text & Version of the correction calculation. \\
+\fld{commands} & list & Command lines that produced the correction, in order. \\
+\fld{kind} & text & How the energy was obtained: \texttt{sp}, \texttt{cbs},
+\texttt{cps}, or \texttt{cbs-cps}. \\
+\bottomrule
+\end{longtable}
+
+\subsection{When a record is rejected}
+
+A record is rejected (and, during collection, replaced by a failed record) if
+any of the following holds:
+
+\begin{itemize}
+  \item a number is not a finite value (it is infinitely large, or not a
+        number at all);
+  \item the geometry has no symbols, or its coordinate count is not exactly
+        three times the symbol count;
+  \item a per-atom list (\fld{gradient}, \fld{mulliken\_charges}) disagrees
+        with the geometry's atom count when a geometry is present;
+  \item a \fld{failed} record has no error message;
+  \item \fld{multiplicity} or \fld{rotational\_symmetry\_number} is below 1;
+  \item \fld{components} is empty, a code is empty or contains non-letters, or
+        a count is below 1;
+  \item a correction has a non-finite energy or an empty \fld{kind}.
+\end{itemize}
+
+\subsection{Example records}
+
+A minimal record (the actual file stores this on one line):
+
+\begin{verbatim}
+{"status":"ok","electronic_energy":-1.5}
+\end{verbatim}
+
+A record with a geometry and an attached correction, shown spread over several
+lines for readability:
+
+\begin{verbatim}
+{
+  "status": "ok",
+  "name": "1dma",
+  "program": "xtb",
+  "electronic_energy": -38.51,
+  "geometry": {
+    "symbols": ["N", "H"],
+    "coordinates": [0.0, 0.0, 0.0, 0.0, 0.0, 1.01]
+  },
+  "components": {"dma": 1},
+  "correction": {
+    "energy": -76.4109,
+    "program": "orca",
+    "program_version": "6.0.0",
+    "commands": ["! wB97x-3c def2-TZVPP Sp"],
+    "kind": "sp"
+  }
+}
+\end{verbatim}

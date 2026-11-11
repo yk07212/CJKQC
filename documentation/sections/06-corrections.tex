@@ -1,0 +1,276 @@
+\section{Single-point corrections}\label{sec:corrections}
+
+A structure's thermochemistry is only as good as its electronic energy. A
+common workflow optimizes geometries and computes frequencies at an
+affordable level, then re-evaluates the energy at a better level with separate
+single-point jobs. \CJKQC{} attaches such corrections to records by name. The
+stored optimization energy is never altered: the correction lives in its own
+\fld{correction} entry, and corrected values appear only where you
+explicitly ask for them.
+
+There are two ways to produce the same kind of stored correction:
+
+\begin{itemize}
+  \item \flg{--add-correction} copies the energy and source details of a
+        matching single-point record from another database;
+  \item \flg{--extrapolate} combines same-named single points from source
+        databases with a basis-set or settings extrapolation.
+\end{itemize}
+
+Everything that follows is shared: the \fld{elcorr}, \fld{hcorr}, and
+\fld{gcorr} columns, the \fld{elcorr} and \fld{gcorr} cutoff properties and
+sort properties, the corrected formation and solvation sections, and the
+corrected population levels.
+
+\subsection{The correction database}\label{sec:correction-database}
+
+A correction database is an ordinary \CJKQC{} database, usually built by a
+normal collection run over the single-point outputs. Each correction record
+therefore carries its own source information: \fld{program},
+\fld{program\_version},
+and \fld{command}. A database assembled by merging or by hand works the same
+way; whatever a record lacks is simply not copied.
+
+A \emph{candidate} is a correction record with status \fld{ok}, a present
+\fld{electronic\_energy}, and a present \fld{name}. Only candidates attach.
+Two candidates sharing one name make the database ambiguous: that is a fatal
+error naming the name, and nothing is written.
+
+\subsection{Normal corrections with \texttt{-{}-add-correction}}\label{sec:add-correction}
+
+\begin{verbatim}
+CJKQC optimized.jsonl --add-correction single-points.jsonl \
+  --filename --el --elcorr --g --gcorr -o corrected.jsonl
+\end{verbatim}
+
+The flag takes one path, is a manipulation flag, and cannot be repeated. The
+path is always loaded as a database, never classified like the positional
+inputs. A missing or unreadable file is fatal. A corrupt line is skipped and
+reported, and the valid records still attach.
+
+Matching is exact, case-sensitive equality of \fld{name}. Every input record
+whose name equals a candidate's name receives the correction, including
+several records sharing that name. Input records without a name never match.
+Attachment is independent of the input record's status; the usual rule that
+only \fld{ok} records are shown decides visibility.
+
+The stored correction copies the candidate's values:
+
+\begin{itemize}
+  \item \fld{energy}: the candidate's \fld{electronic\_energy}, in hartree;
+  \item \fld{program} and \fld{program\_version}: copied from the candidate;
+  \item \fld{commands}: a one-element list holding the candidate's
+        \fld{command}, or absent when it has none;
+  \item \fld{kind}: \texttt{sp} for an attached single-point record.
+\end{itemize}
+
+A record that already carries a correction has it replaced by a new match. A
+record the correction database does not name keeps whatever correction it
+already stores, so re-running a corrected database against a larger
+correction database only adds and updates. The changes apply only to the
+current run; \flg{--out} writes the corrected records. Without \flg{--out},
+nothing is stored.
+
+Warnings report candidates skipped for status or missing energy, unmatched
+candidates, and corrupt lines. Warnings do not change the exit code or the
+output, except that a correction database that loads no record at all while
+reporting load problems is fatal.
+
+\subsection{Corrected values}\label{sec:corrected-values}
+
+Three corrected values become available:
+
+\begin{description}
+  \item[\fld{elcorr}] The attached correction's energy, in hartree.
+        Undefined without a correction.
+  \item[\fld{hcorr}] The enthalpy derived at the run's conditions from the
+        correction energy and the record's other stored values: the standard
+        derivation with the correction energy in place of
+        \fld{electronic\_energy}.
+  \item[\fld{gcorr}] The Gibbs free energy derived the same way.
+\end{description}
+
+The raw levels are untouched. \fld{el}, \fld{g}, \fld{zpe}, \fld{h},
+\fld{s}, the cutoffs and sorts on them, \flg{--glob}, \flg{--uniq}, and the
+raw formation section all keep using the optimization-level values.
+Corrected values appear only where requested.
+
+\begin{note}
+A record loaded from a previously corrected database carries its correction
+with it. No flag is needed to use stored corrections; \flg{--add-correction}
+is only needed to add or update them.
+\end{note}
+
+The corrected print columns are \flg{--elcorr}, \flg{--hcorr}, and
+\flg{--gcorr}. \flg{--elcorr} prints the correction energy itself;
+\flg{--hcorr} and \flg{--gcorr} print the corrected enthalpy and Gibbs
+energy. \flg{--correction} prints the source details, for example:
+
+\begin{verbatim}
+sp orca 6.0.0 "! wB97x-3c def2-TZVPP Sp"
+\end{verbatim}
+
+\subsection{Extrapolation with \texttt{-{}-extrapolate}}\label{sec:extrapolation}
+
+\flg{--extrapolate} combines same-named single points from source databases
+instead of copying one energy. The mode word leads; the remaining values are
+the source paths and the mode's parameters, in JKextrapolate's order.
+
+\begin{center}
+\begin{tabular}{@{}L{4.4cm}L{9.1cm}@{}}
+\toprule
+\textbf{Invocation} & \textbf{Meaning} \\
+\midrule
+\flg{--extrapolate 2p LOW HIGH N ALPHA BETA} &
+Two-point basis-set extrapolation to the complete-basis-set limit. LOW holds
+the lower cardinal number's single points, HIGH the next one. $N$ is the
+lower cardinal number (a whole number $\ge 1$), and $\alpha>0$, $\beta>0$ are the
+SCF and correlation exponents. Produces kind \texttt{cbs}. \\
+\flg{--extrapolate 2s LOW HIGH F} &
+A CPS/LAF settings blend over two databases that differ in calculation
+settings at fixed basis. $F$ is the blend fraction. Produces kind
+\texttt{cps}. \\
+\flg{--extrapolate 2p LOWPAIR HIGHPAIR N ALPHA BETA F} &
+The combined form. LOWPAIR and HIGHPAIR are comma-joined path pairs. The
+first entry of each pair is the low-settings calculation and the second is
+the high-settings calculation. One two-point extrapolation runs per settings
+level, then the two results blend. Produces kind \texttt{cbs-cps}. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The two \texttt{2p} forms share the mode word because both perform a two-point
+basis-set extrapolation. The combined form is recognized by its arguments: it
+takes six values instead of five, and its two source arguments are
+comma-joined path pairs.
+
+Every value must be valid. An unknown mode, a wrong value count, a non-numeric
+or non-whole-number parameter, $N<1$, $\alpha$ or $\beta$ at or below zero, a
+non-finite $F$, a comma group with more than two entries, a comma group where
+a single path is required, or a trailing $F$ without two comma-joined pairs
+is a usage error. Usage errors happen before any input is read.
+
+\begin{warning}
+Like \flg{--pop}, \flg{--extrapolate} eats the values that follow it until
+the next \flg{--flag}. Place it after the positional inputs, or a positional
+path after it may be swallowed as a parameter. Only one \flg{--extrapolate}
+is allowed per run, and it cannot be combined with \flg{--add-correction}
+because a record carries one correction.
+\end{warning}
+
+\subsubsection*{The formulas}
+
+All energies are in hartree. For a two-point extrapolation over points $X$
+(low basis, cardinal $N$) and $Y$ (high basis, cardinal $N+1$), let
+
+\begin{equation}
+e_X = e^{-\alpha\sqrt{N}}, \qquad
+e_Y = e^{-\alpha\sqrt{N+1}}.
+\end{equation}
+
+Then
+
+\begin{equation}
+E_{\mathrm{CBS}} =
+\frac{E_{\mathrm{scf},X}\,e_Y - E_{\mathrm{scf},Y}\,e_X}{e_Y-e_X}
++
+\frac{N^\beta E_{\mathrm{corr},X} - (N+1)^\beta E_{\mathrm{corr},Y}}
+     {N^\beta - (N+1)^\beta},
+\end{equation}
+
+where the SCF term extrapolates the records' \fld{scf\_energy} and the
+correlation term extrapolates the residual
+\fld{electronic\_energy} $-$ \fld{scf\_energy}. For a DFT record the residual
+is zero and the SCF term carries the whole energy. A record whose stored
+electronic energy is itself the SCF value has a zero residual too, so its
+extrapolation is an SCF-limit energy, not a correlated one. Extrapolation
+never recovers a correlation energy that the record does not store.
+
+The settings blend is
+
+\begin{equation}
+E = E_{\mathrm{low}} + F\,(E_{\mathrm{high}} - E_{\mathrm{low}}),
+\end{equation}
+
+over the records' electronic energies. In the combined form, let
+$E_{\mathrm{CBS,low}}$ be the two-point result for the first entries of both
+pairs and $E_{\mathrm{CBS,high}}$ the result for the second entries. Then
+
+\begin{equation}
+E = E_{\mathrm{CBS,low}}
+  + F\,(E_{\mathrm{CBS,high}} - E_{\mathrm{CBS,low}}).
+\end{equation}
+
+A non-finite result leaves the record without a correction and is warned like
+any other skip; an infinite or invalid energy is never written.
+
+\subsubsection*{Candidate and matching rules}
+
+A source candidate is a source-database record with status \fld{ok}, a
+present \fld{name}, a present \fld{electronic\_energy}, and, for every mode
+that extrapolates over bases, a present \fld{scf\_energy}. A source record
+failing any of these is skipped and warned individually.
+
+The following conditions are fatal and write nothing:
+
+\begin{itemize}
+  \item two candidates with equal names within one source database;
+  \item contributors of one name with different present \fld{program}
+        values;
+  \item contributors of one name with different present
+        \fld{program\_version} values;
+  \item contributors of one name with exactly equal \fld{electronic\_energy}
+        values, which means the same calculation entered the sources twice.
+\end{itemize}
+
+The program and version checks apply whether or not a run record names the
+name; only present-and-different values violate. The duplicate-energy check
+covers electronic energies only: within-basis pairs in the combined form may
+legitimately share the SCF energy.
+
+A run record receives the extrapolated correction if and only if its name
+appears as a candidate in \emph{every} source database of the invocation.
+Matching is exact and case-sensitive. Every run record sharing a fully
+covered name receives the correction. A run record whose name is not fully
+covered is skipped with a warning naming the name and the first source
+database missing it. A record that already carries a correction has it
+replaced on a match; an uncovered record keeps its stored correction.
+
+\subsubsection*{The attached extrapolation correction}
+
+The stored correction contains:
+
+\begin{itemize}
+  \item \fld{energy}: the mode's result in hartree;
+  \item \fld{kind}: \texttt{cbs}, \texttt{cps}, or \texttt{cbs-cps};
+  \item \fld{commands}: the contributing records' commands in contributor
+        order, omitting records without a command;
+  \item \fld{program} and \fld{program\_version}: the last contributor's
+        values.
+\end{itemize}
+
+\subsection{A correction workflow}\label{sec:correction-example}
+
+Build and attach an ordinary single-point correction:
+
+\begin{verbatim}
+# Collect the single-point jobs into a correction database
+CJKQC sp/*.out -o sp.jsonl
+
+# Attach by name and write the corrected database
+CJKQC optimized.jsonl --add-correction sp.jsonl -o corrected.jsonl --fout
+
+# Print both levels
+CJKQC corrected.jsonl --filename --el --elcorr --g --gcorr
+\end{verbatim}
+
+Build a two-point CBS correction from two basis-set databases:
+
+\begin{verbatim}
+CJKQC run.jsonl --extrapolate 2p low.jsonl high.jsonl 2 5.0 3.0 \
+  --out cbs.jsonl --fout
+CJKQC cbs.jsonl --filename --elcorr --correction
+\end{verbatim}
+
+The \flg{--correction} column shows the kind and source details, so every
+corrected number remains inspectable.

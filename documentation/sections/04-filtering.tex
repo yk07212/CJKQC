@@ -1,0 +1,314 @@
+\section{Filtering, sorting, and uniqueness}\label{sec:filtering}
+
+Filtering turns a loaded set of records into a smaller, ordered set. Each step
+only reads the records; it never changes the input. A filtering run writes the
+records that remain with \flg{--out}, prints them with print flags, or both.
+Print flags alone do not filter: a print-only run shows every loaded record in
+file order.
+
+\subsection{Order of the filtering steps}\label{sec:pipeline-order}
+
+The steps always run in this fixed order, each within the current composition
+groups:
+
+\begin{enumerate}
+  \item drop records whose status is not \fld{ok};
+  \item \flg{--extract} or \flg{--nextract};
+  \item cutoffs, in the order the cutoff flags were given;
+  \item \flg{--uniq};
+  \item \flg{--reacted} or \flg{--reacted2};
+  \item \flg{--sort}, then \flg{--reverse};
+  \item \flg{--select};
+  \item \flg{--glob};
+  \item \flg{--shuffle}.
+\end{enumerate}
+
+The non-\fld{ok} count is reported as a warning:
+\texttt{excluded <k> records with status failed or truncated}.
+
+When \flg{--uniq} is used with a list of properties, or \flg{--select} is
+used, and no \flg{--sort} is given, the records are first sorted by \fld{el}
+ascending. \flg{--uniq dup} does not trigger this automatic sort.
+
+\subsection{Grouping}\label{sec:grouping}
+
+Most steps work per \emph{composition group}: records with the same
+composition form a group, and records without composition information form
+one separate unnamed group. Groups are processed in first-appearance order;
+within a step, the overall record order is preserved.
+
+\flg{--noname} collapses everything into one global group. Under
+\flg{--noname}, \flg{--extract} and \flg{--nextract} compare their patterns
+directly against each record's \fld{name} (the same text the \fld{filename}
+column prints), with no composition grammar, ranges, wildcards, or zero-count
+rules.
+
+\subsection{Extracting compositions}\label{sec:extract}
+
+\flg{--extract QUERY} keeps records whose composition matches the query;
+\flg{--nextract QUERY} keeps the records that do not. A query is a
+comma-separated list of patterns; a record matches if any pattern matches.
+
+A pattern is built from these pieces:
+
+\begin{verbatim}
+query   := pattern ( "," pattern )*
+pattern := ( pair | range | choice | bare-star | count-star
+             | count-star-code | star-code )+
+pair    := count code
+range   := count "-" count code          (inclusive count expansion)
+choice  := "(" count ( "," count )* ")" code
+bare-star       := "*"
+count-star      := count "*"
+count-star-code := count "*" code
+star-code       := "*" code
+count   := digit+ (decimal, at most 4294967295)
+code    := letter+ (plain letters, case matters)
+\end{verbatim}
+
+A pair \texttt{(count, code)} with a positive count requires that exact count
+for the code. A count of zero requires the code to be absent. Codes the
+pattern does not mention are \emph{extras}, governed by the wildcard:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Form} & \textbf{Extra records allowed} \\
+\midrule
+no wildcard & none: the pattern is an exact composition match \\
+\texttt{*} & any composition \\
+\texttt{N*} & extras whose counts sum to exactly $N$ \\
+\texttt{*code} & only the named codes, at any counts \\
+\texttt{N*code} & only the named codes, with counts summing to exactly $N$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Examples:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Query} & \textbf{Matches} \\
+\midrule
+\texttt{2am3sa} & exactly 2 \texttt{am} and 3 \texttt{sa}, no extras \\
+\texttt{2am3sa,1am1sa} & either of the two compositions \\
+\texttt{1am0-2w} & \texttt{1am}, \texttt{1am1w}, \texttt{1am2w} \\
+\texttt{(2,3)am1w} & \texttt{2am1w} or \texttt{3am1w} \\
+\texttt{2am*w} & 2 \texttt{am} plus any number of \texttt{w} \\
+\texttt{2am2*w} & 2 \texttt{am} plus \texttt{w} counts summing to 2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Further rules:
+
+\begin{itemize}
+  \item A range expands inclusively. A range with more than 1000 count values,
+        or a pattern expanding beyond 10000 patterns, is a usage error.
+  \item A range whose low end exceeds its high end is a usage error.
+  \item Anything after a \texttt{-} that a range did not consume is treated
+        as a label comment and ignored, so a full JKQC file stem can be
+        pasted directly.
+  \item An underscore is not a valid pattern character; a pattern containing
+        one is a usage error.
+  \item Records without \fld{components} behave as if their composition were
+        empty: they match only patterns with no pairs, such as \texttt{*}.
+\end{itemize}
+
+\subsection{Cutoffs}\label{sec:cutoffs}
+
+Each cutoff compares a record's property value with a number. The ten flags
+are:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Absolute flag} & \textbf{Comparison} & \textbf{Mode} \\
+\midrule
+\flg{--cut} & $\le$ & absolute \\
+\flg{--filter-lt} & $<$ & absolute \\
+\flg{--pass} & $>$ & absolute \\
+\flg{--filter-ge} & $\ge$ & absolute \\
+\flg{--is} & $=$ & absolute \\
+\flg{--isnot} & $\ne$ & absolute \\
+\midrule
+\flg{--cutr} & $\le$ & relative \\
+\flg{--rel-filter-lt} & $<$ & relative \\
+\flg{--passr} & $>$ & relative \\
+\flg{--rel-filter-ge} & $\ge$ & relative \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+They are written \flg{--cut PROPERTY VALUE} and so on, and they may repeat;
+cutoffs chain in command order.
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Property} & \textbf{Value} & \textbf{Units} \\
+\midrule
+\fld{el} & electronic energy & hartree absolute; kcal/mol relative \\
+\fld{g} & Gibbs free energy & hartree absolute; kcal/mol relative \\
+\fld{elcorr} & attached correction energy & hartree absolute; kcal/mol relative \\
+\fld{gcorr} & Gibbs from the correction & hartree absolute; kcal/mol relative \\
+\fld{rg} & radius of gyration & \AA{} \\
+\fld{lf} & lowest stored frequency & cm$^{-1}$ \\
+\fld{dip} & dipole magnitude & atomic units \\
+\fld{mass} & total mass & u \\
+\fld{charge} & net charge & counts \\
+\fld{multiplicity} & spin multiplicity & counts \\
+\fld{natoms} & geometry atom count & counts \\
+\fld{nfreq} & stored frequency count & counts \\
+\fld{nimag} & negative frequency count & counts \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In relative mode the group minimum of the property is subtracted first (over
+defined values), then the comparison is applied. Thus
+\flg{--cutr el 10} keeps records within 10 kcal/mol of their group's lowest
+electronic energy. Under \flg{--noname} the minimum is global.
+
+A record whose property is undefined fails $<$, $\le$, $>$, $\ge$, and $=$,
+and passes $\ne$. This mirrors the original tool's treatment of missing
+values.
+
+\begin{warning}
+Absolute energy cutoffs are in hartree and relative energy cutoffs in
+kcal/mol, regardless of whether \flg{--unit} is used for printing. A value
+such as \flg{--cut el -38.5} is hartree; \flg{--cutr el 10} is kcal/mol.
+\end{warning}
+
+\subsection{Sorting, selecting, and shuffling}\label{sec:sorting}
+
+\flg{--sort PROPERTY} sorts ascending; \flg{--reverse} reverses the
+orientation. The possible properties are:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Property} & \textbf{Orders by} \\
+\midrule
+\fld{el} & electronic energy \\
+\fld{g} & Gibbs free energy at the run's conditions \\
+\fld{elcorr} & attached correction energy \\
+\fld{gcorr} & Gibbs free energy from the correction \\
+\fld{rg} & radius of gyration \\
+\fld{mass} & total mass \\
+\fld{filename} & the record's \fld{name}; nameless records first \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A record whose numeric sorting value is undefined sorts last ascending and
+first descending. \flg{--reverse} alone, with no sort in effect, changes
+nothing but still counts as a manipulation.
+
+\flg{--select N} keeps the first $N$ records of each group after sorting.
+Groups shorter than $N$ pass whole. \flg{--glob} keeps, per composition
+group, the record with the lowest Gibbs free energy at the run's conditions;
+ties keep the first in order. Records with undefined Gibbs are dropped.
+Under \flg{--noname}, \flg{--glob} keeps the one global minimum.
+
+\flg{--shuffle} puts the final result in a random order. The order is driven
+by a fixed starting value, \flg{--seed} (default 0), so the same seed always
+gives the same shuffle.
+
+\subsection{Uniqueness}\label{sec:uniqueness}
+
+\flg{--uniq} removes redundant structures within each composition group.
+Both modes are stable: the first occurrence in the current order survives.
+
+\begin{description}
+  \item[\flg{--uniq dup}] Drops records that share a \fld{name} with an earlier
+        record. Records without a name are never dropped as duplicates.
+  \item[\flg{--uniq PROPERTIES}] Drops records whose rounded set of property
+        values matches an earlier record in the same group.
+\end{description}
+
+The property list is a comma-separated list of \fld{metric[decimals]} items,
+for example \flg{--uniq el2.4,rg}. The decimal count is optional; defaults are
+\fld{el} 3, \fld{g} 3, \fld{rg} 2, \fld{mass} 2, and \fld{dip} 1. A fractional
+decimal count is accepted. Two values agree at $d$ decimals exactly when
+
+\begin{equation}
+\lfloor a \cdot 10^d \rfloor = \lfloor b \cdot 10^d \rfloor,
+\end{equation}
+
+with floor toward $-\infty$. Undefined metrics are treated as equal to each
+other, so two records that both lack the metric collapse.
+
+Because the automatic sort is by \fld{el} ascending, writing
+\flg{--uniq el2.4} without \flg{--sort} keeps the lowest-electronic-energy
+member of each group of duplicates. Add \flg{--sort g} first if you want the
+lowest-Gibbs representative instead.
+
+\subsection{Reacted and exploded structures}\label{sec:reacted}
+
+Within a composition group, most conformers share a fragment fingerprint. A
+structure whose optimization reacted or exploded has a different fingerprint.
+\CJKQC{} builds each fingerprint from the geometry and uses the group's most
+frequent fingerprint as the consensus.
+
+Two atoms are bonded when their distance is below a pair-specific cutoff:
+
+\begin{center}
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Pair} & \textbf{Cutoff (\AA{})} \\
+\midrule
+C--N (either order) & 1.75 \\
+N--N & 1.50 \\
+S--O or O--S & 1.90 \\
+O--N or N--O & 1.90 \\
+H--H & 0.80 \\
+any other pair involving H & never bonded \\
+every other heavy--heavy pair & 2.00 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each connected component's fragment formula is its element symbols sorted
+alphabetically and concatenated. A record's signature is the sorted list of
+its fragment formulas joined with \texttt{+}. For example, a bonded C--N
+fragment plus a lone H is \texttt{CN+H}. A record without a geometry has the
+signature \texttt{(none)} and participates like any other signature.
+
+\flg{--reacted} keeps the records whose signature equals the group's
+consensus; \flg{--reacted2} keeps exactly the deviants. Ties are resolved in a
+fixed order: highest count first, then earliest record order.
+
+\subsection{Writing the survivors}\label{sec:filter-out}
+
+A manipulation run writes its survivors with \flg{--out} and reports:
+
+\begin{verbatim}
+filtered 17 records into kept.jsonl
+\end{verbatim}
+
+Correction and extrapolation add corrected energies to the records before
+filtering starts, so cutoffs, sorts, and sections see those values
+(Chapter~\ref{sec:corrections}). The overwrite confirmation and \flg{--fout}
+rules are the same as in collection.
+
+\subsection{A worked filtering example}\label{sec:filtering-example}
+
+Keep only one conformer per rounded Gibbs/radius signature for each
+composition, discard structures more than 5 kcal/mol above the group minimum,
+sort by Gibbs energy, and print the lowest 3 per group:
+
+\begin{verbatim}
+CJKQC db.jsonl \
+  --cutr g 5 \
+  --uniq g2,rg1 \
+  --sort g \
+  --select 3 \
+  --filename --name --g --rg --pop
+\end{verbatim}
+
+The steps apply in the fixed order: the relative Gibbs cutoff, then
+uniqueness, then the sort, then the per-group limit. Populations are computed
+over the final printed set, so they renormalize over the three survivors of
+each group.
