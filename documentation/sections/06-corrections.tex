@@ -27,12 +27,12 @@ corrected population levels.
 A correction database is an ordinary \CJKQC{} database, usually built by a
 normal collection run over the single-point outputs. Each correction record
 therefore carries its own source information: \fld{program},
-\fld{program\_version},
+\fld{program_version},
 and \fld{command}. A database assembled by merging or by hand works the same
 way; whatever a record lacks is simply not copied.
 
 A \emph{candidate} is a correction record with status \fld{ok}, a present
-\fld{electronic\_energy}, and a present \fld{name}. Only candidates attach.
+\fld{electronic_energy}, and a present \fld{name}. Only candidates attach.
 Two candidates sharing one name make the database ambiguous: that is a fatal
 error naming the name, and nothing is written.
 
@@ -57,8 +57,8 @@ only \fld{ok} records are shown decides visibility.
 The stored correction copies the candidate's values:
 
 \begin{itemize}
-  \item \fld{energy}: the candidate's \fld{electronic\_energy}, in hartree;
-  \item \fld{program} and \fld{program\_version}: copied from the candidate;
+  \item \fld{energy}: the candidate's \fld{electronic_energy}, in hartree;
+  \item \fld{program} and \fld{program_version}: copied from the candidate;
   \item \fld{commands}: a one-element list holding the candidate's
         \fld{command}, or absent when it has none;
   \item \fld{kind}: \texttt{sp} for an attached single-point record.
@@ -86,7 +86,7 @@ Three corrected values become available:
   \item[\fld{hcorr}] The enthalpy derived at the run's conditions from the
         correction energy and the record's other stored values: the standard
         derivation with the correction energy in place of
-        \fld{electronic\_energy}.
+        \fld{electronic_energy}.
   \item[\fld{gcorr}] The Gibbs free energy derived the same way.
 \end{description}
 
@@ -178,9 +178,9 @@ E_{\mathrm{CBS}} =
      {N^\beta - (N+1)^\beta},
 \end{equation}
 
-where the SCF term extrapolates the records' \fld{scf\_energy} and the
+where the SCF term extrapolates the records' \fld{scf_energy} and the
 correlation term extrapolates the residual
-\fld{electronic\_energy} $-$ \fld{scf\_energy}. For a DFT record the residual
+\fld{electronic_energy} $-$ \fld{scf_energy}. For a DFT record the residual
 is zero and the SCF term carries the whole energy. A record whose stored
 electronic energy is itself the SCF value has a zero residual too, so its
 extrapolation is an SCF-limit energy, not a correlated one. Extrapolation
@@ -207,8 +207,8 @@ any other skip; an infinite or invalid energy is never written.
 \subsubsection*{Candidate and matching rules}
 
 A source candidate is a source-database record with status \fld{ok}, a
-present \fld{name}, a present \fld{electronic\_energy}, and, for every mode
-that extrapolates over bases, a present \fld{scf\_energy}. A source record
+present \fld{name}, a present \fld{electronic_energy}, and, for every mode
+that extrapolates over bases, a present \fld{scf_energy}. A source record
 failing any of these is skipped and warned individually.
 
 The following conditions are fatal and write nothing:
@@ -218,8 +218,8 @@ The following conditions are fatal and write nothing:
   \item contributors of one name with different present \fld{program}
         values;
   \item contributors of one name with different present
-        \fld{program\_version} values;
-  \item contributors of one name with exactly equal \fld{electronic\_energy}
+        \fld{program_version} values;
+  \item contributors of one name with exactly equal \fld{electronic_energy}
         values, which means the same calculation entered the sources twice.
 \end{itemize}
 
@@ -245,7 +245,7 @@ The stored correction contains:
   \item \fld{kind}: \texttt{cbs}, \texttt{cps}, or \texttt{cbs-cps};
   \item \fld{commands}: the contributing records' commands in contributor
         order, omitting records without a command;
-  \item \fld{program} and \fld{program\_version}: the last contributor's
+  \item \fld{program} and \fld{program_version}: the last contributor's
         values.
 \end{itemize}
 

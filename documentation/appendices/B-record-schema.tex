@@ -33,25 +33,25 @@ entry means \fld{ok}. \\
 \fld{status} is \fld{failed}. \\
 \fld{name} & text & File stem, exactly as written. The name used to match
 corrections and monomer references. \\
-\fld{source\_path} & text & Full path of the original output file. \\
+\fld{source_path} & text & Full path of the original output file. \\
 \fld{program} & text & Program name: \fld{gaussian}, \fld{orca}, \fld{xtb},
 \fld{mrcc}, \fld{xyz}. \\
-\fld{program\_version} & text & Version as printed by the program. \\
+\fld{program_version} & text & Version as printed by the program. \\
 \fld{command} & text & Command line as echoed by the program. \\
-\fld{electronic\_energy} & number & Final electronic energy, hartree. \\
-\fld{scf\_energy} & number & Converged SCF energy, hartree. Used only by
+\fld{electronic_energy} & number & Final electronic energy, hartree. \\
+\fld{scf_energy} & number & Converged SCF energy, hartree. Used only by
 extrapolation. \\
 \fld{charge} & whole number & Net charge in elementary charges. \\
 \fld{multiplicity} & whole number & Spin multiplicity, at least 1. \\
 \fld{geometry} & two lists & \fld{symbols} and \fld{coordinates}; coordinates
 in \AA{}, listed atom by atom. \\
-\fld{vibrational\_frequencies} & list & Genuine modes in cm$^{-1}$; a negative
+\fld{vibrational_frequencies} & list & Genuine modes in cm$^{-1}$; a negative
 value means imaginary. \\
 \fld{gradient} & list & Cartesian gradient, hartree/\AA{}, three values per
 atom. \\
-\fld{dipole\_moment} & list & $[x,y,z]$ in atomic units ($e\,a_0$). \\
-\fld{mulliken\_charges} & list & Per-atom charges in elementary charges. \\
-\fld{rotational\_symmetry\_number} & whole number & $\sigma$, at least 1. \\
+\fld{dipole_moment} & list & $[x,y,z]$ in atomic units ($e\,a_0$). \\
+\fld{mulliken_charges} & list & Per-atom charges in elementary charges. \\
+\fld{rotational_symmetry_number} & whole number & $\sigma$, at least 1. \\
 \fld{components} & code and count & Each component code with its count, in
 alphabetical order. \\
 \fld{correction} & group of values & Attached correction; see below. \\
@@ -100,7 +100,7 @@ matter. Counts are at least 1. The codes are written in alphabetical order.
 \endhead
 \fld{energy} & number & Correction energy in hartree. \\
 \fld{program} & text & Program name of the correction calculation. \\
-\fld{program\_version} & text & Version of the correction calculation. \\
+\fld{program_version} & text & Version of the correction calculation. \\
 \fld{commands} & list & Command lines that produced the correction, in order. \\
 \fld{kind} & text & How the energy was obtained: \texttt{sp}, \texttt{cbs},
 \texttt{cps}, or \texttt{cbs-cps}. \\
@@ -117,10 +117,10 @@ any of the following holds:
         number at all);
   \item the geometry has no symbols, or its coordinate count is not exactly
         three times the symbol count;
-  \item a per-atom list (\fld{gradient}, \fld{mulliken\_charges}) disagrees
+  \item a per-atom list (\fld{gradient}, \fld{mulliken_charges}) disagrees
         with the geometry's atom count when a geometry is present;
   \item a \fld{failed} record has no error message;
-  \item \fld{multiplicity} or \fld{rotational\_symmetry\_number} is below 1;
+  \item \fld{multiplicity} or \fld{rotational_symmetry_number} is below 1;
   \item \fld{components} is empty, a code is empty or contains non-letters, or
         a count is below 1;
   \item a correction has a non-finite energy or an empty \fld{kind}.
