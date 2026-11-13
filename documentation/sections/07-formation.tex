@@ -158,7 +158,7 @@ The electronic levels \fld{el} and \fld{elcorr} stay at the standard state.
 For the set of concentration settings $S$ and a record with components $C$:
 
 \begin{equation}
-g_{\mathrm{conc}} = g_{\mathrm{form}}
+G_{\mathrm{conc}} = G_{\mathrm{form}}
   - \sum_{\text{code}_i \in S} n_{i,\mathrm{eff}}\,
     \frac{R T \ln(c_i/p^\circ)}{N_A E_h},
 \end{equation}
@@ -202,8 +202,8 @@ An ensemble with members carries two values:
         section and the correction energy for the corrected section;
   \item the \textbf{Gibbs value} is the ensemble free energy
         \begin{equation}
-        G_{\mathrm{ens}} = -k_B T \ln\!\left(\sum_j e^{-g_j/(k_B T)}\right)
-        = g_{\min} - k_B T \ln Z,
+        G_{\mathrm{ens}} = -k_B T \ln\!\left(\sum_j e^{-G_j/(k_B T)}\right)
+        = G_{\min} - k_B T \ln Z,
         \end{equation}
         computed against the members' minimum as in the population
         numerics. This keeps the conformational entropy term

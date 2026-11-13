@@ -204,6 +204,81 @@ E = E_{\mathrm{CBS,low}}
 A non-finite result leaves the record without a correction and is warned like
 any other skip; an infinite or invalid energy is never written.
 
+\subsubsection*{Recommended basis-set coefficients}
+
+The SCF form and the coefficients below follow Neese and co-workers (2011);
+the correlation form follows Helgaker and co-workers (1997). The two-point
+form needs a pair of coefficients for the basis family and the cardinal
+numbers being combined. The table lists recommended values. The numbers in
+parentheses are the cardinal numbers; use the pair that matches the lower
+basis.
+
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Basis set & $\alpha(2,3)$ & $\beta(2,3)$ & $\alpha(3,4)$ & $\beta(3,4)$ \\
+\midrule
+\texttt{cc-pVXZ}      & 4.42 & 2.46 & 5.46 & 3.05 \\
+\texttt{aug'-cc-pVXZ} & 4.30 & 2.51 & 5.79 & 3.05 \\
+\texttt{aug-cc-pVXZ}  & 4.30 & 2.51 & 5.79 & 3.05 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The reduced \texttt{aug'} sets use the fully augmented coefficients: no
+separate fit exists for them, and the two families are expected to give
+similar coefficients.
+
+For example, extrapolating triple- and quadruple-zeta energies of an
+augmented basis set uses $\alpha=5.79$ and $\beta=3.05$:
+
+\begin{verbatim}
+CJKQC run.jsonl --extrapolate 2p cbs/tz.jsonl cbs/qz.jsonl 3 5.79 3.05 \
+  -o cbs.jsonl
+\end{verbatim}
+
+\subsubsection*{Settings extrapolations: CPS, LAF, and PNO}
+
+Basis-set extrapolation raises the cardinal number; CPS and LAF instead
+combine two calculations that differ in accuracy settings at a fixed basis.
+Both use the same blend with $F=1.5$:
+
+\begin{equation}
+E = E_{\mathrm{low}} + 1.5\,(E_{\mathrm{high}} - E_{\mathrm{low}}).
+\end{equation}
+
+To run one, build a database for each settings level and pass the two
+databases to the \texttt{2s} form, low level first:
+
+\begin{verbatim}
+CJKQC run.jsonl --extrapolate 2s cps/pno3.jsonl cps/pno4.jsonl 1.5 \
+  -o cps.jsonl
+\end{verbatim}
+
+For a DLPNO calculation, a PNO threshold of $3.33\times10^{-T}$ is written
+PNO($T$), so the command above blends PNO(3) and PNO(4) and is called
+CPS(3,4). For an LNO calculation, use two successive locality settings, for
+example vLoose and Loose; the shortened names are vL and L, so that pair is
+called LAF(vL,L). When basis and settings change together, use the combined
+\texttt{2p} form: give two comma-joined path pairs (low and high settings at
+the lower basis, then the same two settings at the higher basis) and add
+$F=1.5$ after the coefficients. \CJKQC{} extrapolates each pair to the
+basis-set limit and then blends the two results with the same formula.
+
+For example, to combine triple- and quadruple-zeta calculations at the
+vLoose and Loose LNO settings, give the lower basis at vLoose and Loose as
+the first pair and the higher basis in the same settings order as the second
+pair:
+
+\begin{verbatim}
+CJKQC run.jsonl --extrapolate 2p \
+  cbs/tz-vl.jsonl,cbs/tz-l.jsonl cbs/qz-vl.jsonl,cbs/qz-l.jsonl \
+  3 5.46 3.05 1.5 -o lno-cbs.jsonl
+\end{verbatim}
+
+This performs a CBS(3,4) extrapolation at each LNO setting and then blends
+the two limits, producing kind \texttt{cbs-cps}.
+
 \subsubsection*{Candidate and matching rules}
 
 A source candidate is a source-database record with status \fld{ok}, a
@@ -249,28 +324,3 @@ The stored correction contains:
         values.
 \end{itemize}
 
-\subsection{A correction workflow}\label{sec:correction-example}
-
-Build and attach an ordinary single-point correction:
-
-\begin{verbatim}
-# Collect the single-point jobs into a correction database
-CJKQC sp/*.out -o sp.jsonl
-
-# Attach by name and write the corrected database
-CJKQC optimized.jsonl --add-correction sp.jsonl -o corrected.jsonl --fout
-
-# Print both levels
-CJKQC corrected.jsonl --filename --el --elcorr --g --gcorr
-\end{verbatim}
-
-Build a two-point CBS correction from two basis-set databases:
-
-\begin{verbatim}
-CJKQC run.jsonl --extrapolate 2p low.jsonl high.jsonl 2 5.0 3.0 \
-  --out cbs.jsonl --fout
-CJKQC cbs.jsonl --filename --elcorr --correction
-\end{verbatim}
-
-The \flg{--correction} column shows the kind and source details, so every
-corrected number remains inspectable.

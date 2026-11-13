@@ -47,4 +47,6 @@ programming vocabulary.
 make -C documentation
 ```
 
+The build writes the PDF to the project root as `manual.pdf`.
+
 - Verify that every long flag in `CJKQC --help` still appears in the PDF.

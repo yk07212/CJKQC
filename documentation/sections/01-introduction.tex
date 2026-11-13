@@ -24,6 +24,65 @@ stored values under the settings of the current run. This is why changing the
 temperature, a frequency scale factor, or an energy unit never invalidates a
 database.
 
+\subsection{Terminology}\label{sec:terminology}
+
+This manual uses a few words in a precise way. The list below introduces them;
+later chapters explain how to use them.
+
+\begin{description}
+  \item[Run] One invocation of \CJKQC{} from the command line. The run's
+        settings, such as temperature or energy unit, apply to every number
+        it prints or writes.
+  \item[Record] The database entry for one structure. A record holds the
+        values that the quantum-chemistry program printed, such as
+        \fld{electronic_energy}, \fld{geometry}, and
+        \fld{vibrational_frequencies}. Reading one output file adds one
+        record.
+  \item[Database] A plain text file with one complete record per line. A
+        database is the working file that \CJKQC{} reads and writes; the
+        \texttt{.jsonl} ending is conventional, not required.
+  \item[Entry] A named value inside a record, for example
+        \fld{electronic_energy} or \fld{name}. A record can hold many
+        entries; one that is not available is simply left out.
+  \item[Flag] An option on the command line, written with two leading
+        hyphens, such as \flg{--temp} or \flg{--formation}. A flag changes
+        what the run does; it is not a file name.
+  \item[Build mode and merge mode] These are the two ways to create a
+        database. In build mode the inputs are quantum-chemistry outputs and
+        each output becomes a record. In merge mode the inputs are existing
+        databases and their records are copied together unchanged.
+  \item[Composition and components] The makeup of a structure, stored as a
+        set of component codes with counts. For example, \texttt{2am3sa}
+        means two \texttt{am} components and three \texttt{sa} components.
+        The composition is read from the record's name.
+  \item[Composition group] All records with the same composition. Many
+        filtering and post-processing steps work within composition groups,
+        so a structure is compared only with structures of the same makeup.
+        Records without composition information form one separate group.
+  \item[Derived value] A value that \CJKQC{} calculates at the time of the
+        run from values already stored in the records, such as a zero-point
+        energy, Gibbs free energy, formation energy, or population. Derived
+        values are never stored in a database.
+  \item[Defined and undefined] A derived value is defined when the record
+        holds everything needed to calculate it. Otherwise it is undefined
+        and prints as a dash; this is normal for records that lack, for
+        example, a geometry or frequencies.
+  \item[Monomer reference] A single-component structure used as the
+        baseline for formation energies. For each component code, \CJKQC{}
+        chooses one monomer record from the printed records.
+  \item[Correction] A more accurate electronic energy attached to a record
+        from a separate single-point calculation. A correction record that
+        can be attached is called a \emph{candidate}; it must have status
+        \fld{ok}, a name, and an \fld{electronic_energy}.
+  \item[Formation energy] The energy of a structure relative to the
+        corresponding isolated monomers. A negative value means the
+        structure is more stable than the separated monomers.
+  \item[State and core] In a solvation section, a state is one composition
+        including solvent molecules, and its core is the same composition
+        with the solvent removed. For example, with solvent \texttt{w},
+        \texttt{1sa2w} is a state whose core is \texttt{1sa}.
+\end{description}
+
 \subsection{What can be read}
 
 \CJKQC{} chooses how to read each file by looking at its \emph{content}, never
@@ -153,7 +212,7 @@ code: they are data, not failures of the run.
 
 \subsection{Quick start}
 
-Collect every Gaussian and ORCA output in the current directory into a new
+Collect every ORCA output in the current directory into a new
 database, then print the names, electronic energies, and Gibbs free energies
 of the structures within 10 kcal/mol of the lowest electronic energy of their
 composition group:
