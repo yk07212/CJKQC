@@ -212,10 +212,13 @@ the print boundary via the `--unit` flag (`rqm/filtering.md` Printing).
   extensibility): `key` maps to a derivation function returning the
   record's value in Eh. The registry holds `"el"` (the passthrough
   electronic energy), `"zpe"`, `"h"`, `"s"`, `"g"`, and the corrected keys
-  `"elcorr"`, `"hcorr"`, and `"gcorr"` (`rqm/correction.md`). Printing, cutoffs,
-  sorting, uniqueness, `--glob`, and the formation section resolve these
-  keys through this single lookup — no pipeline stage hand-wires its own
-  match arm to a derivation. A new derived property is a new registry
+  `"elcorr"`, `"hcorr"`, and `"gcorr"` (`rqm/correction.md`). Printing,
+  cutoffs, sorting, uniqueness, and `--glob` resolve these keys through
+  this single lookup — no pipeline stage hand-wires its own match arm to
+  a derivation; the formation values instead read the memo's
+  whole-record thermochemistry derivation in one call, keeping their
+  three thermal levels defined together (`rqm/formation.md`). A new
+  derived property is a new registry
   row plus reference tests, with no record-schema change.
 
 ### Constants <!-- rq-a9ede621 -->

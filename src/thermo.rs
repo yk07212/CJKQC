@@ -479,12 +479,15 @@ pub(crate) fn thermochemistry_with_energy(
 
 /// The single registry dispatch (`rqm/ARCHITECTURE.md` extensibility,
 /// `rqm/thermo.md` Feature API): every consumer of a derived energy key
-/// resolves it here — printing, cutoffs, sorting, uniqueness, `--glob`,
-/// and the formation section never hand-wire their own match arm to a
-/// derivation. The thermochemistry-dependent keys evaluate their
-/// derivation lazily, so `"el"`, `"elcorr"`, and unknown keys never
-/// derive; the corrected keys `hcorr`/`gcorr` evaluate the corrected
-/// derivation (`rqm/correction.md`).
+/// resolves it here — printing, cutoffs, sorting, uniqueness, and
+/// `--glob` never hand-wire their own match arm to a derivation; the
+/// formation values instead read the memo's whole-record
+/// thermochemistry derivation in one call, which keeps their three
+/// thermal levels defined together (`rqm/formation.md`). The
+/// thermochemistry-dependent keys evaluate their derivation lazily, so
+/// `"el"`, `"elcorr"`, and unknown keys never derive; the corrected keys
+/// `hcorr`/`gcorr` evaluate the corrected derivation
+/// (`rqm/correction.md`).
 ///
 /// (rq-8f6da1c2)
 fn resolve(
@@ -575,9 +578,12 @@ impl ThermoMemo {
     /// standard thermochemistry with the attached correction's energy in
     /// place of the stored one, computed at most once per record content
     /// for the lifetime of this memo. `None` without a correction or when
-    /// the derivation is undefined under the usual rules.
-    // rq-8b44ad8d
-    fn corrected_thermo(&self, record: &Record) -> Option<Thermo> {
+    /// the derivation is undefined under the usual rules. The corrected
+    /// formation section reads the corrected enthalpy and the
+    /// correction-invariant T·S entropy term through this one derivation
+    /// (`rqm/formation.md`).
+    // rq-8b44ad8d rq-789635d3
+    pub(crate) fn corrected_thermo(&self, record: &Record) -> Option<Thermo> {
         if let Some(hit) = self.corrected_cache.borrow().get(record) {
             return *hit;
         }

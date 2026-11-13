@@ -77,6 +77,8 @@ fn a_single_component_count_one_record_is_a_monomer() {
     let records = vec![monomer("am1", Some(-50.0), "am", 1000.0)];
     let references = collect_monomers(&records, &memo(), SortKey::El);
     assert_eq!(references.electronic.get("am"), Some(&-50.0));
+    assert!(references.enthalpy.contains_key("am"));
+    assert!(references.entropy_term.contains_key("am"));
     assert!(references.gibbs.contains_key("am"));
 }
 
@@ -88,6 +90,8 @@ fn multi_component_and_multi_count_records_are_not_monomers() {
     mixed.components = Some(components(&[("am", 1), ("sa", 1)]));
     let references = collect_monomers(&[am_two, mixed], &memo(), SortKey::El);
     assert!(references.electronic.is_empty());
+    assert!(references.enthalpy.is_empty());
+    assert!(references.entropy_term.is_empty());
     assert!(references.gibbs.is_empty());
 }
 
@@ -100,7 +104,7 @@ fn without_sort_the_lowest_energy_conformer_is_the_reference() {
 }
 
 #[test] // rq-64a72e10
-fn sort_g_makes_the_lowest_gibbs_conformer_the_reference_for_both_levels() {
+fn sort_g_makes_the_lowest_gibbs_conformer_the_reference_for_every_level() {
     // Conformer A has the lowest electronic energy; conformer B has the
     // lowest Gibbs free energy because its twelve soft modes carry far
     // more entropy.
@@ -111,10 +115,15 @@ fn sort_g_makes_the_lowest_gibbs_conformer_the_reference_for_both_levels() {
     assert!(a.electronic_energy.unwrap() < b.electronic_energy.unwrap());
     assert!(g_b < g_a, "B must hold the lowest gibbs: {g_b} vs {g_a}");
     let references = collect_monomers(&[a.clone(), b.clone()], &memo(), SortKey::G);
-    // Both reference levels come from conformer B alone.
+    // Every reference level comes from conformer B alone.
     assert_eq!(references.electronic.get("am"), Some(&-50.0));
-    let b_gibbs = thermochemistry(&b, &default_conditions()).unwrap().gibbs;
-    assert_eq!(references.gibbs.get("am"), Some(&b_gibbs));
+    let b_thermo = thermochemistry(&b, &default_conditions()).unwrap();
+    assert_eq!(references.enthalpy.get("am"), Some(&b_thermo.enthalpy));
+    assert_eq!(
+        references.entropy_term.get("am"),
+        Some(&b_thermo.entropy_term)
+    );
+    assert_eq!(references.gibbs.get("am"), Some(&b_thermo.gibbs));
 }
 
 #[test] // rq-90e2ea3e
@@ -147,6 +156,8 @@ fn the_reference_s_undefined_level_leaves_that_level_undefined() {
     ));
     let references = collect_monomers(&[compact, extended], &memo(), SortKey::Rg);
     assert_eq!(references.electronic.get("na"), Some(&-10.0));
+    assert!(!references.enthalpy.contains_key("na"));
+    assert!(!references.entropy_term.contains_key("na"));
     assert!(!references.gibbs.contains_key("na"));
 }
 
@@ -161,11 +172,13 @@ fn failed_monomer_records_never_qualify() {
 }
 
 #[test] // rq-9063d573
-fn a_monomer_without_thermochemistry_has_no_gibbs_reference() {
+fn a_monomer_without_thermochemistry_has_no_thermal_reference() {
     let mut no_freqs = monomer("am1", Some(-50.0), "am", 1000.0);
     no_freqs.vibrational_frequencies = None;
     let references = collect_monomers(&[no_freqs], &memo(), SortKey::El);
     assert_eq!(references.electronic.get("am"), Some(&-50.0));
+    assert!(!references.enthalpy.contains_key("am"));
+    assert!(!references.entropy_term.contains_key("am"));
     assert!(!references.gibbs.contains_key("am"));
 }
 
@@ -185,17 +198,86 @@ fn a_2am1sa_cluster_forms_from_its_stoichiometric_monomers() {
         formation,
         Formation {
             electronic: Some(-1.0),
+            enthalpy: None,
+            entropy_term: None,
             gibbs: None,
         }
     );
 }
 
+/// A cluster-shaped record with the same geometry and modes as the
+/// monomer template, but with the electronic energy adjusted so its
+/// enthalpy hits `target` exactly (the derivation is linear in the
+/// electronic energy).
+fn with_enthalpy(name: &str, pairs: &[(&str, u32)], mode_value: f64, target: f64) -> Record {
+    let mut record = Record {
+        name: Some(name.to_string()),
+        electronic_energy: Some(0.0),
+        geometry: Some(hexagon()),
+        vibrational_frequencies: Some(modes(12, mode_value)),
+        components: Some(components(pairs)),
+        ..Record::default()
+    };
+    let thermal = thermochemistry(&record, &default_conditions())
+        .expect("template has defined thermochemistry")
+        .enthalpy;
+    record.electronic_energy = Some(target - thermal);
+    record
+}
+
+#[test] // rq-cfc7f6f3
+fn a_2am1sa_cluster_has_a_stoichiometric_formation_enthalpy() {
+    // Enthalpy references am = -49.9 and sa = -39.9; a cluster record
+    // with components am = 2 sa = 1 and enthalpy -140.7: the formation
+    // enthalpy is -140.7 - 2*(-49.9) - (-39.9) = -1.0 Eh.
+    let mut references = MonomerReferences::default();
+    references.enthalpy.insert("am".to_string(), -49.9);
+    references.enthalpy.insert("sa".to_string(), -39.9);
+    let cluster = with_enthalpy("cluster", &[("am", 2), ("sa", 1)], 1000.0, -140.7);
+    let enthalpy = thermochemistry(&cluster, &default_conditions())
+        .unwrap()
+        .enthalpy;
+    assert!((enthalpy - (-140.7)).abs() < 1e-12);
+    let formation = formation_values(&cluster, &references, &memo(), &ConcConditions::default());
+    assert!((formation.enthalpy.unwrap() - (-1.0)).abs() < 1e-12);
+}
+
+#[test] // rq-91cdbab5
+fn a_2am1sa_cluster_has_a_stoichiometric_formation_entropy_term() {
+    // T*S references am = 0.01 and sa = 0.02; a cluster whose own T*S is
+    // its derivation's: the formation entropy term is that value minus
+    // 2*0.01 + 0.02, and the formation free energy is the formation
+    // enthalpy minus the formation entropy term.
+    let mut references = MonomerReferences::default();
+    references.enthalpy.insert("am".to_string(), -49.9);
+    references.enthalpy.insert("sa".to_string(), -39.9);
+    references.entropy_term.insert("am".to_string(), 0.01);
+    references.entropy_term.insert("sa".to_string(), 0.02);
+    references.gibbs.insert("am".to_string(), -49.9 - 0.01);
+    references.gibbs.insert("sa".to_string(), -39.9 - 0.02);
+    let cluster = with_enthalpy("cluster", &[("am", 2), ("sa", 1)], 1000.0, -140.7);
+    let ts = thermochemistry(&cluster, &default_conditions())
+        .expect("cluster has defined thermochemistry")
+        .entropy_term;
+    let formation = formation_values(&cluster, &references, &memo(), &ConcConditions::default());
+    assert_eq!(formation.entropy_term, Some(ts - 2.0 * 0.01 - 0.02));
+    // g_form = h_form - st_form (rqm/formation.md Formation Values).
+    assert!(
+        (formation.gibbs.unwrap()
+            - (formation.enthalpy.unwrap() - formation.entropy_term.unwrap()))
+        .abs()
+            < 1e-12
+    );
+}
+
 #[test] // rq-36de901e
-fn a_monomer_s_own_formation_energy_is_zero() {
+fn a_monomer_s_own_formation_values_are_zero() {
     let monomer = with_gibbs("am1", "am", 1000.0, -50.0);
     let references = collect_monomers(std::slice::from_ref(&monomer), &memo(), SortKey::El);
     let formation = formation_values(&monomer, &references, &memo(), &ConcConditions::default());
     assert_eq!(formation.electronic, Some(0.0));
+    assert_eq!(formation.enthalpy, Some(0.0));
+    assert_eq!(formation.entropy_term, Some(0.0));
     assert_eq!(formation.gibbs, Some(0.0));
 }
 
@@ -214,8 +296,8 @@ fn a_missing_code_reference_leaves_that_level_undefined() {
 }
 
 #[test] // rq-650192f2
-fn the_two_levels_are_independently_undefined() {
-    // The am monomer supplies both levels; the na monomer has an energy
+fn the_electronic_level_is_independent_of_the_thermal_levels() {
+    // The am monomer supplies every level; the na monomer has an energy
     // but no frequencies, so only the cluster's electronic level forms.
     let am = with_gibbs("am1", "am", 1000.0, -50.0);
     let mut na = monomer("na1", Some(-40.0), "na", 1000.0);
@@ -226,11 +308,39 @@ fn the_two_levels_are_independently_undefined() {
     let references = collect_monomers(&[am, na], &memo(), SortKey::El);
     let formation = formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert!(formation.electronic.is_some());
+    assert_eq!(formation.enthalpy, None);
+    assert_eq!(formation.entropy_term, None);
+    assert_eq!(formation.gibbs, None);
+}
+
+#[test] // rq-22dd2e0b
+fn a_thermal_reference_gap_leaves_the_three_thermal_levels_undefined_together() {
+    // The am monomer carries thermochemistry; the na monomer has an
+    // energy but no frequencies, so its thermal references are absent:
+    // the cluster's thermal levels are undefined together while the
+    // electronic level still forms.
+    let am = with_gibbs("am1", "am", 1000.0, -50.0);
+    let mut na = monomer("na1", Some(-40.0), "na", 1000.0);
+    na.vibrational_frequencies = None;
+    let cluster = with_gibbs("cluster", "am", 1000.0, -95.0);
+    let mut cluster = cluster;
+    cluster.components = Some(components(&[("am", 1), ("na", 1)]));
+    let references = collect_monomers(&[am, na], &memo(), SortKey::El);
+    // The thermal reference gap: am has thermal references, na does not.
+    assert!(references.enthalpy.contains_key("am"));
+    assert!(!references.enthalpy.contains_key("na"));
+    let formation = formation_values(&cluster, &references, &memo(), &ConcConditions::default());
+    // Both electronic references exist, so the electronic level is Some.
+    let electronic = formation.electronic.unwrap();
+    assert!((electronic - (-5.0)).abs() < 1e-12);
+    // The three thermal levels are undefined together.
+    assert_eq!(formation.enthalpy, None);
+    assert_eq!(formation.entropy_term, None);
     assert_eq!(formation.gibbs, None);
 }
 
 #[test] // rq-b02bcba1
-fn records_without_components_form_at_neither_level() {
+fn records_without_components_form_at_no_level() {
     let record = Record {
         name: Some("bare".to_string()),
         electronic_energy: Some(-60.0),
@@ -246,6 +356,8 @@ fn records_without_components_form_at_neither_level() {
         formation,
         Formation {
             electronic: None,
+            enthalpy: None,
+            entropy_term: None,
             gibbs: None,
         }
     );
@@ -300,7 +412,7 @@ fn the_corrected_section_evaluates_the_attached_corrections() {
 fn a_record_without_a_correction_has_dashes_in_the_corrected_section() {
     let mon = corrected_monomer("am1", -50.0, "am", -76.5);
     let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
-    // The cluster itself carries no correction: both levels are undefined.
+    // The cluster itself carries no correction: every level is undefined.
     let cluster = monomer("cluster", Some(-141.0), "am", 1000.0);
     let mut cluster = cluster;
     cluster.components = Some(components(&[("am", 2)]));
@@ -310,21 +422,27 @@ fn a_record_without_a_correction_has_dashes_in_the_corrected_section() {
         formation,
         Formation {
             electronic: None,
+            enthalpy: None,
+            entropy_term: None,
             gibbs: None,
         }
     );
 }
 
 #[test] // rq-5ca4f95d
-fn a_reference_monomer_without_a_correction_leaves_both_levels_undefined() {
+fn a_reference_monomer_without_a_correction_leaves_every_level_undefined() {
     let mon = monomer("am1", Some(-50.0), "am", 1000.0);
     let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
     assert!(references.electronic.is_empty());
+    assert!(references.enthalpy.is_empty());
+    assert!(references.entropy_term.is_empty());
     assert!(references.gibbs.is_empty());
     let cluster = corrected_cluster(-141.0, -167.5);
     let formation =
         corrected_formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert_eq!(formation.electronic, None);
+    assert_eq!(formation.enthalpy, None);
+    assert_eq!(formation.entropy_term, None);
     assert_eq!(formation.gibbs, None);
 }
 
@@ -367,7 +485,7 @@ fn the_corrected_section_prints_in_the_runs_unit() {
         .expect("header row")
         .split_whitespace()
         .collect();
-    assert_eq!(header, ["name", "elcorr", "gcorr"]);
+    assert_eq!(header, ["name", "elcorr", "hcorr", "stcorr", "gcorr"]);
     let row = kcal.lines().nth(1).expect("one row");
     let value: f64 = row
         .split_whitespace()
@@ -389,6 +507,8 @@ fn filtered_away_monomers_serve_as_no_corrected_references() {
     let formation =
         corrected_formation_values(&cluster, &references, &memo(), &ConcConditions::default());
     assert_eq!(formation.electronic, None);
+    assert_eq!(formation.enthalpy, None);
+    assert_eq!(formation.entropy_term, None);
     assert_eq!(formation.gibbs, None);
 }
 
@@ -396,12 +516,66 @@ fn filtered_away_monomers_serve_as_no_corrected_references() {
 fn corrected_references_are_independent_per_level() {
     // The selected monomer carries a correction energy but undefined
     // corrected Gibbs (no frequencies beyond the silent six): the
-    // electronic reference exists while the Gibbs reference does not.
+    // electronic reference exists while the thermal references do not.
     let mut mon = corrected_monomer("am1", -50.0, "am", -76.5);
     mon.vibrational_frequencies = None;
     let references = corrected_monomer_references(std::slice::from_ref(&mon), &memo(), SortKey::El);
     assert_eq!(references.electronic.get("am"), Some(&-76.5));
+    assert!(!references.enthalpy.contains_key("am"));
+    assert!(!references.entropy_term.contains_key("am"));
     assert!(!references.gibbs.contains_key("am"));
+}
+
+#[test] // rq-cdb75b97
+fn the_corrected_formation_enthalpy_subtracts_the_corrected_monomer_enthalpies() {
+    // A corrected 1am1sa cluster against corrected am and sa monomers:
+    // the corrected formation enthalpy is hcorr(cluster) - hcorr(am) -
+    // hcorr(sa), and the corrected formation enthalpy minus the
+    // corrected formation entropy term equals the corrected formation
+    // free energy.
+    let am = corrected_monomer("am1", -50.0, "am", -76.5);
+    let sa = corrected_monomer("sa1", -40.0, "sa", -69.5);
+    let mut cluster = corrected_cluster(-141.0, -167.5);
+    cluster.components = Some(components(&[("am", 1), ("sa", 1)]));
+    let memo = memo();
+    let references = corrected_monomer_references(&[am.clone(), sa.clone()], &memo, SortKey::El);
+    let formation =
+        corrected_formation_values(&cluster, &references, &memo, &ConcConditions::default());
+    let hcorr = |record: &Record| memo.value("hcorr", record).unwrap();
+    assert_eq!(
+        formation.enthalpy,
+        Some(hcorr(&cluster) - hcorr(&am) - hcorr(&sa))
+    );
+    // The corrected levels satisfy gcorr_form = hcorr_form - stcorr_form
+    // (rqm/formation.md Corrected Formation Section).
+    assert!(
+        (formation.gibbs.unwrap()
+            - (formation.enthalpy.unwrap() - formation.entropy_term.unwrap()))
+        .abs()
+            < 1e-12
+    );
+}
+
+#[test] // rq-4ca420a5
+fn the_corrected_entropy_term_equals_the_raw_entropy_term() {
+    // The correction does not alter any thermal term, so the corrected
+    // section's st value equals the raw section's st whenever both are
+    // defined — here through the same record's two formation values.
+    let am = corrected_monomer("am1", -50.0, "am", -76.5);
+    let sa = corrected_monomer("sa1", -40.0, "sa", -69.5);
+    let mut cluster = corrected_cluster(-141.0, -167.5);
+    cluster.components = Some(components(&[("am", 1), ("sa", 1)]));
+    let memo = memo();
+    let raw_references = collect_monomers(&[am.clone(), sa.clone()], &memo, SortKey::El);
+    let corrected_references = corrected_monomer_references(&[am, sa], &memo, SortKey::El);
+    let raw = formation_values(&cluster, &raw_references, &memo, &ConcConditions::default());
+    let corrected = corrected_formation_values(
+        &cluster,
+        &corrected_references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    assert_eq!(corrected.entropy_term, raw.entropy_term);
 }
 
 // --- Concentrations (rqm/formation.md, Formation at Given Concentrations) ---
@@ -658,6 +832,9 @@ fn the_collapsed_g_includes_the_conformational_entropy_term() {
     // The collapsed el equals either conformer's: equal electronic
     // energies make the population-weighted mean that energy.
     assert!((ensemble.electronic.unwrap() - conformer.electronic.unwrap()).abs() < EPS);
+    // The collapsed h equals either conformer's: equal enthalpies make
+    // the population-weighted mean that enthalpy.
+    assert!((ensemble.enthalpy.unwrap() - conformer.enthalpy.unwrap()).abs() < EPS);
     // The collapsed g sits k_B*T*ln(4/3) below the best conformer's.
     assert!(
         (ensemble.gibbs.unwrap() - (conformer.gibbs.unwrap() - kbt() * (4.0f64 / 3.0).ln())).abs()
@@ -665,6 +842,78 @@ fn the_collapsed_g_includes_the_conformational_entropy_term() {
         "ensemble g {:?} vs conformer g {:?}",
         ensemble.gibbs,
         conformer.gibbs
+    );
+    // The collapsed st carries the same k_B*T*ln(4/3) shift relative to
+    // the best conformer's: the conformational stabilization appears in
+    // the entropy term rather than lowering the enthalpy.
+    assert!(
+        (ensemble.entropy_term.unwrap()
+            - (conformer.entropy_term.unwrap() + kbt() * (4.0f64 / 3.0).ln()))
+        .abs()
+            < EPS,
+        "ensemble st {:?} vs conformer st {:?}",
+        ensemble.entropy_term,
+        conformer.entropy_term
+    );
+}
+
+#[test] // rq-df7a2c88
+fn the_collapsed_entropy_term_is_the_mean_enthalpy_minus_the_ensemble_gibbs() {
+    // Two 2am1sa conformers with equal electronic energies and
+    // enthalpies whose Gibbs values differ by exactly kB*T*ln(3): the
+    // collapsed row's h is the population-weighted mean of the
+    // conformers' h formation values, its st is that mean minus the
+    // ensemble free energy, and its g is the ensemble free energy.
+    let template = cluster_with_gibbs("a", &[("am", 2), ("sa", 1)], 1000.0, -91.0);
+    let excited = with_multiplicity(&template, 3);
+    let am = with_gibbs("am1", "am", 1000.0, -50.0);
+    let sa = with_gibbs("sa1", "sa", 1000.0, -40.0);
+    let memo = memo();
+    let records = vec![template, excited, am, sa];
+    let ensembles = collapse_ensembles(&records, &memo);
+    let references = ensemble_references(&ensembles);
+    let ensemble = ensemble_formation_values(
+        &ensembles[0],
+        &references,
+        &memo,
+        &ConcConditions::default(),
+    );
+    let record_references = collect_monomers(&records, &memo, SortKey::El);
+    let formations: Vec<Formation> = records
+        .iter()
+        .take(2)
+        .map(|record| {
+            formation_values(
+                record,
+                &record_references,
+                &memo,
+                &ConcConditions::default(),
+            )
+        })
+        .collect();
+    // The members' Boltzmann populations: the multiplicity-3 conformer
+    // (records[1]) holds the lower Gibbs value, so its weight is 3/4.
+    let weights = [0.25, 0.75];
+    let mean_h =
+        weights[0] * formations[0].enthalpy.unwrap() + weights[1] * formations[1].enthalpy.unwrap();
+    assert!(
+        (ensemble.enthalpy.unwrap() - mean_h).abs() < EPS,
+        "collapsed h {:?} vs mean {:?}",
+        ensemble.enthalpy,
+        mean_h
+    );
+    // st_ens = h_ens - g_ens (rqm/formation.md Boltzmann-Averaged
+    // Sections).
+    assert!(
+        (ensemble.entropy_term.unwrap() - (ensemble.enthalpy.unwrap() - ensemble.gibbs.unwrap()))
+            .abs()
+            < EPS
+    );
+    // g_ens is the ensemble free energy: g_min - k_B*T*ln(4/3).
+    assert!(
+        (ensemble.gibbs.unwrap() - (formations[1].gibbs.unwrap() - kbt() * (4.0f64 / 3.0).ln()))
+            .abs()
+            < EPS
     );
 }
 
@@ -719,7 +968,7 @@ fn the_collapsed_el_is_the_population_weighted_mean() {
 fn monomer_rows_print_exactly_zero() {
     // Two am conformers with defined thermochemistry: the monomer
     // ensemble supplies its own reference, so the 1am row prints 0 at
-    // both levels.
+    // every level.
     let first = with_gibbs("am1", "am", 1000.0, -50.0);
     let second = with_multiplicity(&first, 3);
     let cluster = cluster_with_gibbs("cluster", &[("am", 2)], 1000.0, -101.0);
@@ -743,8 +992,8 @@ fn monomer_rows_print_exactly_zero() {
         .skip(1)
         .map(|cell| cell.parse::<f64>().expect("number"))
         .collect();
-    assert_eq!(values.len(), 2);
-    assert!(values[0].abs() < EPS && values[1].abs() < EPS, "{section}");
+    assert_eq!(values.len(), 4);
+    assert!(values.iter().all(|value| value.abs() < EPS), "{section}");
 }
 
 #[test] // rq-f93d319b
@@ -844,6 +1093,15 @@ fn the_corrected_section_collapses_at_its_own_level() {
         (ensemble.gibbs.unwrap() - (conformer.gibbs.unwrap() - kbt() * (4.0f64 / 3.0).ln())).abs()
             < EPS
     );
+    // Equal hcorr values make the collapsed hcorr either conformer's,
+    // and the collapsed stcorr is its hcorr value minus its gcorr
+    // value.
+    assert!((ensemble.enthalpy.unwrap() - conformer.enthalpy.unwrap()).abs() < EPS);
+    assert!(
+        (ensemble.entropy_term.unwrap() - (ensemble.enthalpy.unwrap() - ensemble.gibbs.unwrap()))
+            .abs()
+            < EPS
+    );
 }
 
 #[test] // rq-ade63c60
@@ -861,7 +1119,7 @@ fn a_corrected_member_without_thermochemistry_contributes_nothing() {
     assert!((ensembles[0].gibbs.unwrap() - memo.value("gcorr", &full).unwrap()).abs() < 1e-15);
     assert!((ensembles[0].electronic.unwrap() - corrected_energy(&full).unwrap()).abs() < 1e-15);
     // And the collapsed row's values equal the full conformer's
-    // uncollapsed row's values.
+    // uncollapsed row's values at every level.
     let references = corrected_ensemble_references(&ensembles);
     let ensemble = corrected_ensemble_formation_values(
         &ensembles[0],
@@ -873,11 +1131,13 @@ fn a_corrected_member_without_thermochemistry_contributes_nothing() {
     let conformer =
         corrected_formation_values(&full, &record_references, &memo, &ConcConditions::default());
     assert!((ensemble.electronic.unwrap() - conformer.electronic.unwrap()).abs() < 1e-15);
+    assert!((ensemble.enthalpy.unwrap() - conformer.enthalpy.unwrap()).abs() < 1e-15);
+    assert!((ensemble.entropy_term.unwrap() - conformer.entropy_term.unwrap()).abs() < 1e-15);
     assert!((ensemble.gibbs.unwrap() - conformer.gibbs.unwrap()).abs() < 1e-15);
 }
 
 #[test] // rq-0df193f0
-fn a_monomer_group_without_any_gibbs_loses_its_reference_at_both_levels() {
+fn a_monomer_group_without_any_gibbs_loses_its_reference_at_every_level() {
     let cluster = cluster_with_gibbs("cluster", &[("am", 2)], 1000.0, -101.0);
     let mut sp_am = with_gibbs("am1", "am", 1000.0, -50.0);
     sp_am.vibrational_frequencies = None;
@@ -889,19 +1149,29 @@ fn a_monomer_group_without_any_gibbs_loses_its_reference_at_both_levels() {
     // The am group's single record defines no Gibbs level, so its
     // ensemble carries no values and supplies no reference.
     assert_eq!(ensembles[1].electronic, None);
+    assert_eq!(ensembles[1].enthalpy, None);
+    assert_eq!(ensembles[1].entropy_term, None);
     assert_eq!(ensembles[1].gibbs, None);
     let references = ensemble_references(&ensembles);
     assert!(!references.electronic.contains_key("am"));
+    assert!(!references.enthalpy.contains_key("am"));
     assert!(references.gibbs.contains_key("sa"));
-    // The cluster loses its reference at both levels at once.
+    // The cluster loses its reference at every level at once.
     let ensemble = ensemble_formation_values(
         &ensembles[0],
         &references,
         &memo,
         &ConcConditions::default(),
     );
-    assert_eq!(ensemble.electronic, None);
-    assert_eq!(ensemble.gibbs, None);
+    assert_eq!(
+        ensemble,
+        Formation {
+            electronic: None,
+            enthalpy: None,
+            entropy_term: None,
+            gibbs: None,
+        }
+    );
     // Without the collapse the electronic level still forms.
     let record_references = collect_monomers(&records, &memo, SortKey::El);
     let uncollapsed = formation_values(
@@ -911,6 +1181,8 @@ fn a_monomer_group_without_any_gibbs_loses_its_reference_at_both_levels() {
         &ConcConditions::default(),
     );
     assert!(uncollapsed.electronic.is_some());
+    assert_eq!(uncollapsed.enthalpy, None);
+    assert_eq!(uncollapsed.entropy_term, None);
     assert_eq!(uncollapsed.gibbs, None);
 }
 
@@ -930,8 +1202,12 @@ fn records_without_components_form_one_unnamed_ensemble() {
     assert_eq!(ensembles.len(), 2);
     assert_eq!(ensembles[0].components, Some(components(&[("am", 1)])));
     assert!(ensembles[0].gibbs.is_some());
+    assert!(ensembles[0].enthalpy.is_some());
+    assert!(ensembles[0].entropy_term.is_some());
     assert_eq!(ensembles[1].components, None);
     assert_eq!(ensembles[1].electronic, None);
+    assert_eq!(ensembles[1].enthalpy, None);
+    assert_eq!(ensembles[1].entropy_term, None);
     assert_eq!(ensembles[1].gibbs, None);
 }
 

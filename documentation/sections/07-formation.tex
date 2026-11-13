@@ -4,13 +4,18 @@ Clusters are put in context by their formation energies: how much a
 structure's energy differs from a stoichiometric mix of isolated,
 single-component reference structures. A cluster database already contains
 its own references, namely the monomers. \CJKQC{} scans the run's final
-records for monomers and prints each printed record's formation energy and
-formation free energy as a section after the main table.
+records for monomers and prints each printed record's formation energy,
+formation enthalpy, formation entropy term, and formation free energy as a
+section after the main table.
 
 Nothing is stored. Formation values are derived at request time from the
 records' stored values under the run's thermochemistry conditions, so
 temperature, reference frequency, and unit changes apply to them like to any
-other derived property.
+other derived property. The \flg{--conc} flag further shifts the
+free-energy and entropy-term levels at vapors of given concentrations
+(Section~\ref{sec:concentrations}), and \flg{--bavg} collapses each printed
+section to one Boltzmann-averaged row per composition
+(Section~\ref{sec:bavg}).
 
 The sign convention is:
 
@@ -54,18 +59,22 @@ The ordering is always ascending; \flg{--reverse} orients the table, never
 the reference. Ties keep the first in load order. For numeric properties, a
 monomer whose sorting value is undefined orders after every defined one.
 
-Both reference values come from that one record:
+All reference values come from that one record:
 
 \begin{itemize}
   \item the \textbf{electronic reference} is its \fld{electronic_energy};
-  \item the \textbf{Gibbs reference} is its Gibbs free energy derived at the
-        run's conditions.
+  \item the \textbf{enthalpy reference} is its enthalpy;
+  \item the \textbf{entropy-term reference} is its $T\cdot S$ in energy
+        units, the same quantity the main table's \fld{s} column prints;
+  \item the \textbf{Gibbs reference} is its Gibbs free energy.
 \end{itemize}
 
-Under \flg{--sort g}, the lowest-G conformer supplies the electronic
-reference too, even when another conformer's electronic energy is lower. A
-level whose value the chosen record lacks has no reference at that level. A
-code with no qualifying monomer has no reference.
+The last three derive at the run's conditions and come defined together: the
+chosen record either has defined thermochemistry or it does not. Under
+\flg{--sort g}, the lowest-G conformer supplies every reference, even when
+another conformer's electronic energy or enthalpy is lower. A level whose
+value the chosen record lacks has no reference at that level. A code with no
+qualifying monomer has no reference.
 
 \subsection{The raw formation section}\label{sec:raw-formation}
 
@@ -79,22 +88,37 @@ For a printed record with components $C = \{\text{code}_i : n_i\}$:
 \begin{align}
 E_{\mathrm{form}} &= E_{\mathrm{el}}
   - \sum_i n_i\,E_{\mathrm{ref}}(\text{code}_i),\\
-G_{\mathrm{form}} &= G - \sum_i n_i\,G_{\mathrm{ref}}(\text{code}_i).
+H_{\mathrm{form}} &= H
+  - \sum_i n_i\,H_{\mathrm{ref}}(\text{code}_i),\\
+T S_{\mathrm{form}} &= T S
+  - \sum_i n_i\,T S_{\mathrm{ref}}(\text{code}_i),\\
+G_{\mathrm{form}} &= G
+  - \sum_i n_i\,G_{\mathrm{ref}}(\text{code}_i).
 \end{align}
 
-Both reference values are the ones selected above. A level is undefined when
-the record lacks \fld{components}, lacks the level's input energy (electronic
-energy for the electronic level, defined thermochemistry for the Gibbs
-level), or any referenced code lacks that level's monomer reference.
-Undefined is a property of the level: a record can have a defined formation
-energy and an undefined formation free energy, and vice versa.
+All reference values are the ones selected above. The four levels satisfy
+$G_{\mathrm{form}} = H_{\mathrm{form}} - T S_{\mathrm{form}}$, and the
+electronic level is independent of the other three.
 
-The section is a table with header \fld{name el g}, one row per printed
+A level is undefined when the record lacks \fld{components}, lacks the
+level's input energy (electronic energy for the electronic level, defined
+thermochemistry for the enthalpy, entropy-term, and Gibbs levels), or any
+referenced code lacks that level's monomer reference. The enthalpy,
+entropy-term, and Gibbs levels are defined together, since all three require
+defined thermochemistry — an extreme concentration can later blank the
+entropy-term and Gibbs levels alone (Section~\ref{sec:concentrations}) —
+and the electronic level's definedness is independent.
+Undefined is a property of the level: a record can have a defined formation
+energy and undefined thermal levels — a monomer without frequencies, say —
+and vice versa.
+
+The section is a table with header \fld{name el h st g}, one row per printed
 record in run order. \fld{name} is the short composition label (for example
 \texttt{2am3sa}), or \texttt{-} when the record has no components.
-\fld{el} and \fld{g} are the formation energy and formation free energy in
-the run's energy unit: hartree by default, kcal/mol under \flg{--unit}. An
-undefined value prints \texttt{-}.
+\fld{el}, \fld{h}, \fld{st}, and \fld{g} are the formation energy, formation
+enthalpy, formation entropy term, and formation free energy in the run's
+energy unit: hartree by default, kcal/mol under \flg{--unit}. An undefined
+value prints \texttt{-}.
 
 \subsection{The corrected formation section}\label{sec:corrected-formation}
 
@@ -105,21 +129,34 @@ never mixed.
 
 The reference monomers are the same set as for the raw section, selected the
 same way. A code's corrected electronic reference is that monomer's
-correction energy, and its corrected Gibbs reference is the monomer's
-\fld{gcorr} value. A level's reference is undefined when the selected
-monomer carries no correction, or its corrected Gibbs is undefined.
+correction energy, its corrected enthalpy reference is the monomer's
+\fld{hcorr} value, its corrected entropy-term reference is the monomer's
+$T\cdot S$, and its corrected Gibbs reference is the monomer's \fld{gcorr}
+value. A correction does not alter any thermal term, so the entropy-term
+reference is the raw one. A level's reference is undefined when the selected
+monomer carries no correction or its corrected thermochemistry is
+undefined; the corrected enthalpy, entropy-term, and Gibbs references are
+defined together.
 
 For a printed record:
 
 \begin{align}
 E_{\mathrm{form,corr}} &= E_{\mathrm{corr}}
   - \sum_i n_i\,E_{\mathrm{corr,ref}}(\text{code}_i),\\
+H_{\mathrm{form,corr}} &= H_{\mathrm{corr}}
+  - \sum_i n_i\,H_{\mathrm{corr,ref}}(\text{code}_i),\\
+T S_{\mathrm{form,corr}} &= T S
+  - \sum_i n_i\,T S_{\mathrm{ref}}(\text{code}_i),\\
 G_{\mathrm{form,corr}} &= G_{\mathrm{corr}}
   - \sum_i n_i\,G_{\mathrm{corr,ref}}(\text{code}_i).
 \end{align}
 
-The section has header \fld{name elcorr gcorr}. It prints after the raw
-formation section, when one was requested. A run with
+The corrected levels satisfy $G_{\mathrm{form,corr}} = H_{\mathrm{form,corr}}
+- T S_{\mathrm{form,corr}}$, and the corrected entropy term equals the raw
+section's \fld{st} whenever both are defined.
+
+The section has header \fld{name elcorr hcorr stcorr gcorr}. It prints after
+the raw formation section, when one was requested. A run with
 \flg{--formation-corr} but no other print flag prints only the corrected
 section.
 
@@ -151,20 +188,34 @@ Here $p^\circ = 101325$ Pa. The value must be finite and positive; the
 \texttt{\^{}} power syntax is not part of the grammar. For powers of ten, use
 scientific notation instead, for example \texttt{1e10} or \texttt{1E10} for
 $10^{10}$. The concentration term
-is a chemical-potential (entropy) correction, so it shifts only the Gibbs
-levels: the raw section's \fld{g} and the corrected section's \fld{gcorr}.
-The electronic levels \fld{el} and \fld{elcorr} stay at the standard state.
+is a chemical-potential (entropy) correction, so it shifts the two
+entropy-linked levels of each section — the raw section's \fld{g} and
+\fld{st}, and the corrected section's \fld{gcorr} and \fld{stcorr} — by the
+same magnitude in opposite directions: a vapor below the standard state
+raises the formation free energy and lowers the formation entropy term. The
+electronic levels \fld{el} and \fld{elcorr} and the enthalpy levels \fld{h}
+and \fld{hcorr} stay at the standard state.
 
-For the set of concentration settings $S$ and a record with components $C$:
+For the set of concentration settings $S$ and a record with components $C$,
+let the concentration term be
 
 \begin{equation}
-G_{\mathrm{conc}} = G_{\mathrm{form}}
-  - \sum_{\text{code}_i \in S} n_{i,\mathrm{eff}}\,
-    \frac{R T \ln(c_i/p^\circ)}{N_A E_h},
+\Delta_{\mathrm{conc}} = \sum_{\text{code}_i \in S} n_{i,\mathrm{eff}}\,
+  \frac{R T \ln(c_i/p^\circ)}{N_A E_h},
 \end{equation}
 
-where $c_i$ is the resolved partial pressure and $n_{i,\mathrm{eff}} = n_i$.
-Under \flg{--cnt}, the self-consistent form is used:
+where $c_i$ is the resolved partial pressure, $n_{i,\mathrm{eff}} = n_i$, and
+the sum runs over the settings whose code appears in $C$. The two shifted
+levels become
+
+\begin{equation}
+G_{\mathrm{conc}} = G_{\mathrm{form}} - \Delta_{\mathrm{conc}},
+\qquad
+T S_{\mathrm{conc}} = T S_{\mathrm{form}} + \Delta_{\mathrm{conc}},
+\end{equation}
+
+so the identity $G_{\mathrm{conc}} = H_{\mathrm{form}} - T S_{\mathrm{conc}}$
+survives. Under \flg{--cnt}, the self-consistent form is used:
 
 \begin{equation}
 n_{i,\mathrm{eff}} = n_i\,\frac{N-1}{N},
@@ -172,10 +223,13 @@ n_{i,\mathrm{eff}} = n_i\,\frac{N-1}{N},
 \end{equation}
 
 The self-consistent form keeps the concentration term of a monomer at zero
-under any concentration, so a monomer's formation free energy stays exactly
-zero while a non-reference conformer keeps its conformer difference. A
-concentration setting whose code is absent from the record's components
-contributes nothing.
+under any concentration, so a monomer's formation free energy and formation
+entropy term stay exactly zero while a non-reference conformer keeps its
+conformer difference. A concentration setting whose code is absent from the
+record's components contributes nothing. A concentration so extreme that
+its term leaves the range of representable numbers leaves the free-energy and
+entropy-term levels undefined rather than printing an infinite value; the
+other levels keep their values.
 
 \subsection{Boltzmann-averaged sections}\label{sec:bavg}
 
@@ -193,31 +247,50 @@ derived Gibbs for the raw section, \fld{gcorr} for the corrected one. Failed
 and truncated records contribute nothing, and an \fld{ok} record without the
 level value contributes nothing.
 
-An ensemble with members carries two values:
+An ensemble with members carries four values:
 
 \begin{itemize}
   \item the \textbf{electronic value} is the members' population-weighted
         mean $\sum_j p_j e_j$, with the members' Boltzmann populations at the
         run's temperature. Here $e_j$ is \fld{electronic_energy} for the raw
         section and the correction energy for the corrected section;
+  \item the \textbf{enthalpy value} is the members' population-weighted mean
+        $\sum_j p_j H_j$ of their enthalpies — \fld{hcorr} for the
+        corrected section;
   \item the \textbf{Gibbs value} is the ensemble free energy
         \begin{equation}
         G_{\mathrm{ens}} = -k_B T \ln\!\left(\sum_j e^{-G_j/(k_B T)}\right)
         = G_{\min} - k_B T \ln Z,
         \end{equation}
         computed against the members' minimum as in the population
-        numerics. This keeps the conformational entropy term
-        $-k_B T\ln Z$; a plain weighted mean would drop it.
+        numerics. This keeps the conformational stabilization
+        $-k_B T\ln Z$; a plain weighted mean would drop it;
+  \item the \textbf{entropy-term value} is $H_{\mathrm{ens}} -
+        G_{\mathrm{ens}}$, the enthalpy value minus the Gibbs value, so the
+        collapse keeps $G_{\mathrm{ens}} = H_{\mathrm{ens}} - T
+        S_{\mathrm{ens}}$ and the conformational stabilization appears in
+        the entropy term rather than lowering the enthalpy.
 \end{itemize}
 
-The two values are defined together or not at all: a member that defines the
-Gibbs level always defines the electronic level, because the Gibbs derives
-from the electronic energy.
+The four values are defined together or not at all: a member that defines
+the Gibbs level always defines the other three, because the enthalpy,
+entropy term, and Gibbs all derive from the member's thermochemistry and
+the electronic value from its energy.
 
 Over the collapsed set, the standing rules apply unchanged. An ensemble whose
 composition is exactly one component with count 1 is its code's monomer
-ensemble and supplies both reference values; a monomer row's formation values
-are therefore exactly zero. An ensemble without values supplies no reference.
+ensemble and supplies all four reference values; a monomer row's formation
+values are therefore exactly zero at every level. An ensemble without values
+supplies no reference. The formation values subtract the references and the
+concentration term of Section~\ref{sec:concentrations} exactly as for
+records, and the concentration term is constant within a group, so
+concentrating and collapsing give the same numbers in either order.
+
+The collapse always stabilizes a group's own ensemble, but a formation value
+compares two ensembles, so averaging shifts it either way: less favorable
+when the monomer ensembles carry more conformational entropy than the
+cluster ensemble, more favorable in the opposite case. The shift is visible
+in the entropy-term column.
 
 The section prints one row per ensemble in first-appearance order, using the
 same header, unit, and formatting as the uncollapsed section. A composition
@@ -227,7 +300,7 @@ ensemble.
 
 \subsection{A formation example}\label{sec:formation-example}
 
-Print formation energies and free energies for the lowest conformer of each
+Print the four formation levels for the lowest conformer of each
 composition, using the lowest-Gibbs monomer of each code as the reference:
 
 \begin{verbatim}

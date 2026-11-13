@@ -5,14 +5,16 @@ structure's energy differs from a stoichiometric mix of isolated,
 single-component reference structures. A cluster database already carries
 its own references — the monomers. JKQC-style, CJKQC scans the run's
 final records — exactly the records the run prints — for monomers, and
-the `--formation` flag prints each printed record's formation energy and
-formation free energy as a section after the normal property table.
+the `--formation` flag prints each printed record's formation energy,
+formation enthalpy, formation entropy term, and formation free energy as
+a section after the normal property table.
 Nothing is stored: formation values are derived at request time from the
 records' observables under the run's thermochemistry conditions
 (`rqm/thermo.md`), so temperature, reference frequency, and unit changes
 apply to them like to any derived property. The `--conc` and `--cnt`
-flags further evaluate the free-energy level at vapors of named
-components at given concentrations (Formation at Given Concentrations),
+flags further shift the free-energy and entropy-term levels at vapors of
+named components at given concentrations (Formation at Given
+Concentrations),
 and `--bavg` collapses each printed section to one Boltzmann-averaged
 row per composition (Boltzmann-Averaged Sections).
 
@@ -39,13 +41,16 @@ row per composition (Boltzmann-Averaged Sections).
   every defined one. Under `--sort filename` the undefined case is a nameless
   monomer, which orders before every named one — the nameless-first
   carve-out of `rqm/filtering.md` Sort.
-- Both reference values come from that one record: the **electronic
-  reference** is its `electronic_energy`, the **Gibbs reference** its
-  Gibbs free energy derived at the run's conditions (`rqm/thermo.md`).
-  Under `--sort g` the lowest-G conformer supplies the electronic
-  reference too, even when another conformer's electronic energy is lower.
-  A level whose value the chosen record lacks (no electronic energy,
-  undefined thermochemistry) simply has no reference at that level.
+- All reference values come from that one record: the **electronic
+  reference** is its `electronic_energy`, the **enthalpy reference** its
+  H, the **entropy-term reference** its T·S in energy units, and the
+  **Gibbs reference** its G, all derived at the run's conditions
+  (`rqm/thermo.md`). Under `--sort g` the lowest-G conformer supplies
+  every reference, even when another conformer's electronic energy or
+  enthalpy is lower. A level whose value the chosen record lacks (no
+  electronic energy, undefined thermochemistry) simply has no reference
+  at that level; the enthalpy, entropy-term, and Gibbs references are
+  defined together.
 - A code with no qualifying monomer has no reference.
 
 ## Formation Values <!-- rq-c3425396 -->
@@ -54,15 +59,25 @@ For a printed record with components map C = {codeᵢ: nᵢ}:
 
 - **Formation energy** (Eh) = `electronic_energy` − Σᵢ nᵢ ·
   E_ref(codeᵢ), the electronic monomer reference above.
+- **Formation enthalpy** (Eh) = H(record) − Σᵢ nᵢ · H_ref(codeᵢ).
+- **Formation entropy term** (Eh) = T·S(record) − Σᵢ nᵢ ·
+  ST_ref(codeᵢ). This is the temperature-multiplied entropy as an energy
+  term, the same quantity the main table's `s` column prints, not an
+  entropy in J mol⁻¹ K⁻¹.
 - **Formation free energy** (Eh) = G(record) − Σᵢ nᵢ · G_ref(codeᵢ), with
-  both Gibbs values derived at the run's conditions (`rqm/thermo.md`).
+  the Gibbs values derived at the run's conditions (`rqm/thermo.md`).
+- The four levels satisfy g_form = h_form − st_form, and the electronic
+  level is independent of the other three.
 - A level's value is undefined when the record lacks `components`, lacks
   the level's input energy (electronic energy for the el level, defined
-  thermochemistry for the g level), or any referenced code lacks that
-  level's monomer reference.
+  thermochemistry for the h, st, and g levels), or any referenced code
+  lacks that level's monomer reference. The enthalpy, entropy-term, and
+  Gibbs levels are defined together, since all three require defined
+  thermochemistry and their references come from the same selected
+  monomer; the electronic level's definedness is independent.
 - Undefined is a property of the level: a record can have a defined
-  formation energy and an undefined formation free energy (a monomer
-  without frequencies, say), and vice versa.
+  formation energy and undefined thermal levels (a monomer without
+  frequencies, say), and vice versa.
 
 The values follow the sign convention "negative = lower than the isolated
 monomers"; the binding energy is the same number negated, and no separate
@@ -77,16 +92,17 @@ binding column exists.
   print flags requested one) and before any summary line, so stdout is
   always: main table, formation section, summary. A run with `--formation`
   but no column flags prints only the formation section.
-- The section is a table: a header row `name el g`, then one row per
+- The section is a table: a header row `name el h st g`, then one row per
   printed record in run order, aligned like the main table
-  (`rqm/filtering.md` Printing): `name` a text column, `el` and `g`
-  numeric ones, each column as wide as its widest cell (header
+  (`rqm/filtering.md` Printing): `name` a text column, `el`, `h`, `st`,
+  and `g` numeric ones, each column as wide as its widest cell (header
   included), header cells aligning with their columns. `name` is the
   record's composition token —
   the same alphabetical `2am3sa`-style pairs the `--name` column prints
   (`rqm/filtering.md` Printing) — and `-` when the record has no
-  components; `el` and `g` are the formation energy and formation free
-  energy in the run's energy unit — kcal/mol under `--unit`, hartree
+  components; `el`, `h`, `st`, and `g` are the formation energy,
+  formation enthalpy, formation entropy term, and formation free energy
+  in the run's energy unit — kcal/mol under `--unit`, hartree
   otherwise (`rqm/filtering.md` Printing) — formatted like the
   corresponding energy columns, and `-` when undefined.
 - `--formation` computes values for exactly the records the run prints:
@@ -102,17 +118,28 @@ binding column exists.
 - The section uses the same reference monomers as the raw section: the same
   monomer set and the same sort-based selection (Monomer References above). A
   code's corrected electronic reference is that monomer's correction energy,
-  and its corrected Gibbs reference the monomer's `gcorr` value; a level's
-  reference is undefined when the selected monomer carries no correction (or
-  its corrected Gibbs is undefined).
+  its corrected enthalpy reference the monomer's `hcorr`, its corrected
+  entropy-term reference the monomer's T·S, and its corrected Gibbs reference
+  the monomer's `gcorr` value. A reference is undefined when the selected
+  monomer carries no correction or its corrected thermochemistry is undefined;
+  the corrected enthalpy, entropy-term, and Gibbs references are defined
+  together.
 - For a printed record with components map C = {codeᵢ: nᵢ}:
   - **Corrected formation energy** (Eh) = the record's correction energy −
     Σᵢ nᵢ · Ecorr_ref(codeᵢ).
+  - **Corrected formation enthalpy** (Eh) = hcorr(record) − Σᵢ nᵢ ·
+    Hcorr_ref(codeᵢ).
+  - **Corrected formation entropy term** (Eh) = T·S(record) − Σᵢ nᵢ ·
+    ST_ref(codeᵢ). The correction does not alter any thermal term, so this
+    value equals the raw section's `st` whenever both are defined; it is
+    nevertheless gated by the corrected section's definedness.
   - **Corrected formation free energy** (Eh) = gcorr(record) − Σᵢ nᵢ ·
     Gcorr_ref(codeᵢ).
+  - The corrected levels satisfy gcorr_form = hcorr_form − stcorr_form.
   - A level is defined iff the record's own corrected value at that level is
     defined and every referenced code has a defined corrected reference at
-    that level.
+    that level. A record without a correction has no corrected value at any
+    level.
 - The flag is a print flag like `--formation`: it satisfies the
   visible-outcome rule of `rqm/filtering.md` on its own and adds no column to
   the normal table. The corrected section prints after the raw formation
@@ -120,10 +147,10 @@ binding column exists.
   stdout is always: main table, formation section, corrected formation
   section, summary. A run with `--formation-corr` but no other print flag
   prints only the corrected section.
-- The section is a table: a header row `name elcorr gcorr`, then one row per
-  printed record in run order, aligned like the raw section's table. The
-  composition token and the number formatting — the run's energy unit,
-  kcal/mol under `--unit`
+- The section is a table: a header row `name elcorr hcorr stcorr gcorr`,
+  then one row per printed record in run order, aligned like the raw
+  section's table. The composition token and the number formatting — the
+  run's energy unit, kcal/mol under `--unit`
   (`rqm/filtering.md` Printing), formatted like the corresponding energy
   columns, `-` when undefined — are exactly the raw section's rules.
 
@@ -155,40 +182,51 @@ binding column exists.
   usage error; a code whose monomers were filtered away may still appear
   inside cluster compositions and simply forms no reference (Monomer
   References).
-- With specs S and a record whose components map C = {codeᵢ: nᵢ}, the
-  formation section's `g` value is
+- With specs S and a record whose components map C = {codeᵢ: nᵢ}, let
 
-  g_conc = g_form − Σ_{codeᵢ ∈ S} nᵢ,eff · R T ln(cᵢ/p°) / (N_A E_h),
+  c_term = Σ_{codeᵢ ∈ S} nᵢ,eff · R T ln(cᵢ/p°) / (N_A E_h),
 
   with cᵢ the spec's resolved partial pressure and nᵢ,eff = nᵢ. Under
   `--cnt`, the self-consistent form, nᵢ,eff = nᵢ·(N−1)/N where
   N = Σ nᵢ over the record's whole components map. A spec whose code is
-  absent from C contributes nothing, so coverage may be partial.
+  absent from C contributes nothing, so coverage may be partial. The
+  formation section's values become
+
+  g_conc = g_form − c_term,   st_conc = st_form + c_term,
+
+  so the concentration term is an entropy shift: it lowers the formation
+  free energy and raises the formation entropy term by the same
+  magnitude, keeping g_conc = h_form − st_conc.
 - The self-consistent form keeps the concentration term of every
   monomer at zero under any concentration, so the reference monomer's
   own formation free energy stays exactly 0 while a non-reference
   conformer keeps its conformer difference against the reference; the
   total concentration term of a fully covered N-molecule cluster is
   (N−1)·R T-weighted instead of N (JKQC's `-cnt`, "see Wyslouzil"; CJKQC
-  keeps the flag name `--cnt`).
-- Only the Gibbs levels shift: the raw section's `g` and the corrected
-  section's `gcorr` (Corrected Formation Section) each subtract the same
-  correction from their standard-state value. The electronic levels `el`
-  and `elcorr` stay at the standard state — the concentration term is a
-  chemical-potential (entropy) correction with no electronic counterpart,
-  where JKQC applies its correction to every numeric formation column. A
-  level that is undefined stays undefined; the correction never creates
-  a value. A magnitude so extreme that the resolved pressure underflows
-  below the smallest positive double, or the term itself overflows,
-  makes the level undefined rather than infinite — the crate's numerics
-  rule (`rqm/thermo.md` Numerics), never a printed infinity.
+  keeps the flag name `--cnt`). The monomer's formation entropy term
+  stays exactly 0 for the same reason.
+- The entropy levels and the Gibbs levels shift together: the raw
+  section's `g` and `st`, and the corrected section's `gcorr` and
+  `stcorr` (Corrected Formation Section), each carry the same `c_term`,
+  subtracted from the Gibbs value and added to the entropy-term value.
+  The electronic levels `el` and `elcorr` and the enthalpy levels `h` and
+  `hcorr` stay at the standard state — the concentration term is a
+  chemical-potential (entropy) correction with no electronic or enthalpy
+  counterpart, where JKQC applies its correction to every numeric
+  formation column. A level that is undefined stays undefined; the
+  correction never creates a value. A magnitude so extreme that the
+  resolved pressure underflows below the smallest positive double, or the
+  term itself overflows, makes the Gibbs and entropy levels undefined
+  rather than infinite — the crate's numerics rule (`rqm/thermo.md`
+  Numerics), never a printed infinity.
 - p° is the 1 atm standard pressure of `rqm/thermo.md` Constants — the
   same standard state the translational entropy is evaluated at — so a
   spec at exactly p° reproduces the uncorrected values. A concentration
   above p° is accepted and lowers the formation free energy. The main
   table, cutoffs, sorting, `--glob`, and the composition token are
-  untouched: `--conc` changes only the formation sections' `g`/`gcorr`
-  values, printed in the run's energy unit like any formation value.
+  untouched: `--conc` changes only the formation sections'
+  `g`/`gcorr` and `st`/`stcorr` values, printed in the run's energy unit
+  like any formation value.
 
 ## Boltzmann-Averaged Sections <!-- rq-dd65e289 -->
 
@@ -219,27 +257,35 @@ binding column exists.
   without values. The ok-gate keeps the collapsed references consistent
   with the uncollapsed ones, whose monomer references are `ok` records
   by definition (Monomer References).
-- An ensemble with members carries two values in Eh, defined together or
+- An ensemble with members carries four values in Eh, defined together or
   not at all — a member that defines the Gibbs level always defines the
-  electronic level too, since the Gibbs derives from the electronic
+  other three, since the enthalpy, entropy term, and Gibbs all derive
+  from the member's thermochemistry and the electronic value from its
   energy:
   - the **electronic value** is the members' population-weighted mean
     Σⱼ pⱼ·eⱼ of the section's electronic-level inputs — the record's
     `electronic_energy` for the raw section, the correction energy
     (`rqm/correction.md`) for the corrected one — with pⱼ the members'
     Boltzmann populations (`rqm/population.md`) at the run's temperature;
+  - the **enthalpy value** is the members' population-weighted mean
+    Σⱼ pⱼ·Hⱼ of their enthalpy-level values — the enthalpy for the raw
+    section, `hcorr` for the corrected one;
   - the **Gibbs value** is the ensemble free energy
     −k_B·T·ln(Σⱼ exp(−gⱼ/(k_B·T))) over the members' Gibbs-level values —
     equivalently g_min − k_B·T·ln Z, computed against the members' minimum
     as `rqm/population.md` Numerics prescribes. This is the
     conformationally stabilized free energy of the group (JKQC's "-g is
     treated correctly"): a plain population-weighted mean would drop the
-    −k_B·T·ln Z entropy term.
+    −k_B·T·ln Z entropy term;
+  - the **entropy-term value** is H_ens − G_ens, so the collapse keeps
+    g_ens = h_ens − st_ens and the conformational stabilization appears
+    in the entropy term rather than lowering the enthalpy.
 - Over the collapsed set every standing rule applies unchanged. An
   ensemble whose components map is exactly one entry with count 1 is its
-  code's **monomer ensemble** and supplies both of that level's reference
-  values, so a monomer row's formation values are exactly 0; an ensemble
-  without values supplies no reference at either level. The treatment is
+  code's **monomer ensemble** and supplies that level's electronic,
+  enthalpy, entropy-term, and Gibbs reference values, so a monomer row's
+  formation values are exactly 0 at every level; an ensemble without
+  values supplies no reference at any level. The treatment is
   uniform — monomers and clusters are ensembled alike — and a user who
   wants a fixed baseline curates it themselves: with a single monomer
   conformer per code in the record set, the collapsed row reduces to the
@@ -257,7 +303,7 @@ binding column exists.
   section's Gibbs level — a single-point-only group — prints one row of
   dashes where the uncollapsed section would print electronic-level
   values, and a code whose monomers all lack it loses its reference at
-  both levels at once. Undefined members never poison their group: the
+  every level at once. Undefined members never poison their group: the
   surviving members define the ensemble (JKQC's NaN-poisoned columns are
   not carried over). A group whose single member defines the Gibbs level
   collapses to itself, so `--glob` makes the collapse the identity.
@@ -267,20 +313,30 @@ binding column exists.
   when the monomer ensembles carry more conformational entropy than the
   cluster ensemble (forming the cluster costs the monomers' conformer
   freedom) and more favorable in the opposite case, with the terms
-  cancelling for equally floppy cluster and monomers.
+  cancelling for equally floppy cluster and monomers. The stabilization
+  is visible in the entropy-term column, since st_ens = h_ens − g_ens.
 
 ## Feature API <!-- rq-e814b912 -->
 
 ### Types <!-- rq-85b79495 -->
 
 - `MonomerReferences` — the per-code references in Eh: <!-- rq-a14c7897 -->
-  `electronic: BTreeMap<String, f64>`, `gibbs: BTreeMap<String, f64>`.
+  `electronic: BTreeMap<String, f64>`, `enthalpy: BTreeMap<String, f64>`,
+  `entropy_term: BTreeMap<String, f64>`, `gibbs: BTreeMap<String, f64>`.
 - `CorrectedMonomerReferences` — the per-code corrected references in Eh: <!-- rq-67b44e63 -->
-  `electronic: BTreeMap<String, f64>`, `gibbs: BTreeMap<String, f64>`; a
+  `electronic: BTreeMap<String, f64>`, `enthalpy: BTreeMap<String, f64>`,
+  `entropy_term: BTreeMap<String, f64>`, `gibbs: BTreeMap<String, f64>`; a
   code appears only when its selected monomer defines that level's
-  corrected value (`rqm/correction.md`).
-- `Formation` — a record's two derived levels: <!-- rq-103447d2 -->
-  `electronic: Option<f64>`, `gibbs: Option<f64>` (Eh).
+  corrected value (`rqm/correction.md`). The entropy-term reference is the
+  monomer's T·S, which the correction does not alter.
+- `Formation` — a record's four derived levels: <!-- rq-103447d2 -->
+  `electronic: Option<f64>`, `enthalpy: Option<f64>`,
+  `entropy_term: Option<f64>`, `gibbs: Option<f64>` (Eh); `enthalpy`,
+  `entropy_term`, and `gibbs` are `Some` together or `None` together —
+  except that a non-finite concentration term (an absurd magnitude,
+  Formation at Given Concentrations) leaves the enthalpy defined while
+  the entropy term and Gibbs go undefined — and `electronic` is
+  independent.
 - `ConcUnit` — `Pa | Ppt | Ppb | Cmmc`, the VALUE grammar's units. <!-- rq-7d64cce1 -->
 - `ConcSpec` — one `--conc` spec: `code: String`, `magnitude: f64`, <!-- rq-c92b9ff1 -->
   `unit: ConcUnit`; `pressure(temperature: f64) -> f64` resolves the
@@ -291,8 +347,10 @@ binding column exists.
   and `--cnt` off.
 - `Ensemble` — one collapsed composition group (Boltzmann-Averaged <!-- rq-35671b9e -->
   Sections): `components: Option<Components>` (`None` for the unnamed
-  ensemble), `electronic: Option<f64>`, `gibbs: Option<f64>` (Eh); the
-  two values are `Some` together or `None` together.
+  ensemble), `electronic: Option<f64>`, `enthalpy: Option<f64>`,
+  `entropy_term: Option<f64>`, `gibbs: Option<f64>` (Eh); the four values
+  are `Some` together or `None` together, and `entropy_term` is
+  `enthalpy − gibbs`.
 
 ### Functions <!-- rq-ded51dfb -->
 
@@ -305,57 +363,67 @@ binding column exists.
   The memo carries the run's thermochemistry conditions and derives each
   record at most once (`rqm/thermo.md` Performance).
 - `formation_values(record: &Record, references: &MonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-6ffbf9aa -->
-  — the two levels with their independent definedness; the record's Gibbs
-  value resolves through the derived-property registry on the memo
-  (`rqm/thermo.md`) and, when defined, has the concentration term of
-  `concentration_correction` subtracted; a correction that is not finite
-  (an absurd magnitude) leaves the level undefined rather than infinite.
+  — the four levels with their definedness; the record's enthalpy,
+  entropy term, and Gibbs come from one whole-record thermochemistry
+  derivation on the memo (`rqm/thermo.md`) rather than three registry
+  lookups, keeping the three levels defined together; when the Gibbs
+  and entropy levels are defined, the concentration term of
+  `concentration_correction` is subtracted from the Gibbs value and
+  added to the entropy-term value; a correction that is not finite (an
+  absurd magnitude) leaves both undefined rather than infinite.
 - `concentration_correction(components: &Components, concs: &ConcConditions, temperature: f64) -> f64` <!-- rq-2333d9cc -->
-  — the term subtracted from a defined formation free energy, in Eh:
-  Σ over the specs whose code is in the components map of
-  nᵢ,eff · k_B T ln(cᵢ/p°) / E_h, with nᵢ,eff = nᵢ or, under
-  `self_consistent`, nᵢ·(N−1)/N; 0 when no spec matches.
+  — the entropy term `c_term` in Eh: Σ over the specs whose code is in the
+  components map of nᵢ,eff · k_B T ln(cᵢ/p°) / E_h, with nᵢ,eff = nᵢ or,
+  under `self_consistent`, nᵢ·(N−1)/N; 0 when no spec matches. The
+  formation printers subtract it from the Gibbs value and add it to the
+  entropy-term value.
 - `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-9503bcb2 -->
-  — the section table with header `name el g`, one row per record in the
-  given order, `-` for undefined values and for the composition token
+  — the section table with header `name el h st g`, one row per record in
+  the given order, `-` for undefined values and for the composition token
   when the record has no components.
 - `corrected_monomer_references(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> CorrectedMonomerReferences` <!-- rq-789635d3 -->
   — the same selection as `collect_monomers`, read through the corrected
-  keys `elcorr`/`gcorr` (`rqm/correction.md`).
+  keys `elcorr`/`hcorr`/`gcorr` (`rqm/correction.md`) and the raw T·S
+  entropy term.
 - `corrected_formation_values(record: &Record, references: &CorrectedMonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-fb892986 -->
-  — the two corrected levels with their independent definedness; the
-  corrected Gibbs value has the same concentration term subtracted, with
-  the same non-finite guard.
+  — the four corrected levels with their definedness; the corrected Gibbs
+  value has the concentration term subtracted and the corrected
+  entropy-term value has it added, with the same non-finite guard; a
+  record without a correction has no corrected value at any level.
 - `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4f20e170 -->
-  — the corrected section table with header `name elcorr gcorr`.
+  — the corrected section table with header `name elcorr hcorr stcorr
+  gcorr`.
 - `collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble>` <!-- rq-18dba668 -->
   — the raw section's collapse (Boltzmann-Averaged Sections): groups by
   components map in first-appearance order, the records without
-  components last as the unnamed ensemble; members, weights, and the two
-  values per that section.
+  components last as the unnamed ensemble; members, weights, and the four
+  values per that section, with the entropy-term value computed as
+  H_ens − G_ens.
 - `corrected_collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble>` <!-- rq-f162476c -->
   — the corrected section's collapse: members and inputs resolved through
-  `gcorr` and the correction energy (`rqm/correction.md`), otherwise
-  identical.
+  `hcorr`, `gcorr`, and the correction energy (`rqm/correction.md`),
+  otherwise identical.
 - `ensemble_references(ensembles: &[Ensemble]) -> MonomerReferences` <!-- rq-27a3b339 -->
-  — the reference scan over ensembles: each monomer ensemble supplies
-  both reference values for its code; ensembles without values contribute
+  — the reference scan over ensembles: each monomer ensemble supplies its
+  four reference values for its code; ensembles without values contribute
   nothing.
 - `corrected_ensemble_references(ensembles: &[Ensemble]) -> CorrectedMonomerReferences` <!-- rq-4b8a9f98 -->
   — the same scan read as the corrected references.
 - `ensemble_formation_values(ensemble: &Ensemble, references: &MonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-eafc5e8e -->
-  — the two levels of one collapsed row: the ensemble's values minus the
-  stoichiometric references, minus the concentration term of
-  `concentration_correction` with the same non-finite guard; both levels
-  undefined when the ensemble has no values.
+  — the four levels of one collapsed row: the ensemble's values minus the
+  stoichiometric references, with the concentration term subtracted from
+  the Gibbs value and added to the entropy-term value, using the same
+  non-finite guard; every level is undefined when the ensemble has no
+  values.
 - `corrected_ensemble_formation_values(ensemble: &Ensemble, references: &CorrectedMonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-f5583f17 -->
-  — the corrected row's two levels, same rule.
+  — the corrected row's four levels, same rule.
 - `print_formation_ensembles(ensembles: &[Ensemble], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-30ea9ebc -->
-  — the collapsed raw section: header `name el g`, one row per ensemble in
-  the given order, `-` for undefined values and for the unnamed
-  ensemble's token.
+  — the collapsed raw section: header `name el h st g`, one row per
+  ensemble in the given order, `-` for undefined values and for the
+  unnamed ensemble's token.
 - `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4c1bcb87 -->
-  — the collapsed corrected section: header `name elcorr gcorr`.
+  — the collapsed corrected section: header `name elcorr hcorr stcorr
+  gcorr`.
 
 ### Crate Layout <!-- rq-22e7999c -->
 
@@ -368,14 +436,16 @@ binding column exists.
   Boltzmann populations of `rqm/population.md`.
 - `tests/formation.rs` tests the scan and the values as pure functions <!-- rq-eb7da353 -->
   (sort-based reference selection, per-level definedness, missing
-  references, stoichiometry), the section formatting, the corrected
-  section's selection and definedness, the VALUE grammar and pressure
-  resolution, and the concentration correction's stoichiometry and
-  self-consistent factor; the ensemble collapse (grouping, member
-  definedness, the population-weighted mean, the partition-function
-  Gibbs against hand-computed splits), the ensemble references, and the
-  collapsed sections' formatting and concentration terms extend the same
-  tests; CLI coverage extends `tests/cli.rs`.
+  references, stoichiometry, and the g_form = h_form − st_form identity),
+  the section formatting, the corrected section's selection and
+  definedness, the VALUE grammar and pressure resolution, and the
+  concentration correction's stoichiometry and self-consistent factor;
+  the ensemble collapse (grouping, member definedness, the
+  population-weighted electronic and enthalpy means, the
+  partition-function Gibbs against hand-computed splits, and the entropy
+  term as H_ens − G_ens), the ensemble references, and the collapsed
+  sections' formatting and concentration terms extend the same tests;
+  CLI coverage extends `tests/cli.rs`.
 
 ## Out of Scope <!-- rq-39f86935 -->
 
@@ -400,9 +470,9 @@ binding column exists.
   formation sections, and the main table always prints one row per record.
 - The `-bavgout` flag name: the corrected section is averaged by the same
   `--bavg` at its own level, so no second flag exists.
-- Ensemble enthalpy or entropy columns: the sections print only the
-  `el`/`g` levels, so JKQC's "-s not treated; use (G - H)/T" caveat has no
-  surface here.
+- A separate formation entropy in J mol⁻¹ K⁻¹ and formation ZPE columns:
+  the sections print the `st` energy term (T·S), matching the main table's
+  `s` column, plus the `el`, `h`, and `g` levels.
 
 ## Gherkin Scenarios <!-- rq-077d9eed -->
 
@@ -433,10 +503,11 @@ Feature: Formation energies from monomer references
     Then the electronic reference for "am" is -50.5
 
   @rq-64a72e10
-  Scenario: --sort g makes the lowest-gibbs conformer the reference for both levels
+  Scenario: --sort g makes the lowest-gibbs conformer the reference for every level
     Given conformer A with the lowest electronic energy and conformer B with the lowest gibbs free energy, both am = 1
     When collect_monomers is called with them and the g sort key
-    Then the electronic reference is conformer B's energy and the gibbs reference is conformer B's free energy
+    Then the electronic reference is conformer B's energy
+    And the enthalpy, entropy-term, and gibbs references are conformer B's values
 
   @rq-90e2ea3e
   Scenario: --sort filename takes the nameless monomer as the reference
@@ -454,7 +525,8 @@ Feature: Formation energies from monomer references
   Scenario: The reference's undefined level leaves that level undefined
     Given a na monomer chosen by the sort key that has an energy but no frequencies
     When collect_monomers is called with the rg sort key
-    Then the electronic reference is defined and the gibbs reference is absent
+    Then the electronic reference is defined
+    And the enthalpy, entropy-term, and gibbs references are absent
 
   @rq-536786ea
   Scenario: Failed monomer records never qualify
@@ -463,10 +535,11 @@ Feature: Formation energies from monomer references
     Then the references come from the ok record alone
 
   @rq-9063d573
-  Scenario: A monomer without thermochemistry has no Gibbs reference
+  Scenario: A monomer without thermochemistry has no thermal reference
     Given an ok single-component record without vibrational frequencies
     When collect_monomers is called with it
-    Then the electronic reference is defined and the gibbs reference is absent
+    Then the electronic reference is defined
+    And the enthalpy, entropy-term, and gibbs references are absent
 
   # --- Values ---
 
@@ -476,11 +549,24 @@ Feature: Formation energies from monomer references
     When formation_values is called
     Then the formation energy is -1.0 Eh
 
+  @rq-cfc7f6f3
+  Scenario: A 2am1sa cluster has a stoichiometric formation enthalpy
+    Given enthalpy references am = -49.9 and sa = -39.9 and a cluster record with components am = 2 sa = 1 and enthalpy -140.7
+    When formation_values is called
+    Then the formation enthalpy is -1.0 Eh
+
+  @rq-91cdbab5
+  Scenario: A 2am1sa cluster has a stoichiometric formation entropy term
+    Given T*S references am = 0.01 and sa = 0.02 and a cluster record with components am = 2 sa = 1 and T*S value 0.045
+    When formation_values is called
+    Then the formation entropy term is 0.005 Eh
+    And the formation free energy is the formation enthalpy minus the formation entropy term
+
   @rq-36de901e
-  Scenario: A monomer's own formation energy is zero
+  Scenario: A monomer's own formation values are zero
     Given a record with components am = 1 and the am references
     When formation_values is called
-    Then the formation energy is 0 and the formation free energy is 0
+    Then the formation energy, formation enthalpy, formation entropy term, and formation free energy are 0
 
   @rq-1b5e6c7a
   Scenario: A missing code reference leaves that level undefined
@@ -489,16 +575,24 @@ Feature: Formation energies from monomer references
     Then the electronic level is None
 
   @rq-650192f2
-  Scenario: The two levels are independently undefined
+  Scenario: The electronic level is independent of the thermal levels
     Given a cluster whose only na monomer has an energy but no frequencies
     When formation_values is called
-    Then the electronic level is Some and the gibbs level is None
+    Then the electronic level is Some
+    And the enthalpy, entropy-term, and gibbs levels are None
+
+  @rq-22dd2e0b
+  Scenario: A thermal reference gap leaves the three thermal levels undefined together
+    Given a cluster with components am = 1 na = 1, an am monomer with thermochemistry, and an na monomer whose enthalpy reference is absent
+    When formation_values is called
+    Then the electronic level is Some if both electronic references exist
+    And the enthalpy, entropy-term, and gibbs levels are None
 
   @rq-b02bcba1
-  Scenario: Records without components form at neither level
+  Scenario: Records without components form at no level
     Given a record without components
     When formation_values is called
-    Then both levels are None
+    Then every level is None
 
   # --- Printing ---
 
@@ -506,20 +600,20 @@ Feature: Formation energies from monomer references
   Scenario: The section identifies rows by composition token
     Given a database with a 2am1sa cluster and am and sa monomers
     When CJKQC is invoked with the database and "--formation" and no --out
-    Then the section header names the columns name, el, g in that order
+    Then the section header names the columns name, el, h, st, g in that order
     And the cluster's row starts with the composition token 2am1sa
 
   @rq-ed9e179c
   Scenario: A record without components has a dash composition token
     Given a database with a single ok record without components
     When CJKQC is invoked with the database and "--formation" and no --out
-    Then its section row prints - at all three columns
+    Then its section row prints - at all five columns
 
   @rq-27c4fe8e
   Scenario: The section aligns its columns like the main table
     Given a database with a 2am1sa cluster with defined formation values and am and sa monomers
     When CJKQC is invoked with the database and "--formation" and no --out
-    Then the name cells left-align and the el and g cells right-align, header included, each column as wide as its widest cell
+    Then the name cells left-align and the el, h, st, and g cells right-align, header included, each column as wide as its widest cell
 
   @rq-1b6b5757
   Scenario: The formation section follows the table and precedes the summary
@@ -537,13 +631,13 @@ Feature: Formation energies from monomer references
   Scenario: Undefined levels print as dashes
     Given a database with a cluster referencing a missing monomer code
     When CJKQC is invoked with the database and "--formation" and no --out
-    Then the cluster's formation row shows - for both levels
+    Then the cluster's formation row shows - for every level
 
   @rq-31a55ccc
   Scenario: Filtered-away monomers serve as no references
     Given a database with am and sa monomers and a 1am1sa cluster
     When CJKQC is invoked with the database, "--extract 1am1sa --formation" and no --out
-    Then the section prints one row for the cluster with - for both levels
+    Then the section prints one row for the cluster with - for every level
 
   @rq-b46a6e05
   Scenario: A print-only run sees every loaded monomer
@@ -553,15 +647,21 @@ Feature: Formation energies from monomer references
 
   @rq-9c5b3a40
   Scenario: The section obeys the unit setting
-    Given a cluster with formation energy -0.01 Eh
+    Given a cluster with formation energy -0.01 Eh, formation enthalpy 0.02 Eh, and formation entropy term 0.03 Eh
     When CJKQC is invoked with the database and "--formation --unit" and no --out
-    Then the el column prints the value in kcal/mol with 4 decimals
+    Then the el, h, and st columns print their values in kcal/mol with 4 decimals
+
+  @rq-39ca9fe7
+  Scenario: The printed levels satisfy g = h - st
+    Given a cluster with defined formation values and its monomers
+    When CJKQC is invoked with the database and "--formation" and no --out
+    Then the cluster's printed g cell equals its h cell minus its st cell within the printed precision
 
   @rq-e7f0ef7b
-  Scenario: The g level follows the run's temperature
+  Scenario: The thermal levels follow the run's temperature
     Given a cluster and its monomers with defined thermochemistry
     When the same database is run with "--formation" at --temp 298.15 and at --temp 350
-    Then the two runs' g columns differ
+    Then the two runs' h, st, and g columns differ
     And the two runs' el columns are equal
 
   # --- Corrected formation section ---
@@ -570,25 +670,39 @@ Feature: Formation energies from monomer references
   Scenario: The corrected section evaluates the attached corrections
     Given a 1am1sa cluster and am and sa monomers all carrying corrections
     When CJKQC is invoked with the database and "--formation-corr" and no --out
-    Then the header names the columns name, elcorr, gcorr in that order and the cluster's row shows defined values
+    Then the header names the columns name, elcorr, hcorr, stcorr, gcorr in that order and the cluster's row shows defined values
+
+  @rq-cdb75b97
+  Scenario: The corrected formation enthalpy subtracts the corrected monomer enthalpies
+    Given a corrected 1am1sa cluster and corrected am and sa monomers with hcorr values
+    When corrected_formation_values is called
+    Then the corrected formation enthalpy is hcorr(cluster) - hcorr(am) - hcorr(sa)
+    And the corrected formation enthalpy minus the corrected formation entropy term equals the corrected formation free energy
+
+  @rq-4ca420a5
+  Scenario: The corrected entropy term equals the raw entropy term
+    Given a corrected 1am1sa cluster with defined thermochemistry and corrected am and sa monomers
+    When the same database is run with "--formation --formation-corr" and no --out
+    Then the cluster's stcorr cell equals its st cell
+    And a cluster without a correction prints dashes in the stcorr column
 
   @rq-20ab3295
   Scenario: A record without a correction has dashes in the corrected section
     Given a 1am1sa cluster without a correction and corrected am and sa monomers
     When CJKQC is invoked with the database and "--formation-corr" and no --out
-    Then the cluster's row prints the token 1am1sa with dashes at both levels
+    Then the cluster's row prints the token 1am1sa with dashes at every level
 
   @rq-5ca4f95d
-  Scenario: A reference monomer without a correction leaves both levels undefined
+  Scenario: A reference monomer without a correction leaves every level undefined
     Given a 1am cluster with a correction whose am monomer has none
     When CJKQC is invoked with the database and "--formation-corr" and no --out
-    Then the cluster's row shows - for both levels
+    Then the cluster's row shows - for every level
 
   @rq-b6409abd
   Scenario: The corrected section reuses the raw section's reference monomers
     Given two am monomers where the sort selects the one without a correction even though the other carries a lower corrected energy
     When CJKQC is invoked with the database and "--sort el --formation-corr" and no --out
-    Then the cluster's corrected formation row shows - for both levels
+    Then the cluster's corrected formation row shows - for every level
 
   @rq-34d743c7
   Scenario: The corrected section follows the raw section and precedes the summary
@@ -612,7 +726,7 @@ Feature: Formation energies from monomer references
   Scenario: Filtered-away monomers serve as no corrected references
     Given corrected am and sa monomers and a corrected 1am1sa cluster
     When CJKQC is invoked with the database, "--extract 1am1sa --formation-corr" and no --out
-    Then the section prints one row for the cluster with - for both levels
+    Then the section prints one row for the cluster with - for every level
 
   # --- Concentrations ---
 
@@ -676,7 +790,16 @@ Feature: Formation energies from monomer references
     Given a database with a 1am1sa cluster whose formation free energy is -10.0 Eh under the am and sa monomers
     When CJKQC is invoked with the database and "--formation --conc sa 100ppt" and no --out
     Then the cluster's g formation value is -10.0 Eh + R T ln(10^10), about 13.6 kcal/mol higher
-    And the cluster's el formation value is still -10.0 Eh
+    And the cluster's st formation value is its standard-state value - R T ln(10^10)
+    And the cluster's el and h formation values are unchanged
+    And the cluster's g value still equals its h value minus its st value
+
+  @rq-77502cf6
+  Scenario: The concentration term moves g and st by equal and opposite amounts
+    Given a database with a 1am1sa cluster with defined thermochemistry and its am and sa monomers
+    When the same database is run with "--formation" and with "--formation --conc sa 100ppt"
+    Then the concentration run's g cell is higher by exactly the amount its st cell is lower
+    And both runs' h cells are equal
 
   @rq-85150fe0
   Scenario: Several --conc flags each cover their own component
@@ -698,11 +821,11 @@ Feature: Formation energies from monomer references
     And the on gibbs level is g_form - 2 R T ln(c_sa/p°)
 
   @rq-040dd0d3
-  Scenario: --cnt keeps a monomer's formation free energy at zero
+  Scenario: --cnt keeps a monomer's formation values at zero
     Given a database with a 1sa monomer with defined thermochemistry
     When CJKQC is invoked with the database and "--formation --cnt --conc sa 100ppt" and no --out
-    Then the monomer's g formation value is 0
-    And without --cnt it is +R T ln(10^10), about 13.6 kcal/mol
+    Then the monomer's g and st formation values are 0
+    And without --cnt its g value is +R T ln(10^10), about 13.6 kcal/mol, and its st value is -R T ln(10^10)
 
   @rq-fd428ce5
   Scenario: A concentration above the standard state lowers the formation free energy
@@ -720,7 +843,7 @@ Feature: Formation energies from monomer references
   Scenario: The correction never creates a defined value
     Given a database with am and sa monomers and a 1am1sa cluster
     When CJKQC is invoked with the database, "--extract 1am1sa --formation --conc sa 100ppt" and no --out
-    Then the cluster's row shows - for both levels
+    Then the cluster's row shows - for every level
 
   @rq-c984bd29
   Scenario: Undefined thermochemistry stays undefined under --conc
@@ -729,11 +852,12 @@ Feature: Formation energies from monomer references
     Then the cluster's g formation value prints -
 
   @rq-e8ea3b7f
-  Scenario: The corrected section shifts gcorr the same way
+  Scenario: The corrected section shifts gcorr and stcorr the same way
     Given a 1am1sa cluster and am and sa monomers all carrying corrections
     When CJKQC is invoked with the database and "--formation-corr --conc sa 100ppt" and no --out
     Then the cluster's gcorr formation value is its standard-state value + R T ln(10^10)
-    And the cluster's elcorr formation value is unchanged
+    And the cluster's stcorr formation value is its standard-state value - R T ln(10^10)
+    And the cluster's elcorr and hcorr formation values are unchanged
 
   @rq-985cc1a5
   Scenario: A spec for a code in no final record is a usage error
@@ -745,7 +869,7 @@ Feature: Formation energies from monomer references
   Scenario: A spec whose monomers were filtered away is not a usage error
     Given a database with am and sa monomers and a 1am1sa cluster
     When CJKQC is invoked with the database, "--extract 1am1sa --formation --conc am 100ppt --conc sa 100ppt" and no --out
-    Then the exit code is 0 and the cluster's row shows - for both levels
+    Then the exit code is 0 and the cluster's row shows - for every level
 
   @rq-75ac7572
   Scenario: --conc without a formation section is an accepted no-op
@@ -784,15 +908,25 @@ Feature: Formation energies from monomer references
   Scenario: --bavg prints one row per composition
     Given a database with two 2am1sa conformers, an am monomer, and an sa monomer
     When CJKQC is invoked with the database and "--formation --bavg" and no --out
-    Then the section header names the columns name, el, g in that order
+    Then the section header names the columns name, el, h, st, g in that order
     And the section prints three rows: 2am1sa, 1am, and 1sa
 
   @rq-7d43ccc9
   Scenario: The collapsed g includes the conformational entropy term
-    Given two 2am1sa conformers whose gibbs values differ by kB*T*ln(3) and whose electronic energies are equal, and the am and sa monomers
+    Given two 2am1sa conformers whose gibbs values differ by kB*T*ln(3) and whose electronic energies and enthalpies are equal, and the am and sa monomers
     When CJKQC is invoked with the database and "--formation --bavg" and no --out
     Then the cluster's el formation value equals either conformer's
     And the cluster's g formation value is k_B*T*ln(4/3) below the best conformer's
+    And the cluster's st formation value carries the same k_B*T*ln(4/3) shift relative to the best conformer's
+    And the cluster's h formation value equals either conformer's
+
+  @rq-df7a2c88
+  Scenario: The collapsed entropy term is the mean enthalpy minus the ensemble Gibbs
+    Given two 2am1sa conformers with equal electronic energies and enthalpies whose gibbs values differ by kB*T*ln(3), and the am and sa monomers
+    When CJKQC is invoked with the database and "--formation --bavg" and no --out
+    Then the collapsed row's h formation value equals the population-weighted mean of the conformers' h formation values
+    And the collapsed row's st formation value equals its h formation value minus its g formation value
+    And the collapsed row's g formation value is the ensemble free energy
 
   @rq-f524bb50
   Scenario: The collapsed el is the population-weighted mean
@@ -804,7 +938,7 @@ Feature: Formation energies from monomer references
   Scenario: Monomer rows print exactly zero
     Given a database with two am conformers with defined thermochemistry and a 2am cluster
     When CJKQC is invoked with the database and "--formation --bavg" and no --out
-    Then the 1am row prints 0 at both levels
+    Then the 1am row prints 0 at every level
 
   @rq-c39939f4
   Scenario: Ensemble references make the cluster less favorable than its best conformer
@@ -812,20 +946,20 @@ Feature: Formation energies from monomer references
     When the same database is run with "--formation --sort g" and with "--formation --sort g --bavg"
     Then the two runs' cluster el formation values are equal
     And the averaged run's cluster g formation value is 2*k_B*T*ln(4/3) above the uncollapsed run's
-    And the averaged run's 1am row prints 0 at both levels
+    And the averaged run's 1am row prints 0 at every level
 
   @rq-e1615410
   Scenario: A single-point-only group prints dashes under --bavg
     Given two 2am1sa single-point records without frequencies and am and sa monomers with full thermochemistry
     When CJKQC is invoked with the database and "--formation --bavg" and no --out
-    Then the 2am1sa row shows - for both levels
+    Then the 2am1sa row shows - for every level
     And without --bavg the same run prints the cluster's el formation value
 
   @rq-0df193f0
-  Scenario: A monomer group without any Gibbs loses its reference at both levels
+  Scenario: A monomer group without any Gibbs loses its reference at every level
     Given a 2am cluster with full thermochemistry, a single-point am monomer without frequencies, and an sa monomer with full thermochemistry
     When CJKQC is invoked with the database and "--formation --bavg" and no --out
-    Then the cluster's row shows - for both levels
+    Then the cluster's row shows - for every level
     And without --bavg the cluster's el formation value is defined and its g is -
 
   @rq-1ad3c076
@@ -854,10 +988,12 @@ Feature: Formation energies from monomer references
 
   @rq-deca4a24
   Scenario: The corrected section collapses at its own level
-    Given two corrected 1am1sa conformers whose gcorr values differ by kB*T*ln(3) and whose correction energies are equal, and corrected am and sa monomers
+    Given two corrected 1am1sa conformers whose gcorr values differ by kB*T*ln(3) and whose correction energies and hcorr values are equal, and corrected am and sa monomers
     When CJKQC is invoked with the database and "--formation-corr --bavg" and no --out
     Then the cluster's elcorr formation value equals either conformer's
     And the cluster's gcorr formation value is k_B*T*ln(4/3) below the best conformer's
+    And the cluster's hcorr formation value equals either conformer's
+    And the cluster's stcorr formation value equals its hcorr value minus its gcorr value
 
   @rq-ade63c60
   Scenario: A corrected member without thermochemistry contributes nothing
@@ -877,6 +1013,8 @@ Feature: Formation energies from monomer references
     Given a database with two 2sa conformers whose gibbs values differ by kB*T*ln(3) and an sa monomer
     When the same database is run with "--formation --bavg" and with "--formation --bavg --conc sa 100ppt"
     Then the conc run's collapsed g formation value is 2*R*T*ln(10^10) above the plain run's
+    And the conc run's collapsed st formation value is 2*R*T*ln(10^10) below the plain run's
+    And the two runs' collapsed h formation values are equal
 
   @rq-a74b25aa
   Scenario: --cnt scales the collapsed concentration term by (N-1)/N

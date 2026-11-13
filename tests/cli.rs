@@ -2225,7 +2225,7 @@ fn reverse_does_not_change_the_reference() {
     // --reverse.
     let expected = format!("{:.10}", -49.0 - -50.5);
     let row = formation_row(&stdout(&run), "1am");
-    assert_eq!(row[2], expected, "{:?}", row);
+    assert_eq!(row[4], expected, "{:?}", row);
 }
 
 #[test] // rq-1b6b5757
@@ -2273,7 +2273,7 @@ fn the_formation_section_follows_the_table_and_precedes_the_summary() {
     assert_eq!(cells(lines[0]), ["filename", "el"], "the table comes first");
     assert_eq!(
         cells(lines[4]),
-        ["name", "el", "g"],
+        ["name", "el", "h", "st", "g"],
         "the section follows the table"
     );
     let _ = &out;
@@ -2308,7 +2308,7 @@ fn formation_alone_is_a_visible_outcome() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     assert_eq!(
         cells(stdout(&run).lines().next().unwrap()),
-        ["name", "el", "g"],
+        ["name", "el", "h", "st", "g"],
         "{}",
         stdout(&run)
     );
@@ -2358,7 +2358,7 @@ fn formation_section_identifies_rows_by_composition_token() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(cells(lines[0]), ["name", "el", "g"], "{text}");
+    assert_eq!(cells(lines[0]), ["name", "el", "h", "st", "g"], "{text}");
     assert_eq!(
         cells(lines[1]).first(),
         Some(&"2am1sa"),
@@ -2384,56 +2384,48 @@ fn the_section_aligns_its_columns_like_the_main_table() {
     let text = stdout(&run);
     let section = formation_section(&text);
     let lines: Vec<&str> = section.lines().collect();
-    assert_eq!(cells(lines[0]), ["name", "el", "g"], "{section}");
+    assert_eq!(cells(lines[0]), ["name", "el", "h", "st", "g"], "{section}");
     let spans: Vec<Vec<(usize, usize)>> = lines.iter().map(|line| cell_spans(line)).collect();
-    // Three columns on every row.
-    assert!(spans.iter().all(|row| row.len() == 3), "{section}");
+    // Five columns on every row.
+    assert!(spans.iter().all(|row| row.len() == 5), "{section}");
     // The name column is a text column: every cell, header included,
     // starts at 0.
     assert!(spans.iter().all(|row| row[0].0 == 0), "{section}");
-    // el and g are numeric columns: every cell, header included, ends at
-    // its column's right edge, and the last column ends the line.
-    let el_end = spans[0][1].1;
-    let g_end = spans[0][2].1;
+    // el, h, st, and g are numeric columns: every cell, header included,
+    // ends at its column's right edge, and the last column ends the line.
+    let ends: Vec<usize> = spans[0].iter().map(|span| span.1).collect();
     assert!(
-        spans
+        spans.iter().all(|row| row[1..]
             .iter()
-            .all(|row| row[1].1 == el_end && row[2].1 == g_end),
+            .map(|span| span.1)
+            .eq(ends[1..].iter().copied())),
         "{section}"
     );
     assert!(
         lines
             .iter()
             .zip(&spans)
-            .all(|(line, row)| row[2].1 == line.len()),
+            .all(|(line, row)| row[4].1 == line.len()),
         "{section}"
     );
     // Every column is as wide as its widest cell (header included): the
     // widest cell starts right after the preceding column's separator,
     // so no column carries slack beyond its widest cell.
-    let ct_width = spans.iter().map(|row| row[0].1).max().unwrap();
-    let el_width = el_end - (ct_width + 1);
-    assert_eq!(
-        spans.iter().map(|row| row[1].1 - row[1].0).max().unwrap(),
-        el_width,
-        "{section}"
-    );
-    assert!(
-        spans.iter().any(|row| row[1].0 == ct_width + 1),
-        "{section}"
-    );
-    let g_width = g_end - (ct_width + 1 + el_width + 1);
-    assert_eq!(
-        spans.iter().map(|row| row[2].1 - row[2].0).max().unwrap(),
-        g_width,
-        "{section}"
-    );
-    assert!(
-        spans
-            .iter()
-            .any(|row| row[2].0 == ct_width + 1 + el_width + 1),
-        "{section}"
-    );
+    let mut start = spans.iter().map(|row| row[0].1).max().unwrap() + 1;
+    for column in 1..5 {
+        let width = ends[column] - start;
+        assert_eq!(
+            spans
+                .iter()
+                .map(|row| row[column].1 - row[column].0)
+                .max()
+                .unwrap(),
+            width,
+            "{section}"
+        );
+        assert!(spans.iter().any(|row| row[column].0 == start), "{section}");
+        start = ends[column] + 1;
+    }
 }
 
 #[test] // rq-ed9e179c
@@ -2448,8 +2440,8 @@ fn record_without_components_has_dash_composition_token() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "el", "g"]);
-    assert_eq!(lines[1], ["-", "-", "-"]);
+    assert_eq!(lines[0], ["name", "el", "h", "st", "g"]);
+    assert_eq!(lines[1], ["-", "-", "-", "-", "-"]);
 }
 
 #[test] // rq-043c29fe
@@ -2478,6 +2470,8 @@ fn undefined_formation_levels_print_as_dashes() {
     let row = formation_row(&stdout(&run), "1am1na");
     assert_eq!(row[1], "-", "{:?}: the na reference is missing", row);
     assert_eq!(row[2], "-", "{:?}", row);
+    assert_eq!(row[3], "-", "{:?}", row);
+    assert_eq!(row[4], "-", "{:?}", row);
 }
 
 #[test] // rq-31a55ccc
@@ -2513,7 +2507,7 @@ fn filtered_away_monomers_serve_as_no_references() {
     let text = text.trim();
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines.len(), 2, "only the cluster row prints: {text}");
-    assert_eq!(cells(lines[1]), ["1am1sa", "-", "-"], "{text}");
+    assert_eq!(cells(lines[1]), ["1am1sa", "-", "-", "-", "-"], "{text}");
 }
 
 #[test] // rq-b46a6e05
@@ -2548,6 +2542,8 @@ fn a_print_only_run_sees_every_loaded_monomer() {
     let row = formation_row(&stdout(&run), "1am1sa");
     assert_ne!(row[1], "-", "{:?}: both references are loaded", row);
     assert_ne!(row[2], "-", "{:?}", row);
+    assert_ne!(row[3], "-", "{:?}", row);
+    assert_ne!(row[4], "-", "{:?}", row);
     // And the values are the stoichiometric ones.
     let record: Record = serde_json::from_str(&db_line(&db, 0)).expect("record deserializes");
     let references = collect_monomers(&loaded_records(&db), &ThermoMemo::default(), SortKey::El);
@@ -2558,13 +2554,20 @@ fn a_print_only_run_sees_every_loaded_monomer() {
         &ConcConditions::default(),
     );
     assert_eq!(row[1], format!("{:.10}", formation.electronic.unwrap()));
-    assert_eq!(row[2], format!("{:.10}", formation.gibbs.unwrap()));
+    assert_eq!(row[2], format!("{:.10}", formation.enthalpy.unwrap()));
+    assert_eq!(row[3], format!("{:.10}", formation.entropy_term.unwrap()));
+    assert_eq!(row[4], format!("{:.10}", formation.gibbs.unwrap()));
 }
 
 #[test] // rq-9c5b3a40
 fn the_section_obeys_the_unit_setting() {
     let dir = temp_dir();
-    // A 1am1sa cluster whose formation energy is exactly -0.01 Eh.
+    // A 1am1sa cluster with defined formation values: the el, h, and st
+    // columns print them in kcal/mol with 4 decimals. The electronic
+    // level is exactly -0.01 Eh; the thermal levels are checked against
+    // the documented stoichiometric arithmetic over the pure
+    // thermochemistry derivation of each record, an oracle independent
+    // of the formation code under test.
     let db = db_with(
         &dir,
         "db.jsonl",
@@ -2592,12 +2595,61 @@ fn the_section_obeys_the_unit_setting() {
     let run = cjkqc(&[&db, "--formation", "--unit"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let row = formation_row(&stdout(&run), "1am1sa");
-    let expected = format!("{:.4}", -0.01 * compiled_jkqc::KCAL_MOL_PER_HARTREE);
-    assert_eq!(row[1], expected, "{:?}", row);
+    let conditions = ThermoConditions::default();
+    let records = loaded_records(&db);
+    let cluster = thermochemistry(&records[0], &conditions).expect("cluster thermochemistry");
+    let am = thermochemistry(&records[1], &conditions).expect("am thermochemistry");
+    let sa = thermochemistry(&records[2], &conditions).expect("sa thermochemistry");
+    let h = cluster.enthalpy - am.enthalpy - sa.enthalpy;
+    let st = cluster.entropy_term - am.entropy_term - sa.entropy_term;
+    let g = cluster.gibbs - am.gibbs - sa.gibbs;
+    let kcal = |value: f64| format!("{:.4}", value * compiled_jkqc::KCAL_MOL_PER_HARTREE);
+    assert_eq!(row[1], kcal(-0.01), "{:?}", row);
+    assert_eq!(row[2], kcal(h), "{:?}", row);
+    assert_eq!(row[3], kcal(st), "{:?}", row);
+    assert_eq!(row[4], kcal(g), "{:?}", row);
+}
+
+#[test] // rq-39ca9fe7
+fn the_printed_levels_satisfy_g_equals_h_minus_st() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_record_json(
+                "cluster",
+                Some(-90.0),
+                &[("am", 1), ("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "am1",
+                Some(-50.0),
+                &[("am", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+            thermo_record_json(
+                "sa1",
+                Some(-40.0),
+                &[("sa", 1)],
+                Some(&[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 1500.0]),
+            ),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let row = formation_row(&stdout(&run), "1am1sa");
+    let h: f64 = row[2].parse().expect("the h cell");
+    let st: f64 = row[3].parse().expect("the st cell");
+    let g: f64 = row[4].parse().expect("the g cell");
+    // The printed cells carry 10 decimals, so the identity holds within
+    // the printed precision.
+    assert!((g - (h - st)).abs() < 1e-9, "{:?}", row);
 }
 
 #[test] // rq-e7f0ef7b
-fn the_g_level_follows_the_run_s_temperature() {
+fn the_thermal_levels_follow_the_run_s_temperature() {
     let dir = temp_dir();
     let db = db_with(
         &dir,
@@ -2633,7 +2685,10 @@ fn the_g_level_follows_the_run_s_temperature() {
         warm_row[1], hot_row[1],
         "the el level ignores the temperature"
     );
-    assert_ne!(warm_row[2], hot_row[2], "the g level follows it");
+    // The h, st, and g levels follow it.
+    assert_ne!(warm_row[2], hot_row[2], "the h level follows it");
+    assert_ne!(warm_row[3], hot_row[3], "the st level follows it");
+    assert_ne!(warm_row[4], hot_row[4], "the g level follows it");
 }
 
 /// The record JSON line at `index` of a database file.
@@ -3601,8 +3656,9 @@ fn the_corrected_formation_section_follows_the_raw_one() {
     let run = cjkqc(&[&db, "--formation", "--formation-corr"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let raw = find_line(&text, &["name", "el", "g"]).expect("raw header");
-    let corrected = find_line(&text, &["name", "elcorr", "gcorr"]).expect("corrected header");
+    let raw = find_line(&text, &["name", "el", "h", "st", "g"]).expect("raw header");
+    let corrected = find_line(&text, &["name", "elcorr", "hcorr", "stcorr", "gcorr"])
+        .expect("corrected header");
     assert!(raw < corrected, "{text}");
 }
 
@@ -3620,7 +3676,12 @@ fn formation_corr_alone_is_a_visible_outcome() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "elcorr", "gcorr"], "{}", stdout(&run));
+    assert_eq!(
+        lines[0],
+        ["name", "elcorr", "hcorr", "stcorr", "gcorr"],
+        "{}",
+        stdout(&run)
+    );
 }
 
 // --- correction hardening (PR review findings) ---
@@ -3649,7 +3710,11 @@ fn a_correcting_run_can_print_the_corrected_formation_section() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
     let lines = rows(&text);
-    assert_eq!(lines[0], ["name", "elcorr", "gcorr"], "{text}");
+    assert_eq!(
+        lines[0],
+        ["name", "elcorr", "hcorr", "stcorr", "gcorr"],
+        "{text}"
+    );
     // The cluster's corrected electronic formation: -167.5 - 2*(-76.5).
     let mut found = false;
     for line in text.lines().skip(1) {
@@ -3742,12 +3807,12 @@ fn kbt_eh(temperature: f64) -> f64 {
 /// The stdout from the formation section's header onward, so
 /// `formation_row` never matches a main-table row of the same token.
 fn formation_section(stdout_text: &str) -> &str {
-    section_from(stdout_text, &["name", "el", "g"])
+    section_from(stdout_text, &["name", "el", "h", "st", "g"])
 }
 
 /// The stdout from the corrected formation section's header onward.
 fn corrected_section(stdout_text: &str) -> &str {
-    section_from(stdout_text, &["name", "elcorr", "gcorr"])
+    section_from(stdout_text, &["name", "elcorr", "hcorr", "stcorr", "gcorr"])
 }
 
 /// The amount added to a formation free energy per molecule of a
@@ -3846,16 +3911,64 @@ fn the_named_component_shifts_the_g_level_by_its_chemical_potential() {
     let base_row = formation_row(&stdout(&base), "1am1sa");
     let row = formation_row(&stdout(&run), "1am1sa");
     // The sa term: g_form − k_B T ln(100·10⁻¹²) — about +13.6 kcal/mol.
-    let g_base: f64 = base_row[2].parse().expect("base gibbs");
-    let g_conc: f64 = row[2].parse().expect("conc gibbs");
+    let g_base: f64 = base_row[4].parse().expect("base gibbs");
+    let g_conc: f64 = row[4].parse().expect("conc gibbs");
     let expected = -kbt_eh(298.15) * (100.0_f64 * 1.0e-12).ln();
     assert!(
         (g_conc - g_base - expected).abs() < 1e-9,
         "{}",
         stdout(&run)
     );
-    // The electronic level stays at the standard state.
+    // The st level moves by the same magnitude the other way: the
+    // concentration term is an entropy shift, so the dilute vapor's
+    // higher entropy lowers the formation entropy term.
+    let st_base: f64 = base_row[3].parse().expect("base st");
+    let st_conc: f64 = row[3].parse().expect("conc st");
+    assert!(
+        (st_conc - st_base + expected).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+    // The el and h levels stay at the standard state.
     assert_eq!(row[1], base_row[1], "{}", stdout(&run));
+    assert_eq!(row[2], base_row[2], "{}", stdout(&run));
+    // And the g value still equals its h value minus its st value.
+    let h_conc: f64 = row[2].parse().expect("conc h");
+    assert!(
+        (g_conc - (h_conc - st_conc)).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-77502cf6
+fn the_concentration_term_moves_g_and_st_by_equal_and_opposite_amounts() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], None),
+            thermo_line("sa1", -40.0, &[("sa", 1)], None),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], None),
+        ],
+    );
+    let base = cjkqc(&[&db, "--formation"]);
+    assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
+    let run = cjkqc(&[&db, "--formation", "--conc", "sa", "100ppt"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let base_row = formation_row(&stdout(&base), "1am1sa");
+    let row = formation_row(&stdout(&run), "1am1sa");
+    // The dilute vapor makes the cluster easier to beat: g rises by
+    // exactly the amount st falls.
+    let g_shift =
+        row[4].parse::<f64>().expect("conc g") - base_row[4].parse::<f64>().expect("base g");
+    let st_shift =
+        row[3].parse::<f64>().expect("conc st") - base_row[3].parse::<f64>().expect("base st");
+    assert!((g_shift + st_shift).abs() < 1e-9, "{g_shift} vs {st_shift}");
+    assert!(g_shift > 0.0 && st_shift < 0.0, "{g_shift} vs {st_shift}");
+    // And both runs' h cells are equal.
+    assert_eq!(row[2], base_row[2]);
 }
 
 #[test] // rq-85150fe0
@@ -3883,10 +3996,10 @@ fn several_conc_flags_each_cover_their_own_component() {
         "10ppb",
     ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    let g_base: f64 = formation_row(&stdout(&base), "2am1sa")[2]
+    let g_base: f64 = formation_row(&stdout(&base), "2am1sa")[4]
         .parse()
         .expect("base gibbs");
-    let g_conc: f64 = formation_row(&stdout(&run), "2am1sa")[2]
+    let g_conc: f64 = formation_row(&stdout(&run), "2am1sa")[4]
         .parse()
         .expect("conc gibbs");
     // am at 100 ppt contributes twice, sa at 10 ppb once.
@@ -3900,7 +4013,7 @@ fn several_conc_flags_each_cover_their_own_component() {
 }
 
 #[test] // rq-040dd0d3
-fn cnt_keeps_a_monomers_formation_free_energy_at_zero() {
+fn cnt_keeps_a_monomers_formation_values_at_zero() {
     let dir = temp_dir();
     let db = db_with(
         &dir,
@@ -3910,17 +4023,17 @@ fn cnt_keeps_a_monomers_formation_free_energy_at_zero() {
     let run = cjkqc(&[&db, "--formation", "--cnt", "--conc", "sa", "100ppt"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let row = formation_row(&stdout(&run), "1sa");
-    assert_eq!(row[2], "0.0000000000", "{}", stdout(&run));
-    // Without --cnt the monomer carries the full chemical-potential term.
+    assert_eq!(row[4], "0.0000000000", "{}", stdout(&run));
+    assert_eq!(row[3], "0.0000000000", "{}", stdout(&run));
+    // Without --cnt the monomer carries the full chemical-potential term:
+    // g up by R T ln(10^10) and st down by the same amount.
     let plain = cjkqc(&[&db, "--formation", "--conc", "sa", "100ppt"]);
     assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
     let row = formation_row(&stdout(&plain), "1sa");
-    let value: f64 = row[2].parse().expect("monomer gibbs");
-    assert!(
-        (value - ppt_shift(100.0)).abs() < 1e-9,
-        "{}",
-        stdout(&plain)
-    );
+    let g: f64 = row[4].parse().expect("monomer gibbs");
+    assert!((g - ppt_shift(100.0)).abs() < 1e-9, "{}", stdout(&plain));
+    let st: f64 = row[3].parse().expect("monomer st");
+    assert!((st + ppt_shift(100.0)).abs() < 1e-9, "{}", stdout(&plain));
 }
 
 #[test] // rq-fd428ce5
@@ -3938,10 +4051,10 @@ fn a_concentration_above_the_standard_state_lowers_the_formation_free_energy() {
     assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
     let run = cjkqc(&[&db, "--formation", "--conc", "sa", "202650"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    let g_base: f64 = formation_row(&stdout(&base), "2sa")[2]
+    let g_base: f64 = formation_row(&stdout(&base), "2sa")[4]
         .parse()
         .expect("base gibbs");
-    let g_conc: f64 = formation_row(&stdout(&run), "2sa")[2]
+    let g_conc: f64 = formation_row(&stdout(&run), "2sa")[4]
         .parse()
         .expect("conc gibbs");
     // 202650 Pa is 2 p°: the correction flips sign and lowers g.
@@ -4008,6 +4121,8 @@ fn the_correction_never_creates_a_defined_value() {
     let row = formation_row(&stdout(&run), "1am1sa");
     assert_eq!(row[1], "-");
     assert_eq!(row[2], "-");
+    assert_eq!(row[3], "-");
+    assert_eq!(row[4], "-");
 }
 
 #[test] // rq-c984bd29
@@ -4035,14 +4150,14 @@ fn undefined_thermochemistry_stays_undefined_under_conc() {
         .map(|line| line.split_whitespace().map(str::to_string).collect())
         .collect();
     assert_eq!(rows.len(), 2, "{}", stdout(&run));
-    let reference: f64 = rows[0][2].parse().expect("reference monomer gibbs");
+    let reference: f64 = rows[0][4].parse().expect("reference monomer gibbs");
     assert!((reference - ppt_shift(100.0)).abs() < 1e-9);
     // The cluster: its own thermochemistry is undefined under --conc.
-    assert_eq!(rows[1][2], "-", "{}", stdout(&run));
+    assert_eq!(rows[1][4], "-", "{}", stdout(&run));
 }
 
 #[test] // rq-e8ea3b7f
-fn the_corrected_section_shifts_gcorr_the_same_way() {
+fn the_corrected_section_shifts_gcorr_and_stcorr_the_same_way() {
     let dir = temp_dir();
     let db = db_with(
         &dir,
@@ -4057,22 +4172,54 @@ fn the_corrected_section_shifts_gcorr_the_same_way() {
     assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
     let run = cjkqc(&[&db, "--formation-corr", "--conc", "sa", "100ppt"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
-    let g_base: f64 = formation_row(corrected_section(&stdout(&base)), "1am1sa")[2]
-        .parse()
-        .expect("base gcorr");
-    let g_conc: f64 = formation_row(corrected_section(&stdout(&run)), "1am1sa")[2]
-        .parse()
-        .expect("conc gcorr");
+    let base_row = formation_row(corrected_section(&stdout(&base)), "1am1sa");
+    let row = formation_row(corrected_section(&stdout(&run)), "1am1sa");
+    let g_base: f64 = base_row[4].parse().expect("base gcorr");
+    let g_conc: f64 = row[4].parse().expect("conc gcorr");
     let expected = -kbt_eh(298.15) * (100.0_f64 * 1.0e-12).ln();
     assert!(
         (g_conc - g_base - expected).abs() < 1e-9,
         "{}",
         stdout(&run)
     );
-    // The corrected electronic level stays at the standard state.
-    let base_row = formation_row(corrected_section(&stdout(&base)), "1am1sa");
-    let row = formation_row(corrected_section(&stdout(&run)), "1am1sa");
+    // The stcorr level moves the other way by the same magnitude, and
+    // the elcorr and hcorr levels stay at the standard state.
+    let st_base: f64 = base_row[3].parse().expect("base stcorr");
+    let st_conc: f64 = row[3].parse().expect("conc stcorr");
+    assert!(
+        (st_conc - st_base + expected).abs() < 1e-9,
+        "{}",
+        stdout(&run)
+    );
     assert_eq!(row[1], base_row[1]);
+    assert_eq!(row[2], base_row[2]);
+}
+
+#[test] // rq-4ca420a5
+fn the_corrected_entropy_term_equals_the_raw_entropy_term() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("am1", -50.0, &[("am", 1)], Some(-76.5)),
+            thermo_line("sa1", -40.0, &[("sa", 1)], Some(-69.5)),
+            thermo_line("cluster", -91.0, &[("am", 1), ("sa", 1)], Some(-146.5)),
+            // A cluster without a correction: every corrected level,
+            // stcorr included, prints a dash.
+            thermo_line("bare", -81.0, &[("sa", 2)], None),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--formation-corr"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let raw = formation_row(formation_section(&stdout(&run)), "1am1sa");
+    let corrected = formation_row(corrected_section(&stdout(&run)), "1am1sa");
+    // The correction does not alter any thermal term: the cluster's
+    // stcorr cell equals its st cell.
+    assert_eq!(corrected[3], raw[3], "{}", stdout(&run));
+    // A cluster without a correction prints dashes in the stcorr column.
+    let bare = formation_row(corrected_section(&stdout(&run)), "2sa");
+    assert_eq!(bare[3], "-", "{}", stdout(&run));
 }
 
 #[test] // rq-985cc1a5
@@ -4119,6 +4266,8 @@ fn a_spec_whose_monomers_were_filtered_away_is_not_a_usage_error() {
     let row = formation_row(&stdout(&run), "1am1sa");
     assert_eq!(row[1], "-");
     assert_eq!(row[2], "-");
+    assert_eq!(row[3], "-");
+    assert_eq!(row[4], "-");
 }
 
 #[test] // rq-75ac7572
@@ -4174,15 +4323,16 @@ fn the_main_table_and_glob_ignore_the_concentrations() {
     assert_eq!(base.status.code(), Some(0), "{}", stderr(&base));
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     // The main tables are identical; only the formation section moves.
-    let table_end = |text: &str| find_line(text, &["name", "el", "g"]).expect("formation header");
+    let table_end =
+        |text: &str| find_line(text, &["name", "el", "h", "st", "g"]).expect("formation header");
     assert_eq!(
         &stdout(&base)[..table_end(&stdout(&base))],
         &stdout(&run)[..table_end(&stdout(&run))]
     );
-    let g_base: f64 = formation_row(formation_section(&stdout(&base)), "2am1sa")[2]
+    let g_base: f64 = formation_row(formation_section(&stdout(&base)), "2am1sa")[4]
         .parse()
         .expect("base gibbs");
-    let g_conc: f64 = formation_row(formation_section(&stdout(&run)), "2am1sa")[2]
+    let g_conc: f64 = formation_row(formation_section(&stdout(&run)), "2am1sa")[4]
         .parse()
         .expect("conc gibbs");
     assert!((g_conc - g_base - ppt_shift(100.0)).abs() < 1e-9);
@@ -4224,7 +4374,7 @@ fn the_ppt_correction_scales_linearly_with_temperature() {
         assert_eq!(run.status.code(), Some(0), "{}", stderr(run));
     }
     let g = |out: &Output| -> f64 {
-        formation_row(&stdout(out), "1am1sa")[2]
+        formation_row(&stdout(out), "1am1sa")[4]
             .parse()
             .expect("gibbs")
     };
@@ -4256,13 +4406,13 @@ fn an_absurd_magnitude_leaves_the_level_undefined_rather_than_infinite() {
         let run = cjkqc(&[&db, "--formation", "--conc", "sa", value]);
         assert_eq!(run.status.code(), Some(0), "{value}: {}", stderr(&run));
         assert_eq!(
-            formation_row(&stdout(&run), "1sa")[2],
+            formation_row(&stdout(&run), "1sa")[4],
             "-",
             "{value}: {}",
             stdout(&run)
         );
         assert_eq!(
-            formation_row(&stdout(&run), "2am1sa")[2],
+            formation_row(&stdout(&run), "2am1sa")[4],
             "-",
             "{value}: {}",
             stdout(&run)
@@ -4817,7 +4967,7 @@ fn bavg_prints_one_row_per_composition() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     assert_eq!(
         cells(stdout(&run).lines().next().unwrap()),
-        ["name", "el", "g"],
+        ["name", "el", "h", "st", "g"],
         "{}",
         stdout(&run)
     );
@@ -4859,19 +5009,22 @@ fn ensemble_references_make_the_cluster_less_favorable_than_its_best_conformer()
     );
     // The averaged g formation value is 2*k_B*T*ln(4/3) above the
     // uncollapsed run's.
-    let plain_g: f64 = plain_row[2].parse().expect("number");
-    let bavg_g: f64 = bavg_row[2].parse().expect("number");
+    let plain_g: f64 = plain_row[4].parse().expect("number");
+    let bavg_g: f64 = bavg_row[4].parse().expect("number");
     let expected = 2.0 * kbt_eh(298.15) * (4.0f64 / 3.0).ln();
     assert!(
         (bavg_g - plain_g - expected).abs() < 1e-9,
         "{plain_row:?} {bavg_row:?}"
     );
-    // The 1am row prints 0 at both levels in both runs.
+    // The 1am row prints 0 at every level in both runs.
     for out in [&plain, &bavg] {
         let row = formation_row(formation_section(&stdout(out)), "1am");
-        let elcorr: f64 = row[1].parse().expect("number");
-        let gcorr: f64 = row[2].parse().expect("number");
-        assert!(elcorr.abs() < 1e-9 && gcorr.abs() < 1e-9, "{row:?}");
+        let values: Vec<f64> = row[1..]
+            .iter()
+            .map(|cell| cell.parse::<f64>().expect("number"))
+            .collect();
+        assert_eq!(values.len(), 4);
+        assert!(values.iter().all(|value| value.abs() < 1e-9), "{row:?}");
     }
 }
 
@@ -4893,12 +5046,16 @@ fn a_single_point_only_group_prints_dashes_under_bavg() {
     let row = formation_row(formation_section(&stdout(&bavg)), "2am1sa");
     assert_eq!(row[1], "-");
     assert_eq!(row[2], "-");
+    assert_eq!(row[3], "-");
+    assert_eq!(row[4], "-");
     // Without --bavg the same run prints the cluster's el formation
-    // value (its g stays undefined without frequencies).
+    // value (its thermal levels stay undefined without frequencies).
     let plain = cjkqc(&[&db, "--formation"]);
     let row = formation_row(formation_section(&stdout(&plain)), "2am1sa");
     assert_ne!(row[1], "-");
     assert_eq!(row[2], "-");
+    assert_eq!(row[3], "-");
+    assert_eq!(row[4], "-");
 }
 
 #[test] // rq-30bd57ee
@@ -4939,10 +5096,10 @@ fn the_collapsed_row_carries_the_concentration_term() {
     let conc = cjkqc(&[&db, "--formation", "--bavg", "--conc", "sa", "100ppt"]);
     assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
     assert_eq!(conc.status.code(), Some(0), "{}", stderr(&conc));
-    let plain_g: f64 = formation_row(formation_section(&stdout(&plain)), "2sa")[2]
+    let plain_g: f64 = formation_row(formation_section(&stdout(&plain)), "2sa")[4]
         .parse()
         .expect("number");
-    let conc_g: f64 = formation_row(formation_section(&stdout(&conc)), "2sa")[2]
+    let conc_g: f64 = formation_row(formation_section(&stdout(&conc)), "2sa")[4]
         .parse()
         .expect("number");
     // Two molecules of sa: the conc run sits 2*R*T*ln(10^10) above. The
@@ -4951,6 +5108,22 @@ fn the_collapsed_row_carries_the_concentration_term() {
     assert!(
         (conc_g - plain_g - 2.0 * ppt_shift(100.0)).abs() < 1e-9,
         "plain {plain_g} conc {conc_g}"
+    );
+    // The collapsed st moves the other way by the same amount, and the
+    // collapsed h stays at the standard state.
+    let plain_st: f64 = formation_row(formation_section(&stdout(&plain)), "2sa")[3]
+        .parse()
+        .expect("number");
+    let conc_st: f64 = formation_row(formation_section(&stdout(&conc)), "2sa")[3]
+        .parse()
+        .expect("number");
+    assert!(
+        (conc_st - plain_st + 2.0 * ppt_shift(100.0)).abs() < 1e-9,
+        "plain {plain_st} conc {conc_st}"
+    );
+    assert_eq!(
+        formation_row(formation_section(&stdout(&plain)), "2sa")[2],
+        formation_row(formation_section(&stdout(&conc)), "2sa")[2]
     );
 }
 
@@ -4978,10 +5151,10 @@ fn cnt_scales_the_collapsed_concentration_term_by_n_minus_one_over_n() {
     ]);
     assert_eq!(conc.status.code(), Some(0), "{}", stderr(&conc));
     assert_eq!(cnt.status.code(), Some(0), "{}", stderr(&cnt));
-    let conc_g: f64 = formation_row(formation_section(&stdout(&conc)), "2sa")[2]
+    let conc_g: f64 = formation_row(formation_section(&stdout(&conc)), "2sa")[4]
         .parse()
         .expect("number");
-    let cnt_g: f64 = formation_row(formation_section(&stdout(&cnt)), "2sa")[2]
+    let cnt_g: f64 = formation_row(formation_section(&stdout(&cnt)), "2sa")[4]
         .parse()
         .expect("number");
     // The term 2*(N-1)/N = 1: the cnt run sits one R*T*ln(10^10) below
@@ -5088,11 +5261,11 @@ fn both_sections_collapse_when_both_are_printed() {
     // Each section's header is the section's own.
     assert_eq!(
         cells(formation_section(&text).lines().next().unwrap()),
-        ["name", "el", "g"]
+        ["name", "el", "h", "st", "g"]
     );
     assert_eq!(
         cells(corrected_section(&text).lines().next().unwrap()),
-        ["name", "elcorr", "gcorr"]
+        ["name", "elcorr", "hcorr", "stcorr", "gcorr"]
     );
     assert_eq!(
         section_tokens(formation_section(&text)),
@@ -5462,8 +5635,8 @@ fn rh_scales_the_saturation_vapor_pressure() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let plain_row = formation_row(&stdout(&plain), "1sa1w");
     let hydrate = formation_row(&stdout(&run), "1sa1w");
-    let shift = hydrate[2].parse::<f64>().expect("the g cell")
-        - plain_row[2].parse::<f64>().expect("the g cell");
+    let shift = hydrate[4].parse::<f64>().expect("the g cell")
+        - plain_row[4].parse::<f64>().expect("the g cell");
     let expected = hydration_vapor_term(0.5);
     assert!(
         (shift - expected).abs() < 1.0e-9,
@@ -5664,9 +5837,9 @@ fn the_implied_spec_shifts_the_formation_section_s_solvent_term() {
     let hydrated_row = formation_row(&stdout(&hydrated), "1sa1w");
     let plain_sa = formation_row(&stdout(&plain), "1sa");
     let hydrated_sa = formation_row(&stdout(&hydrated), "1sa");
-    assert_eq!(plain_sa[2], hydrated_sa[2], "the 1sa rows are equal");
-    let shift = hydrated_row[2].parse::<f64>().expect("the g cell")
-        - plain_row[2].parse::<f64>().expect("the g cell");
+    assert_eq!(plain_sa[4], hydrated_sa[4], "the 1sa rows are equal");
+    let shift = hydrated_row[4].parse::<f64>().expect("the g cell")
+        - plain_row[4].parse::<f64>().expect("the g cell");
     let expected = hydration_vapor_term(0.5);
     assert!(
         (shift - expected).abs() < 1.0e-9,
@@ -5830,8 +6003,9 @@ fn the_section_prints_after_the_formation_sections_and_before_the_summary() {
     ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let text = stdout(&run);
-    let formation = text.len() - section_from(&text, &["name", "el", "g"]).len();
-    let corrected = text.len() - section_from(&text, &["name", "elcorr", "gcorr"]).len();
+    let formation = text.len() - section_from(&text, &["name", "el", "h", "st", "g"]).len();
+    let corrected =
+        text.len() - section_from(&text, &["name", "elcorr", "hcorr", "stcorr", "gcorr"]).len();
     // The hydration sections' percentage rows follow the dry-first state
     // ordering; each request prints its section once, raw before
     // corrected.
@@ -7479,7 +7653,7 @@ fn the_extrapolated_correction_follows_the_runs_conditions() {
         warm_row[1], hot_row[1],
         "the elcorr level ignores the temperature"
     );
-    assert_ne!(warm_row[2], hot_row[2], "the gcorr level follows it");
+    assert_ne!(warm_row[4], hot_row[4], "the gcorr level follows it");
 }
 
 // --- movie export scenarios (rqm/movie.md) ---

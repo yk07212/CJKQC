@@ -196,7 +196,7 @@
     "type": "api-item"
   },
   "rq-040dd0d3": {
-    "decl": "Scenario: --cnt keeps a monomer's formation free energy at zero",
+    "decl": "Scenario: --cnt keeps a monomer's formation values at zero",
     "file": "formation",
     "refs": [
       {
@@ -204,7 +204,7 @@
         "kind": "code"
       }
     ],
-    "title": "--cnt keeps a monomer's formation free energy at zero",
+    "title": "--cnt keeps a monomer's formation values at zero",
     "type": "scenario"
   },
   "rq-043c29fe": {
@@ -676,7 +676,7 @@
     "type": "section"
   },
   "rq-0df193f0": {
-    "decl": "Scenario: A monomer group without any Gibbs loses its reference at both levels",
+    "decl": "Scenario: A monomer group without any Gibbs loses its reference at every level",
     "file": "formation",
     "refs": [
       {
@@ -684,7 +684,7 @@
         "kind": "code"
       }
     ],
-    "title": "A monomer group without any Gibbs loses its reference at both levels",
+    "title": "A monomer group without any Gibbs loses its reference at every level",
     "type": "scenario"
   },
   "rq-0e05c3af": {
@@ -840,7 +840,7 @@
     "type": "section"
   },
   "rq-103447d2": {
-    "decl": "- `Formation` — a record's two derived levels:",
+    "decl": "- `Formation` — a record's four derived levels:",
     "file": "formation",
     "refs": [
       {
@@ -1904,6 +1904,18 @@
     "refs": [],
     "title": "Functions",
     "type": "section"
+  },
+  "rq-22dd2e0b": {
+    "decl": "Scenario: A thermal reference gap leaves the three thermal levels undefined together",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A thermal reference gap leaves the three thermal levels undefined together",
+    "type": "scenario"
   },
   "rq-22e7999c": {
     "decl": "### Crate Layout",
@@ -3164,7 +3176,7 @@
     "type": "api-item"
   },
   "rq-36de901e": {
-    "decl": "Scenario: A monomer's own formation energy is zero",
+    "decl": "Scenario: A monomer's own formation values are zero",
     "file": "formation",
     "refs": [
       {
@@ -3172,7 +3184,7 @@
         "kind": "code"
       }
     ],
-    "title": "A monomer's own formation energy is zero",
+    "title": "A monomer's own formation values are zero",
     "type": "scenario"
   },
   "rq-373378e9": {
@@ -3276,6 +3288,18 @@
       }
     ],
     "title": "Atomic numbers outside 1 to 118 map to nothing",
+    "type": "scenario"
+  },
+  "rq-39ca9fe7": {
+    "decl": "Scenario: The printed levels satisfy g = h - st",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The printed levels satisfy g = h - st",
     "type": "scenario"
   },
   "rq-39f86935": {
@@ -4141,6 +4165,22 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-4ca420a5": {
+    "decl": "Scenario: The corrected entropy term equals the raw entropy term",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected entropy term equals the raw entropy term",
+    "type": "scenario"
+  },
   "rq-4cd891c1": {
     "decl": "Scenario: Uniqueness rounds Gibbs like any metric",
     "file": "thermo",
@@ -4976,7 +5016,7 @@
     "type": "section"
   },
   "rq-5ca4f95d": {
-    "decl": "Scenario: A reference monomer without a correction leaves both levels undefined",
+    "decl": "Scenario: A reference monomer without a correction leaves every level undefined",
     "file": "formation",
     "refs": [
       {
@@ -4984,7 +5024,7 @@
         "kind": "code"
       }
     ],
-    "title": "A reference monomer without a correction leaves both levels undefined",
+    "title": "A reference monomer without a correction leaves every level undefined",
     "type": "scenario"
   },
   "rq-5d0be798": {
@@ -5361,7 +5401,7 @@
     "type": "section"
   },
   "rq-64a72e10": {
-    "decl": "Scenario: --sort g makes the lowest-gibbs conformer the reference for both levels",
+    "decl": "Scenario: --sort g makes the lowest-gibbs conformer the reference for every level",
     "file": "formation",
     "refs": [
       {
@@ -5369,7 +5409,7 @@
         "kind": "code"
       }
     ],
-    "title": "--sort g makes the lowest-gibbs conformer the reference for both levels",
+    "title": "--sort g makes the lowest-gibbs conformer the reference for every level",
     "type": "scenario"
   },
   "rq-64d42f21": {
@@ -5388,7 +5428,7 @@
     "type": "section"
   },
   "rq-650192f2": {
-    "decl": "Scenario: The two levels are independently undefined",
+    "decl": "Scenario: The electronic level is independent of the thermal levels",
     "file": "formation",
     "refs": [
       {
@@ -5396,7 +5436,7 @@
         "kind": "code"
       }
     ],
-    "title": "The two levels are independently undefined",
+    "title": "The electronic level is independent of the thermal levels",
     "type": "scenario"
   },
   "rq-658aba8c": {
@@ -6197,6 +6237,18 @@
     "title": "FilterSpec",
     "type": "api-item"
   },
+  "rq-77502cf6": {
+    "decl": "Scenario: The concentration term moves g and st by equal and opposite amounts",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The concentration term moves g and st by equal and opposite amounts",
+    "type": "scenario"
+  },
   "rq-775c5278": {
     "decl": "Scenario: Groups vote independently",
     "file": "detection",
@@ -6271,6 +6323,10 @@
     "refs": [
       {
         "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/thermo.rs",
         "kind": "code"
       }
     ],
@@ -7504,7 +7560,7 @@
     "type": "scenario"
   },
   "rq-9063d573": {
-    "decl": "Scenario: A monomer without thermochemistry has no Gibbs reference",
+    "decl": "Scenario: A monomer without thermochemistry has no thermal reference",
     "file": "formation",
     "refs": [
       {
@@ -7512,7 +7568,7 @@
         "kind": "code"
       }
     ],
-    "title": "A monomer without thermochemistry has no Gibbs reference",
+    "title": "A monomer without thermochemistry has no thermal reference",
     "type": "scenario"
   },
   "rq-90e2ea3e": {
@@ -7574,6 +7630,18 @@
     "refs": [],
     "title": "Detection",
     "type": "section"
+  },
+  "rq-91cdbab5": {
+    "decl": "Scenario: A 2am1sa cluster has a stoichiometric formation entropy term",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A 2am1sa cluster has a stoichiometric formation entropy term",
+    "type": "scenario"
   },
   "rq-91d514c5": {
     "decl": "Scenario: A zero frequency scale is a usage error",
@@ -9223,7 +9291,7 @@
     "type": "scenario"
   },
   "rq-b02bcba1": {
-    "decl": "Scenario: Records without components form at neither level",
+    "decl": "Scenario: Records without components form at no level",
     "file": "formation",
     "refs": [
       {
@@ -9231,7 +9299,7 @@
         "kind": "code"
       }
     ],
-    "title": "Records without components form at neither level",
+    "title": "Records without components form at no level",
     "type": "scenario"
   },
   "rq-b032b41c": {
@@ -10965,6 +11033,18 @@
     "title": "Feature: XTB Parser",
     "type": "file"
   },
+  "rq-cdb75b97": {
+    "decl": "Scenario: The corrected formation enthalpy subtracts the corrected monomer enthalpies",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected formation enthalpy subtracts the corrected monomer enthalpies",
+    "type": "scenario"
+  },
   "rq-cdf88b68": {
     "decl": "Scenario: Mixed inputs are refused",
     "file": "collection",
@@ -10999,6 +11079,18 @@
     "refs": [],
     "title": "program_version",
     "type": "api-item"
+  },
+  "rq-cfc7f6f3": {
+    "decl": "Scenario: A 2am1sa cluster has a stoichiometric formation enthalpy",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A 2am1sa cluster has a stoichiometric formation enthalpy",
+    "type": "scenario"
   },
   "rq-cfefec96": {
     "decl": "### Crate Layout",
@@ -11714,6 +11806,18 @@
     "title": "The registry exposes the five energy keys",
     "type": "scenario"
   },
+  "rq-df7a2c88": {
+    "decl": "Scenario: The collapsed entropy term is the mean enthalpy minus the ensemble Gibbs",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The collapsed entropy term is the mean enthalpy minus the ensemble Gibbs",
+    "type": "scenario"
+  },
   "rq-dfae85df": {
     "decl": "## Out of Scope",
     "file": "database",
@@ -12172,7 +12276,7 @@
     "type": "api-item"
   },
   "rq-e7f0ef7b": {
-    "decl": "Scenario: The g level follows the run's temperature",
+    "decl": "Scenario: The thermal levels follow the run's temperature",
     "file": "formation",
     "refs": [
       {
@@ -12180,7 +12284,7 @@
         "kind": "code"
       }
     ],
-    "title": "The g level follows the run's temperature",
+    "title": "The thermal levels follow the run's temperature",
     "type": "scenario"
   },
   "rq-e8016516": {
@@ -12228,7 +12332,7 @@
     "type": "scenario"
   },
   "rq-e8ea3b7f": {
-    "decl": "Scenario: The corrected section shifts gcorr the same way",
+    "decl": "Scenario: The corrected section shifts gcorr and stcorr the same way",
     "file": "formation",
     "refs": [
       {
@@ -12236,7 +12340,7 @@
         "kind": "code"
       }
     ],
-    "title": "The corrected section shifts gcorr the same way",
+    "title": "The corrected section shifts gcorr and stcorr the same way",
     "type": "scenario"
   },
   "rq-e982f0e0": {

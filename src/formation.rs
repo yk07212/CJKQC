@@ -2,12 +2,12 @@
 //! a run's final records are scanned for monomers (single-component,
 //! count-one `ok` records), each component code gets one reference record
 //! — the first of its monomers under the run's sort ordering — and the
-//! `--formation` flag prints each printed record's formation energy and
-//! formation free energy as a section after the normal property table.
-//! The `--conc` and `--cnt` flags evaluate the free-energy level at
-//! vapors of named components at given concentrations. Nothing is
-//! stored: values derive at request time under the run's thermochemistry
-//! conditions.
+//! `--formation` flag prints each printed record's formation energy,
+//! formation enthalpy, formation entropy term, and formation free energy
+//! as a section after the normal property table. The `--conc` and `--cnt`
+//! flags shift the free-energy and entropy-term levels at vapors of named
+//! components at given concentrations. Nothing is stored: values derive
+//! at request time under the run's thermochemistry conditions.
 //!
 //! (rq-10341821)
 
@@ -21,42 +21,81 @@ use crate::record::{Components, Record, RecordStatus};
 use crate::thermo::{ThermoMemo, E_HARTREE, K_B, P_STANDARD};
 
 /// The per-code monomer references in hartree, derived from the reference
-/// records' observables.
+/// records' observables. The enthalpy, entropy-term, and Gibbs maps carry
+/// the same key set — the codes whose selected monomer defines
+/// thermochemistry — so the three thermal levels are defined together.
 ///
 /// (rq-a14c7897)
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct MonomerReferences {
     /// Electronic energy of each code's reference monomer.
     pub electronic: BTreeMap<String, f64>,
+    /// Enthalpy of each code's reference monomer at the run's conditions.
+    pub enthalpy: BTreeMap<String, f64>,
+    /// T·S entropy term of each code's reference monomer at the run's
+    /// conditions.
+    pub entropy_term: BTreeMap<String, f64>,
     /// Gibbs free energy of each code's reference monomer at the run's
     /// conditions.
     pub gibbs: BTreeMap<String, f64>,
 }
 
 /// The per-code corrected references in hartree: the same selection as
-/// [`collect_monomers`], read through the corrected keys `elcorr`/`gcorr`
-/// (`rqm/correction.md`); a code appears only when its selected monomer
-/// defines that level's corrected value.
+/// [`collect_monomers`], read through the corrected keys
+/// `elcorr`/`hcorr`/`gcorr` (`rqm/correction.md`) and the raw T·S
+/// entropy term; a code appears only when its selected monomer defines
+/// that level's corrected value (`rqm/correction.md`). The enthalpy,
+/// entropy-term, and Gibbs maps carry the same key set, so the three
+/// thermal levels are defined together.
 ///
 /// (rq-67b44e63)
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CorrectedMonomerReferences {
     /// Correction energy of each code's reference monomer.
     pub electronic: BTreeMap<String, f64>,
-    /// Corrected Gibbs free energy of each code's reference monomer at the
-    /// run's conditions.
+    /// Corrected enthalpy of each code's reference monomer at the run's
+    /// conditions.
+    pub enthalpy: BTreeMap<String, f64>,
+    /// T·S entropy term of each code's reference monomer — the correction
+    /// does not alter any thermal term — at the run's conditions.
+    pub entropy_term: BTreeMap<String, f64>,
+    /// Corrected Gibbs free energy of each code's reference monomer at
+    /// the run's conditions.
     pub gibbs: BTreeMap<String, f64>,
 }
 
-/// A record's two derived formation levels, both in hartree.
+/// A record's four derived formation levels, all in hartree: the
+/// electronic level is independent; `enthalpy`, `entropy_term`, and
+/// `gibbs` are `Some` together or `None` together, since all three need
+/// defined thermochemistry and their references come from the same
+/// selected monomer — except that a non-finite concentration term (an
+/// absurd magnitude) leaves the enthalpy defined while the entropy
+/// term and Gibbs go undefined (`rqm/formation.md` Formation at Given
+/// Concentrations).
 ///
 /// (rq-103447d2)
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Formation {
     /// Formation energy (electronic level).
     pub electronic: Option<f64>,
+    /// Formation enthalpy.
+    pub enthalpy: Option<f64>,
+    /// Formation entropy term (the T·S energy term, the same quantity the
+    /// main table's `s` column prints).
+    pub entropy_term: Option<f64>,
     /// Formation free energy (Gibbs level).
     pub gibbs: Option<f64>,
+}
+
+impl Formation {
+    /// The all-undefined formation of a record that forms at no level.
+    // rq-103447d2
+    const NONE: Formation = Formation {
+        electronic: None,
+        enthalpy: None,
+        entropy_term: None,
+        gibbs: None,
+    };
 }
 
 /// The VALUE grammar's units (`rqm/formation.md` Formation at Given
@@ -122,11 +161,11 @@ pub struct ConcConditions {
 
 /// One collapsed composition group (Boltzmann-Averaged Sections): the
 /// ensemble of one composition's records, with `components` `None` for
-/// the unnamed ensemble of the records without components. The two values
-/// in Eh — the population-weighted electronic mean and the
-/// partition-function free energy — are `Some` together or `None`
-/// together; an ensemble without values is a group whose records all lack
-/// the section's Gibbs level.
+/// the unnamed ensemble of the records without components. The four
+/// values in Eh — the population-weighted electronic and enthalpy means,
+/// the partition-function free energy, and the entropy term H_ens −
+/// G_ens — are `Some` together or `None` together; an ensemble without
+/// values is a group whose records all lack the section's Gibbs level.
 ///
 /// (rq-35671b9e)
 #[derive(Debug, Clone, PartialEq)]
@@ -136,6 +175,12 @@ pub struct Ensemble {
     /// The population-weighted mean of the members' electronic-level
     /// inputs.
     pub electronic: Option<f64>,
+    /// The population-weighted mean of the members' enthalpy-level
+    /// values.
+    pub enthalpy: Option<f64>,
+    /// The entropy-term value H_ens − G_ens, so the collapse keeps
+    /// g_ens = h_ens − st_ens.
+    pub entropy_term: Option<f64>,
     /// The ensemble free energy −k_B·T·ln(Σⱼ exp(−gⱼ/(k_B·T))).
     pub gibbs: Option<f64>,
 }
@@ -163,12 +208,14 @@ pub fn parse_conc_value(text: &str) -> Option<(f64, ConcUnit)> {
     Some((magnitude, unit))
 }
 
-/// The concentration term subtracted from a defined formation free
-/// energy, in Eh: the sum over the specs whose code is in the components
-/// map of nᵢ,eff · k_B T ln(cᵢ/p°) / E_h, with nᵢ,eff = nᵢ or, under
-/// `self_consistent`, nᵢ·(N−1)/N for the record's total molecule count N.
-/// A spec whose code is absent from the components contributes nothing,
-/// so with no matching spec the term is 0.
+/// The concentration term `c_term` in Eh (`rqm/formation.md` Formation at
+/// Given Concentrations): the sum over the specs whose code is in the
+/// components map of nᵢ,eff · k_B T ln(cᵢ/p°) / E_h, with nᵢ,eff = nᵢ
+/// or, under `self_consistent`, nᵢ·(N−1)/N for the record's total
+/// molecule count N. A spec whose code is absent from the components
+/// contributes nothing, so with no matching spec the term is 0. The
+/// formation values subtract it from the Gibbs level and add it to the
+/// entropy-term level.
 ///
 /// (rq-2333d9cc)
 pub fn concentration_correction(
@@ -212,8 +259,8 @@ fn is_monomer(record: &Record) -> bool {
 /// The reference scan over the given records (the run passes its final
 /// record set, `rqm/filtering.md`): per component code, the first of that
 /// code's monomers under the ascending sort ordering of `sort` — undefined
-/// sort-key values order after defined ones — supplies both reference
-/// values; a level the chosen record lacks has no reference. The memo
+/// sort-key values order after defined ones — supplies every reference
+/// value; a level the chosen record lacks has no reference. The memo
 /// carries the run's thermochemistry conditions and derives each record
 /// at most once (`rqm/thermo.md` Performance).
 ///
@@ -228,7 +275,16 @@ pub fn collect_monomers(
         if let Some(electronic) = reference.electronic_energy {
             references.electronic.insert(code.to_string(), electronic);
         }
+        // The enthalpy, entropy-term, and Gibbs references are defined
+        // together: one derivation of the selected monomer supplies all
+        // three (rqm/formation.md Monomer References).
         if let Some(thermo) = memo.thermo(reference) {
+            references
+                .enthalpy
+                .insert(code.to_string(), thermo.enthalpy);
+            references
+                .entropy_term
+                .insert(code.to_string(), thermo.entropy_term);
             references.gibbs.insert(code.to_string(), thermo.gibbs);
         }
     }
@@ -300,16 +356,70 @@ fn sorts_before(
     }
 }
 
-/// A record's two formation levels with their independent definedness:
-/// electronic energy minus the stoichiometric mix of electronic references,
-/// Gibbs free energy minus the mix of Gibbs references. The record's Gibbs
-/// value resolves through the derived-property registry on the run's memo
-/// (`rqm/thermo.md`); when defined, it has the concentration term of
-/// `concentration_correction` under the run's `ConcConditions` subtracted,
-/// and a correction that turns non-finite (an absurd input magnitude)
-/// leaves the level undefined rather than infinite. A level is undefined
-/// when the record lacks components, lacks the level's input energy, or
-/// any referenced code lacks that level's reference.
+/// The thermal reference maps of the formation fold: the enthalpy,
+/// entropy-term, and Gibbs maps, one per level.
+type ThermalReferences<'a> = (
+    &'a BTreeMap<String, f64>,
+    &'a BTreeMap<String, f64>,
+    &'a BTreeMap<String, f64>,
+);
+
+/// The shared thermal fold of the formation values, record-level and
+/// ensemble alike: the level's own enthalpy, entropy term, and Gibbs
+/// value — as the `(enthalpy, entropy_term, gibbs)` trio, `None` when
+/// the level has no values at all — each minus the stoichiometric mix
+/// of its matching reference map, with the concentration term
+/// subtracted from the Gibbs value and added to the entropy-term value.
+/// Each level folds against its own map, so with the scan's references
+/// — whose thermal maps are defined together — the three levels are
+/// defined together, while a hand-built reference set may define one
+/// level alone. A non-finite concentration term (an absurd magnitude)
+/// leaves the Gibbs and entropy levels undefined rather than infinite
+/// (`rqm/formation.md` Formation Values, Formation at Given
+/// Concentrations).
+// rq-6ffbf9aa rq-fb892986 rq-eafc5e8e rq-f5583f17
+fn thermal_formation(
+    levels: Option<(f64, f64, f64)>,
+    components: &Components,
+    references: ThermalReferences<'_>,
+    concs: &ConcConditions,
+    temperature: f64,
+) -> (Option<f64>, Option<f64>, Option<f64>) {
+    let Some((enthalpy_value, entropy_term_value, gibbs_value)) = levels else {
+        return (None, None, None);
+    };
+    let (enthalpy_reference, entropy_reference, gibbs_reference) = references;
+    let fold = |mut value: f64, reference: &BTreeMap<String, f64>| {
+        for (code, count) in components {
+            value -= f64::from(*count) * reference.get(code)?;
+        }
+        Some(value)
+    };
+    let enthalpy = fold(enthalpy_value, enthalpy_reference);
+    let correction = concentration_correction(components, concs, temperature);
+    let entropy_term = fold(entropy_term_value, entropy_reference)
+        .map(|value| value + correction)
+        .filter(|value| value.is_finite());
+    let gibbs = fold(gibbs_value, gibbs_reference)
+        .map(|value| value - correction)
+        .filter(|value| value.is_finite());
+    (enthalpy, entropy_term, gibbs)
+}
+
+/// A record's four formation levels with their definedness: the
+/// electronic energy minus the stoichiometric mix of electronic
+/// references, and the enthalpy, entropy term, and Gibbs free energy —
+/// from one whole-record thermochemistry derivation on the memo
+/// (`rqm/thermo.md`) rather than three registry lookups, keeping the
+/// three levels defined together — minus the stoichiometric mix of
+/// their references. When the thermal levels are defined, the
+/// concentration term of `concentration_correction` under the run's
+/// `ConcConditions` is subtracted from the Gibbs value and added to the
+/// entropy-term value, and a correction that turns non-finite (an absurd
+/// input magnitude) leaves those two levels undefined rather than
+/// infinite. The electronic level is undefined when the record lacks
+/// components, lacks its input energy, or any referenced code lacks that
+/// level's reference.
 ///
 /// (rq-6ffbf9aa rq-c3425396 rq-8f6da1c2 rq-2333d9cc)
 pub fn formation_values(
@@ -319,10 +429,7 @@ pub fn formation_values(
     concs: &ConcConditions,
 ) -> Formation {
     let Some(components) = record.components.as_ref() else {
-        return Formation {
-            electronic: None,
-            gibbs: None,
-        };
+        return Formation::NONE;
     };
     let electronic = record.electronic_energy.and_then(|energy| {
         let mut value = energy;
@@ -331,23 +438,36 @@ pub fn formation_values(
         }
         Some(value)
     });
-    let gibbs = memo.value("g", record).and_then(|free_energy| {
-        let mut value = free_energy;
-        for (code, count) in components {
-            value -= f64::from(*count) * references.gibbs.get(code)?;
-        }
-        let value = value - concentration_correction(components, concs, memo.temperature());
-        Some(value).filter(|value| value.is_finite())
-    });
-    Formation { electronic, gibbs }
+    let thermal = thermal_formation(
+        memo.thermo(record)
+            .map(|thermo| (thermo.enthalpy, thermo.entropy_term, thermo.gibbs)),
+        components,
+        (
+            &references.enthalpy,
+            &references.entropy_term,
+            &references.gibbs,
+        ),
+        concs,
+        memo.temperature(),
+    );
+    let (enthalpy, entropy_term, gibbs) = thermal;
+    Formation {
+        electronic,
+        enthalpy,
+        entropy_term,
+        gibbs,
+    }
 }
 
 /// The corrected reference scan (`rqm/formation.md`): the same monomer
 /// set and the same sort-based selection as the raw section; a code's
-/// corrected electronic reference is that monomer's correction energy and
-/// its corrected Gibbs reference the monomer's `gcorr` value, and a
-/// level's reference is undefined when the selected monomer carries no
-/// correction (or its corrected Gibbs is undefined).
+/// corrected electronic reference is that monomer's correction energy,
+/// its corrected enthalpy reference the monomer's `hcorr`, its corrected
+/// entropy-term reference the monomer's T·S — which the correction does
+/// not alter — and its corrected Gibbs reference the monomer's `gcorr`
+/// value. A reference is undefined when the selected monomer carries no
+/// correction or its corrected thermochemistry is undefined; the
+/// enthalpy, entropy-term, and Gibbs references are defined together.
 ///
 /// (rq-789635d3)
 pub fn corrected_monomer_references(
@@ -360,22 +480,33 @@ pub fn corrected_monomer_references(
         if let Some(energy) = crate::correction::corrected_energy(reference) {
             references.electronic.insert(code.clone(), energy);
         }
-        if let Some(gibbs) = memo.value("gcorr", reference) {
-            references.gibbs.insert(code, gibbs);
+        // The corrected enthalpy, entropy-term, and Gibbs references are
+        // defined together: one corrected derivation of the selected
+        // monomer supplies all three (rqm/formation.md).
+        if let Some(thermo) = memo.corrected_thermo(reference) {
+            references.enthalpy.insert(code.clone(), thermo.enthalpy);
+            references
+                .entropy_term
+                .insert(code.to_string(), thermo.entropy_term);
+            references.gibbs.insert(code, thermo.gibbs);
         }
     }
     references
 }
 
-/// A record's two corrected formation levels with their independent
-/// definedness: the correction energy minus the stoichiometric mix of
-/// corrected electronic references, the corrected Gibbs free energy minus
-/// the mix of corrected Gibbs references. A level is defined iff the
-/// record's own corrected value at that level is defined and every
-/// referenced code has a defined corrected reference at that level —
-/// corrected formation numbers never mix levels (`rqm/formation.md`).
-/// The corrected Gibbs value, when defined, has the same concentration
-/// term as the raw section subtracted, with the same non-finite guard.
+/// A record's four corrected formation levels with their definedness:
+/// the correction energy minus the stoichiometric mix of corrected
+/// electronic references, and the corrected enthalpy, the T·S entropy
+/// term — the correction does not alter any thermal term — and the
+/// corrected Gibbs free energy minus the stoichiometric mixes of their
+/// corrected references. A level is defined iff the record's own
+/// corrected value at that level is defined and every referenced code has
+/// a defined corrected reference at that level — corrected formation
+/// numbers never mix levels (`rqm/formation.md`). A record without a
+/// correction has no corrected value at any level. The corrected Gibbs
+/// value, when defined, has the same concentration term as the raw
+/// section subtracted and the corrected entropy-term value has it added,
+/// with the same non-finite guard.
 ///
 /// (rq-fb892986 rq-2333d9cc)
 pub fn corrected_formation_values(
@@ -385,10 +516,7 @@ pub fn corrected_formation_values(
     concs: &ConcConditions,
 ) -> Formation {
     let Some(components) = record.components.as_ref() else {
-        return Formation {
-            electronic: None,
-            gibbs: None,
-        };
+        return Formation::NONE;
     };
     let electronic = crate::correction::corrected_energy(record).and_then(|energy| {
         let mut value = energy;
@@ -397,23 +525,33 @@ pub fn corrected_formation_values(
         }
         Some(value)
     });
-    let gibbs = memo.value("gcorr", record).and_then(|free_energy| {
-        let mut value = free_energy;
-        for (code, count) in components {
-            value -= f64::from(*count) * references.gibbs.get(code)?;
-        }
-        let value = value - concentration_correction(components, concs, memo.temperature());
-        Some(value).filter(|value| value.is_finite())
-    });
-    Formation { electronic, gibbs }
+    let thermal = thermal_formation(
+        memo.corrected_thermo(record)
+            .map(|thermo| (thermo.enthalpy, thermo.entropy_term, thermo.gibbs)),
+        components,
+        (
+            &references.enthalpy,
+            &references.entropy_term,
+            &references.gibbs,
+        ),
+        concs,
+        memo.temperature(),
+    );
+    let (enthalpy, entropy_term, gibbs) = thermal;
+    Formation {
+        electronic,
+        enthalpy,
+        entropy_term,
+        gibbs,
+    }
 }
 
-/// The formation section: a `name el g` header row, then one row per record
-/// in the given order. The `name` cell is the record's composition token
-/// (`rqm/filtering.md` Printing), `-` without components; values follow
-/// the run's energy unit (kcal/mol under `--unit`, hartree otherwise) and
-/// print through the same energy formatter as the table columns, `-` when
-/// undefined.
+/// The formation section: a `name el h st g` header row, then one row per
+/// record in the given order. The `name` cell is the record's composition
+/// token (`rqm/filtering.md` Printing), `-` without components; values
+/// follow the run's energy unit (kcal/mol under `--unit`, hartree
+/// otherwise) and print through the same energy formatter as the table
+/// columns, `-` when undefined.
 ///
 /// (rq-9503bcb2 rq-8dee4f4e)
 pub fn print_formation_section(
@@ -432,12 +570,13 @@ pub fn print_formation_section(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["name", "el", "g"])
+    print_formation_table(&rows, unit, &["name", "el", "h", "st", "g"])
 }
 
 /// The corrected formation section (`rqm/formation.md`): the raw
-/// section's table with the corrected levels — header `name elcorr gcorr`,
-/// the same composition tokens, formatting, and `-` rules.
+/// section's table with the corrected levels — header
+/// `name elcorr hcorr stcorr gcorr`, the same composition tokens,
+/// formatting, and `-` rules.
 ///
 /// (rq-4f20e170)
 pub fn print_formation_corr_section(
@@ -456,29 +595,43 @@ pub fn print_formation_corr_section(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["name", "elcorr", "gcorr"])
+    print_formation_table(&rows, unit, &["name", "elcorr", "hcorr", "stcorr", "gcorr"])
 }
 
-/// The shared section table: a header row, then one `name el g`-shaped row
-/// per `(token, formation)` pair in the given order — shared with the
-/// collapsed sections (`rqm/formation.md` Boltzmann-Averaged Sections).
-/// Aligned like the main table (`rqm/filtering.md` Printing): `name` a
-/// text column (left), the energy columns numeric (right), header cells
-/// aligning with their columns.
+/// The shared section table: a header row, then one `name el h st
+/// g`-shaped row per `(token, formation)` pair in the given order —
+/// shared with the collapsed sections (`rqm/formation.md`
+/// Boltzmann-Averaged Sections). Aligned like the main table
+/// (`rqm/filtering.md` Printing): `name` a text column (left), the
+/// energy columns numeric (right), header cells aligning with their
+/// columns.
 // rq-9503bcb2
 fn print_formation_table(rows: &[(String, Formation)], unit: Unit, header: &[&str]) -> String {
+    debug_assert!(
+        header.len() == 5,
+        "the formation table body prints the name plus four level columns"
+    );
     let header_cells: Vec<String> = header.iter().map(|cell| cell.to_string()).collect();
     let mut table = vec![header_cells];
     for (token, formation) in rows {
-        let electronic = formation
-            .electronic
-            .map_or_else(|| "-".to_string(), |value| format_energy(value, unit));
-        let gibbs = formation
-            .gibbs
-            .map_or_else(|| "-".to_string(), |value| format_energy(value, unit));
-        table.push(vec![token.clone(), electronic, gibbs]);
+        let cell = |value: Option<f64>| {
+            value.map_or_else(|| "-".to_string(), |value| format_energy(value, unit))
+        };
+        table.push(vec![
+            token.clone(),
+            cell(formation.electronic),
+            cell(formation.enthalpy),
+            cell(formation.entropy_term),
+            cell(formation.gibbs),
+        ]);
     }
-    let aligns = [Alignment::Left, Alignment::Right, Alignment::Right];
+    let aligns = [
+        Alignment::Left,
+        Alignment::Right,
+        Alignment::Right,
+        Alignment::Right,
+        Alignment::Right,
+    ];
     align_table(&table, &aligns)
 }
 
@@ -489,16 +642,35 @@ fn is_monomer_ensemble(ensemble: &Ensemble) -> bool {
     ensemble.components.as_ref().is_some_and(is_monomer_shaped)
 }
 
-/// The electronic level paired with the collapse's Gibbs level: the raw
-/// section reads the record's electronic energy, the corrected one the
-/// correction energy (`rqm/formation.md` Boltzmann-Averaged Sections).
+/// The registry keys of the collapse's paired levels: the electronic key
+/// of the electronic level — the record's `electronic_energy` for the raw
+/// section, the correction energy (`rqm/correction.md`) for the corrected
+/// one — and the enthalpy key of the enthalpy level; the Gibbs level
+/// itself resolves through the shared population resolver
+/// (`rqm/formation.md` Boltzmann-Averaged Sections).
 // rq-dd65e289
-fn electronic_level(level: PopLevel) -> PopLevel {
+fn collapse_keys(level: PopLevel) -> (&'static str, &'static str) {
     match level {
-        PopLevel::G => PopLevel::El,
-        PopLevel::GCorr => PopLevel::ElCorr,
+        PopLevel::G => ("el", "h"),
+        PopLevel::GCorr => ("elcorr", "hcorr"),
         _ => unreachable!("the collapse collapses at a Gibbs level"),
     }
+}
+
+/// The members' population-weighted mean of `values`: a member without a
+/// value — unreachable for the collapse's paired levels, since the
+/// Gibbs level derives from both — leaves the mean undefined rather than
+/// half-defined (Boltzmann-Averaged Sections).
+// rq-18dba668
+fn weighted_mean(weights: &[Option<f64>], values: &[Option<f64>]) -> Option<f64> {
+    weights
+        .iter()
+        .zip(values)
+        .try_fold(0.0_f64, |sum, (weight, value)| match (weight, value) {
+            (Some(weight), Some(value)) => Some(sum + weight * value),
+            (Some(_), None) => None,
+            (None, _) => Some(sum),
+        })
 }
 
 /// The shared collapse behind both sections (Boltzmann-Averaged
@@ -513,12 +685,13 @@ fn electronic_level(level: PopLevel) -> PopLevel {
 /// (`rqm/filtering.md`), and an `ok` record without that value
 /// contributes nothing (the definedness rule of `rqm/population.md`); a
 /// group with no members yields an ensemble without values. The ensemble
-/// values are the members' population-weighted mean of the paired
-/// electronic level — every member defines that level too, since the
-/// Gibbs derives from the electronic energy — and the ensemble free
+/// values are the members' population-weighted means of the paired
+/// electronic and enthalpy levels — every member defines those levels
+/// too, since they derive with the Gibbs level — the ensemble free
 /// energy g_min − k_B·T·ln Z over the members' Gibbs values, computed
 /// against the members' minimum as `rqm/population.md` Numerics
-/// prescribes, at the memo's temperature.
+/// prescribes, and the entropy term H_ens − G_ens, at the memo's
+/// temperature.
 // rq-18dba668
 fn collapse(records: &[Record], memo: &ThermoMemo, level: PopLevel) -> Vec<Ensemble> {
     // The grouping reuses the pipeline's composition groups; the unnamed
@@ -532,6 +705,7 @@ fn collapse(records: &[Record], memo: &ThermoMemo, level: PopLevel) -> Vec<Ensem
         let unnamed = groups.remove(position);
         groups.push(unnamed);
     }
+    let (electronic_key, enthalpy_key) = collapse_keys(level);
     let kbt = K_B * memo.temperature() / E_HARTREE;
     let mut ensembles = Vec::with_capacity(groups.len());
     for indices in groups {
@@ -552,46 +726,60 @@ fn collapse(records: &[Record], memo: &ThermoMemo, level: PopLevel) -> Vec<Ensem
             .iter()
             .map(|&index| pop_level_value(&records[index], level, memo))
             .collect();
+        let level_value = |key: &str, index: usize| {
+            memo.value(key, &records[index])
+                .filter(|value| value.is_finite())
+        };
         let electronic_values: Vec<Option<f64>> = members
             .iter()
-            .map(|&index| pop_level_value(&records[index], electronic_level(level), memo))
+            .map(|&index| level_value(electronic_key, index))
+            .collect();
+        let enthalpy_values: Vec<Option<f64>> = members
+            .iter()
+            .map(|&index| level_value(enthalpy_key, index))
             .collect();
         let ensemble = match boltzmann_weights(&values, kbt) {
             // No member defines the level: the ensemble carries no values.
             None => Ensemble {
                 components,
                 electronic: None,
+                enthalpy: None,
+                entropy_term: None,
                 gibbs: None,
             },
             Some((weights, partition)) => {
-                // The population-weighted mean of the members' electronic
-                // inputs; a member without one — unreachable, since the
-                // Gibbs derives from the electronic energy — leaves the
-                // ensemble without values rather than half-defined.
-                let electronic = weights.iter().zip(&electronic_values).try_fold(
-                    0.0_f64,
-                    |sum, (weight, value)| match (weight, value) {
-                        (Some(weight), Some(value)) => Some(sum + weight * value),
-                        (Some(_), None) => None,
-                        (None, _) => Some(sum),
-                    },
-                );
-                match electronic {
-                    Some(mean) => {
+                // The population-weighted means of the members'
+                // electronic and enthalpy inputs; a member without one —
+                // unreachable, since both derive with the Gibbs level —
+                // leaves the ensemble without values rather than
+                // half-defined.
+                let electronic = weighted_mean(&weights, &electronic_values);
+                let enthalpy = weighted_mean(&weights, &enthalpy_values);
+                match (electronic, enthalpy) {
+                    (Some(mean_electronic), Some(mean_enthalpy)) => {
                         let minimum = values
                             .iter()
                             .filter_map(|value| *value)
                             .reduce(f64::min)
                             .expect("the weights exist only when some member defines the level");
+                        // The entropy term H_ens − G_ens keeps
+                        // g_ens = h_ens − st_ens, so the conformational
+                        // stabilization appears in the entropy term
+                        // rather than lowering the enthalpy.
+                        let gibbs = minimum - kbt * partition.ln();
                         Ensemble {
                             components,
-                            electronic: Some(mean),
-                            gibbs: Some(minimum - kbt * partition.ln()),
+                            electronic: Some(mean_electronic),
+                            enthalpy: Some(mean_enthalpy),
+                            entropy_term: Some(mean_enthalpy - gibbs),
+                            gibbs: Some(gibbs),
                         }
                     }
-                    None => Ensemble {
+                    _ => Ensemble {
                         components,
                         electronic: None,
+                        enthalpy: None,
+                        entropy_term: None,
                         gibbs: None,
                     },
                 }
@@ -612,8 +800,9 @@ fn components_of(records: &[Record], indices: &[usize]) -> Option<Components> {
 /// The raw section's collapse (Boltzmann-Averaged Sections): groups by
 /// components map in first-appearance order, the records without
 /// components last as the unnamed ensemble; the members are the `ok`
-/// records defining the derived Gibbs free energy and the electronic
-/// inputs are the records' electronic energies.
+/// records defining the derived Gibbs free energy and the electronic and
+/// enthalpy inputs are the records' electronic energies and enthalpies,
+/// with the entropy-term value computed as H_ens − G_ens.
 ///
 /// (rq-18dba668)
 pub fn collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble> {
@@ -621,7 +810,7 @@ pub fn collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble
 }
 
 /// The corrected section's collapse (Boltzmann-Averaged Sections): the
-/// members and electronic inputs resolve through `gcorr` and the
+/// members and inputs resolve through `gcorr`, `hcorr`, and the
 /// correction energy (`rqm/correction.md`), otherwise identical to
 /// [`collapse_ensembles`].
 ///
@@ -632,9 +821,9 @@ pub fn corrected_collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Ve
 
 /// The reference scan over ensembles (Boltzmann-Averaged Sections): each
 /// monomer ensemble — components exactly one entry with count 1 —
-/// supplies both reference values for its code; ensembles without values
-/// contribute nothing. The collapse produces at most one ensemble per
-/// components map, so the scan never overwrites a code.
+/// supplies its four reference values for its code; ensembles without
+/// values contribute nothing. The collapse produces at most one ensemble
+/// per components map, so the scan never overwrites a code.
 ///
 /// (rq-27a3b339)
 pub fn ensemble_references(ensembles: &[Ensemble]) -> MonomerReferences {
@@ -643,8 +832,13 @@ pub fn ensemble_references(ensembles: &[Ensemble]) -> MonomerReferences {
         if !is_monomer_ensemble(ensemble) {
             continue;
         }
-        // The two values are Some together or not at all.
-        let (Some(electronic), Some(gibbs)) = (ensemble.electronic, ensemble.gibbs) else {
+        // The four values are Some together or not at all.
+        let (Some(electronic), Some(enthalpy), Some(entropy_term), Some(gibbs)) = (
+            ensemble.electronic,
+            ensemble.enthalpy,
+            ensemble.entropy_term,
+            ensemble.gibbs,
+        ) else {
             continue;
         };
         if let Some(code) = ensemble
@@ -653,6 +847,8 @@ pub fn ensemble_references(ensembles: &[Ensemble]) -> MonomerReferences {
             .and_then(|components| components.keys().next())
         {
             references.electronic.insert(code.clone(), electronic);
+            references.enthalpy.insert(code.clone(), enthalpy);
+            references.entropy_term.insert(code.clone(), entropy_term);
             references.gibbs.insert(code.to_string(), gibbs);
         }
     }
@@ -661,8 +857,9 @@ pub fn ensemble_references(ensembles: &[Ensemble]) -> MonomerReferences {
 
 /// The same scan read as the corrected references (Boltzmann-Averaged
 /// Sections): the monomer ensemble's electronic mean is the
-/// correction-energy reference and its Gibbs value the `gcorr` reference
-/// (`rqm/correction.md`).
+/// correction-energy reference, its enthalpy mean the `hcorr` reference,
+/// its entropy-term value the T·S reference, and its Gibbs value the
+/// `gcorr` reference (`rqm/correction.md`).
 ///
 /// (rq-4b8a9f98)
 pub fn corrected_ensemble_references(ensembles: &[Ensemble]) -> CorrectedMonomerReferences {
@@ -671,8 +868,13 @@ pub fn corrected_ensemble_references(ensembles: &[Ensemble]) -> CorrectedMonomer
         if !is_monomer_ensemble(ensemble) {
             continue;
         }
-        // The two values are Some together or not at all.
-        let (Some(electronic), Some(gibbs)) = (ensemble.electronic, ensemble.gibbs) else {
+        // The four values are Some together or not at all.
+        let (Some(electronic), Some(enthalpy), Some(entropy_term), Some(gibbs)) = (
+            ensemble.electronic,
+            ensemble.enthalpy,
+            ensemble.entropy_term,
+            ensemble.gibbs,
+        ) else {
             continue;
         };
         if let Some(code) = ensemble
@@ -681,17 +883,20 @@ pub fn corrected_ensemble_references(ensembles: &[Ensemble]) -> CorrectedMonomer
             .and_then(|components| components.keys().next())
         {
             references.electronic.insert(code.clone(), electronic);
+            references.enthalpy.insert(code.clone(), enthalpy);
+            references.entropy_term.insert(code.clone(), entropy_term);
             references.gibbs.insert(code.to_string(), gibbs);
         }
     }
     references
 }
 
-/// The two levels of one collapsed row (Boltzmann-Averaged Sections):
-/// the ensemble's values minus the stoichiometric references, the Gibbs
-/// level minus the concentration term of `concentration_correction` with
-/// the same non-finite guard as the record-level values; both levels
-/// undefined when the ensemble has no values or lacks components.
+/// The four levels of one collapsed row (Boltzmann-Averaged Sections):
+/// the ensemble's values minus the stoichiometric references, with the
+/// concentration term of `concentration_correction` subtracted from the
+/// Gibbs value and added to the entropy-term value, using the same
+/// non-finite guard as the record-level values; every level is undefined
+/// when the ensemble has no values or lacks components.
 ///
 /// (rq-eafc5e8e)
 pub fn ensemble_formation_values(
@@ -700,15 +905,22 @@ pub fn ensemble_formation_values(
     memo: &ThermoMemo,
     concs: &ConcConditions,
 ) -> Formation {
-    let empty = Formation {
-        electronic: None,
-        gibbs: None,
-    };
+    let empty = Formation::NONE;
     let Some(components) = ensemble.components.as_ref() else {
         return empty;
     };
-    // The two values are Some together or not at all.
-    let (Some(ensemble_electronic), Some(ensemble_gibbs)) = (ensemble.electronic, ensemble.gibbs)
+    // The four values are Some together or not at all.
+    let (
+        Some(ensemble_electronic),
+        Some(ensemble_enthalpy),
+        Some(ensemble_entropy_term),
+        Some(ensemble_gibbs),
+    ) = (
+        ensemble.electronic,
+        ensemble.enthalpy,
+        ensemble.entropy_term,
+        ensemble.gibbs,
+    )
     else {
         return empty;
     };
@@ -717,18 +929,27 @@ pub fn ensemble_formation_values(
         .try_fold(ensemble_electronic, |value, (code, count)| {
             Some(value - f64::from(*count) * references.electronic.get(code)?)
         });
-    let gibbs = components
-        .iter()
-        .try_fold(ensemble_gibbs, |value, (code, count)| {
-            Some(value - f64::from(*count) * references.gibbs.get(code)?)
-        })
-        .map(|value| value - concentration_correction(components, concs, memo.temperature()))
-        .filter(|value| value.is_finite());
-    Formation { electronic, gibbs }
+    let (enthalpy, entropy_term, gibbs) = thermal_formation(
+        Some((ensemble_enthalpy, ensemble_entropy_term, ensemble_gibbs)),
+        components,
+        (
+            &references.enthalpy,
+            &references.entropy_term,
+            &references.gibbs,
+        ),
+        concs,
+        memo.temperature(),
+    );
+    Formation {
+        electronic,
+        enthalpy,
+        entropy_term,
+        gibbs,
+    }
 }
 
-/// The corrected row's two levels (Boltzmann-Averaged Sections): the same
-/// rule as [`ensemble_formation_values`] against the corrected
+/// The corrected row's four levels (Boltzmann-Averaged Sections): the
+/// same rule as [`ensemble_formation_values`] against the corrected
 /// references (`rqm/correction.md`).
 ///
 /// (rq-f5583f17)
@@ -738,15 +959,22 @@ pub fn corrected_ensemble_formation_values(
     memo: &ThermoMemo,
     concs: &ConcConditions,
 ) -> Formation {
-    let empty = Formation {
-        electronic: None,
-        gibbs: None,
-    };
+    let empty = Formation::NONE;
     let Some(components) = ensemble.components.as_ref() else {
         return empty;
     };
-    // The two values are Some together or not at all.
-    let (Some(ensemble_electronic), Some(ensemble_gibbs)) = (ensemble.electronic, ensemble.gibbs)
+    // The four values are Some together or not at all.
+    let (
+        Some(ensemble_electronic),
+        Some(ensemble_enthalpy),
+        Some(ensemble_entropy_term),
+        Some(ensemble_gibbs),
+    ) = (
+        ensemble.electronic,
+        ensemble.enthalpy,
+        ensemble.entropy_term,
+        ensemble.gibbs,
+    )
     else {
         return empty;
     };
@@ -755,19 +983,28 @@ pub fn corrected_ensemble_formation_values(
         .try_fold(ensemble_electronic, |value, (code, count)| {
             Some(value - f64::from(*count) * references.electronic.get(code)?)
         });
-    let gibbs = components
-        .iter()
-        .try_fold(ensemble_gibbs, |value, (code, count)| {
-            Some(value - f64::from(*count) * references.gibbs.get(code)?)
-        })
-        .map(|value| value - concentration_correction(components, concs, memo.temperature()))
-        .filter(|value| value.is_finite());
-    Formation { electronic, gibbs }
+    let (enthalpy, entropy_term, gibbs) = thermal_formation(
+        Some((ensemble_enthalpy, ensemble_entropy_term, ensemble_gibbs)),
+        components,
+        (
+            &references.enthalpy,
+            &references.entropy_term,
+            &references.gibbs,
+        ),
+        concs,
+        memo.temperature(),
+    );
+    Formation {
+        electronic,
+        enthalpy,
+        entropy_term,
+        gibbs,
+    }
 }
 
 /// The collapsed raw section (Boltzmann-Averaged Sections): header
-/// `name el g`, one row per ensemble in the given order, `-` for undefined
-/// values and for the unnamed ensemble's token.
+/// `name el h st g`, one row per ensemble in the given order, `-` for
+/// undefined values and for the unnamed ensemble's token.
 ///
 /// (rq-30ea9ebc)
 pub fn print_formation_ensembles(
@@ -786,12 +1023,12 @@ pub fn print_formation_ensembles(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["name", "el", "g"])
+    print_formation_table(&rows, unit, &["name", "el", "h", "st", "g"])
 }
 
 /// The collapsed corrected section (Boltzmann-Averaged Sections): the
 /// collapsed raw section's table with the corrected levels — header
-/// `name elcorr gcorr`.
+/// `name elcorr hcorr stcorr gcorr`.
 ///
 /// (rq-4c1bcb87)
 pub fn print_formation_corr_ensembles(
@@ -810,5 +1047,5 @@ pub fn print_formation_corr_ensembles(
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["name", "elcorr", "gcorr"])
+    print_formation_table(&rows, unit, &["name", "elcorr", "hcorr", "stcorr", "gcorr"])
 }
