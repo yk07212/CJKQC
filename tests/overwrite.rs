@@ -5,7 +5,7 @@
 use std::io::{BufRead, BufReader, Cursor};
 use std::path::Path;
 
-use complied_jkqc::overwrite::{confirm_overwrite, overwrite_error, OverwriteDecision};
+use compiled_jkqc::overwrite::{confirm_overwrite, overwrite_error, OverwriteDecision};
 
 /// Runs one interactive confirmation against the given answer text,
 /// returning the decision and everything written to the prompt sink.

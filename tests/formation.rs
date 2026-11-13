@@ -2,12 +2,12 @@
 //! per Gherkin scenario of `rqm/formation.md` exercised at the API level.
 //! CLI-shaped scenarios live in `tests/cli.rs`.
 
-use complied_jkqc::filter::{SortKey, Unit};
-use complied_jkqc::formation::{
+use compiled_jkqc::filter::{SortKey, Unit};
+use compiled_jkqc::formation::{
     collect_monomers, formation_values, ConcConditions, Formation, MonomerReferences,
 };
-use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo};
-use complied_jkqc::{Components, Geometry, Record, RecordStatus};
+use compiled_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo};
+use compiled_jkqc::{Components, Geometry, Record, RecordStatus};
 
 fn components(pairs: &[(&str, u32)]) -> Components {
     pairs
@@ -253,11 +253,11 @@ fn records_without_components_form_at_neither_level() {
 
 // --- Corrected formation section (rqm/formation.md, rqm/correction.md) ---
 
-use complied_jkqc::formation::{
+use compiled_jkqc::formation::{
     corrected_formation_values, corrected_monomer_references, print_formation_corr_section,
 };
-use complied_jkqc::thermo::KCAL_MOL_PER_HARTREE;
-use complied_jkqc::Correction;
+use compiled_jkqc::thermo::KCAL_MOL_PER_HARTREE;
+use compiled_jkqc::Correction;
 
 /// A monomer carrying an attached single-point correction.
 fn corrected_monomer(name: &str, electronic_energy: f64, code: &str, correction: f64) -> Record {
@@ -406,8 +406,8 @@ fn corrected_references_are_independent_per_level() {
 
 // --- Concentrations (rqm/formation.md, Formation at Given Concentrations) ---
 
-use complied_jkqc::formation::{concentration_correction, parse_conc_value, ConcSpec, ConcUnit};
-use complied_jkqc::thermo::{E_HARTREE, K_B, P_STANDARD};
+use compiled_jkqc::formation::{concentration_correction, parse_conc_value, ConcSpec, ConcUnit};
+use compiled_jkqc::thermo::{E_HARTREE, K_B, P_STANDARD};
 
 /// The per-molecule R T in Eh at 298.15 K: k_B T / E_h.
 fn kbt() -> f64 {
@@ -554,8 +554,8 @@ fn cnt_sums_n_over_the_whole_components_map() {
 
 // --- Boltzmann-averaged sections (rqm/formation.md, rq-dd65e289) ---
 
-use complied_jkqc::correction::corrected_energy;
-use complied_jkqc::formation::{
+use compiled_jkqc::correction::corrected_energy;
+use compiled_jkqc::formation::{
     collapse_ensembles, corrected_collapse_ensembles, corrected_ensemble_formation_values,
     corrected_ensemble_references, ensemble_formation_values, ensemble_references,
     print_formation_ensembles, Ensemble,

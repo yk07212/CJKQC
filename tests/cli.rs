@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use complied_jkqc::db::load_database;
-use complied_jkqc::{Components, Correction, Record, RecordStatus};
+use compiled_jkqc::db::load_database;
+use compiled_jkqc::{Components, Correction, Record, RecordStatus};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -802,7 +802,7 @@ fn print_columns_follow_canonical_order_regardless_of_flag_order() {
         name: Some("unknown".to_string()),
         ..Record::default()
     };
-    record.geometry = Some(complied_jkqc::Geometry {
+    record.geometry = Some(compiled_jkqc::Geometry {
         symbols: vec!["Xx".to_string()],
         coordinates: vec![0.0, 0.0, 0.0],
     });
@@ -991,13 +991,13 @@ fn rots_column_prints_the_descending_rotational_constants() {
 fn rots_column_prints_one_constant_for_a_linear_record() {
     let dir = temp_dir();
     let record = Record {
-        geometry: Some(complied_jkqc::Geometry {
+        geometry: Some(compiled_jkqc::Geometry {
             symbols: vec!["H".to_string(), "O".to_string(), "H".to_string()],
             coordinates: vec![-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
         }),
         ..Record::default()
     };
-    let expected = complied_jkqc::rotational_constants(&record).expect("linear constants");
+    let expected = compiled_jkqc::rotational_constants(&record).expect("linear constants");
     assert_eq!(expected.len(), 1);
     let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
     let run = cjkqc(&[&db, "--rots"]);
@@ -1027,7 +1027,7 @@ fn rots_column_is_undefined_when_the_rotational_constants_are_undefined() {
 fn rots_column_is_undefined_for_a_degenerate_geometry() {
     let dir = temp_dir();
     let record = Record {
-        geometry: Some(complied_jkqc::Geometry {
+        geometry: Some(compiled_jkqc::Geometry {
             symbols: vec!["O".to_string(), "O".to_string()],
             coordinates: vec![0.0; 6],
         }),
@@ -1046,7 +1046,7 @@ fn rots_column_is_undefined_for_a_degenerate_geometry() {
 fn rots_column_is_undefined_for_a_monatomic_record() {
     let dir = temp_dir();
     let record = Record {
-        geometry: Some(complied_jkqc::Geometry {
+        geometry: Some(compiled_jkqc::Geometry {
             symbols: vec!["H".to_string()],
             coordinates: vec![0.0, 0.0, 0.0],
         }),
@@ -1368,7 +1368,7 @@ fn geom_line(name: &str, comps: &[(&str, u32)], symbols: &[&str], coords: &[f64]
                 .collect(),
         );
     }
-    record.geometry = Some(complied_jkqc::Geometry {
+    record.geometry = Some(compiled_jkqc::Geometry {
         symbols: symbols.iter().map(|symbol| symbol.to_string()).collect(),
         coordinates: coords.to_vec(),
     });
@@ -1672,7 +1672,7 @@ fn every_cutoff_flag_wires_its_operator() {
         ],
     );
     let rel_db = rel_path.to_string_lossy().into_owned();
-    let boundary = format!("{}", 0.001 * complied_jkqc::KCAL_MOL_PER_HARTREE);
+    let boundary = format!("{}", 0.001 * compiled_jkqc::KCAL_MOL_PER_HARTREE);
     // (flag, database, threshold, expected names in file order)
     let cases: &[(&str, &str, &str, &str)] = &[
         ("--cut", "abs", "-0.5", "low\nat"),
@@ -1704,10 +1704,10 @@ fn every_cutoff_flag_wires_its_operator() {
 // `rqm/thermo.md` and `rqm/formation.md` that are CLI-shaped.
 // ---------------------------------------------------------------------------
 
-use complied_jkqc::filter::SortKey;
-use complied_jkqc::formation::{collect_monomers, formation_values, ConcConditions};
-use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo, E_HARTREE, K_B};
-use complied_jkqc::Geometry;
+use compiled_jkqc::filter::SortKey;
+use compiled_jkqc::formation::{collect_monomers, formation_values, ConcConditions};
+use compiled_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo, E_HARTREE, K_B};
+use compiled_jkqc::Geometry;
 
 /// A serialized water-like record with geometry, optional frequencies and
 /// components, and an explicit electronic energy.
@@ -1806,7 +1806,7 @@ fn a_degenerate_geometry_prints_dashes_not_infinities() {
     let collapsed = Record {
         name: Some("collapsed".to_string()),
         electronic_energy: Some(-75.99),
-        geometry: Some(complied_jkqc::Geometry {
+        geometry: Some(compiled_jkqc::Geometry {
             symbols: vec!["O".to_string(), "O".to_string()],
             coordinates: vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         }),
@@ -1837,7 +1837,7 @@ fn absurd_temperature_records_drop_out_of_glob() {
         let record = Record {
             name: Some(name.to_string()),
             electronic_energy: Some(energy),
-            geometry: Some(complied_jkqc::Geometry {
+            geometry: Some(compiled_jkqc::Geometry {
                 symbols: vec!["O".to_string(), "H".to_string(), "H".to_string()],
                 coordinates: vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.9572, 0.9259, 0.0, -0.2423],
             }),
@@ -2152,7 +2152,7 @@ fn the_unit_flag_converts_the_energy_columns_to_kcal_mol() {
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let record: Record = serde_json::from_str(&db_line(&db, 0)).expect("record deserializes");
     let thermo = thermochemistry(&record, &ThermoConditions::default()).unwrap();
-    let per_hartree = complied_jkqc::KCAL_MOL_PER_HARTREE;
+    let per_hartree = compiled_jkqc::KCAL_MOL_PER_HARTREE;
     let lines: Vec<Vec<String>> = stdout(&run)
         .trim()
         .lines()
@@ -2592,7 +2592,7 @@ fn the_section_obeys_the_unit_setting() {
     let run = cjkqc(&[&db, "--formation", "--unit"]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let row = formation_row(&stdout(&run), "1am1sa");
-    let expected = format!("{:.4}", -0.01 * complied_jkqc::KCAL_MOL_PER_HARTREE);
+    let expected = format!("{:.4}", -0.01 * compiled_jkqc::KCAL_MOL_PER_HARTREE);
     assert_eq!(row[1], expected, "{:?}", row);
 }
 
@@ -4276,7 +4276,7 @@ fn an_absurd_magnitude_leaves_the_level_undefined_rather_than_infinite() {
 
 /// k_B T in Eh at 298.15 K (`rqm/thermo.md` Constants).
 fn pop_kbt() -> f64 {
-    complied_jkqc::K_B * 298.15 / complied_jkqc::E_HARTREE
+    compiled_jkqc::K_B * 298.15 / compiled_jkqc::E_HARTREE
 }
 
 /// A conformer line with defined thermochemistry (hexagon geometry,
@@ -4298,7 +4298,7 @@ fn conformer_line(
     let mut record = Record {
         name: Some(name.to_string()),
         electronic_energy: energy,
-        geometry: Some(complied_jkqc::Geometry {
+        geometry: Some(compiled_jkqc::Geometry {
             symbols: vec!["C".to_string(); 6],
             coordinates,
         }),
@@ -5109,8 +5109,8 @@ fn both_sections_collapse_when_both_are_printed() {
 // `rqm/hydration.md` that are CLI-shaped.
 // ---------------------------------------------------------------------------
 
-use complied_jkqc::hydration::saturation_pressure_water;
-use complied_jkqc::P_STANDARD;
+use compiled_jkqc::hydration::saturation_pressure_water;
+use compiled_jkqc::P_STANDARD;
 
 /// k_B T in Eh at the default conditions.
 fn hydration_kbt() -> f64 {

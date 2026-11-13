@@ -33,7 +33,7 @@ detail of one feature, leave it for `/rr-plan`.
 
 ## Seed Context
 
-This project is named **Complied JKQC** and is written in **rust**. At creation it was
+This project is named **Compiled JKQC** and is written in **rust**. At creation it was
 described as:
 
 > A spiritual successor to JKQC from JKCS2.1: https://github.com/kubeckaj/JKCS2.1/

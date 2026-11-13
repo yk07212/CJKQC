@@ -13,7 +13,7 @@ tests alongside the binary.
 
 ### Executable <!-- rq-0df0a5df -->
 
-- `CJKQC` — the only binary target of the crate `complied-jkqc`. <!-- rq-899932a2 -->
+- `CJKQC` — the only binary target of the crate `compiled-jkqc`. <!-- rq-899932a2 -->
   - The executable's file name is exactly `CJKQC` (uppercase; case-sensitive
     on Unix, a deliberate choice).
   - The CLI is built with clap; the usage line in help output displays
@@ -36,7 +36,7 @@ tests alongside the binary.
 
 ### Crate Layout <!-- rq-0e05c3af -->
 
-- `Cargo.toml` declares the package `complied-jkqc`, the `CJKQC` binary <!-- rq-2072b6c4 -->
+- `Cargo.toml` declares the package `compiled-jkqc`, the `CJKQC` binary <!-- rq-2072b6c4 -->
   target, and the dependencies `clap`, `serde`, and `serde_json`.
 - `src/main.rs` holds the clap CLI definition and the dispatch to the <!-- rq-8fb6fccc -->
   collection pipeline (`rqm/collection.md`). <!-- rq-c3792c41 -->

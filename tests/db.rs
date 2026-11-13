@@ -5,8 +5,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use complied_jkqc::db::{append_records, load_database, merge_databases, DbError};
-use complied_jkqc::{Record, RecordInvalidity};
+use compiled_jkqc::db::{append_records, load_database, merge_databases, DbError};
+use compiled_jkqc::{Record, RecordInvalidity};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -317,7 +317,7 @@ fn appended_records_round_trip() {
     let records = vec![
         sample_record("A1", -1.5),
         Record {
-            status: complied_jkqc::RecordStatus::Failed,
+            status: compiled_jkqc::RecordStatus::Failed,
             error: Some("SCF did not converge".to_string()),
             name: Some("A2".to_string()),
             ..Record::default()

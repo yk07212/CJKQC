@@ -6,11 +6,11 @@
 
 use std::path::PathBuf;
 
-use complied_jkqc::thermo::{
+use compiled_jkqc::thermo::{
     classify_species, derived_value, rotational_constants, thermochemistry, SpeciesClass,
     ThermoConditions, ThermoMemo,
 };
-use complied_jkqc::{Geometry, ParserRegistry, Record};
+use compiled_jkqc::{Geometry, ParserRegistry, Record};
 
 fn conditions(temperature: f64) -> ThermoConditions {
     ThermoConditions {

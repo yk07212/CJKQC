@@ -11,7 +11,7 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use complied_jkqc::{
+use compiled_jkqc::{
     element_symbol, first_line_offset, parse_fortran_f64, read_geometry_table, vibrational_modes,
     FileWindows, LengthUnits, LinePattern, ParseError, Parser, ParserRegistry, Program, Record,
     RecordStatus, SymbolColumn, TableSpec, WindowBudget, BOHR_TO_ANGSTROM, DEFAULT_HEAD_BYTES,

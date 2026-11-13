@@ -3,8 +3,8 @@
 //! scenarios (warnings, exit codes, summary lines, table formatting) live
 //! in `tests/cli.rs`.
 
-use complied_jkqc::thermo::{derived_value, thermochemistry, ThermoConditions};
-use complied_jkqc::{
+use compiled_jkqc::thermo::{derived_value, thermochemistry, ThermoConditions};
+use compiled_jkqc::{
     attach_corrections, corrected_energy, Components, Correction, CorrectionError, Geometry,
     Record, RecordStatus,
 };
@@ -327,7 +327,7 @@ fn the_registry_exposes_the_corrected_keys() {
 fn thermochemistry_with_substituted_energy(
     record: &Record,
     conditions: &ThermoConditions,
-) -> complied_jkqc::thermo::Thermo {
+) -> compiled_jkqc::thermo::Thermo {
     let mut substituted = record.clone();
     substituted.electronic_energy = Some(corrected_energy(record).expect("attached"));
     thermochemistry(&substituted, conditions).expect("defined thermochemistry")

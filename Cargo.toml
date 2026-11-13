@@ -1,5 +1,5 @@
 [package]
-name = "complied-jkqc"
+name = "compiled-jkqc"
 version = "0.1.0"
 edition = "2021"
 description = "A spiritual successor to JKQC from JKCS2.1: https://github.com/kubeckaj/JKCS2.1/"

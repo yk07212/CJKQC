@@ -4,7 +4,7 @@
 
 use std::io::Cursor;
 
-use complied_jkqc::{FileWindows, Parser, ParserRegistry, Record, RecordStatus, XtbParser};
+use compiled_jkqc::{FileWindows, Parser, ParserRegistry, Record, RecordStatus, XtbParser};
 
 fn covered(content: &str) -> FileWindows {
     let mut cursor = Cursor::new(content.as_bytes());

@@ -2,12 +2,12 @@
 //! scenario of `rqm/filtering.md` that is exercised at the API level.
 //! CLI-shaped scenarios live in `tests/cli.rs`.
 
-use complied_jkqc::filter::{
+use compiled_jkqc::filter::{
     apply_filters, extract_matches, parse_extract_query, print_table, property_value, CmpOp,
     Column, Cutoff, ExtractMode, FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
-use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
-use complied_jkqc::{Components, Geometry, Record, RecordStatus, UniqKey, UniqMetric, UniqMode};
+use compiled_jkqc::thermo::{ThermoConditions, ThermoMemo};
+use compiled_jkqc::{Components, Geometry, Record, RecordStatus, UniqKey, UniqMetric, UniqMode};
 
 fn components(pairs: &[(&str, u32)]) -> Components {
     pairs
@@ -491,7 +491,7 @@ fn property_values_cover_the_cutoff_properties() {
 // Milestone 6: Gibbs-valued stages (rqm/thermo.md, rqm/filtering.md).
 // ---------------------------------------------------------------------------
 
-use complied_jkqc::thermo::thermochemistry;
+use compiled_jkqc::thermo::thermochemistry;
 
 fn default_conditions() -> ThermoConditions {
     ThermoConditions::default()
@@ -632,7 +632,7 @@ fn energy_columns_print_kcal_mol_under_unit() {
         Grouping::Composition,
     );
     let thermo = thermochemistry(&record, &default_conditions()).unwrap();
-    let per_hartree = complied_jkqc::KCAL_MOL_PER_HARTREE;
+    let per_hartree = compiled_jkqc::KCAL_MOL_PER_HARTREE;
     let lines: Vec<Vec<String>> = kcal
         .lines()
         .map(|line| line.split_whitespace().map(str::to_string).collect())

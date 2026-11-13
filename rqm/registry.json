@@ -1785,7 +1785,7 @@
     "type": "file"
   },
   "rq-2072b6c4": {
-    "decl": "- `Cargo.toml` declares the package `complied-jkqc`, the `CJKQC` binary",
+    "decl": "- `Cargo.toml` declares the package `compiled-jkqc`, the `CJKQC` binary",
     "file": "scaffolding",
     "refs": [],
     "title": "Cargo",
@@ -7172,7 +7172,7 @@
     "type": "scenario"
   },
   "rq-899932a2": {
-    "decl": "- `CJKQC` — the only binary target of the crate `complied-jkqc`.",
+    "decl": "- `CJKQC` — the only binary target of the crate `compiled-jkqc`.",
     "file": "scaffolding",
     "refs": [],
     "title": "CJKQC",

@@ -2,10 +2,10 @@
 //! scenario of `rqm/population.md` exercised at the API level. CLI-shaped
 //! scenarios live in `tests/cli.rs`.
 
-use complied_jkqc::filter::Grouping;
-use complied_jkqc::population::{parse_pop_level, pop_level_value, populations, PopLevel};
-use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo, E_HARTREE, K_B};
-use complied_jkqc::{Components, Correction, Geometry, Record, RecordStatus};
+use compiled_jkqc::filter::Grouping;
+use compiled_jkqc::population::{parse_pop_level, pop_level_value, populations, PopLevel};
+use compiled_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo, E_HARTREE, K_B};
+use compiled_jkqc::{Components, Correction, Geometry, Record, RecordStatus};
 
 fn components(pairs: &[(&str, u32)]) -> Components {
     pairs

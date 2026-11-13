@@ -1,7 +1,7 @@
 //! Integration tests for the reacted/exploded detection, one per Gherkin
 //! scenario in `rqm/detection.md`.
 
-use complied_jkqc::{
+use compiled_jkqc::{
     are_bonded, filter_reacted, fragment_signature, Geometry, ReactedMode, Record,
 };
 

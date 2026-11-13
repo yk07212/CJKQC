@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::io::Cursor;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use complied_jkqc::{FileWindows, LinePattern};
+use compiled_jkqc::{FileWindows, LinePattern};
 
 thread_local! {
     static MEASURING: Cell<bool> = const { Cell::new(false) };

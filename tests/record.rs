@@ -1,7 +1,7 @@
 //! Integration tests for the record schema, one per Gherkin scenario in
 //! `rqm/record.md`.
 
-use complied_jkqc::{Components, Geometry, Record, RecordInvalidity, RecordStatus};
+use compiled_jkqc::{Components, Geometry, Record, RecordInvalidity, RecordStatus};
 
 fn geometry(symbols: &[&str], coordinates: &[f64]) -> Geometry {
     Geometry {
@@ -333,7 +333,7 @@ fn ok_record_is_not_unrecognized() {
 
 // --- correction field (rqm/correction.md) ---
 
-use complied_jkqc::Correction;
+use compiled_jkqc::Correction;
 
 fn corrected_record() -> Record {
     Record {

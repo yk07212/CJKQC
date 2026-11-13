@@ -5,7 +5,7 @@ use std::fs;
 use std::io::Cursor;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use complied_jkqc::{
+use compiled_jkqc::{
     FileWindows, Parser, ParserRegistry, Program, Record, RecordStatus, XyzParser,
 };
 

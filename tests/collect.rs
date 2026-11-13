@@ -7,9 +7,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use complied_jkqc::db::DbError;
-use complied_jkqc::parser::WindowBudget;
-use complied_jkqc::{
+use compiled_jkqc::db::DbError;
+use compiled_jkqc::parser::WindowBudget;
+use compiled_jkqc::{
     classify_inputs, collect_inputs, collect_inputs_with, CollectError, CollectOutcome,
     CollectionMode, Record,
 };
@@ -150,7 +150,7 @@ fn build_replaces_the_output_and_resolves_compositions() {
 
     // A second run replaces the database rather than appending.
     collect_inputs(&refs(&[orca]), &out).expect("second build");
-    let loaded = complied_jkqc::db::load_database(&out).expect("load");
+    let loaded = compiled_jkqc::db::load_database(&out).expect("load");
     assert_eq!(loaded.records.len(), 1);
     assert_eq!(
         loaded.records[0].name.as_deref(),
@@ -163,7 +163,7 @@ fn build_replaces_the_output_and_resolves_compositions() {
         &out,
     )
     .expect("ordered build");
-    let loaded = complied_jkqc::db::load_database(&out).expect("load");
+    let loaded = compiled_jkqc::db::load_database(&out).expect("load");
     assert_eq!(loaded.records.len(), 2);
     assert_eq!(loaded.records[0].program.as_deref(), Some("xtb"));
     assert_eq!(
@@ -232,7 +232,7 @@ fn merge_copies_records_verbatim() {
     let out = dir.join("merged.jsonl");
     let outcome = collect_inputs(&refs(&[a]), &out).expect("merge");
     assert!(matches!(outcome, CollectOutcome::Merge { written: 1, .. }));
-    let loaded = complied_jkqc::db::load_database(&out).expect("load");
+    let loaded = compiled_jkqc::db::load_database(&out).expect("load");
     assert_eq!(loaded.records[0].components, None);
 }
 
@@ -280,7 +280,7 @@ fn merge_io_maps_to_collect_io() {
         other => panic!("expected Io, got {other:?}"),
     }
     // Sanity: the same failure is an Io in the database layer.
-    let merged = complied_jkqc::db::merge_databases(&[dir.join("missing.jsonl").as_path()], &out);
+    let merged = compiled_jkqc::db::merge_databases(&[dir.join("missing.jsonl").as_path()], &out);
     assert!(matches!(merged, Err(DbError::Io { .. })));
 }
 

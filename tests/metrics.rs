@@ -1,8 +1,8 @@
 //! Integration tests for the derived metrics and property uniqueness, one
 //! per Gherkin scenario in `rqm/uniqueness.md`.
 
-use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
-use complied_jkqc::{
+use compiled_jkqc::thermo::{ThermoConditions, ThermoMemo};
+use compiled_jkqc::{
     atomic_mass, dedup_names, metric_dipole_magnitude, metric_radius_of_gyration,
     metric_total_mass, parse_uniq_keys, unique_by_properties, Geometry, Record, UniqKey,
     UniqMetric,
@@ -254,7 +254,7 @@ fn negative_decimal_count_is_rejected() {
 // Milestone 6: the Gibbs metric (rqm/uniqueness.md).
 // ---------------------------------------------------------------------------
 
-use complied_jkqc::thermo::thermochemistry;
+use compiled_jkqc::thermo::thermochemistry;
 
 /// A water-like nonlinear record whose Gibbs free energy hits `target`
 /// exactly: the electronic energy absorbs the thermochemical correction.

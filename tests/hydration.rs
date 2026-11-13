@@ -2,18 +2,18 @@
 //! Gherkin scenario of `rqm/hydration.md` exercised at the API level.
 //! CLI-shaped scenarios live in `tests/cli.rs`.
 
-use complied_jkqc::filter::SortKey;
-use complied_jkqc::formation::{
+use compiled_jkqc::filter::SortKey;
+use compiled_jkqc::formation::{
     collapse_ensembles, corrected_collapse_ensembles, ConcConditions, ConcSpec, ConcUnit,
 };
-use complied_jkqc::hydration::{
+use compiled_jkqc::hydration::{
     corrected_hydration_states, corrected_hydration_states_from_ensembles, hydration_percentages,
     hydration_states, hydration_states_from_ensembles, print_hydration_section,
     saturation_pressure_water, HydrationGroup, HydrationState,
 };
-use complied_jkqc::record::Correction;
-use complied_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo, E_HARTREE, K_B};
-use complied_jkqc::{Components, Geometry, Record, P_STANDARD};
+use compiled_jkqc::record::Correction;
+use compiled_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo, E_HARTREE, K_B};
+use compiled_jkqc::{Components, Geometry, Record, P_STANDARD};
 
 fn components(pairs: &[(&str, u32)]) -> Components {
     pairs

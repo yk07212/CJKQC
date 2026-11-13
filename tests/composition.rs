@@ -1,7 +1,7 @@
 //! Integration tests for composition resolution, one per Gherkin scenario
 //! in `rqm/composition.md`.
 
-use complied_jkqc::{parse_jkqc_name, resolve_components, Components, Record, RecordStatus};
+use compiled_jkqc::{parse_jkqc_name, resolve_components, Components, Record, RecordStatus};
 
 fn components(pairs: &[(&str, u32)]) -> Components {
     pairs

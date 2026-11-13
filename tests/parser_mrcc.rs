@@ -4,7 +4,7 @@
 
 use std::io::Cursor;
 
-use complied_jkqc::{
+use compiled_jkqc::{
     FileWindows, MrccParser, Parser, ParserRegistry, Record, RecordStatus, BOHR_TO_ANGSTROM,
 };
 

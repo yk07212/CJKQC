@@ -13,5 +13,5 @@ include_rust_skeleton: true
 language: rust
 open_source_license: MIT
 project_description: 'A spiritual successor to JKQC from JKCS2.1: https://github.com/kubeckaj/JKCS2.1/'
-project_name: Complied JKQC
-project_slug: complied-jkqc
+project_name: Compiled JKQC
+project_slug: compiled-jkqc

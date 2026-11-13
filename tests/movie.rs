@@ -5,8 +5,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use complied_jkqc::movie::{frame_text, movie_frames, write_movie_xyz};
-use complied_jkqc::{Geometry, Record, RecordStatus};
+use compiled_jkqc::movie::{frame_text, movie_frames, write_movie_xyz};
+use compiled_jkqc::{Geometry, Record, RecordStatus};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -142,7 +142,7 @@ fn a_failed_write_is_a_movie_error() {
     let error = write_movie_xyz(&dir.join("no-such-dir/movie.xyz"), &[&record])
         .expect_err("missing parent directory");
     assert!(
-        matches!(error, complied_jkqc::MovieError::Io(_)),
+        matches!(error, compiled_jkqc::MovieError::Io(_)),
         "{error:?}"
     );
 }

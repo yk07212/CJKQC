@@ -11,36 +11,36 @@ use std::process::ExitCode;
 
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser};
 
-use complied_jkqc::collect::{gather_inputs_with, CollectError, CollectOutcome, Gathered};
-use complied_jkqc::correction::{attach_corrections, CorrectionError};
-use complied_jkqc::db::{self, DbError, LoadProblem};
-use complied_jkqc::extrapolate::{
+use compiled_jkqc::collect::{gather_inputs_with, CollectError, CollectOutcome, Gathered};
+use compiled_jkqc::correction::{attach_corrections, CorrectionError};
+use compiled_jkqc::db::{self, DbError, LoadProblem};
+use compiled_jkqc::extrapolate::{
     correction_for, is_candidate, parse_extrapolation, skip_reason, source_paths,
     ExtrapolationError, ExtrapolationSpec,
 };
-use complied_jkqc::filter::{
+use compiled_jkqc::filter::{
     apply_filters, parse_extract_query, print_table, CmpOp, Column, Cutoff, ExtractMode,
     FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
-use complied_jkqc::formation::{
+use compiled_jkqc::formation::{
     collapse_ensembles, collect_monomers, corrected_collapse_ensembles,
     corrected_ensemble_references, corrected_monomer_references, ensemble_references,
     parse_conc_value, print_formation_corr_ensembles, print_formation_corr_section,
     print_formation_ensembles, print_formation_section, ConcConditions, ConcSpec, ConcUnit,
 };
-use complied_jkqc::hydration::{
+use compiled_jkqc::hydration::{
     corrected_hydration_states, corrected_hydration_states_from_ensembles, hydration_states,
     hydration_states_from_ensembles, print_hydration_section, saturation_pressure_water,
     HydrationGroup, SolventConditions,
 };
-use complied_jkqc::metrics::parse_uniq_mode;
-use complied_jkqc::movie::{movie_frames, write_movie_xyz};
-use complied_jkqc::overwrite::{confirm_overwrite, overwrite_error};
-use complied_jkqc::parser::WindowBudget;
-use complied_jkqc::population::{parse_pop_level, PopLevel};
-use complied_jkqc::reacted::ReactedMode;
-use complied_jkqc::record::{Record, RecordStatus};
-use complied_jkqc::thermo::{ThermoConditions, ThermoMemo};
+use compiled_jkqc::metrics::parse_uniq_mode;
+use compiled_jkqc::movie::{movie_frames, write_movie_xyz};
+use compiled_jkqc::overwrite::{confirm_overwrite, overwrite_error};
+use compiled_jkqc::parser::WindowBudget;
+use compiled_jkqc::population::{parse_pop_level, PopLevel};
+use compiled_jkqc::reacted::ReactedMode;
+use compiled_jkqc::record::{Record, RecordStatus};
+use compiled_jkqc::thermo::{ThermoConditions, ThermoMemo};
 
 /// The cutoff flags: clap arg id, comparison, and mode
 /// (`rqm/filtering.md`).
@@ -538,8 +538,8 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     // by --head-bytes/--tail-bytes; a zero window reads nothing and is a
     // usage error.
     let budget = WindowBudget {
-        head_bytes: cli.head_bytes.unwrap_or(complied_jkqc::DEFAULT_HEAD_BYTES),
-        tail_bytes: cli.tail_bytes.unwrap_or(complied_jkqc::DEFAULT_TAIL_BYTES),
+        head_bytes: cli.head_bytes.unwrap_or(compiled_jkqc::DEFAULT_HEAD_BYTES),
+        tail_bytes: cli.tail_bytes.unwrap_or(compiled_jkqc::DEFAULT_TAIL_BYTES),
     };
     if budget.head_bytes == 0 || budget.tail_bytes == 0 {
         return usage("--head-bytes and --tail-bytes must be at least 1");
@@ -1189,7 +1189,7 @@ fn run_collection(
     workers: usize,
 ) -> (ExitCode, bool) {
     let mut confirm = || confirm_target(out, fout);
-    match complied_jkqc::collect_inputs_with(inputs, out, budget, workers, &mut confirm) {
+    match compiled_jkqc::collect_inputs_with(inputs, out, budget, workers, &mut confirm) {
         Ok(CollectOutcome::Build {
             written,
             failed,
@@ -1372,7 +1372,7 @@ fn attach_from_path(records: &[Record], path: &Path) -> Option<(Vec<Record>, Vec
     // the attach pass counts with.
     // rq-e59918d8 rq-a83c76ac
     for record in &corrections {
-        if let Some(reason) = complied_jkqc::correction::skip_reason(record) {
+        if let Some(reason) = compiled_jkqc::correction::skip_reason(record) {
             let name = record.name.as_deref().unwrap_or("(unnamed)");
             eprintln!("warning: skipped correction record \"{name}\": {reason}");
         }
@@ -1441,7 +1441,7 @@ fn extrapolate_from_paths(
     }
     let slices: Vec<&[Record]> = source_records.iter().map(Vec::as_slice).collect();
     let extrapolation =
-        match complied_jkqc::extrapolate::extrapolate_corrections(records, &slices, spec) {
+        match compiled_jkqc::extrapolate::extrapolate_corrections(records, &slices, spec) {
             Ok(extrapolation) => extrapolation,
             Err(error) => {
                 print_extrapolation_error(&error, &paths);

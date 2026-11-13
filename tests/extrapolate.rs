@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use complied_jkqc::{
+use compiled_jkqc::{
     blend_energy, extrapolate_corrections, parse_extrapolation, two_point_energy, ExtrapMode,
     ExtrapolationError, ExtrapolationSpec, Record, RecordStatus,
 };
@@ -768,7 +768,7 @@ fn candidates_no_run_record_names_are_counted_unmatched() {
 #[test]
 fn a_match_replaces_a_stored_correction() {
     let mut run = named("1am", -38.51);
-    run.correction = Some(complied_jkqc::Correction {
+    run.correction = Some(compiled_jkqc::Correction {
         energy: -76.0,
         program: None,
         program_version: None,
@@ -799,7 +799,7 @@ fn a_match_replaces_a_stored_correction() {
 #[test]
 fn an_uncovered_record_keeps_its_stored_correction() {
     let mut run = named("2am", -38.51);
-    run.correction = Some(complied_jkqc::Correction {
+    run.correction = Some(compiled_jkqc::Correction {
         energy: -76.0,
         program: None,
         program_version: None,

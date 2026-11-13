@@ -8,7 +8,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use complied_jkqc::{ParserRegistry, Program, Record, RecordStatus};
+use compiled_jkqc::{ParserRegistry, Program, Record, RecordStatus};
 use serde_json::Value;
 
 fn fixtures_dir() -> PathBuf {

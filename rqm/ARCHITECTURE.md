@@ -2,7 +2,7 @@
 
 ## Purpose <!-- rq-958794a9 -->
 
-CJKQC (Complied JKQC) is a standalone tool for collecting, organizing, filtering, and
+CJKQC (Compiled JKQC) is a standalone tool for collecting, organizing, filtering, and
 post-processing quantum-chemistry (QC) output for molecular clusters. It is a
 spiritual successor to JKQC from the JKCS2.1 framework: the same mission, in
 Rust, with an internal design chosen on its own merits rather than inheriting
