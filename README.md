@@ -3,6 +3,13 @@
 
 A spiritual successor to JKQC from JKCS2.1: https://github.com/kubeckaj/JKCS2.1/
 
+Please read the **manual.pdf** on how to use the program.
+
+CJKQC is meant to be developed entirely agenticly based on the riprap (https://github.com/MolSSI/riprap) workflow. That way anyone can implement new features and fix bugs with a bit of domain knowledge.
+
+Below is the original "riprap" README, follow the podman installation to run the containzered agent, and then use the rr-plan and rr-implement skill to add new features: 
+
+
 ## Getting Started
 
 ### Prerequisites
