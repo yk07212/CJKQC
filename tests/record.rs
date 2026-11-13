@@ -38,6 +38,7 @@ fn round_trip_a_record_with_every_observable_set() {
         vibrational_frequencies: Some(vec![3421.1, 1689.7, 1023.4, -80.2, 1490.3, 1100.9]),
         gradient: Some(vec![0.0; 9]),
         dipole_moment: Some([0.1, 0.2, 0.3]),
+        polarizability: Some([1.0, 2.0, 3.0, 2.0, 4.0, 5.0, 3.0, 5.0, 6.0]),
         mulliken_charges: Some(vec![-0.3, 0.15, 0.15]),
         rotational_symmetry_number: Some(1),
         components: Some(components(&[("am", 2), ("sa", 3)])),
@@ -434,6 +435,37 @@ fn validate_rejects_a_non_finite_scf_energy() {
         record.validate(),
         Err(RecordInvalidity::NonFiniteFloat {
             field: "scf_energy"
+        })
+    );
+}
+
+// rq-495cb864
+#[test]
+fn polarizability_tensor_round_trips_and_serializes_after_dipole_moment() {
+    let record = Record {
+        dipole_moment: Some([0.0, 0.0, 0.0]),
+        polarizability: Some([1.0, 2.0, 3.0, 2.0, 4.0, 5.0, 3.0, 5.0, 6.0]),
+        ..Record::default()
+    };
+    let line = serde_json::to_string(&record).expect("serialize");
+    let back: Record = serde_json::from_str(&line).expect("deserialize");
+    assert_eq!(back, record);
+    let dipole = line.find("\"dipole_moment\"").expect("dipole_moment key");
+    let polarizability = line.find("\"polarizability\"").expect("polarizability key");
+    assert!(dipole < polarizability, "{line}");
+}
+
+// rq-3fddc2ef
+#[test]
+fn validate_rejects_a_non_finite_polarizability_component() {
+    let record = Record {
+        polarizability: Some([1.0, 2.0, f64::NAN, 2.0, 4.0, 5.0, 3.0, 5.0, 6.0]),
+        ..Record::default()
+    };
+    assert_eq!(
+        record.validate(),
+        Err(RecordInvalidity::NonFiniteFloat {
+            field: "polarizability"
         })
     );
 }

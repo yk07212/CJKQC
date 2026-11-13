@@ -92,6 +92,31 @@ fn scf_total_value(line: &str) -> Option<f64> {
     parse_fortran_f64(line.split_whitespace().nth(3)?)
 }
 
+/// The nine entries of a 3×3 matrix printed as three consecutive rows of
+/// three finite floats, in row-major order; `None` unless exactly three
+/// complete rows are visible. The rows are the first row-shaped run after
+/// the polarizability header, so the diagonalized tensor and its
+/// eigenvectors that follow the raw Cartesian table do not contribute.
+// rq-2ec4e6d2 rq-292d4c94 rq-dff9b11a
+fn polarizability_tensor<'a>(lines: impl Iterator<Item = &'a str>) -> Option<[f64; 9]> {
+    let rows = rows_following(lines, |fields| {
+        fields.len() == 3
+            && fields
+                .iter()
+                .all(|field| parse_fortran_f64(field).is_some())
+    });
+    if rows.len() != 3 {
+        return None;
+    }
+    let mut tensor = [0.0; 9];
+    for (row_index, row) in rows.iter().enumerate() {
+        for (column, field) in row.split_whitespace().enumerate() {
+            tensor[row_index * 3 + column] = parse_fortran_f64(field)?;
+        }
+    }
+    Some(tensor)
+}
+
 /// The locate-pattern indices of the markers ORCA prints.
 ///
 /// (rq-15b1763d)
@@ -107,11 +132,13 @@ const MULLIKEN_HEADER: usize = 8;
 const POINT_GROUP: usize = 9;
 const ABORT: usize = 10;
 const SCF_TOTAL: usize = 11;
+const POLARIZABILITY_HEADER: usize = 12;
+const RAW_POLARIZABILITY_TENSOR: usize = 13;
 
 /// Every marker line ORCA's parse path needs, located in one walk of
 /// the windows. The index constants above key this table by position;
 /// the alignment unit test pins each constant to its entry.
-const PATTERNS: [LinePattern<'static>; 12] = [
+const PATTERNS: [LinePattern<'static>; 14] = [
     LinePattern::Contains("Program Version"),
     LinePattern::Where(&is_input_echo),
     LinePattern::Contains("Total Charge"),
@@ -124,6 +151,8 @@ const PATTERNS: [LinePattern<'static>; 12] = [
     LinePattern::Where(&is_point_group_line),
     LinePattern::Where(&is_orca_abort),
     LinePattern::Where(&is_scf_total_line),
+    LinePattern::TrimmedEquals("THE POLARIZABILITY TENSOR"),
+    LinePattern::TrimmedEquals("The raw cartesian tensor (atomic units):"),
 ];
 
 /// The command: all text after `!` in the echoed keyword line,
@@ -312,6 +341,15 @@ impl Parser for OrcaParser {
             }
         });
 
+        // The raw Cartesian polarizability tensor in atomic units from
+        // the last visible tensor block. Both the block header and its raw
+        // table label must be visible, so a seam that hides the raw table
+        // can never fall through to the diagonalized tensor that follows.
+        // rq-2ec4e6d2 rq-292d4c94 rq-9016333b
+        let polarizability = matches
+            .last(POLARIZABILITY_HEADER)
+            .and_then(|_| polarizability_tensor(matches.after_last(RAW_POLARIZABILITY_TENSOR)));
+
         // The Mulliken charges of the last population analysis. ORCA
         // prints the symbol in a two-character field ending at the colon,
         // so a two-character symbol reads `0 Na:    0.685633` (three
@@ -395,6 +433,7 @@ impl Parser for OrcaParser {
                 Some(frequencies)
             },
             dipole_moment,
+            polarizability,
             mulliken_charges: if charge_rows.is_empty() {
                 None
             } else {
@@ -422,7 +461,7 @@ mod tests {
     /// of this format: the located answer for a constant must be the
     /// line written for its entry, so a constant and a table entry that
     /// drift apart fail here rather than silently misreading markers.
-    const MARKER_LINES: [(&str, usize); 12] = [
+    const MARKER_LINES: [(&str, usize); 14] = [
         ("Program Version 6.0.0  -   RELEASE  -", VERSION),
         ("|  1> ! wB97x-3c marker", INPUT_ECHO),
         (
@@ -446,6 +485,11 @@ mod tests {
         (
             "| TOTAL ENERGY              -28.322836452494 Eh   |",
             SCF_TOTAL,
+        ),
+        ("THE POLARIZABILITY TENSOR", POLARIZABILITY_HEADER),
+        (
+            "The raw cartesian tensor (atomic units):",
+            RAW_POLARIZABILITY_TENSOR,
         ),
     ];
 

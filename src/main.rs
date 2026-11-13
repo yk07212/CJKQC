@@ -364,6 +364,13 @@ struct Cli {
     /// comma-separated).
     #[arg(long = "dips")]
     dips: bool,
+    /// Print the isotropic polarizability (atomic units, 3 decimals).
+    #[arg(long = "pol")]
+    pol: bool,
+    /// Print the polarizability tensor (atomic units, row-major,
+    /// comma-separated, 3 decimals each).
+    #[arg(long = "pols")]
+    pols: bool,
     /// Print the net charge (elementary charges).
     #[arg(long = "charge")]
     charge: bool,
@@ -823,6 +830,8 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         Column::Mass => cli.mass,
         Column::Dip => cli.dip,
         Column::Dips => cli.dips,
+        Column::Pol => cli.pol,
+        Column::Pols => cli.pols,
         Column::Charge => cli.charge,
         Column::Multiplicity => cli.multiplicity,
         Column::Rsn => cli.rsn,

@@ -936,6 +936,71 @@ fn dips_column_is_undefined_without_a_dipole_moment() {
     assert_eq!(lines[1], ["-"]);
 }
 
+#[test] // rq-1b7b3af3
+fn pol_column_prints_the_isotropic_polarizability() {
+    let dir = temp_dir();
+    let record = Record {
+        polarizability: Some([3.0, 0.0, 0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 9.0]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--pol"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["pol"]);
+    assert_eq!(lines[1], ["6.000"]);
+}
+
+#[test] // rq-b6bcec13
+fn pol_column_is_undefined_without_a_polarizability_tensor() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--pol"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["pol"]);
+    assert_eq!(lines[1], ["-"]);
+}
+
+#[test] // rq-77dd2f68
+fn pols_column_prints_the_polarizability_tensor_row_major() {
+    let dir = temp_dir();
+    let record = Record {
+        polarizability: Some([3.0, 0.1, 0.2, 0.1, 6.0, 0.3, 0.2, 0.3, 9.0]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--pols"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["pols"]);
+    assert_eq!(
+        lines[1],
+        ["3.000,0.100,0.200,0.100,6.000,0.300,0.200,0.300,9.000"]
+    );
+}
+
+#[test] // rq-31d1c63f
+fn pols_column_is_undefined_without_a_polarizability_tensor() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[serde_json::to_string(&Record::default()).expect("line")],
+    );
+    let run = cjkqc(&[&db, "--pols"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["pols"]);
+    assert_eq!(lines[1], ["-"]);
+}
+
 #[test] // rq-003218f8
 fn freqs_column_prints_every_stored_frequency_in_stored_order() {
     let dir = temp_dir();
@@ -8010,7 +8075,10 @@ fn records_keep_argument_order_at_any_worker_count() {
     ]);
     assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
     let records = loaded(&out);
-    let programs: Vec<_> = records.iter().filter_map(|record| record.program.as_deref()).collect();
+    let programs: Vec<_> = records
+        .iter()
+        .filter_map(|record| record.program.as_deref())
+        .collect();
     assert_eq!(programs, vec!["xtb", "orca", "gaussian"]);
 }
 
@@ -8037,7 +8105,10 @@ fn a_parallel_run_reports_the_argument_order_first_error() {
     assert_eq!(run.status.code(), Some(1));
     let error = stderr(&run);
     assert!(error.contains("junk.txt"), "{error}");
-    assert!(!out.exists(), "nothing is written when an input is unrecognized");
+    assert!(
+        !out.exists(),
+        "nothing is written when an input is unrecognized"
+    );
 }
 
 // rq-ecff2560
@@ -8057,7 +8128,10 @@ fn a_parallel_run_writes_nothing_when_any_input_fails() {
     ]);
     assert_eq!(run.status.code(), Some(1));
     assert!(stderr(&run).contains("does-not-exist.out"));
-    assert!(!out.exists(), "nothing is written when an input cannot be read");
+    assert!(
+        !out.exists(),
+        "nothing is written when an input cannot be read"
+    );
 }
 
 // rq-27e5a6b2
@@ -8161,7 +8235,13 @@ fn batch_of(dir: &Path, count: usize) -> Vec<String> {
     }
     let mut paths: Vec<String> = fs::read_dir(&batch)
         .expect("read batch dir")
-        .map(|entry| entry.expect("batch entry").path().to_string_lossy().into_owned())
+        .map(|entry| {
+            entry
+                .expect("batch entry")
+                .path()
+                .to_string_lossy()
+                .into_owned()
+        })
         .collect();
     paths.sort();
     paths

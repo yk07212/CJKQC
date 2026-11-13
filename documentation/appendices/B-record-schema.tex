@@ -12,8 +12,8 @@ is not available:
 \begin{verbatim}
 status, error, name, source_path, program, program_version, command,
 electronic_energy, scf_energy, charge, multiplicity, geometry,
-vibrational_frequencies, gradient, dipole_moment, mulliken_charges,
-rotational_symmetry_number, components, correction
+vibrational_frequencies, gradient, dipole_moment, polarizability,
+mulliken_charges, rotational_symmetry_number, components, correction
 \end{verbatim}
 
 The entries may appear in any order, and unknown entries are ignored. Missing
@@ -50,6 +50,8 @@ value means imaginary. \\
 \fld{gradient} & list & Cartesian gradient, hartree/\AA{}, three values per
 atom. \\
 \fld{dipole_moment} & list & $[x,y,z]$ in atomic units ($e\,a_0$). \\
+\fld{polarizability} & list & The nine tensor values in atomic units, in the
+order $xx, xy, xz, yx, yy, yz, zx, zy, zz$. \\
 \fld{mulliken_charges} & list & Per-atom charges in elementary charges. \\
 \fld{rotational_symmetry_number} & whole number & $\sigma$, at least 1. \\
 \fld{components} & code and count & Each component code with its count, in

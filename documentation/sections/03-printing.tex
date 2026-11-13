@@ -36,10 +36,10 @@ The fixed column order is:
 \fld{zpe} & \fld{h} & \fld{s} & \fld{g} \\
 \fld{elcorr} & \fld{hcorr} & \fld{gcorr} & \fld{pop} \\
 \fld{popel} & \fld{popelcorr} & \fld{popgcorr} & \fld{rg} \\
-\fld{mass} & \fld{dip} & \fld{dips} & \fld{charge} \\
-\fld{multiplicity} & \fld{rsn} & \fld{natoms} & \fld{lf} \\
-\fld{freqs} & \fld{nfreq} & \fld{nimag} & \fld{rots} \\
-\fld{components} & & & \\
+\fld{mass} & \fld{dip} & \fld{dips} & \fld{pol} \\
+\fld{pols} & \fld{charge} & \fld{multiplicity} & \fld{rsn} \\
+\fld{natoms} & \fld{lf} & \fld{freqs} & \fld{nfreq} \\
+\fld{nimag} & \fld{rots} & \fld{components} & \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -114,6 +114,11 @@ decimals. \\
 \flg{--dip} & \fld{dip} & Dipole magnitude in atomic units, 3 decimals. \\
 \flg{--dips} & \fld{dips} & The dipole vector's $x,y,z$ components in atomic
 units, 3 decimals each, comma-separated without spaces. \\
+\flg{--pol} & \fld{pol} & Isotropic polarizability in atomic units, 3
+decimals. \\
+\flg{--pols} & \fld{pols} & The nine polarizability tensor values in atomic
+units, 3 decimals each, comma-separated without spaces, in the order
+$xx, xy, xz, yx, yy, yz, zx, zy, zz$. \\
 \flg{--charge} & \fld{charge} & Net charge as a whole number. \\
 \flg{--multiplicity} & \fld{multiplicity} & Spin multiplicity as a whole
 number. \\

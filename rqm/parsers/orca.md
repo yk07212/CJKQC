@@ -4,8 +4,8 @@ ORCA output files chain driver jobs — a geometry relaxation followed by a
 frequency calculation is the corpus shape — and the ORCA parser reads such
 a file into exactly one record for the final job: the last
 `FINAL SINGLE POINT ENERGY`, the final Cartesian geometry, the canonical
-`VIBRATIONAL FREQUENCIES` section, and the final population, dipole, and
-point-group analyses (`rqm/parser-framework.md`).
+`VIBRATIONAL FREQUENCIES` section, and the final population, dipole,
+polarizability, and point-group analyses (`rqm/parser-framework.md`).
 
 Detection is the banner: ORCA opens every output with its ASCII art,
 including the line `* O R C A *` (letters separated by runs of spaces).
@@ -14,7 +14,9 @@ header, because each chained job reprints the SCF and property blocks for
 the current geometry; the last occurrence is the final job's answer. The
 record uses the canonical units of `rqm/record.md`; ORCA prints energies in
 hartree, coordinates in Å, Mulliken charges and dipole components in atomic
-units, and frequencies in cm⁻¹, so extraction is unit-preserving.
+units, frequencies in cm⁻¹, so extraction is unit-preserving. The raw
+Cartesian polarizability tensor is likewise printed in atomic units and
+stored unchanged.
 
 The frequency list is the `VIBRATIONAL FREQUENCIES` section, not the
 thermochemistry summary tables: that section carries all 3N modes with an
@@ -96,6 +98,15 @@ in an elided window yields an absent observable, never a guess.
   (`rqm/parser-framework.md`, Performance Constraints).
 - `dipole_moment` — the `Total Dipole Moment    :     <x> <y> <z>` line of <!-- rq-21041eac -->
   the last `DIPOLE MOMENT` block, in atomic units, stored unchanged.
+- `polarizability` — the nine values of the raw Cartesian tensor in the <!-- rq-2ec4e6d2 -->
+  last visible `THE POLARIZABILITY TENSOR` block: the three rows under
+  `The raw cartesian tensor (atomic units):`, read row-major as
+  `[αxx, αxy, αxz, αyx, αyy, αyz, αzx, αzy, αzz]`, in atomic units and
+  stored unchanged. The block qualifies only when all three rows carry
+  exactly three finite values; a header without that complete table, or a
+  block hidden in an elided window, leaves the field absent. The
+  `Isotropic polarizability` line is not stored: the isotropic value is
+  derived from the tensor at printing.
 - `mulliken_charges` — the values of the rows `<idx> <El> : <q>` under the <!-- rq-80fdb0f3 -->
   last `MULLIKEN ATOMIC CHARGES` header, in geometry atom order. The symbol
   is printed in a two-character field that ends at the colon, so a
@@ -158,7 +169,8 @@ Feature: ORCA parser
     "|  1> ! wB97x-3c Opt Freq", "Total Charge Charge .... 0", "Multiplicity Mult .... 1",
     FINAL SINGLE POINT ENERGY lines, a final CARTESIAN COORDINATES (ANGSTROEM) table,
     a VIBRATIONAL FREQUENCIES section starting with six 0.00 modes, a MULLIKEN ATOMIC
-    CHARGES block, a DIPOLE MOMENT block, a "Point Group:  C1, Symmetry Number:   1" line,
+    CHARGES block, a DIPOLE MOMENT block, a THE POLARIZABILITY TENSOR block whose raw
+    Cartesian rows are complete, a "Point Group:  C1, Symmetry Number:   1" line,
     and "****ORCA TERMINATED NORMALLY****"
     When the content is parsed
     Then the record has status ok
@@ -166,7 +178,7 @@ Feature: ORCA parser
     And the record has charge 0 and multiplicity 1
     And the record has electronic_energy equal to the last FINAL SINGLE POINT ENERGY
     And the record has the final geometry, every vibrational frequency
-    except the six near-zeros, Mulliken charges, and dipole
+    except the six near-zeros, Mulliken charges, dipole, and polarizability tensor
     And the record has rotational_symmetry_number 1
 
   @rq-f11e09b1
@@ -254,6 +266,37 @@ Feature: ORCA parser
     Given uncovered windows whose final DIPOLE MOMENT block lies in the elided middle
     When the windows are parsed
     Then the record has no dipole_moment
+
+  @rq-292d4c94
+  Scenario: The raw Cartesian polarizability tensor is stored row-major
+    Given a THE POLARIZABILITY TENSOR block whose raw cartesian rows are
+    "68.96534 -4.98429 -0.17212", "-4.98429 54.79554 -1.20060", and
+    "-0.17212 -1.20060 59.72225"
+    When the content is parsed
+    Then the record's polarizability is
+    [68.96534, -4.98429, -0.17212, -4.98429, 54.79554, -1.20060,
+    -0.17212, -1.20060, 59.72225]
+
+  @rq-dff9b11a
+  Scenario: An incomplete polarizability table leaves the tensor absent
+    Given a THE POLARIZABILITY TENSOR block whose raw Cartesian table has fewer than three complete rows
+    When the content is parsed
+    Then the record has no polarizability
+
+  @rq-9016333b
+  Scenario: A hidden polarizability block leaves the tensor absent
+    Given uncovered windows whose final THE POLARIZABILITY TENSOR block lies in the elided middle
+    When the windows are parsed
+    Then the record has no polarizability
+
+  @rq-11ce9c38
+  Scenario: The polarizability corpus fixture conforms
+    Given the manifest entry for tests/fixtures/orca/1am1sa1w-111_7_673.out
+    When the file is parsed through the standard registry
+    Then the record has status ok
+    And the record's polarizability is
+    [68.96534, -4.98429, -0.17212, -4.98429, 54.79554, -1.20060,
+    -0.17212, -1.20060, 59.72225]
 
   @rq-82f9c544
   Scenario: An elided frequency header falls back to the visible rows

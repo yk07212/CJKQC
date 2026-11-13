@@ -1922,5 +1922,23 @@
   ],
   "rotational_symmetry_number": 1
  }
+},
+{
+ "file": "orca/1am1sa1w-111_7_673.out",
+ "program": "orca",
+ "status": "ok",
+ "expect": {
+  "polarizability": [
+   68.96534,
+   -4.98429,
+   -0.17212,
+   -4.98429,
+   54.79554,
+   -1.2006,
+   -0.17212,
+   -1.2006,
+   59.72225
+  ]
+ }
 }
 ]

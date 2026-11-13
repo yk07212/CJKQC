@@ -162,8 +162,8 @@ a newer one remains readable by older tools.
 \subsection{Record entries and standard units}\label{sec:fields}
 
 The following table lists every entry a record can hold. Energies,
-coordinates, frequencies, and dipoles are always stored in the standard units
-shown; conversion happens only when values are printed.
+coordinates, frequencies, dipoles, and polarizabilities are always stored in
+the standard units shown; conversion happens only when values are printed.
 
 \begin{longtable}{@{}L{5.4cm}L{2.2cm}L{5.9cm}@{}}
 \toprule
@@ -194,6 +194,9 @@ cm$^{-1}$; a negative value marks an imaginary mode. \\
 atom, three values per atom. \\
 \fld{dipole_moment} & list & Dipole vector $[x,y,z]$ in atomic units
 ($e\,a_0$). \\
+\fld{polarizability} & list & The nine polarizability tensor values in
+atomic units, in the order $xx, xy, xz, yx, yy, yz, zx, zy, zz$. The
+isotropic value is calculated from them when printed. \\
 \fld{mulliken_charges} & list & Per-atom Mulliken charges in elementary
 charges, in geometry atom order. \\
 \fld{rotational_symmetry_number} & whole number & Point-group rotational
@@ -216,6 +219,7 @@ Coordinates and distances & \AA{} (angstrom) \\
 Gradient & hartree/\AA{} \\
 Vibrational frequencies & cm$^{-1}$ \\
 Dipole moment & atomic units, $e\,a_0$ \\
+Polarizability & atomic units, $e^2 a_0^2/E_\mathrm{h}$ \\
 Charge and Mulliken charges & elementary charge $e$ \\
 Mass & unified atomic mass unit, u \\
 Multiplicity and rotational symmetry number & whole numbers \\

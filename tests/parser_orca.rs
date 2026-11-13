@@ -67,12 +67,26 @@ const MULLIKEN: &str = "MULLIKEN ATOMIC CHARGES\n\
      \x20  2 H :     0.392379\n\
      Sum of formal charges Nonzero. Molecule is charged\n\n";
 
+const POLARIZABILITY: &str = "THE POLARIZABILITY TENSOR\n\
+     -------------------------\n\
+     \n\
+     The raw cartesian tensor (atomic units):\n\
+     \x20  68.96534     -4.98429     -0.17212\n\
+     \x20  -4.98429     54.79554     -1.20060\n\
+     \x20  -0.17212     -1.20060     59.72225\n\
+     diagonalized tensor:\n\
+     \x20  53.00473     59.93181     70.54660\n\
+     \n\
+     Isotropic polarizability :  61.16104\n\n";
+
 const POINT_GROUP: &str = "Point Group:  C1, Symmetry Number:   1\n\n";
 
 /// A minimal but structurally faithful opt+freq output: everything
 /// except the closing termination banner.
 fn log_body() -> String {
-    format!("{ECHO}{SUMMARY}{GEOMETRY}{ENERGY}{FREQUENCIES}{DIPOLE}{MULLIKEN}{POINT_GROUP}")
+    format!(
+        "{ECHO}{SUMMARY}{GEOMETRY}{ENERGY}{FREQUENCIES}{DIPOLE}{MULLIKEN}{POLARIZABILITY}{POINT_GROUP}"
+    )
 }
 
 fn completed_log() -> String {
@@ -120,6 +134,13 @@ fn terminated_opt_freq_run_yields_full_observable_set() {
         Some(vec![1595.77, 1650.33, 3831.6])
     );
     assert_eq!(record.dipole_moment, Some([0.0, 0.0, 0.733977]));
+    assert_eq!(
+        record.polarizability,
+        Some([
+            68.96534, -4.98429, -0.17212, -4.98429, 54.79554, -1.20060, -0.17212, -1.20060,
+            59.72225
+        ])
+    );
     assert_eq!(
         record.mulliken_charges,
         Some(vec![-0.784759, 0.392379, 0.392379])
@@ -294,6 +315,91 @@ fn hidden_dipole_block_leaves_dipole_absent() {
     assert_eq!(record.dipole_moment, None);
     assert_eq!(record.electronic_energy, Some(-76.402725158737));
     assert!(record.mulliken_charges.is_some());
+}
+
+// rq-292d4c94
+#[test]
+fn raw_cartesian_polarizability_tensor_is_stored_row_major() {
+    let record = parse(&completed_log());
+    assert_eq!(
+        record.polarizability,
+        Some([
+            68.96534, -4.98429, -0.17212, -4.98429, 54.79554, -1.20060, -0.17212, -1.20060,
+            59.72225
+        ])
+    );
+}
+
+// rq-dff9b11a
+#[test]
+fn incomplete_polarizability_table_leaves_the_tensor_absent() {
+    let incomplete = "THE POLARIZABILITY TENSOR\n\
+         -------------------------\n\
+         \n\
+         The raw cartesian tensor (atomic units):\n\
+         \x20  68.96534     -4.98429     -0.17212\n\
+         \x20  -4.98429     54.79554     -1.20060\n\
+         diagonalized tensor:\n\n";
+    let content = completed_log().replace(POLARIZABILITY, incomplete);
+    assert_eq!(parse(&content).polarizability, None);
+}
+
+// rq-9016333b
+#[test]
+fn hidden_polarizability_block_leaves_the_tensor_absent() {
+    let full = completed_log();
+    let polarizability_at = full.find("THE POLARIZABILITY TENSOR").expect("anchor");
+    let point_group_at = full.find("Point Group:").expect("anchor");
+    let (head, rest) = full.split_at(polarizability_at);
+    let (hidden, tail) = rest.split_at(point_group_at - polarizability_at);
+    let content = format!("{head}{hidden}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows = FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("windows");
+    assert!(
+        !windows.covered(),
+        "the polarizability block must be elided"
+    );
+    let record = OrcaParser.parse(&windows);
+    assert_eq!(record.status, RecordStatus::Ok);
+    assert_eq!(record.polarizability, None);
+    assert_eq!(record.dipole_moment, Some([0.0, 0.0, 0.733977]));
+}
+
+// rq-2ec4e6d2
+#[test]
+fn seam_hiding_the_raw_tensor_label_never_reads_the_diagonalized_tensor() {
+    let full = completed_log();
+    let raw_at = full
+        .find("The raw cartesian tensor (atomic units):")
+        .expect("raw label");
+    let diagonalized_at = full.find("diagonalized tensor:").expect("diagonalized label");
+    let (head, rest) = full.split_at(raw_at);
+    let (hidden, tail) = rest.split_at(diagonalized_at - raw_at);
+    let content = format!("{head}{hidden}{tail}");
+    let mut cursor = Cursor::new(content.as_bytes());
+    let windows = FileWindows::from_seekable(&mut cursor, head.len(), tail.len()).expect("windows");
+    assert!(!windows.covered(), "the raw tensor label must be elided");
+    let record = OrcaParser.parse(&windows);
+    assert_eq!(record.polarizability, None);
+    assert_eq!(record.status, RecordStatus::Ok);
+}
+
+// rq-11ce9c38
+#[test]
+fn polarizability_corpus_fixture_conforms() {
+    let record = ParserRegistry::standard()
+        .parse_file(std::path::Path::new(
+            "tests/fixtures/orca/1am1sa1w-111_7_673.out",
+        ))
+        .expect("parse");
+    assert_eq!(record.status, RecordStatus::Ok);
+    assert_eq!(
+        record.polarizability,
+        Some([
+            68.96534, -4.98429, -0.17212, -4.98429, 54.79554, -1.20060, -0.17212, -1.20060,
+            59.72225
+        ])
+    );
 }
 
 // rq-e770b7b2

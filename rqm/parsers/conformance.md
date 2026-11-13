@@ -75,9 +75,9 @@ observable vocabulary of `rqm/record.md`.
   - `expect` — an object whose keys mirror the record keys
     (`electronic_energy`, `charge`, `multiplicity`, `command`,
     `program_version`, `vibrational_frequencies`, `gradient`,
-    `dipole_moment`, `mulliken_charges`, `rotational_symmetry_number`,
-    `geometry`). Absent keys are not asserted; a key the record must leave
-    absent is asserted with `null`.
+    `dipole_moment`, `polarizability`, `mulliken_charges`,
+    `rotational_symmetry_number`, `geometry`). Absent keys are not asserted;
+    a key the record must leave absent is asserted with `null`.
   - `geometry` is either the full expected geometry (symbols and
     coordinates) or `{"atoms": N}` when only the atom count is pinned.
   - `vibrational_frequencies` is either the full expected list or
@@ -105,8 +105,8 @@ standard registry:
   prints, and decimal→f64 conversion is correctly rounded everywhere, so
   the manifest stores the file's decimal literally and the f64s compare
   bit-for-bit. Exact equality also covers integers, strings (trimmed),
-  symbol lists, and frequency length (unless the entry pins only the
-  count).
+  symbol lists, frequency length (unless the entry pins only the count),
+  and the polarizability tensor's nine components.
 - The exception is a parser-converted quantity whose expected value comes
   from an independent source — geometry converted bohr→Å (MRCC) and dipole
   converted Debye→a.u. (Gaussian): the expected decimals were produced by

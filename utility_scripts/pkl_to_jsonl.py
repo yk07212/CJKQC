@@ -90,6 +90,19 @@ def as_vector3(value):
     return numbers
 
 
+def as_polarizability(value):
+    numbers = as_float_list(value)
+    if numbers is not None:
+        return numbers if len(numbers) == 9 else None
+    number = as_float(value)
+    if number is None:
+        return None
+    # The JKQC pickle stores only the isotropic polarizability. CJKQC
+    # records carry the full tensor, so represent the known isotropic
+    # value as a diagonal tensor; the isotropic trace is preserved.
+    return [number, 0.0, 0.0, 0.0, number, 0.0, 0.0, 0.0, number]
+
+
 def as_geometry(structure):
     if missing(structure):
         return None
@@ -229,6 +242,7 @@ def convert_row(row, columns):
     frequencies = as_float_list(cell(row, columns, "log.vibrational_frequencies"))
     gradient = as_float_list(cell(row, columns, "log.gradient"))
     dipole = as_vector3(cell(row, columns, "log.dipole_moments"))
+    polarizability = as_polarizability(cell(row, columns, "log.polarizability"))
     mulliken = as_float_list(cell(row, columns, "log.mulliken_charges"))
     symmetry = as_int(cell(row, columns, "log.rotational_symmetry_number"))
     components = as_components(
@@ -276,6 +290,7 @@ def convert_row(row, columns):
         ("vibrational_frequencies", frequencies),
         ("gradient", gradient),
         ("dipole_moment", dipole),
+        ("polarizability", polarizability),
         ("mulliken_charges", mulliken),
         ("rotational_symmetry_number", symmetry),
         ("components", components),

@@ -366,6 +366,15 @@ pub enum Column {
     ///
     /// (rq-4ea8ca35)
     Dips,
+    /// Isotropic polarizability, 3 decimals.
+    ///
+    /// (rq-1b7b3af3 rq-b6bcec13)
+    Pol,
+    /// Polarizability tensor entries, row-major, 3 decimals each,
+    /// comma-separated.
+    ///
+    /// (rq-77dd2f68 rq-31d1c63f)
+    Pols,
     /// Net charge.
     Charge,
     /// Spin multiplicity.
@@ -402,7 +411,7 @@ pub enum Column {
 impl Column {
     /// All columns in canonical print order.
     // rq-6fb14f23
-    pub const ALL: [Column; 33] = [
+    pub const ALL: [Column; 35] = [
         Column::Filename,
         Column::Name,
         Column::Path,
@@ -426,6 +435,8 @@ impl Column {
         Column::Mass,
         Column::Dip,
         Column::Dips,
+        Column::Pol,
+        Column::Pols,
         Column::Charge,
         Column::Multiplicity,
         Column::Rsn,
@@ -500,6 +511,8 @@ impl Column {
             Column::Mass => "mass",
             Column::Dip => "dip",
             Column::Dips => "dips",
+            Column::Pol => "pol",
+            Column::Pols => "pols",
             Column::Charge => "charge",
             Column::Multiplicity => "multiplicity",
             Column::Rsn => "rsn",
@@ -909,6 +922,21 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
         },
         Column::Dips => match record.dipole_moment {
             Some([x, y, z]) => format!("{x:.3},{y:.3},{z:.3}"),
+            None => undefined(),
+        },
+        // The isotropic value is one third of the tensor trace; the
+        // tensor cell lists all nine entries row-major.
+        // rq-1b7b3af3 rq-77dd2f68
+        Column::Pol => match &record.polarizability {
+            Some(tensor) => format!("{:.3}", (tensor[0] + tensor[4] + tensor[8]) / 3.0),
+            None => undefined(),
+        },
+        Column::Pols => match &record.polarizability {
+            Some(tensor) => tensor
+                .iter()
+                .map(|value| format!("{value:.3}"))
+                .collect::<Vec<_>>()
+                .join(","),
             None => undefined(),
         },
         Column::Charge => match record.charge {

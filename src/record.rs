@@ -241,6 +241,13 @@ pub struct Record {
     /// Dipole moment vector in atomic units (e·a₀).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dipole_moment: Option<[f64; 3]>,
+    /// Full Cartesian polarizability tensor in atomic units (e²a₀²/Eh),
+    /// row-major: `[αxx, αxy, αxz, αyx, αyy, αyz, αzx, αzy, αzz]`. The
+    /// isotropic value is derived at printing, never stored.
+    ///
+    /// (rq-43be8f79 rq-495cb864 rq-3fddc2ef)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub polarizability: Option<[f64; 9]>,
     /// Per-atom Mulliken charges in elementary charges, in geometry atom
     /// order.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -346,6 +353,12 @@ impl Record {
         if let Some(vector) = self.dipole_moment {
             for &value in &vector {
                 finite("dipole_moment", value)?;
+            }
+        }
+        if let Some(tensor) = &self.polarizability {
+            // rq-3fddc2ef
+            for &value in tensor {
+                finite("polarizability", value)?;
             }
         }
         if let Some(values) = &self.mulliken_charges {

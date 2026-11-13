@@ -859,6 +859,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-11ce9c38": {
+    "decl": "Scenario: The polarizability corpus fixture conforms",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The polarizability corpus fixture conforms",
+    "type": "scenario"
+  },
   "rq-12042004": {
     "decl": "Scenario: An elided frequency header falls back to the visible eigval lines",
     "file": "parsers/xtb",
@@ -1542,6 +1554,22 @@
       }
     ],
     "title": "The formation section follows the table and precedes the summary",
+    "type": "scenario"
+  },
+  "rq-1b7b3af3": {
+    "decl": "Scenario: The pol column prints the isotropic polarizability",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The pol column prints the isotropic polarizability",
     "type": "scenario"
   },
   "rq-1b84a43e": {
@@ -2306,6 +2334,22 @@
     "title": "geometry",
     "type": "api-item"
   },
+  "rq-292d4c94": {
+    "decl": "Scenario: The raw Cartesian polarizability tensor is stored row-major",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The raw Cartesian polarizability tensor is stored row-major",
+    "type": "scenario"
+  },
   "rq-295538b5": {
     "decl": "- `element_symbol(z: u32) -> Option<String>` — maps an atomic number",
     "file": "parser-framework",
@@ -2637,6 +2681,22 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-2ec4e6d2": {
+    "decl": "- `polarizability` — the nine values of the raw Cartesian tensor in the",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "polarizability",
+    "type": "api-item"
+  },
   "rq-2f2ca923": {
     "decl": "Scenario: Uniq implies sorting by energy",
     "file": "filtering",
@@ -2783,6 +2843,22 @@
       }
     ],
     "title": "Filtered-away monomers serve as no references",
+    "type": "scenario"
+  },
+  "rq-31d1c63f": {
+    "decl": "Scenario: The pols column is undefined without a polarizability tensor",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The pols column is undefined without a polarizability tensor",
     "type": "scenario"
   },
   "rq-31d988e1": {
@@ -3582,6 +3658,22 @@
     "title": "--add-correction alone is not a visible outcome",
     "type": "scenario"
   },
+  "rq-3fddc2ef": {
+    "decl": "Scenario: validate rejects a non-finite polarizability component",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate rejects a non-finite polarizability component",
+    "type": "scenario"
+  },
   "rq-40e5e575": {
     "decl": "Scenario: --noname pools every record into one population",
     "file": "population",
@@ -4019,6 +4111,22 @@
       }
     ],
     "title": "A single-frame file yields its geometry",
+    "type": "scenario"
+  },
+  "rq-495cb864": {
+    "decl": "Scenario: A polarizability tensor round-trips and serializes after dipole_moment",
+    "file": "record",
+    "refs": [
+      {
+        "file": "src/record.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/record.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A polarizability tensor round-trips and serializes after dipole_moment",
     "type": "scenario"
   },
   "rq-49b5e21e": {
@@ -6317,6 +6425,22 @@
     "title": "A relative energy window is per composition group",
     "type": "scenario"
   },
+  "rq-77dd2f68": {
+    "decl": "Scenario: The pols column prints the polarizability tensor row-major",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The pols column prints the polarizability tensor row-major",
+    "type": "scenario"
+  },
   "rq-789635d3": {
     "decl": "- `corrected_monomer_references(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> CorrectedMonomerReferences`",
     "file": "formation",
@@ -7546,6 +7670,22 @@
     "refs": [],
     "title": "src",
     "type": "api-item"
+  },
+  "rq-9016333b": {
+    "decl": "Scenario: A hidden polarizability block leaves the tensor absent",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A hidden polarizability block leaves the tensor absent",
+    "type": "scenario"
   },
   "rq-903b5a1f": {
     "decl": "Scenario: --ignoreimag drops imaginary modes from the sums",
@@ -9677,6 +9817,22 @@
       }
     ],
     "title": "--pop alone is a visible outcome",
+    "type": "scenario"
+  },
+  "rq-b6bcec13": {
+    "decl": "Scenario: The pol column is undefined without a polarizability tensor",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The pol column is undefined without a polarizability tensor",
     "type": "scenario"
   },
   "rq-b7081115": {
@@ -11836,6 +11992,22 @@
       }
     ],
     "title": "A reacted heavy skeleton deviates from the consensus",
+    "type": "scenario"
+  },
+  "rq-dff9b11a": {
+    "decl": "Scenario: An incomplete polarizability table leaves the tensor absent",
+    "file": "parsers/orca",
+    "refs": [
+      {
+        "file": "src/parser/orca.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/parser_orca.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An incomplete polarizability table leaves the tensor absent",
     "type": "scenario"
   },
   "rq-e003541d": {

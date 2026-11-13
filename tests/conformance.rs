@@ -222,6 +222,26 @@ fn check(entry: &Value) -> Record {
             }
         }
     }
+    if let Some(polarizability) = expect.get("polarizability") {
+        if polarizability.is_null() {
+            assert!(
+                record.polarizability.is_none(),
+                "{file}: polarizability should be absent"
+            );
+        } else {
+            let actual = record
+                .polarizability
+                .unwrap_or_else(|| panic!("{file}: polarizability expected"));
+            for (index, value) in actual.iter().enumerate() {
+                within(
+                    *value,
+                    &polarizability[index],
+                    tolerance(entry, "polarizability"),
+                    &format!("{file}: polarizability[{index}]"),
+                );
+            }
+        }
+    }
     if let Some(expected) = expect.get("mulliken_charges") {
         expect_floats(
             record.mulliken_charges.as_ref(),

@@ -182,10 +182,12 @@ the property set and units:
   `--filename`, `--name`, `--path`, `--status`, `--program`, `--command`,
   `--correction`, `--el`, `--zpe`, `--h`, `--s`, `--g`, `--elcorr`,
   `--hcorr`, `--gcorr`, `--pop`, `--rg`, `--mass`, `--dip`, `--dips`,
-  `--charge`, `--multiplicity`, `--rsn`, `--natoms`, `--lf`, `--freqs`,
-  `--nfreq`, `--nimag`, `--rots`, `--components`.
+  `--pol`, `--pols`, `--charge`, `--multiplicity`, `--rsn`, `--natoms`,
+  `--lf`, `--freqs`, `--nfreq`, `--nimag`, `--rots`, `--components`.
   `--dip` prints the dipole magnitude; `--dips` prints the dipole
-  vector. There is no default
+  vector; `--pol` prints the isotropic polarizability (one third of the
+  polarizability tensor's trace) in atomic units; `--pols` prints the
+  polarizability tensor. There is no default
   selection: no print flag means no table is printed at all. The
   `--formation` flag (`rqm/formation.md`) prints a section after the
   table; it selects no column and counts as a print flag for the
@@ -207,15 +209,21 @@ the property set and units:
   `filename`, `name`, `path`, `status`, `program`, `command`,
   `correction`, and `components` align left; the
   numeric columns — the energy columns, the population columns, `rg`,
-  `mass`, `dip`, `dips`, `charge`, `multiplicity`, `rsn`, `natoms`, `lf`,
-  `freqs`, `nfreq`, `nimag`, and `rots` — align right; in both cases the
+  `mass`, `dip`, `dips`, `pol`, `pols`, `charge`, `multiplicity`, `rsn`,
+  `natoms`, `lf`, `freqs`, `nfreq`, `nimag`, and `rots` — align right; in both cases the
   header cell aligns with its column, so numbers line up under their
   header. Cells keep their per-column formats. The energy columns `el`,
   `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, and `gcorr` print in hartree
   with 10 decimals (`s` is the T·S entropy term; `rqm/thermo.md` and
-  `rqm/correction.md`). `rg`, `mass`, `dip`, and each component of
-  `dips` print with 3 decimals; `dips` lists the stored dipole vector's
-  x, y, z components in that order, comma-separated without spaces. `lf`
+  `rqm/correction.md`). `rg`, `mass`, `dip`, `pol`, and each component of
+  `dips` and `pols` print with 3 decimals; `dips` lists the stored dipole
+  vector's x, y, z components in that order, comma-separated without
+  spaces. `pol` prints the isotropic polarizability — one third of the
+  trace of the record's `polarizability` tensor (`rqm/record.md`) — in
+  atomic units, and is undefined when the tensor is absent. `pols` lists
+  all nine tensor entries row-major
+  (`xx,xy,xz,yx,yy,yz,zx,zy,zz`), comma-separated without spaces, and is
+  likewise undefined when the tensor is absent. `lf`
   prints with 1 decimal — the lowest stored vibrational frequency in
   cm⁻¹, a raw observable so imaginary modes print negative whatever
   `--makereal` or `--ignoreimag` does, undefined when the record stores
@@ -622,6 +630,32 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record without a dipole_moment
     When CJKQC is invoked with the database and "--dips" and no --out
     Then the dips column prints -
+
+  @rq-1b7b3af3
+  Scenario: The pol column prints the isotropic polarizability
+    Given a database with one ok record whose polarizability tensor is
+    [3.0, 0.0, 0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 9.0]
+    When CJKQC is invoked with the database and "--pol" and no --out
+    Then the pol column prints 6.000
+
+  @rq-b6bcec13
+  Scenario: The pol column is undefined without a polarizability tensor
+    Given a database with one ok record without a polarizability
+    When CJKQC is invoked with the database and "--pol" and no --out
+    Then the pol column prints -
+
+  @rq-77dd2f68
+  Scenario: The pols column prints the polarizability tensor row-major
+    Given a database with one ok record whose polarizability tensor is
+    [3.0, 0.1, 0.2, 0.1, 6.0, 0.3, 0.2, 0.3, 9.0]
+    When CJKQC is invoked with the database and "--pols" and no --out
+    Then the pols column prints 3.000,0.100,0.200,0.100,6.000,0.300,0.200,0.300,9.000
+
+  @rq-31d1c63f
+  Scenario: The pols column is undefined without a polarizability tensor
+    Given a database with one ok record without a polarizability
+    When CJKQC is invoked with the database and "--pols" and no --out
+    Then the pols column prints -
 
   @rq-003218f8
   Scenario: The freqs column prints every stored frequency in stored order

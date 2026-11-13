@@ -99,6 +99,9 @@ in an elided window yields an absent observable, never a guess.
 
 ## Out of Scope <!-- rq-6da52c3f -->
 
+- Polarizability extraction: no corpus xtb output prints a polarizability
+  tensor, so the record's `polarizability` field stays absent until a
+  source printing is identified.
 - Gradient extraction: the corpus runs print gradient norms and write
   gradient files, but do not print gradient tables to stdout.
 - Conformer/parallel `xtb` modes (`--parallel`, `--ensemble`) beyond their

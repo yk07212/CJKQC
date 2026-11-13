@@ -66,6 +66,13 @@ else", `rqm/ARCHITECTURE.md`).
     row-major: exactly three values per atom, in geometry atom order.
   - `dipole_moment: Option<[f64; 3]>` — dipole moment vector in atomic units
     (e·a₀).
+  - `polarizability: Option<[f64; 9]>` — the full Cartesian polarizability
+    tensor in atomic units (e²a₀²/Eh, equivalently a₀³), row-major:
+    `[αxx, αxy, αxz, αyx, αyy, αyz, αzx, αzy, αzz]`. Programs print a
+    symmetric tensor, so off-diagonal entries mirror each other; the record
+    stores all nine values as printed so the matrix is self-contained. The
+    isotropic value (the trace divided by three) is derived at printing and
+    never stored.
   - `mulliken_charges: Option<Vec<f64>>` — per-atom Mulliken charges in
     elementary charges, in geometry atom order.
   - `rotational_symmetry_number: Option<u32>` — point-group rotational
@@ -165,6 +172,8 @@ else", `rqm/ARCHITECTURE.md`).
 - Gradient: hartree/Å (`gradient`).
 - Frequencies: cm⁻¹ (`vibrational_frequencies`).
 - Dipole moment: atomic units, e·a₀ (`dipole_moment`).
+- Polarizability: atomic units, e²a₀²/Eh (equivalently a₀³),
+  (`polarizability`).
 - Charges: elementary charge e (`charge`, `mulliken_charges`).
 - Multiplicity and rotational symmetry number: dimensionless integers.
 
@@ -179,7 +188,7 @@ records and databases always carry the canonical units above.
 - The writer emits keys in a fixed order — `status`, `error`, `name`,
   `source_path`, `program`, `program_version`, `command`, `electronic_energy`,
   `scf_energy`, `charge`, `multiplicity`, `geometry`, `vibrational_frequencies`,
-  `gradient`, `dipole_moment`, `mulliken_charges`,
+  `gradient`, `dipole_moment`, `polarizability`, `mulliken_charges`,
   `rotational_symmetry_number`, `components`, `correction` — with absent
   observables omitted. The reader accepts keys in any order.
 - `geometry` serializes as nested parallel arrays:
@@ -427,4 +436,20 @@ Feature: Record schema
     Given a record whose scf_energy is NaN
     When validate is called
     Then it returns Err(RecordInvalidity::NonFiniteFloat { field: "scf_energy" })
+
+  # --- Polarizability ---
+
+  @rq-495cb864
+  Scenario: A polarizability tensor round-trips and serializes after dipole_moment
+    Given a record with dipole_moment [0.0, 0.0, 0.0] and polarizability
+    [1.0, 2.0, 3.0, 2.0, 4.0, 5.0, 3.0, 5.0, 6.0]
+    When the record is serialized to JSON and deserialized back
+    Then the result equals the original record
+    And the serialized line names "dipole_moment" before "polarizability"
+
+  @rq-3fddc2ef
+  Scenario: validate rejects a non-finite polarizability component
+    Given a record whose polarizability holds NaN
+    When validate is called
+    Then it returns Err(RecordInvalidity::NonFiniteFloat { field: "polarizability" })
 ```
