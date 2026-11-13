@@ -5832,14 +5832,14 @@ fn the_section_prints_after_the_formation_sections_and_before_the_summary() {
     let text = stdout(&run);
     let formation = text.len() - section_from(&text, &["name", "el", "g"]).len();
     let corrected = text.len() - section_from(&text, &["name", "elcorr", "gcorr"]).len();
-    // The hydration sections' percentage rows are the only rows indented
-    // by the section's column alignment; --sort el may reorder the
-    // states within a group, so the marker is the row, not the tokens.
+    // The hydration sections' percentage rows follow the dry-first state
+    // ordering; each request prints its section once, raw before
+    // corrected.
     let hydration = text
-        .find("\n  0.0 100.0")
+        .find("\n100.0   0.0")
         .expect("the raw hydration section");
     let hydration_corr = text
-        .rfind("\n  0.0 100.0")
+        .rfind("\n100.0   0.0")
         .expect("the corrected hydration section");
     let summary = text.find("filtered 4 records into").expect("the summary");
     assert!(formation < corrected, "{text}");

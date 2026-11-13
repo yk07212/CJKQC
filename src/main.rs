@@ -1786,7 +1786,7 @@ fn print_hydration_sections(
     sort_key: SortKey,
 ) {
     let print_block = |groups: &[HydrationGroup]| {
-        let section = print_hydration_section(groups, memo.temperature());
+        let section = print_hydration_section(groups, solvent, memo.temperature());
         if !section.is_empty() {
             println!("{section}");
         }

@@ -2399,7 +2399,7 @@
     "type": "section"
   },
   "rq-2a926651": {
-    "decl": "Scenario: Columns align within a group",
+    "decl": "Scenario: Columns align across groups by solvent count",
     "file": "hydration",
     "refs": [
       {
@@ -2411,7 +2411,7 @@
         "kind": "code"
       }
     ],
-    "title": "Columns align within a group",
+    "title": "Columns align across groups by solvent count",
     "type": "scenario"
   },
   "rq-2b028a0d": {
@@ -5037,6 +5037,10 @@
     "level": 2,
     "refs": [
       {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      },
+      {
         "file": "src/main.rs",
         "kind": "code"
       }
@@ -5887,7 +5891,7 @@
     "type": "scenario"
   },
   "rq-70efc347": {
-    "decl": "- `print_hydration_section(groups: &[HydrationGroup], temperature: f64)",
+    "decl": "- `print_hydration_section(groups: &[HydrationGroup], solvent: &str,",
     "file": "hydration",
     "refs": [
       {
@@ -11091,6 +11095,22 @@
     "title": "The XTB corpus fixture reproduces the JKQC ground truth",
     "type": "scenario"
   },
+  "rq-d28606e9": {
+    "decl": "Scenario: States print dry first then increasing solvent count",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "States print dry first then increasing solvent count",
+    "type": "scenario"
+  },
   "rq-d2b5c941": {
     "decl": "## Gherkin Scenarios",
     "file": "hydration",
@@ -11128,6 +11148,22 @@
       }
     ],
     "title": "A block of only trivial eigenvalues leaves the field absent",
+    "type": "scenario"
+  },
+  "rq-d305ad51": {
+    "decl": "Scenario: A missing solvent count reserves its column",
+    "file": "hydration",
+    "refs": [
+      {
+        "file": "src/hydration.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/hydration.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing solvent count reserves its column",
     "type": "scenario"
   },
   "rq-d36686ec": {

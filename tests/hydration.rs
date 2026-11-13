@@ -525,7 +525,7 @@ fn a_group_without_defined_states_prints_all_dashes() {
     assert!(group.states.iter().all(|state| state.value.is_none()));
     let percentages = hydration_percentages(group, 298.15);
     assert!(percentages.iter().all(|percentage| percentage.is_none()));
-    let section = print_hydration_section(groups.as_slice(), 298.15);
+    let section = print_hydration_section(groups.as_slice(), "w", 298.15);
     assert_eq!(section.lines().nth(1).expect("two rows").trim(), "-");
 }
 
@@ -643,9 +643,9 @@ fn the_layout_is_a_token_row_and_a_percentage_row_per_group() {
     ];
     records.extend(monomers());
     let groups = hydration_states(&records, SortKey::El, &memo(), &saturated(), "w");
-    let section = print_hydration_section(&groups, 298.15);
+    let section = print_hydration_section(&groups, "w", 298.15);
     let lines: Vec<&str> = section.lines().collect();
-    assert_eq!(lines[0], " 1sa 1sa1w 1sa2w", "{section}");
+    assert_eq!(lines[0], "  1sa 1sa1w 1sa2w", "{section}");
     assert!(
         !lines[0].starts_with("name "),
         "no header line prints: {section}"
@@ -673,7 +673,7 @@ fn a_blank_line_separates_the_groups() {
     records.extend(monomers());
     let groups = hydration_states(&records, SortKey::El, &memo(), &saturated(), "w");
     assert_eq!(groups.len(), 3);
-    let section = print_hydration_section(&groups, 298.15);
+    let section = print_hydration_section(&groups, "w", 298.15);
     // Every group's percentage row is followed by a blank line, so each
     // split part holds exactly one token row and one percentage row.
     let blocks: Vec<&str> = section.split("\n\n").collect();
@@ -683,23 +683,138 @@ fn a_blank_line_separates_the_groups() {
     }
 }
 
+#[test] // rq-d28606e9
+fn states_print_dry_first_then_increasing_solvent_count() {
+    let mut records = vec![
+        leveled(
+            "c2",
+            &[("sa", 1), ("w", 1)],
+            Some(target(&[G_SA, G_W], 0.1, 1)),
+            None,
+        ),
+        leveled(
+            "c3",
+            &[("sa", 1), ("w", 2)],
+            Some(target(&[G_SA, G_W], 0.2, 2)),
+            None,
+        ),
+        leveled("c1", &[("sa", 1)], Some(target(&[G_SA], 0.0, 0)), None),
+    ];
+    records.extend(monomers());
+    let groups = hydration_states(&records, SortKey::El, &memo(), &saturated(), "w");
+    let ordered: Vec<Components> = groups[0]
+        .states
+        .iter()
+        .map(|state| state.components.clone())
+        .collect();
+    assert_eq!(
+        ordered,
+        [
+            components(&[("sa", 1)]),
+            components(&[("sa", 1), ("w", 1)]),
+            components(&[("sa", 1), ("w", 2)]),
+        ]
+    );
+}
+
 #[test] // rq-2a926651
-fn columns_align_within_a_group() {
-    let group = HydrationGroup {
-        core: components(&[("sa", 1)]),
-        states: vec![
-            HydrationState {
-                components: components(&[("sa", 1)]),
-                value: Some(0.0),
-            },
-            HydrationState {
-                components: components(&[("sa", 1), ("w", 1)]),
-                value: Some(20.0 * kbt()),
-            },
-        ],
-    };
-    let section = print_hydration_section(&[group], 298.15);
-    assert_eq!(section, "  1sa 1sa1w\n100.0   0.0\n", "{section:?}");
+fn columns_align_across_groups_by_solvent_count() {
+    let groups = vec![
+        HydrationGroup {
+            core: components(&[("sa", 1)]),
+            states: vec![
+                HydrationState {
+                    components: components(&[("sa", 1)]),
+                    value: Some(0.0),
+                },
+                HydrationState {
+                    components: components(&[("sa", 1), ("w", 1)]),
+                    value: Some(20.0 * kbt()),
+                },
+                HydrationState {
+                    components: components(&[("sa", 1), ("w", 2)]),
+                    value: Some(20.0 * kbt()),
+                },
+            ],
+        },
+        HydrationGroup {
+            core: components(&[("am", 2), ("sa", 1)]),
+            states: vec![
+                HydrationState {
+                    components: components(&[("am", 2), ("sa", 1)]),
+                    value: Some(0.0),
+                },
+                HydrationState {
+                    components: components(&[("am", 2), ("sa", 1), ("w", 1)]),
+                    value: Some(20.0 * kbt()),
+                },
+            ],
+        },
+    ];
+    let section = print_hydration_section(&groups, "w", 298.15);
+    assert_eq!(
+        section,
+        "   1sa    1sa1w 1sa2w\n 100.0      0.0   0.0\n\n2am1sa 2am1sa1w\n 100.0      0.0\n",
+        "{section:?}"
+    );
+    let token_row = section.lines().next().expect("a token row");
+    let hydrate_end = token_row.find("1sa1w").expect("the 1sa1w token") + "1sa1w".len();
+    let other_group = section
+        .lines()
+        .nth(3)
+        .expect("the second group's token row");
+    let other_end = other_group.find("2am1sa1w").expect("the 2am1sa1w token") + "2am1sa1w".len();
+    assert_eq!(other_end, hydrate_end, "{section:?}");
+}
+
+#[test] // rq-d305ad51
+fn a_missing_solvent_count_reserves_its_column() {
+    let groups = vec![
+        HydrationGroup {
+            core: components(&[("sa", 1)]),
+            states: vec![
+                HydrationState {
+                    components: components(&[("sa", 1)]),
+                    value: Some(0.0),
+                },
+                HydrationState {
+                    components: components(&[("sa", 1), ("w", 2)]),
+                    value: Some(20.0 * kbt()),
+                },
+            ],
+        },
+        HydrationGroup {
+            core: components(&[("am", 2), ("sa", 1)]),
+            states: vec![
+                HydrationState {
+                    components: components(&[("am", 2), ("sa", 1)]),
+                    value: Some(0.0),
+                },
+                HydrationState {
+                    components: components(&[("am", 2), ("sa", 1), ("w", 1)]),
+                    value: Some(20.0 * kbt()),
+                },
+                HydrationState {
+                    components: components(&[("am", 2), ("sa", 1), ("w", 2)]),
+                    value: Some(20.0 * kbt()),
+                },
+            ],
+        },
+    ];
+    let section = print_hydration_section(&groups, "w", 298.15);
+    assert_eq!(
+        section,
+        "   1sa             1sa2w\n 100.0               0.0\n\n2am1sa 2am1sa1w 2am1sa2w\n 100.0      0.0      0.0\n",
+        "{section:?}"
+    );
+    let token_row = section.lines().next().expect("a token row");
+    let other_group = section
+        .lines()
+        .nth(3)
+        .expect("the second group's token row");
+    let end = token_row.find("1sa2w").expect("the 1sa2w token") + "1sa2w".len();
+    let other_end = other_group.find("2am1sa2w").expect("the 2am1sa2w token") + "2am1sa2w".len();
+    assert_eq!(end, other_end, "{section:?}");
 }
 
 #[test] // rq-3f2988b7
@@ -717,7 +832,7 @@ fn percentages_print_with_one_decimal() {
             },
         ],
     };
-    let section = print_hydration_section(&[group], 298.15);
+    let section = print_hydration_section(&[group], "w", 298.15);
     let cells: Vec<&str> = section
         .lines()
         .nth(1)
@@ -743,7 +858,7 @@ fn undefined_states_print_dashes_in_their_columns() {
             },
         ],
     };
-    let section = print_hydration_section(&[group], 298.15);
+    let section = print_hydration_section(&[group], "w", 298.15);
     let percentage_row = section.lines().nth(1).expect("two rows");
     assert!(percentage_row.trim_end().ends_with('-'), "{section:?}");
 }
@@ -772,7 +887,7 @@ fn rounded_percentages_need_not_sum_to_exactly_100() {
     for cell in &percentages {
         assert!((percentage(*cell) - 100.0 / 3.0).abs() < 1.0e-9);
     }
-    let section = print_hydration_section(&[group], 298.15);
+    let section = print_hydration_section(&[group], "w", 298.15);
     let cells: Vec<f64> = section
         .lines()
         .nth(1)

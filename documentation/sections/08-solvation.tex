@@ -155,21 +155,25 @@ section, which keeps its own grouping order.
 \subsection{Printed layout}\label{sec:solvation-layout}
 
 There is no header row. For each core group, two rows are printed: the
-states' composition tokens, then their percentages. Percentages print with
-one decimal, \texttt{-} for an undefined state, and need not sum to exactly
-100.0 because of rounding. A blank line follows every group's percentage row,
-so groups read as blocks.
+states' composition tokens, then their percentages. Within a group the
+states are listed dry first, then in order of increasing solvent count.
+Percentages print with one decimal, \texttt{-} for an undefined state, and
+need not sum to exactly 100.0 because of rounding. A blank line follows
+every group's percentage row, so groups read as blocks.
 
-Columns align within a group: each column is as wide as the wider of its label
-and percentage cell, cells are right-aligned, and there is a single space
-between columns. For example:
+All groups share one set of columns, arranged by solvent count: the dry
+states are in the leftmost column, the one-solvent states next, and so on.
+A group with no state for a given solvent count leaves that column blank, so
+the same solvent count lines up in every group. Each column is as wide as
+its widest label or percentage cell across all groups, cells are
+right-aligned, and there is a single space between columns. For example:
 
 \begin{verbatim}
- 1sa 1sa1w 1sa2w
-40.0  45.0  15.0
+   1sa    1sa1w 1sa2w
+  40.0     45.0  15.0
 
- 1pinic 1pinic1w
- 72.3    27.7
+1pinic 1pinic1w
+  72.3     27.7
 \end{verbatim}
 
 The standard-output order is: main table, raw formation section, corrected

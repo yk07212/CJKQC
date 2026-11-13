@@ -101,8 +101,10 @@ remainder cancels.
   core-less group, and the solvent monomer itself prints no
   distribution row.
 - The core groups print in first-appearance order of their core among
-  the printed set; the states within a group in first-appearance order
-  of their components map.
+  the printed set; the states within a group in order of increasing
+  solvent count — the dry state (zero solvent) leftmost when present,
+  then one solvent, two, and so on. Within a group the core is fixed,
+  so the solvent count is a total order.
 - A state's distribution value at the section's level:
   - Uncollapsed, it is the **lowest free conformer**: the minimum over
     the state's members' defined level values. Members whose value is
@@ -160,13 +162,35 @@ remainder cancels.
   are rounded for display and need not sum to exactly 100.0. A blank
   line follows every group's percentage row, so groups read as blocks
   (JKQC's layout).
-- Columns align within a group: each column is as wide as the wider of
-  its token and percentage cell, cells right-aligned, single space
-  between columns:
+- All groups share one global column grid keyed by solvent count:
+  column n holds the states whose components map carries exactly n
+  solvent molecules, so the dry states occupy the leftmost column, then
+  the one-solvent states, and so on. A group without a state at a given
+  count leaves that column blank, so the same solvent count lines up in
+  the same column in every group. Each column is as wide as the widest
+  token or percentage cell at that count across all groups, cells
+  right-aligned, single space between columns, trailing whitespace
+  trimmed from each row. For example, the groups `1sa`/`1sa1w`/`1sa2w`
+  and `2am1sa`/`2am1sa1w` render as:
 
   ```text
-   1sa 1sa1w 1sa2w
-  40.0  45.0  15.0
+     1sa    1sa1w 1sa2w
+    40.0     45.0  15.0
+
+  2am1sa 2am1sa1w
+    60.0     40.0
+  ```
+
+  When the `sa` group has a dry and a two-solvent state but no
+  one-solvent state, its one-solvent column is blank and its two-solvent
+  state still aligns with the other group's two-solvent state:
+
+  ```text
+     1sa             1sa2w
+    40.0              60.0
+
+  2am1sa 2am1sa1w 2am1sa2w
+    60.0     50.0     30.0
   ```
 
 - Stdout order: main table, formation section, corrected formation
@@ -183,7 +207,8 @@ remainder cancels.
 - `HydrationState` — one state: `components: Components`, <!-- rq-6bc74daa -->
   `value: Option<f64>` (Eh, the section's level's formation value).
 - `HydrationGroup` — one core group: `core: Components`, <!-- rq-0b5e2729 -->
-  `states: Vec<HydrationState>` in first-appearance order.
+  `states: Vec<HydrationState>` ordered by increasing solvent count
+  (dry first).
 
 ### Functions <!-- rq-6c6fec9b -->
 
@@ -216,9 +241,11 @@ remainder cancels.
   Vec<Option<f64>>` — aligned with `states`: the normalized percentage
   of each defined state, `None` for undefined states and when no state
   of the group defines the level.
-- `print_hydration_section(groups: &[HydrationGroup], temperature: f64) <!-- rq-70efc347 -->
-  -> String` — the paired-row layout of Printing, percentages through
-  `hydration_percentages`.
+- `print_hydration_section(groups: &[HydrationGroup], solvent: &str, <!-- rq-70efc347 -->
+  temperature: f64) -> String` — the paired-row layout of Printing,
+  percentages through `hydration_percentages`. Each state's grid column
+  is its count of `solvent` in its components map (zero when absent), so
+  the global column grid of Printing is keyed by solvent count.
 
 ## Crate Layout <!-- rq-b97304bb -->
 
@@ -235,10 +262,11 @@ remainder cancels.
   set with the `--conc` rule, and prints the requested sections after
   the formation sections — over the ensembles when `--bavg` is set.
 - `tests/hydration.rs` tests the pressure formula against the reference
-  values, the state grouping and first-appearance order, the
+  values, the state grouping and solvent-count ordering, the
   lowest-free-conformer rule and definedness, the ensemble path, the
-  distribution arithmetic against hand-computed splits, and the
-  percentage formatting; CLI coverage (flag grammar, conflicts, no-ops,
+  distribution arithmetic against hand-computed splits, the percentage
+  formatting, and the global column grid (reserved blank columns and
+  cross-group alignment); CLI coverage (flag grammar, conflicts, no-ops,
   usage errors, stdout order) extends `tests/cli.rs` per
   `rqm/filtering.md`.
 
@@ -435,6 +463,12 @@ Feature: Hydration and solvation distributions
     Then the first group holds the states 1sa, 1sa1w, and 1sa2w
     And the second group holds the states 2am1sa and 2am1sa1w
 
+  @rq-d28606e9
+  Scenario: States print dry first then increasing solvent count
+    Given a database whose 1sa1w and 1sa2w records precede the 1sa record, and the 1sa and 1w monomers
+    When CJKQC is invoked with the database and "--hydration" and no --out
+    Then the 1sa group prints 1sa, then 1sa1w, then 1sa2w in that order
+
   @rq-b9897f33
   Scenario: The lowest free conformer represents a state
     Given a 1sa cluster, two 1sa1w conformers whose formation free energies differ by kB*T, and the 1sa and 1w monomers
@@ -546,10 +580,18 @@ Feature: Hydration and solvation distributions
     Then a blank line follows each group's percentage row
 
   @rq-2a926651
-  Scenario: Columns align within a group
-    Given a group with the states 1sa and 1sa1w
+  Scenario: Columns align across groups by solvent count
+    Given a database with 1sa, 1sa1w, 1sa2w, 2am1sa, and 2am1sa1w records and the am, sa, and w monomers
     When CJKQC is invoked with the database and "--hydration" and no --out
-    Then the two rows' columns are right-aligned to the widest cell of each column
+    Then each column is as wide as the widest token or percentage cell at that solvent count across both groups
+    And 1sa1w and 2am1sa1w print in the same column
+
+  @rq-d305ad51
+  Scenario: A missing solvent count reserves its column
+    Given a database with 1sa, 1sa2w, 2am1sa, 2am1sa1w, and 2am1sa2w records and the am, sa, and w monomers
+    When CJKQC is invoked with the database and "--hydration" and no --out
+    Then the 1sa group leaves the one-solvent column blank
+    And 1sa2w prints in the same column as 2am1sa2w
 
   @rq-3f2988b7
   Scenario: Percentages print with one decimal

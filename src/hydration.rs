@@ -70,6 +70,13 @@ pub fn saturation_pressure_water(temperature: f64) -> f64 {
     610.94 * (17.625 * tau / (243.04 + tau)).exp()
 }
 
+/// The number of solvent molecules in a components map: zero when the
+/// map has no entry for the solvent (the dry state).
+// rq-5e154b92
+fn solvent_count(components: &Components, solvent: &str) -> u32 {
+    components.get(solvent).copied().unwrap_or(0)
+}
+
 /// The core of a components map: the map minus the solvent code
 /// (`rqm/hydration.md` Hydration States).
 // rq-42cdecff
@@ -81,13 +88,12 @@ fn core_of(components: &Components, solvent: &str) -> Components {
         .collect()
 }
 
-/// The core groups over `(components, value)` pairs in first-appearance
-/// order: core groups in first-appearance order of their core, states
-/// within a group in first-appearance order of their components map. A
-/// pair with an empty core — a pure solvent cluster — is excluded
-/// (`rqm/hydration.md` Hydration States); a `None` value creates its
-/// state without contributing to the value, so a state with no defined
-/// member stays undefined.
+/// The core groups over `(components, value)` pairs: core groups in
+/// first-appearance order of their core, states within a group in order
+/// of increasing solvent count — dry first (`rqm/hydration.md` Hydration
+/// States). A pair with an empty core — a pure solvent cluster — is
+/// excluded; a `None` value creates its state without contributing to
+/// the value, so a state with no defined member stays undefined.
 // rq-42cdecff
 fn group_by_core<I>(pairs: I, solvent: &str) -> Vec<HydrationGroup>
 where
@@ -137,6 +143,15 @@ where
                 None => value,
             });
         }
+    }
+    // States print dry first, then increasing solvent count
+    // (`rqm/hydration.md` Hydration States). Within a group the core is
+    // fixed, so the solvent count totally orders the states.
+    // rq-42cdecff rq-d28606e9
+    for group in &mut groups {
+        group
+            .states
+            .sort_by_key(|state| solvent_count(&state.components, solvent));
     }
     groups
 }
@@ -287,51 +302,86 @@ pub fn hydration_percentages(group: &HydrationGroup, temperature: f64) -> Vec<Op
 /// (`rqm/hydration.md` Printing): per group the states' composition
 /// tokens — the same alphabetical pairs the `--name` column prints — then
 /// their percentages with one decimal, `-` for an undefined state. No
-/// header row; columns align within a group, each as wide as the wider
-/// of its token and percentage cell, cells right-aligned, single space
-/// between columns; a blank line follows every group's percentage row.
+/// header row. All groups share one global column grid keyed by solvent
+/// count: column n holds the states carrying n solvent molecules, each
+/// column as wide as the widest token or percentage cell at that count
+/// across every group, cells right-aligned, single space between
+/// columns. A group without a state at a count reserves that column
+/// blank; trailing whitespace is trimmed from each row. A blank line
+/// follows every group's percentage row.
 ///
 /// (rq-70efc347)
-pub fn print_hydration_section(groups: &[HydrationGroup], temperature: f64) -> String {
+pub fn print_hydration_section(
+    groups: &[HydrationGroup],
+    solvent: &str,
+    temperature: f64,
+) -> String {
+    let rows_per_group: Vec<Vec<(u32, String, String)>> = groups
+        .iter()
+        .map(|group| {
+            let percentages = hydration_percentages(group, temperature);
+            group
+                .states
+                .iter()
+                .zip(percentages)
+                .map(|(state, percentage)| {
+                    let token = composition_token(Some(&state.components))
+                        .expect("a state's components map is non-empty");
+                    let cell = percentage
+                        .map_or_else(|| "-".to_string(), |percentage| format!("{percentage:.1}"));
+                    (solvent_count(&state.components, solvent), token, cell)
+                })
+                .collect()
+        })
+        .collect();
+
+    // The grid's columns are the solvent counts present anywhere in the
+    // section, ascending; a count absent everywhere needs no column.
+    // rq-2a926651 rq-d305ad51
+    let mut counts: Vec<u32> = rows_per_group
+        .iter()
+        .flatten()
+        .map(|(count, _, _)| *count)
+        .collect();
+    counts.sort_unstable();
+    counts.dedup();
+    let column_of = |count: u32| {
+        counts
+            .binary_search(&count)
+            .expect("counts holds every state's solvent count")
+    };
+
+    // Each column is as wide as the widest token or percentage cell at
+    // its solvent count across every group (Printing).
+    // rq-2a926651
+    let mut widths: Vec<usize> = vec![0; counts.len()];
+    for rows in &rows_per_group {
+        for (count, token, cell) in rows {
+            let width = &mut widths[column_of(*count)];
+            *width = (*width).max(token.len()).max(cell.len());
+        }
+    }
+
     let mut blocks: Vec<String> = Vec::with_capacity(groups.len());
-    for group in groups {
-        let percentages = hydration_percentages(group, temperature);
-        let tokens: Vec<String> = group
-            .states
-            .iter()
-            .map(|state| {
-                composition_token(Some(&state.components))
-                    .expect("a state's components map is non-empty")
-            })
-            .collect();
-        let cells: Vec<String> = percentages
-            .iter()
-            .map(|percentage| {
-                percentage.map_or_else(|| "-".to_string(), |percentage| format!("{percentage:.1}"))
-            })
-            .collect();
-        // Columns align within a group: each column is as wide as the
-        // wider of its token and percentage cell (Printing).
-        // rq-2a926651
-        let widths: Vec<usize> = tokens
-            .iter()
-            .zip(&cells)
-            .map(|(token, cell)| token.len().max(cell.len()))
-            .collect();
-        let token_row: Vec<String> = tokens
-            .iter()
-            .zip(&widths)
-            .map(|(token, width)| format!("{token:>width$}"))
-            .collect();
-        let cell_row: Vec<String> = cells
-            .iter()
-            .zip(&widths)
-            .map(|(cell, width)| format!("{cell:>width$}"))
-            .collect();
+    for rows in &rows_per_group {
+        // A group without a state at a count reserves that column blank,
+        // so the same solvent count lines up in every group (Printing).
+        // rq-d305ad51
+        let mut token_row: Vec<String> = widths.iter().map(|width| " ".repeat(*width)).collect();
+        let mut cell_row: Vec<String> = widths.iter().map(|width| " ".repeat(*width)).collect();
+        for (count, token, cell) in rows {
+            let column = column_of(*count);
+            token_row[column] = format!("{token:>width$}", width = widths[column]);
+            cell_row[column] = format!("{cell:>width$}", width = widths[column]);
+        }
         // A blank line follows every group's percentage row, so groups
         // read as blocks (Printing).
         // rq-e52f165b
-        blocks.push(format!("{}\n{}\n", token_row.join(" "), cell_row.join(" ")));
+        blocks.push(format!(
+            "{}\n{}\n",
+            token_row.join(" ").trim_end(),
+            cell_row.join(" ").trim_end()
+        ));
     }
     blocks.join("\n")
 }
