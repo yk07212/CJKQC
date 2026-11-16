@@ -147,6 +147,18 @@
     "title": "A file whose head matches a registered parser is parsed by it",
     "type": "scenario"
   },
+  "rq-03690666": {
+    "decl": "Scenario: A record without components is unchanged by --rename",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without components is unchanged by --rename",
+    "type": "scenario"
+  },
   "rq-03784756": {
     "decl": "Scenario: Identical keys collapse, differing decimals do not",
     "file": "uniqueness",
@@ -984,6 +996,18 @@
     ],
     "title": "merge_databases",
     "type": "api-item"
+  },
+  "rq-1404f4d5": {
+    "decl": "Scenario: Renaming a code to itself is a no-op",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Renaming a code to itself is a no-op",
+    "type": "scenario"
   },
   "rq-142ac35d": {
     "decl": "### Conditions",
@@ -2554,6 +2578,18 @@
     "title": "LoadOutcome",
     "type": "api-item"
   },
+  "rq-2c3246dc": {
+    "decl": "- `FilterError` — why a pipeline run stopped: `Extract(ExtractError)` for a",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "FilterError",
+    "type": "api-item"
+  },
   "rq-2cc9076e": {
     "decl": "- `load_database(path: &Path) -> Result<LoadOutcome, DbError>`",
     "file": "database",
@@ -3086,6 +3122,18 @@
     "title": "Functions",
     "type": "section"
   },
+  "rq-340fd4c2": {
+    "decl": "Scenario: Renaming into an existing code merges the counts",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Renaming into an existing code merges the counts",
+    "type": "scenario"
+  },
   "rq-34231bdc": {
     "decl": "Scenario: Merge truncates an existing output",
     "file": "collection",
@@ -3160,6 +3208,18 @@
     ],
     "title": "Ensemble",
     "type": "api-item"
+  },
+  "rq-357f1f14": {
+    "decl": "Scenario: --rename rewrites a written database's compositions",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--rename rewrites a written database's compositions",
+    "type": "scenario"
   },
   "rq-35c8e2c9": {
     "decl": "Scenario: The version banner is detected",
@@ -3600,6 +3660,18 @@
       }
     ],
     "title": "atomic_mass",
+    "type": "api-item"
+  },
+  "rq-3eb85fbe": {
+    "decl": "- `RenameError` — a rename that cannot be applied:",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "src/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "RenameError",
     "type": "api-item"
   },
   "rq-3f2648cf": {
@@ -4201,6 +4273,22 @@
     "title": "--movie alone is a visible outcome",
     "type": "scenario"
   },
+  "rq-4b48a995": {
+    "decl": "Scenario: A rename count overflow is a runtime failure",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A rename count overflow is a runtime failure",
+    "type": "scenario"
+  },
   "rq-4b684f8d": {
     "decl": "Scenario: Pure solvent clusters print no distribution",
     "file": "hydration",
@@ -4224,6 +4312,18 @@
     ],
     "title": "corrected_ensemble_references",
     "type": "api-item"
+  },
+  "rq-4bb3deda": {
+    "decl": "Scenario: A non-letter rename code is a usage error",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-letter rename code is a usage error",
+    "type": "scenario"
   },
   "rq-4c1bcb87": {
     "decl": "- `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
@@ -4340,6 +4440,18 @@
     ],
     "title": "tests",
     "type": "api-item"
+  },
+  "rq-4dac0963": {
+    "decl": "Scenario: Renaming a code moves its count",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Renaming a code moves its count",
+    "type": "scenario"
   },
   "rq-4dbf6ef0": {
     "decl": "Scenario: A wildcard admits any extras",
@@ -5087,6 +5199,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-5c0d989f": {
+    "decl": "Scenario: Rename codes are case-sensitive",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Rename codes are case-sensitive",
+    "type": "scenario"
+  },
   "rq-5c26081b": {
     "decl": "Scenario: A 2p candidate without scf_energy is skipped with a warning",
     "file": "extrapolation",
@@ -5647,6 +5771,18 @@
     "title": "CorrectedMonomerReferences",
     "type": "api-item"
   },
+  "rq-67de9cfd": {
+    "decl": "- `rename_component(components: &mut Components, old: &str, new: &str) -> Result<(), RenameError>`",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "src/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "rename_component",
+    "type": "api-item"
+  },
   "rq-68850338": {
     "decl": "Scenario: A completed run yields the full observable set",
     "file": "parsers/xtb",
@@ -5823,6 +5959,18 @@
       }
     ],
     "title": "Adopted JKQC-era unknown flags remain usage errors",
+    "type": "scenario"
+  },
+  "rq-6cc74288": {
+    "decl": "Scenario: Repeated --rename flags chain in command order",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Repeated --rename flags chain in command order",
     "type": "scenario"
   },
   "rq-6d5b5f10": {
@@ -6553,6 +6701,22 @@
     "title": "Detection",
     "type": "section"
   },
+  "rq-7b3a3a9c": {
+    "decl": "Scenario: A rename overflow names the offending record among several",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A rename overflow names the offending record among several",
+    "type": "scenario"
+  },
   "rq-7b7e2114": {
     "decl": "## Extract and Nextract",
     "file": "filtering",
@@ -7248,6 +7412,18 @@
       }
     ],
     "title": "The earliest signature wins when a wrapper embeds a foreign banner",
+    "type": "scenario"
+  },
+  "rq-870c7feb": {
+    "decl": "Scenario: A count merge beyond u32::MAX is refused",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A count merge beyond u32::MAX is refused",
     "type": "scenario"
   },
   "rq-8718aee5": {
@@ -7997,6 +8173,27 @@
     "level": 2,
     "refs": [],
     "title": "Purpose",
+    "type": "section"
+  },
+  "rq-958da001": {
+    "decl": "## Renaming Component Codes",
+    "file": "composition",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/composition.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Renaming Component Codes",
     "type": "section"
   },
   "rq-95c630bc": {
@@ -9568,6 +9765,18 @@
       }
     ],
     "title": "Append preserves existing content",
+    "type": "scenario"
+  },
+  "rq-b1b28e9d": {
+    "decl": "Scenario: Renaming an absent code leaves the map unchanged",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Renaming an absent code leaves the map unchanged",
     "type": "scenario"
   },
   "rq-b21ce0b5": {
@@ -11587,6 +11796,18 @@
     "title": "The temperature shifts the split",
     "type": "scenario"
   },
+  "rq-d6684b33": {
+    "decl": "Scenario: The filename keeps its original stem after a rename",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The filename keeps its original stem after a rename",
+    "type": "scenario"
+  },
   "rq-d6e00bdf": {
     "decl": "### Functions",
     "file": "filtering",
@@ -11739,6 +11960,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-d8ec51b8": {
+    "decl": "Scenario: An empty rename code is a usage error",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An empty rename code is a usage error",
+    "type": "scenario"
+  },
   "rq-d8fed97e": {
     "decl": "Scenario: A print-only run skips a failed record with a geometry",
     "file": "movie",
@@ -11781,6 +12014,18 @@
     ],
     "title": "validate rejects an empty geometry",
     "type": "scenario"
+  },
+  "rq-d9d834d3": {
+    "decl": "- `RenameSpec` — one `--rename` occurrence: `old: String` and `new: String`,",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "src/composition.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "RenameSpec",
+    "type": "api-item"
   },
   "rq-da98d00b": {
     "decl": "Scenario: --noname does not pool the core groups",
@@ -13126,6 +13371,18 @@
       }
     ],
     "title": "The correction column prints - without a correction",
+    "type": "scenario"
+  },
+  "rq-f3a08add": {
+    "decl": "Scenario: Renaming composes before --extract",
+    "file": "composition",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Renaming composes before --extract",
     "type": "scenario"
   },
   "rq-f43b5dbf": {

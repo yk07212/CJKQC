@@ -10,7 +10,47 @@
 //!
 //! (rq-1308259f rq-8e661b0d)
 
+use std::fmt;
+
 use crate::record::{Components, Record};
+
+/// One `--rename` occurrence: rename component code `old` to `new`.
+///
+/// (rq-d9d834d3)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RenameSpec {
+    /// The component code whose count moves.
+    pub old: String,
+    /// The component code that receives the count.
+    pub new: String,
+}
+
+/// A rename that cannot be applied.
+///
+/// (rq-3eb85fbe)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RenameError {
+    /// Merging the renamed count into `code` would exceed `u32::MAX`.
+    CountOverflow {
+        /// The code whose merged count is unrepresentable.
+        code: String,
+    },
+}
+
+impl fmt::Display for RenameError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RenameError::CountOverflow { code } => {
+                write!(
+                    f,
+                    "renaming components would overflow the count for `{code}`"
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for RenameError {}
 
 /// Parses a JKQC-style name into its composition, or `None` when the name
 /// does not match the grammar. Never panics: `None` is a legitimate answer
@@ -64,5 +104,43 @@ pub fn resolve_components(record: &mut Record) {
     }
     if let Some(name) = &record.name {
         record.components = parse_jkqc_name(name);
+    }
+}
+
+/// Renames `old` to `new` in one composition map (`rqm/composition.md`,
+/// Renaming Component Codes). An absent `old` and `old == new` leave the map
+/// unchanged; otherwise `old`'s count is checked-added to `new`'s count.
+///
+/// (rq-67de9cfd rq-958da001)
+pub fn rename_component(
+    components: &mut Components,
+    old: &str,
+    new: &str,
+) -> Result<(), RenameError> {
+    if old == new {
+        return Ok(());
+    }
+    let Some(count) = components.remove(old) else {
+        return Ok(());
+    };
+    match components.get_mut(new) {
+        Some(slot) => match slot.checked_add(count) {
+            Some(total) => {
+                *slot = total;
+                Ok(())
+            }
+            None => {
+                // Put the original entry back: a refused rename changes
+                // nothing.
+                components.insert(old.to_string(), count);
+                Err(RenameError::CountOverflow {
+                    code: new.to_string(),
+                })
+            }
+        },
+        None => {
+            components.insert(new.to_string(), count);
+            Ok(())
+        }
     }
 }

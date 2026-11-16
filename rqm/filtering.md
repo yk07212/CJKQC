@@ -16,7 +16,8 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
   error. The collected/merged records then flow through the pipeline.
 - **Manipulation flags** are: `--add-correction`
   (`rqm/correction.md`), `--extrapolate`
-  (`rqm/extrapolation.md`), `--extract`, `--nextract`, `--cut`,
+  (`rqm/extrapolation.md`), `--rename` (`rqm/composition.md`), `--extract`,
+  `--nextract`, `--cut`,
   `--cutr`, `--pass`, `--passr`, `--is`, `--isnot`, `--filter-lt`,
   `--filter-ge`, `--rel-filter-lt`, `--rel-filter-ge`, `--uniq`,
   `--reacted`, `--reacted2`, `--sort`, `--reverse`, `--select`,
@@ -44,14 +45,19 @@ The stages run in this fixed order (mirroring JKQC's `filter`), each per
 group as defined below:
 
 1. drop non-`ok` records
-2. `--extract` / `--nextract` (`rqm/filtering.md` below)
-3. cutoffs, in the order the flags were given
-4. `--uniq` (`rqm/uniqueness.md`)
-5. `--reacted` / `--reacted2` (`rqm/detection.md`)
-6. `--sort` (then `--reverse`)
-7. `--select`
-8. `--glob`
-9. `--shuffle`
+2. `--rename`, in command order (`rqm/composition.md`)
+3. `--extract` / `--nextract` (`rqm/filtering.md` below)
+4. cutoffs, in the order the flags were given
+5. `--uniq` (`rqm/uniqueness.md`)
+6. `--reacted` / `--reacted2` (`rqm/detection.md`)
+7. `--sort` (then `--reverse`)
+8. `--select`
+9. `--glob`
+10. `--shuffle`
+
+Renaming precedes every composition-dependent stage, so extraction,
+relative cutoffs, uniqueness, reacted detection, grouping, and the printed
+sections all see the renamed composition (`rqm/composition.md`).
 
 Implicit sort: when `--uniq` (keys mode) or `--select` is present but
 `--sort` is not, records sort by `el` ascending first. `--uniq dup` does
@@ -278,7 +284,8 @@ the property set and units:
 ### Types <!-- rq-ea151d18 -->
 
 - `FilterSpec` — the whole manipulation: `extract: Option<(Vec<String>, <!-- rq-773db11b -->
-  ExtractMode)>` with `ExtractMode::{Keep, Drop}`, `cutoffs:
+  ExtractMode)>` with `ExtractMode::{Keep, Drop}`, `renames:
+  Vec<RenameSpec>` (`rqm/composition.md`), `cutoffs:
   Vec<Cutoff>`, `uniq: Option<UniqMode>` (`rqm/uniqueness.md`), `reacted:
   Option<ReactedMode>` (`rqm/detection.md`), `sort: Option<SortKey>`,
   `reverse: bool`, `select: Option<usize>`, `glob: bool`, `shuffle: bool`,
@@ -300,6 +307,12 @@ the property set and units:
 - `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the <!-- rq-8718aee5 -->
   `--unit` flag is present, `Au` (hartree) otherwise.
 - `ExtractError` — parse failure detail for usage reporting. <!-- rq-881749dc -->
+- `FilterError` — why a pipeline run stopped: `Extract(ExtractError)` for a <!-- rq-2c3246dc -->
+  query that fails to parse (a usage error, exit 2), or
+  `Rename { record: Option<String>, error: RenameError }`
+  (`rqm/composition.md`) for a component count overflow (a runtime error,
+  exit 1). `record` is the `name` of the record whose components could not
+  be renamed, absent when that record has no name.
 
 ### Functions <!-- rq-d6e00bdf -->
 
@@ -311,16 +324,19 @@ the property set and units:
   `el`, `g`, `elcorr`, and `gcorr` through the derived-property registry on
   the run's memo, `rqm/thermo.md` and `rqm/correction.md`).
 - `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<Vec<Record>, <!-- rq-bc3e1482 -->
-  ExtractError>` — the full pipeline including the ok-only pre-filter and
-  grouping; never mutates the input. The memo carries the run's
+  FilterError>` — the full pipeline including the ok-only pre-filter and
+  grouping; never mutates the input. The renames apply to the survivors in
+  command order before extraction, and a merge beyond `u32::MAX` surfaces as
+  `FilterError::Rename` with the offending record's name
+  (`rqm/composition.md`). The memo carries the run's
   thermochemistry conditions (`rqm/thermo.md`) and feeds every
   Gibbs-valued stage — the `g` cutoff, the `g` sort key, the `g`
   uniqueness metric, and `--glob` — deriving each record at most once
   (`rqm/thermo.md` Performance). In composition grouping it parses the
   `extract` query strings and propagates an `ExtractError` rather than
-  silently dropping records (the CLI pre-validates, so callers see `Ok`);
-  under `Unit` grouping extract compares names verbatim and cannot fail to
-  parse.
+  silently dropping records (the CLI pre-validates, so callers see `Ok`
+  except for a rename overflow); under `Unit` grouping extract compares
+  names verbatim and cannot fail to parse.
 - `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit, grouping: Grouping) -> String` <!-- rq-8420b870 -->
   — `grouping` is the run's grouping (`rqm/filtering.md` Grouping): the
   population columns (`rqm/population.md`) pool per composition group, or
@@ -330,7 +346,9 @@ the property set and units:
 
 - The pipeline, extract parser, cutoffs, sort/select/shuffle, and printing
   live in `src/filter.rs`; the library root re-exports the public types
-  and functions. No new dependencies.
+  and functions. `FilterSpec::renames` reuses `RenameSpec` and
+  `rename_component` from `src/composition.rs` (`rqm/composition.md`). No
+  new dependencies.
 - `tests/filter.rs` tests the pipeline as pure functions (grouping, <!-- rq-b21ce0b5 -->
   extract grammar incl. ranges/choices/wildcards, cutoff units and NaN
   behavior, implicit sort, select, seeded shuffle determinism, table
@@ -450,6 +468,25 @@ Feature: Filtering, sorting, and printing
     Given a database with records named "conf-A" and "conf-B"
     When CJKQC is invoked with the database, "--noname --extract conf-A --filename" and no --out
     Then only the record named "conf-A" is printed
+
+  # --- Rename ---
+
+  @rq-4b48a995
+  Scenario: A rename count overflow is a runtime failure
+    Given a database with a record of components p = 1 and sa = 4294967295
+    When CJKQC is invoked with the database, "--rename p sa --out out.jsonl"
+    Then the exit code is 1
+    And stderr names the record
+    And out.jsonl does not exist
+
+  @rq-7b3a3a9c
+  Scenario: A rename overflow names the offending record among several
+    Given a database with an ok record "fine" of components p = 1
+    And an ok record "overflowing" of components p = 1 and sa = 4294967295
+    When CJKQC is invoked with the database, "--rename p sa --out out.jsonl"
+    Then the exit code is 1
+    And stderr names "overflowing" and not "fine"
+    And out.jsonl does not exist
 
   # --- Cutoffs ---
 

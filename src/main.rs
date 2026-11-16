@@ -12,6 +12,7 @@ use std::process::ExitCode;
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser};
 
 use compiled_jkqc::collect::{gather_inputs_with, CollectError, CollectOutcome, Gathered};
+use compiled_jkqc::composition::RenameSpec;
 use compiled_jkqc::correction::{attach_corrections, CorrectionError};
 use compiled_jkqc::db::{self, DbError, LoadProblem};
 use compiled_jkqc::extrapolate::{
@@ -20,7 +21,7 @@ use compiled_jkqc::extrapolate::{
 };
 use compiled_jkqc::filter::{
     apply_filters, parse_extract_query, print_table, CmpOp, Column, Cutoff, ExtractMode,
-    FilterSpec, Grouping, Mode, Property, SortKey, Unit,
+    FilterError, FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
 use compiled_jkqc::formation::{
     collapse_ensembles, collect_monomers, corrected_collapse_ensembles,
@@ -83,6 +84,12 @@ struct Cli {
     /// Drop records whose composition matches the query.
     #[arg(long = "nextract")]
     nextract: Vec<String>,
+
+    /// Rename a component code in every record's composition: OLD counts
+    /// become NEW counts (repeatable, chained in command order;
+    /// rqm/composition.md).
+    #[arg(long = "rename", num_args = 2, value_names = ["OLD", "NEW"])]
+    rename: Vec<String>,
 
     /// Uniqueness: `dup` or a `metric[decimals]` comma list
     /// (el2.4,g,rg).
@@ -481,6 +488,25 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 return usage(&format!("extract query: {error}"));
             }
         }
+    }
+    // Rename codes are component codes: non-empty ASCII letters, matched
+    // case-sensitively (`rqm/composition.md`, Renaming Component Codes).
+    // The flags apply in command order and chain.
+    // rq-958da001
+    let mut renames: Vec<RenameSpec> = Vec::new();
+    for pair in cli.rename.chunks(2) {
+        let [old, new] = pair else {
+            return usage("--rename needs an OLD and a NEW code");
+        };
+        for code in [old, new] {
+            if code.is_empty() || !code.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+                return usage(&format!("--rename code `{code}` must be letter-only"));
+            }
+        }
+        renames.push(RenameSpec {
+            old: old.clone(),
+            new: new.clone(),
+        });
     }
     let uniq = match &cli.uniq {
         Some(value) => match parse_uniq_mode(value) {
@@ -1058,6 +1084,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
 
     let spec = FilterSpec {
         extract,
+        renames,
         cutoffs,
         uniq,
         reacted: match (cli.reacted, cli.reacted2) {
@@ -1075,9 +1102,20 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     };
     records = match apply_filters(&records, &spec, &memo) {
         Ok(records) => records,
-        Err(error) => {
+        Err(FilterError::Extract(error)) => {
             eprintln!("error: extract query: {error}");
             return ExitCode::from(2);
+        }
+        Err(FilterError::Rename { record, error }) => {
+            // A rename overflow is a runtime failure (exit 1), and the
+            // message names the record that could not be renamed
+            // (`rqm/composition.md`).
+            // rq-4b48a995 rq-7b3a3a9c
+            match record {
+                Some(name) => eprintln!("error: record `{name}`: {error}"),
+                None => eprintln!("error: {error}"),
+            }
+            return ExitCode::FAILURE;
         }
     };
 
@@ -1833,6 +1871,7 @@ fn manipulation_ids(cli: &Cli) -> Vec<&'static str> {
     for (id, set) in [
         ("extract", !cli.extract.is_empty()),
         ("nextract", !cli.nextract.is_empty()),
+        ("rename", !cli.rename.is_empty()),
         ("uniq", cli.uniq.is_some()),
         ("reacted", cli.reacted),
         ("reacted2", cli.reacted2),
@@ -1924,6 +1963,9 @@ mod tests {
             "1am",
             "--nextract",
             "1am",
+            "--rename",
+            "p",
+            "a",
             "--uniq",
             "dup",
             "--reacted",

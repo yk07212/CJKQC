@@ -1,8 +1,9 @@
 \section{Filtering, sorting, and uniqueness}\label{sec:filtering}
 
-Filtering turns a loaded set of records into a smaller, ordered set. Each step
-only reads the records; it never changes the input. A filtering run writes the
-records that remain with \flg{--out}, prints them with print flags, or both.
+Filtering turns a loaded set of records into a smaller, ordered set. Most steps
+only read the records; renaming component codes rewrites a record's
+composition. No step changes the input database on disk. A filtering run writes
+the records that remain with \flg{--out}, prints them with print flags, or both.
 Print flags alone do not filter: a print-only run shows every loaded record in
 file order.
 
@@ -13,6 +14,8 @@ groups:
 
 \begin{enumerate}
   \item drop records whose status is not \fld{ok};
+  \item rename component codes with \flg{--rename}, in the order the flags were
+        given;
   \item \flg{--extract} or \flg{--nextract};
   \item cutoffs, in the order the cutoff flags were given;
   \item \flg{--uniq};
@@ -42,6 +45,34 @@ within a step, the overall record order is preserved.
 directly against each record's \fld{name} (the same text the \fld{filename}
 column prints), with no composition grammar, ranges, wildcards, or zero-count
 rules.
+
+\subsection{Renaming component codes}\label{sec:rename}
+
+\flg{--rename OLD NEW} moves the count of one component code to another code.
+Both codes are plain letters, and upper and lower case are different codes. The
+flag may be repeated; renames apply in the order given and chain together, so
+\flg{--rename p a --rename a sa} first moves \texttt{p} counts to \texttt{a}
+and then moves those \texttt{a} counts on to \texttt{sa}.
+
+The rename applies to every record that has a stored composition:
+
+\begin{itemize}
+  \item If the record does not contain \texttt{OLD}, its composition is left
+        unchanged.
+  \item If \texttt{OLD} and \texttt{NEW} are the same code, nothing changes.
+  \item Otherwise the count of \texttt{OLD} is added to the count of
+        \texttt{NEW}. For example, a record with 3 \texttt{sa}, 1 \texttt{am},
+        and 1 \texttt{p} becomes 4 \texttt{sa} and 1 \texttt{am} under
+        \flg{--rename p sa}.
+  \item A record with no stored composition is left unchanged.
+\end{itemize}
+
+Renaming changes the stored composition, not the record's file name or source
+path. The \fld{filename} column still prints the original file stem, while the
+\fld{name} and \fld{components} columns and all composition groups show the new
+composition. Because renaming is the first filtering step after failed records
+are dropped, later steps such as \flg{--extract} and relative cutoffs work with
+the new codes.
 
 \subsection{Extracting compositions}\label{sec:extract}
 

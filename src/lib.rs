@@ -37,7 +37,9 @@ pub use extrapolate::{
 };
 
 // rq-fe2700dc
-pub use composition::{parse_jkqc_name, resolve_components};
+pub use composition::{
+    parse_jkqc_name, rename_component, resolve_components, RenameError, RenameSpec,
+};
 
 // rq-fcb0174f
 pub use collect::{
@@ -84,8 +86,8 @@ pub use hydration::{
 // rq-bf062c8f filtering surface (rqm/filtering.md)
 pub use filter::{
     apply_filters, extract_matches, parse_extract_query, print_table, property_value, CmpOp,
-    Column, Cutoff, ExtractError, ExtractMode, ExtractPattern, FilterSpec, Grouping, Mode,
-    Property, SortKey, Unit, Wildcard,
+    Column, Cutoff, ExtractError, ExtractMode, ExtractPattern, FilterError, FilterSpec, Grouping,
+    Mode, Property, SortKey, Unit, Wildcard,
 };
 
 // rq-eff8dce8 overwrite confirmation surface (rqm/collection.md)

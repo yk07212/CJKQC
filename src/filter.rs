@@ -7,6 +7,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use crate::composition::{rename_component, RenameError, RenameSpec};
 use crate::metrics::{
     dedup_names_mask, metric_dipole_magnitude, metric_radius_of_gyration, metric_total_mass,
     uniqueness_mask, UniqMode,
@@ -239,6 +240,43 @@ impl fmt::Display for ExtractError {
 
 impl std::error::Error for ExtractError {}
 
+/// Why a pipeline run stopped: an extract query that fails to parse (a
+/// usage error) or a component-count overflow while renaming (a runtime
+/// error).
+///
+/// (rq-2c3246dc)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FilterError {
+    /// An extract query failed to parse.
+    Extract(ExtractError),
+    /// A `--rename` count merge would exceed `u32::MAX`; `record` is the
+    /// name of the record that could not be renamed
+    /// (`rqm/composition.md`).
+    Rename {
+        /// The offending record's `name`, when it has one.
+        record: Option<String>,
+        /// The rename failure.
+        error: RenameError,
+    },
+}
+
+impl fmt::Display for FilterError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterError::Extract(error) => write!(f, "{error}"),
+            FilterError::Rename { error, .. } => write!(f, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for FilterError {}
+
+impl From<ExtractError> for FilterError {
+    fn from(error: ExtractError) -> Self {
+        FilterError::Extract(error)
+    }
+}
+
 /// The whole manipulation: the pipeline stages in `rqm/filtering.md`.
 ///
 /// (rq-773db11b)
@@ -246,6 +284,9 @@ impl std::error::Error for ExtractError {}
 pub struct FilterSpec {
     /// `--extract`/`--nextract`: raw query strings and direction.
     pub extract: Option<(Vec<String>, ExtractMode)>,
+    /// `--rename` component renames, chained in command order
+    /// (`rqm/composition.md`).
+    pub renames: Vec<RenameSpec>,
     /// Cutoffs, chained in command order.
     pub cutoffs: Vec<Cutoff>,
     /// `--uniq` mode.
@@ -660,25 +701,44 @@ pub fn extract_matches(pattern: &ExtractPattern, components: Option<&Components>
 }
 
 /// Runs the full manipulation pipeline, including the ok-only pre-filter,
-/// grouping, and the implicit `el` sort; never mutates the input. Extract
-/// queries are parsed here (composition grouping) and an unparsable query
-/// is reported instead of silently matching nothing. The memo carries the
-/// run's thermochemistry conditions (`rqm/thermo.md`) and derives each
-/// record at most once across every Gibbs-valued stage: the `g` cutoff,
-/// the `g` sort key, the `g` uniqueness metric, and `--glob`
-/// (`rqm/thermo.md` Performance).
+/// `--rename`, grouping, and the implicit `el` sort; never mutates the
+/// input. Renames apply to the survivors in command order before every
+/// composition-dependent stage (`rqm/composition.md`). Extract queries are
+/// parsed here (composition grouping) and an unparsable query is reported
+/// instead of silently matching nothing. The memo carries the run's
+/// thermochemistry conditions (`rqm/thermo.md`) and derives each record at
+/// most once across every Gibbs-valued stage: the `g` cutoff, the `g` sort
+/// key, the `g` uniqueness metric, and `--glob` (`rqm/thermo.md`
+/// Performance).
 ///
-/// (rq-bc3e1482 rq-0137b5f9 rq-8b44ad8d)
+/// (rq-bc3e1482 rq-0137b5f9 rq-8b44ad8d rq-958da001 rq-2c3246dc)
 pub fn apply_filters(
     records: &[Record],
     spec: &FilterSpec,
     memo: &ThermoMemo,
-) -> Result<Vec<Record>, ExtractError> {
+) -> Result<Vec<Record>, FilterError> {
     let mut current: Vec<Record> = records
         .iter()
         .filter(|record| record.status == RecordStatus::Ok)
         .cloned()
         .collect();
+
+    // Renaming precedes every composition-dependent stage
+    // (`rqm/composition.md`, Renaming Component Codes).
+    for rename in &spec.renames {
+        for record in &mut current {
+            let outcome = record
+                .components
+                .as_mut()
+                .map(|components| rename_component(components, &rename.old, &rename.new));
+            if let Some(Err(error)) = outcome {
+                return Err(FilterError::Rename {
+                    record: record.name.clone(),
+                    error,
+                });
+            }
+        }
+    }
 
     if let Some((queries, mode)) = &spec.extract {
         apply_extract(&mut current, queries, *mode, spec.grouping)?;

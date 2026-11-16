@@ -8318,3 +8318,176 @@ fn an_open_file_limit_failure_names_the_limit() {
     assert!(error.contains("workers"), "{error}");
     assert!(!out.exists(), "nothing is written when an open fails");
 }
+
+// ---------------------------------------------------------------------------
+// Rename scenarios from `rqm/composition.md` and `rqm/filtering.md`.
+// ---------------------------------------------------------------------------
+
+#[test] // rq-357f1f14
+fn rename_rewrites_a_written_database_compositions() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line(
+            "3sa1am1p",
+            None,
+            &[("sa", 3), ("am", 1), ("p", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&db, "--rename", "p", "a", "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let records = loaded(&out);
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].name.as_deref(), Some("3sa1am1p"));
+    let expected: Components = [
+        ("sa".to_string(), 3),
+        ("am".to_string(), 1),
+        ("a".to_string(), 1),
+    ]
+    .into_iter()
+    .collect();
+    assert_eq!(records[0].components, Some(expected));
+}
+
+#[test] // rq-6cc74288
+fn repeated_rename_flags_chain_in_command_order() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("one-p", None, &[("p", 1)], RecordStatus::Ok)],
+    );
+    let out = dir.join("out.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[
+        &db, "--rename", "p", "a", "--rename", "a", "sa", "--out", &out_text,
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let records = loaded(&out);
+    let expected: Components = [("sa".to_string(), 1)].into_iter().collect();
+    assert_eq!(records[0].components, Some(expected));
+}
+
+#[test] // rq-f3a08add
+fn renaming_composes_before_extract() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("one-p", None, &[("p", 1)], RecordStatus::Ok),
+            comp_line("one-a", None, &[("a", 1)], RecordStatus::Ok),
+        ],
+    );
+    let run = cjkqc(&[&db, "--rename", "p", "a", "--extract", "1a", "--filename"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    assert!(text.contains("one-p"), "{text}");
+    assert!(text.contains("one-a"), "{text}");
+}
+
+#[test] // rq-03690666
+fn a_record_without_components_is_unchanged_by_rename() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[comp_line("plain", None, &[], RecordStatus::Ok)]);
+    let out = dir.join("out.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&db, "--rename", "p", "a", "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let records = loaded(&out);
+    assert_eq!(records[0].components, None);
+}
+
+#[test] // rq-d6684b33
+fn the_filename_keeps_its_original_stem_after_a_rename() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line(
+            "3sa1am1p",
+            None,
+            &[("sa", 3), ("am", 1), ("p", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[&db, "--rename", "p", "a", "--filename", "--name"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let table = rows(&text);
+    assert_eq!(
+        table,
+        vec![vec!["filename", "name"], vec!["3sa1am1p", "1a1am3sa"]]
+    );
+}
+
+#[test] // rq-d8ec51b8
+fn an_empty_rename_code_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("one-p", None, &[("p", 1)], RecordStatus::Ok)],
+    );
+    let out = dir.join("out.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&db, "--rename", "", "a", "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-4bb3deda
+fn a_non_letter_rename_code_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line("one-p", None, &[("p", 1)], RecordStatus::Ok)],
+    );
+    let out = dir.join("out.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&db, "--rename", "p", "a1", "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-4b48a995
+fn a_rename_count_overflow_is_a_runtime_failure() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[comp_line(
+            "overflowing",
+            None,
+            &[("p", 1), ("sa", u32::MAX)],
+            RecordStatus::Ok,
+        )],
+    );
+    let out = dir.join("out.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&db, "--rename", "p", "sa", "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert!(stderr(&run).contains("overflowing"), "{}", stderr(&run));
+    assert!(!out.exists(), "nothing is written when a rename overflows");
+}
+
+#[test] // rq-7b3a3a9c
+fn a_rename_overflow_names_the_offending_record_among_several() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            comp_line("fine", None, &[("p", 1)], RecordStatus::Ok),
+            comp_line(
+                "overflowing",
+                None,
+                &[("p", 1), ("sa", u32::MAX)],
+                RecordStatus::Ok,
+            ),
+        ],
+    );
+    let out = dir.join("out.jsonl");
+    let out_text = out.to_string_lossy().into_owned();
+    let run = cjkqc(&[&db, "--rename", "p", "sa", "--out", &out_text]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    let error = stderr(&run);
+    assert!(error.contains("overflowing"), "{error}");
+    assert!(!error.contains("fine"), "{error}");
+    assert!(!out.exists(), "nothing is written when a rename overflows");
+}

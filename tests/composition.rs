@@ -1,7 +1,10 @@
 //! Integration tests for composition resolution, one per Gherkin scenario
 //! in `rqm/composition.md`.
 
-use compiled_jkqc::{parse_jkqc_name, resolve_components, Components, Record, RecordStatus};
+use compiled_jkqc::{
+    parse_jkqc_name, rename_component, resolve_components, Components, Record, RecordStatus,
+    RenameError,
+};
 
 fn components(pairs: &[(&str, u32)]) -> Components {
     pairs
@@ -164,4 +167,52 @@ fn failed_record_still_gains_its_composition() {
     };
     resolve_components(&mut record);
     assert_eq!(record.components, Some(components(&[("dma", 1)])));
+}
+
+#[test] // rq-4dac0963
+fn renaming_a_code_moves_its_count() {
+    let mut comps = components(&[("sa", 3), ("am", 1), ("p", 1)]);
+    rename_component(&mut comps, "p", "a").expect("rename succeeds");
+    assert_eq!(comps, components(&[("sa", 3), ("am", 1), ("a", 1)]));
+}
+
+#[test] // rq-340fd4c2
+fn renaming_into_an_existing_code_merges_the_counts() {
+    let mut comps = components(&[("sa", 3), ("am", 1), ("p", 1)]);
+    rename_component(&mut comps, "p", "sa").expect("rename succeeds");
+    assert_eq!(comps, components(&[("sa", 4), ("am", 1)]));
+}
+
+#[test] // rq-b1b28e9d
+fn renaming_an_absent_code_leaves_the_map_unchanged() {
+    let mut comps = components(&[("am", 2), ("sa", 3)]);
+    rename_component(&mut comps, "p", "a").expect("rename succeeds");
+    assert_eq!(comps, components(&[("am", 2), ("sa", 3)]));
+}
+
+#[test] // rq-1404f4d5
+fn renaming_a_code_to_itself_is_a_no_op() {
+    let mut comps = components(&[("am", 2), ("p", 1)]);
+    rename_component(&mut comps, "p", "p").expect("rename succeeds");
+    assert_eq!(comps, components(&[("am", 2), ("p", 1)]));
+}
+
+#[test] // rq-5c0d989f
+fn rename_codes_are_case_sensitive() {
+    let mut comps = components(&[("p", 1)]);
+    rename_component(&mut comps, "P", "a").expect("rename succeeds");
+    assert_eq!(comps, components(&[("p", 1)]));
+}
+
+#[test] // rq-870c7feb
+fn a_count_merge_beyond_u32_max_is_refused() {
+    let mut comps = components(&[("p", 1), ("sa", u32::MAX)]);
+    let result = rename_component(&mut comps, "p", "sa");
+    assert_eq!(
+        result,
+        Err(RenameError::CountOverflow {
+            code: "sa".to_string()
+        })
+    );
+    assert_eq!(comps, components(&[("p", 1), ("sa", u32::MAX)]));
 }

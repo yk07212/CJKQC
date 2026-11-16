@@ -61,6 +61,48 @@ Resolution runs during collection (build mode, `rqm/collection.md`) over every
 parsed record — a failed or truncated job still has a known composition.
 Merging never re-resolves: merged records are copied verbatim.
 
+## Renaming Component Codes <!-- rq-958da001 -->
+
+`--rename OLD NEW` changes the composition of every record by renaming one
+component code to another. Both codes are non-empty ASCII letter runs,
+matched case-sensitively like every component code (Filename Grammar). The
+flag is repeatable; its occurrences apply in command-line order and the
+renames chain, so `--rename p a --rename a sa` first moves a record's `p`
+count to `a` and then moves that count on to `sa`.
+
+For one rename against one record's `components`:
+
+- When the map has no `OLD` key, it is unchanged. This is not an error and
+  prints nothing.
+- When `OLD` equals `NEW`, it is unchanged.
+- Otherwise the `OLD` entry is removed and its count is added to `NEW`'s
+  count, creating `NEW` when absent. Merging counts therefore raises a
+  component's count: `{sa: 3, am: 1, p: 1}` under `--rename p a` becomes
+  `{sa: 3, am: 1, a: 1}`, and under `--rename p sa` becomes
+  `{sa: 4, am: 1}`.
+- The count merge uses checked `u32` addition. A sum beyond `u32::MAX`
+  aborts the run with a runtime error naming the record, nothing written
+  (exit 1): a record's components never hold an unrepresentable count.
+- A record with no `components` is unchanged. The map can never become
+  empty: a rename moves a count, never drops it.
+
+Renaming never touches `name`, `source_path`, charge, or multiplicity: it
+transforms the stored composition only. The `--filename` column keeps
+printing the original file stem while `--components`, `--name`, grouping,
+and every composition-derived section show the renamed composition.
+
+Renaming is the first stage of the manipulation pipeline, after failed and
+truncated records leave it and before the composition-dependent stages
+(`rqm/filtering.md` Pipeline Order): `--extract`/`--nextract`, relative
+cutoffs, `--uniq`, `--reacted`, `--select`, `--glob`, and the population,
+formation, and hydration sections all see the renamed composition. A later
+stage therefore matches renamed codes, never the original ones.
+
+The two codes are validated before any input is read: an empty code or a
+code containing a non-letter is a usage error (exit 2). As with every
+manipulation flag, a run with `--rename` needs `--out` or a print flag
+(`rqm/filtering.md`).
+
 ## Feature API <!-- rq-fa218770 -->
 
 ### Types <!-- rq-f00ebeae -->
@@ -70,6 +112,13 @@ Merging never re-resolves: merged records are copied verbatim.
   JSON deterministic. Invariants (enforced by `Record::validate`, see
   `rqm/record.md`): the map is non-empty, every code is one or more ASCII
   letters of either case, every count is at least 1.
+
+- `RenameSpec` — one `--rename` occurrence: `old: String` and `new: String`, <!-- rq-d9d834d3 -->
+  both letter-only component codes.
+
+- `RenameError` — a rename that cannot be applied: <!-- rq-3eb85fbe -->
+  - `CountOverflow { code: String }` — merging the renamed count into
+    `code` would exceed `u32::MAX`.
 
 ### Functions <!-- rq-26ba140d -->
 
@@ -87,23 +136,39 @@ Merging never re-resolves: merged records are copied verbatim.
   - Absent names and unresolvable names leave the record unchanged.
   - Runs on records of any status.
 
+- `rename_component(components: &mut Components, old: &str, new: &str) -> Result<(), RenameError>` <!-- rq-67de9cfd -->
+  - Renames `old` to `new` in one composition map exactly as Renaming
+    Component Codes describes: absent `old` and `old == new` leave the map
+    unchanged; otherwise `old` is removed and its count is checked-added to
+    `new`'s count.
+  - Returns `Err(RenameError::CountOverflow { code })` — without changing
+    the map — when the merged count would exceed `u32::MAX`.
+  - Never panics; an absent code is a legitimate `Ok`.
+
 ### Crate Layout <!-- rq-fe2700dc -->
 
-- The grammar and resolution live in `src/composition.rs`; the library root
-  re-exports `parse_jkqc_name` and `resolve_components` (`Components` is
-  re-exported with the record types, `rqm/record.md`).
+- The grammar, resolution, and rename live in `src/composition.rs`; the
+  library root re-exports `parse_jkqc_name`, `resolve_components`,
+  `rename_component`, and the `Components`/`RenameSpec`/`RenameError` types
+  (`Components` is re-exported with the record types, `rqm/record.md`).
+- The manipulation pipeline applies a run's `RenameSpec` list in order after
+  the ok-only pre-filter and before its composition-dependent stages
+  (`rqm/filtering.md`).
 - No new dependencies: `std` and the existing `serde`/`serde_json` suffice.
 
 ## Out of Scope <!-- rq-f94ef108 -->
 
-- CLI flags that override or supply composition, charge, or multiplicity —
-  the architecture's top-priority source; they arrive with a later feature.
+- CLI flags that supply or override composition, charge, or multiplicity from
+  scratch — the architecture's top-priority source; they arrive with a later
+  feature. `--rename` only transforms an already-resolved composition.
 - Any code-to-substance (chemistry) vocabulary or validation, and any
   derivation of charge or multiplicity from component codes.
 - Storing the conformer/run label as its own field; the label stays inside
   `name` only.
 - Re-resolving compositions of records loaded from databases (merge is
   verbatim, `rqm/collection.md`).
+- Rewriting `name`, `source_path`, or the on-disk file name when a
+  composition is renamed.
 - Case-insensitive or forgiving name matching.
 
 ## Gherkin Scenarios <!-- rq-19b11795 -->
@@ -239,4 +304,94 @@ Feature: Composition resolution from JKQC names
     Given a failed record with name "1dma" and no components
     When resolve_components is called on it
     Then the record has components dma = 1
+
+  # --- rename_component ---
+
+  @rq-4dac0963
+  Scenario: Renaming a code moves its count
+    Given components sa = 3, am = 1, and p = 1
+    When rename_component is called with old "p" and new "a"
+    Then it returns Ok
+    And the components are sa = 3, am = 1, and a = 1
+
+  @rq-340fd4c2
+  Scenario: Renaming into an existing code merges the counts
+    Given components sa = 3, am = 1, and p = 1
+    When rename_component is called with old "p" and new "sa"
+    Then it returns Ok
+    And the components are sa = 4 and am = 1
+
+  @rq-b1b28e9d
+  Scenario: Renaming an absent code leaves the map unchanged
+    Given components am = 2 and sa = 3
+    When rename_component is called with old "p" and new "a"
+    Then it returns Ok
+    And the components are still am = 2 and sa = 3
+
+  @rq-1404f4d5
+  Scenario: Renaming a code to itself is a no-op
+    Given components am = 2 and p = 1
+    When rename_component is called with old "p" and new "p"
+    Then it returns Ok
+    And the components are still am = 2 and p = 1
+
+  @rq-5c0d989f
+  Scenario: Rename codes are case-sensitive
+    Given components p = 1
+    When rename_component is called with old "P" and new "a"
+    Then it returns Ok
+    And the components are still p = 1
+
+  @rq-870c7feb
+  Scenario: A count merge beyond u32::MAX is refused
+    Given components p = 1 and sa = 4294967295
+    When rename_component is called with old "p" and new "sa"
+    Then it returns Err(RenameError::CountOverflow { code: "sa" })
+    And the components are still p = 1 and sa = 4294967295
+
+  # --- --rename ---
+
+  @rq-357f1f14
+  Scenario: --rename rewrites a written database's compositions
+    Given a database holding a record of components sa = 3, am = 1, and p = 1
+    When CJKQC is invoked with the database, "--rename p a --out out.jsonl"
+    Then out.jsonl loads that record with components sa = 3, am = 1, and a = 1
+    And the record's name is unchanged
+
+  @rq-6cc74288
+  Scenario: Repeated --rename flags chain in command order
+    Given a database holding a record of components p = 1
+    When CJKQC is invoked with the database, "--rename p a --rename a sa --out out.jsonl"
+    Then out.jsonl loads the record with components sa = 1
+
+  @rq-f3a08add
+  Scenario: Renaming composes before --extract
+    Given a database with records of components p = 1 and a = 1
+    When CJKQC is invoked with the database, "--rename p a --extract 1a --filename" and no --out
+    Then both records print
+
+  @rq-03690666
+  Scenario: A record without components is unchanged by --rename
+    Given a database holding a record with no components
+    When CJKQC is invoked with the database, "--rename p a --out out.jsonl"
+    Then out.jsonl loads the record with no components
+
+  @rq-d6684b33
+  Scenario: The filename keeps its original stem after a rename
+    Given a database holding a record named "3sa1am1p" with components sa = 3, am = 1, and p = 1
+    When CJKQC is invoked with the database, "--rename p a --filename --name" and no --out
+    Then the filename cell is "3sa1am1p"
+    And the name cell is "1a1am3sa"
+
+  @rq-d8ec51b8
+  Scenario: An empty rename code is a usage error
+    Given a database "db.jsonl"
+    When CJKQC is invoked with the database, "--rename '' a --out out.jsonl"
+    Then the exit code is 2
+
+  @rq-4bb3deda
+  Scenario: A non-letter rename code is a usage error
+    Given a database "db.jsonl"
+    When CJKQC is invoked with the database, "--rename p a1 --out out.jsonl"
+    Then the exit code is 2
 ```
