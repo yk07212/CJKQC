@@ -1,6 +1,6 @@
 \section{Complete flag reference}\label{app:flags}
 
-This appendix lists every flag accepted by \CJKQC{} 0.1.0. Flags are grouped
+This appendix lists every flag accepted by \CJKQC{} 1.0.0. Flags are grouped
 by purpose; within a group the order is not significant. Words in angle
 brackets are placeholders you replace with your own value, and square brackets
 mark optional values.
@@ -22,8 +22,9 @@ manipulation or print flag makes it optional. \\
 in bytes (default 262144, about 256 kilobytes). \\
 \flg{--tail-bytes <N>} & How much of the end of each program output is read,
 in bytes (default 4194304, about 4 megabytes). \\
-\flg{--parallel <N>} & How many files are read at once (default 1). Merge
-mode ignores it. \\
+\flg{--parallel <N>} & How many files are read at once, and how many
+\flg{--arbalign} comparisons run at once (default 1). Merge-mode reading
+ignores it; \flg{--arbalign} still uses it. \\
 \flg{--movie} & Write final structures to \texttt{movie.xyz}, one frame per
 \fld{ok} record with a geometry. \\
 \flg{--write-xyz} & Write one xyz file per \fld{ok} record with a geometry and
@@ -104,6 +105,10 @@ minimum. \\
 minimum. \\
 \flg{--uniq <MODE>} & \texttt{dup}, or a comma list of
 \fld{metric[decimals]} properties. \\
+\flg{--arbalign <THRESHOLD>} & Remove geometrically duplicate structures: a
+later record is dropped when its best-fit RMSD to an earlier survivor of the
+same composition is below THRESHOLD \AA{}. Runs after \flg{--sort} and
+\flg{--select}. \\
 \flg{--reacted} & Keep the composition group's majority fragment pattern. \\
 \flg{--reacted2} & Keep only the deviating fragment patterns. \\
 \flg{--sort <PROPERTY>} & Sort by \fld{el}, \fld{g}, \fld{elcorr}, \fld{gcorr},

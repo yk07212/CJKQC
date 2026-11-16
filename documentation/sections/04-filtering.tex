@@ -1,4 +1,4 @@
-\section{Filtering, sorting, and uniqueness}\label{sec:filtering}
+\section{Filtering, sorting, and duplicate removal}\label{sec:filtering}
 
 Filtering turns a loaded set of records into a smaller, ordered set. Most steps
 only read the records; renaming component codes rewrites a record's
@@ -22,6 +22,7 @@ groups:
   \item \flg{--reacted} or \flg{--reacted2};
   \item \flg{--sort}, then \flg{--reverse};
   \item \flg{--select};
+  \item \flg{--arbalign};
   \item \flg{--glob};
   \item \flg{--shuffle}.
 \end{enumerate}
@@ -29,9 +30,10 @@ groups:
 The non-\fld{ok} count is reported as a warning:
 \texttt{excluded <k> records with status failed or truncated}.
 
-When \flg{--uniq} is used with a list of properties, or \flg{--select} is
-used, and no \flg{--sort} is given, the records are first sorted by \fld{el}
-ascending. \flg{--uniq dup} does not trigger this automatic sort.
+When \flg{--uniq} is used with a list of properties, or when \flg{--select}
+or \flg{--arbalign} is used, and no \flg{--sort} is given, the records are
+first sorted by \fld{el} ascending. \flg{--uniq dup} does not trigger this
+automatic sort.
 
 \subsection{Grouping}\label{sec:grouping}
 
@@ -44,7 +46,9 @@ within a step, the overall record order is preserved.
 \flg{--noname}, \flg{--extract} and \flg{--nextract} compare their patterns
 directly against each record's \fld{name} (the same text the \fld{filename}
 column prints), with no composition grammar, ranges, wildcards, or zero-count
-rules.
+rules. \flg{--arbalign} is the exception: it always compares records only
+when they have the same stored composition, so \flg{--noname} does not make
+different compositions comparable.
 
 \subsection{Renaming component codes}\label{sec:rename}
 
@@ -249,8 +253,11 @@ gives the same shuffle.
 
 \subsection{Uniqueness}\label{sec:uniqueness}
 
-\flg{--uniq} removes redundant structures within each composition group.
-Both modes are stable: the first occurrence in the current order survives.
+There are two ways to remove duplicate structures: by name or by recorded
+property values, using \flg{--uniq}, and by three-dimensional geometry, using
+\flg{--arbalign} (Section~\ref{sec:arbalign}). \flg{--uniq} removes
+redundant structures within each composition group. Both modes are stable:
+the first occurrence in the current order survives.
 
 \begin{description}
   \item[\flg{--uniq dup}] Drops records that share a \fld{name} with an earlier
@@ -275,6 +282,66 @@ Because the automatic sort is by \fld{el} ascending, writing
 \flg{--uniq el2.4} without \flg{--sort} keeps the lowest-electronic-energy
 member of each group of duplicates. Add \flg{--sort g} first if you want the
 lowest-Gibbs representative instead.
+
+\subsection{Removing duplicate geometries}\label{sec:arbalign}
+
+Two conformers can have different names and slightly different energies but
+still be the same three-dimensional structure. \flg{--arbalign THRESHOLD}
+removes such duplicates by comparing geometries. The threshold is a distance
+in \AA{}: a record is dropped when its best-fit root-mean-square distance
+(RMSD) to an earlier surviving record of the same composition is strictly
+less than the threshold. The RMSD is a size in \AA{} that measures how far
+apart two structures are after the best possible rotation and atom matching.
+
+Every structure is first turned so that its principal axes (the natural axes
+of its mass distribution) line up. This always happens; there is no separate
+flag to turn it on. The comparison then tries different atom orderings,
+rotations, and mirror-image arrangements, so the order in which atoms appear
+in the file and the molecule's orientation do not matter.
+
+The step runs after \flg{--sort} and \flg{--select} and before
+\flg{--glob} and \flg{--shuffle}. When no \flg{--sort} is given, \CJKQC{}
+first sorts by \fld{el} ascending, so the lowest-electronic-energy member of
+a duplicate set survives. Add \flg{--sort g} first if you want the
+lowest-Gibbs member instead.
+
+Further rules:
+
+\begin{itemize}
+  \item The comparison is strict: a pair exactly at the threshold is kept.
+        A threshold of 0 therefore removes nothing.
+  \item A negative, non-numeric, or infinite threshold is a usage error.
+  \item Records without a usable geometry are kept and reported on the error
+        output as
+        \texttt{arbalign: kept <k> records without usable geometry}.
+  \item A pair whose structures have different numbers or kinds of atoms is
+        not compared.
+  \item The comparison is done two records at a time: once a record is
+        removed, it cannot remove another record. The first surviving record
+        in the current order wins.
+  \item \flg{--uniq} and \flg{--arbalign} can be combined. \flg{--uniq}
+        runs before the sort; then the sort, \flg{--select}, and
+        \flg{--arbalign} follow.
+  \item \flg{--parallel} also controls how many geometry comparisons run at
+        once. The survivors are the same at every setting.
+\end{itemize}
+
+\begin{note}
+If you use \flg{--arbalign}, please cite the ArbAlign paper:
+B.~Temelso, J.~M. Mabey, T.~Kubota, N.~Appiah-Padi, and G.~C. Shields,
+``ArbAlign: A Tool for Optimal Alignment of Arbitrarily Ordered Isomers
+Using the Kuhn--Munkres Algorithm,'' \emph{J. Chem. Inf. Model.}
+\textbf{57} (2017), 1045--1054,
+\href{https://doi.org/10.1021/acs.jcim.6b00546}{doi:10.1021/acs.jcim.6b00546}.
+\end{note}
+
+For example, keep the lowest-energy member of each group of structures that
+are within 0.5 \AA{} RMSD of each other:
+
+\begin{verbatim}
+CJKQC db.jsonl --sort el --arbalign 0.5 \
+  --filename --el --out unique.jsonl
+\end{verbatim}
 
 \subsection{Reacted and exploded structures}\label{sec:reacted}
 

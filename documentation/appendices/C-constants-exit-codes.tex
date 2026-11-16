@@ -80,6 +80,9 @@ hydration/solvation sections print before the completion line.
 \endhead
 \texttt{excluded <k> records with status failed or truncated} & The filtering
 steps dropped non-\fld{ok} records before any other step. \\
+\texttt{arbalign: kept <k> records without usable geometry} &
+\flg{--arbalign} left records without a geometry or with an unrecognized
+element symbol untouched. \\
 \texttt{warning: <path> line <n>: <reason>} & A corrupt database line was
 skipped. \\
 \texttt{warning: ... correction ...} & A correction candidate was skipped or

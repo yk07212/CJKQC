@@ -65,7 +65,9 @@ CJKQC *.log *.out --parallel 8 -o db.jsonl
 Each file is still handled as a whole, and the resulting database is identical
 to the one produced by a one-at-a-time run, regardless of the number you give.
 A value below 1 is a usage error. Merging databases always reads one file at a
-time and ignores \flg{--parallel}.
+time and ignores \flg{--parallel} for reading; if the run also uses
+\flg{--arbalign}, that filtering step still uses the setting
+(Section~\ref{sec:arbalign}).
 
 \subsubsection*{Composition from file names}
 
