@@ -299,6 +299,14 @@
     "title": "A new match replaces a stored correction",
     "type": "scenario"
   },
+  "rq-062f3774": {
+    "decl": "## Gherkin Scenarios",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [],
+    "title": "Gherkin Scenarios",
+    "type": "section"
+  },
   "rq-06cfcbfe": {
     "decl": "Scenario: An absurd temperature leaves thermochemistry undefined",
     "file": "thermo",
@@ -398,6 +406,14 @@
     "title": "Bare --hydration distributes over the hydration states of water",
     "type": "scenario"
   },
+  "rq-09c6f34e": {
+    "decl": "### Functions",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [],
+    "title": "Functions",
+    "type": "section"
+  },
   "rq-09e99e7b": {
     "decl": "Scenario: --formation-corr alone is a visible outcome",
     "file": "formation",
@@ -489,6 +505,19 @@
     ],
     "title": "Feature: ORCA Parser",
     "type": "file"
+  },
+  "rq-0ad6f888": {
+    "decl": "## Pipeline Integration",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Pipeline Integration",
+    "type": "section"
   },
   "rq-0ae95856": {
     "decl": "# Feature: Record Schema of Primary Observables",
@@ -1085,6 +1114,18 @@
     "title": "A half-paired combined form is a usage error",
     "type": "scenario"
   },
+  "rq-15621246": {
+    "decl": "Scenario: Zero is a valid threshold",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Zero is a valid threshold",
+    "type": "scenario"
+  },
   "rq-157f85ee": {
     "decl": "- `electronic_energy` — the boxed final line `| TOTAL ENERGY <value> Eh |`",
     "file": "parsers/xtb",
@@ -1459,6 +1500,22 @@
     "title": "blend_energy scales the gap",
     "type": "scenario"
   },
+  "rq-1967b16e": {
+    "decl": "- `apply_arbalign(records: &mut Vec<Record>, threshold: f64, parallel: usize) -> ArbAlignReport`",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "apply_arbalign",
+    "type": "api-item"
+  },
   "rq-19b11795": {
     "decl": "## Gherkin Scenarios",
     "file": "composition",
@@ -1796,6 +1853,18 @@
     "title": "The program call is stored with the executable path stripped",
     "type": "scenario"
   },
+  "rq-1fbb1d60": {
+    "decl": "Scenario: A removed record cannot eliminate another record",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A removed record cannot eliminate another record",
+    "type": "scenario"
+  },
   "rq-1fd7e03d": {
     "decl": "Scenario: A signature beyond the head window is not detected",
     "file": "parser-framework",
@@ -1898,6 +1967,13 @@
     "title": "ParserRegistry",
     "type": "api-item"
   },
+  "rq-212d67dd": {
+    "decl": "- `tests/arbalign.rs` tests the pure alignment functions: principal-axis",
+    "file": "arbalign",
+    "refs": [],
+    "title": "tests",
+    "type": "api-item"
+  },
   "rq-21313a28": {
     "decl": "Scenario: An ok record without a geometry is skipped and counted",
     "file": "movie",
@@ -1952,6 +2028,18 @@
       }
     ],
     "title": "validate rejects a component code holding a digit",
+    "type": "scenario"
+  },
+  "rq-21a7b4fc": {
+    "decl": "Scenario: The survivor order is the input order",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The survivor order is the input order",
     "type": "scenario"
   },
   "rq-21d1d450": {
@@ -2133,6 +2221,14 @@
     ],
     "title": "A parallel run reports the argument-order-first error",
     "type": "scenario"
+  },
+  "rq-23f0a802": {
+    "decl": "## Feature API",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [],
+    "title": "Feature API",
+    "type": "section"
   },
   "rq-23fa0de7": {
     "decl": "Scenario: Merge with a missing input writes nothing",
@@ -2331,6 +2427,18 @@
     "title": "The section aligns its columns like the main table",
     "type": "scenario"
   },
+  "rq-27c77ee9": {
+    "decl": "Scenario: Arbalign triggers the implicit energy sort",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Arbalign triggers the implicit energy sort",
+    "type": "scenario"
+  },
   "rq-27c965f2": {
     "decl": "Scenario: A list of only trivial modes filters to empty",
     "file": "parser-framework",
@@ -2482,6 +2590,18 @@
     "title": "parse_overwrite_answer",
     "type": "api-item"
   },
+  "rq-29d2a817": {
+    "decl": "Scenario: Non-finite and malformed thresholds are rejected",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Non-finite and malformed thresholds are rejected",
+    "type": "scenario"
+  },
   "rq-29e0af6a": {
     "decl": "## Out of Scope",
     "file": "parsers/orca",
@@ -2550,6 +2670,14 @@
     "title": "--rh with a non-water solvent is a usage error",
     "type": "scenario"
   },
+  "rq-2b057ce6": {
+    "decl": "## Arbalign Filtering",
+    "file": "filtering",
+    "level": 2,
+    "refs": [],
+    "title": "Arbalign Filtering",
+    "type": "section"
+  },
   "rq-2b4ba772": {
     "decl": "- `ExtrapolationSpec` — one parsed `--extrapolate` invocation:",
     "file": "extrapolation",
@@ -2561,6 +2689,14 @@
     ],
     "title": "ExtrapolationSpec",
     "type": "api-item"
+  },
+  "rq-2b831cd3": {
+    "decl": "## Threshold",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [],
+    "title": "Threshold",
+    "type": "section"
   },
   "rq-2b862de1": {
     "decl": "Scenario: --out writes the filtered database and prints a summary",
@@ -3190,6 +3326,18 @@
     "title": "Merge truncates an existing output",
     "type": "scenario"
   },
+  "rq-34493b93": {
+    "decl": "Scenario: A negative threshold is rejected",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A negative threshold is rejected",
+    "type": "scenario"
+  },
   "rq-34845056": {
     "decl": "Scenario: A single-component count-one record is a monomer",
     "file": "formation",
@@ -3365,6 +3513,18 @@
       }
     ],
     "title": "A monomer's own formation values are zero",
+    "type": "scenario"
+  },
+  "rq-36e90144": {
+    "decl": "Scenario: Arbalign uses the sorted order to choose the representative",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Arbalign uses the sorted order to choose the representative",
     "type": "scenario"
   },
   "rq-373378e9": {
@@ -3622,7 +3782,7 @@
     "type": "section"
   },
   "rq-3bbefb05": {
-    "decl": "Scenario: ArbAlign flags remain unknown usage errors",
+    "decl": "Scenario: --MWarbalign remains an unknown usage error",
     "file": "filtering",
     "refs": [
       {
@@ -3630,7 +3790,7 @@
         "kind": "code"
       }
     ],
-    "title": "ArbAlign flags remain unknown usage errors",
+    "title": "--MWarbalign remains an unknown usage error",
     "type": "scenario"
   },
   "rq-3c8142e6": {
@@ -4087,6 +4247,18 @@
     "title": "A dangling energy label is not an error",
     "type": "scenario"
   },
+  "rq-44f6407c": {
+    "decl": "Scenario: A non-finite coordinate leaves a record untouched",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A non-finite coordinate leaves a record untouched",
+    "type": "scenario"
+  },
   "rq-4501ef81": {
     "decl": "Scenario: Components serialize alphabetically regardless of insertion order",
     "file": "record",
@@ -4111,12 +4283,32 @@
     "title": "A database recognized by content, not extension",
     "type": "scenario"
   },
+  "rq-452b61ff": {
+    "decl": "### Types",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [],
+    "title": "Types",
+    "type": "section"
+  },
   "rq-4555c02d": {
     "decl": "# Feature: Reacted / Exploded Structure Detection",
     "file": "detection",
     "refs": [],
     "title": "Feature: Reacted / Exploded Structure Detection",
     "type": "file"
+  },
+  "rq-45705445": {
+    "decl": "Scenario: The first record in order always wins",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The first record in order always wins",
+    "type": "scenario"
   },
   "rq-45c63967": {
     "decl": "## Feature API",
@@ -4216,6 +4408,18 @@
     "refs": [],
     "title": "Feature: Project Scaffold and CJKQC Command Shell",
     "type": "file"
+  },
+  "rq-48a54c37": {
+    "decl": "Scenario: Identical and reordered structures have zero RMSD",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Identical and reordered structures have zero RMSD",
+    "type": "scenario"
   },
   "rq-48b6dd65": {
     "decl": "Scenario: A value passed to --unit is a usage error",
@@ -4569,6 +4773,26 @@
     "title": "Merging zero inputs creates an empty output",
     "type": "scenario"
   },
+  "rq-4ddb030f": {
+    "decl": "- `parse_arbalign_threshold(value: &str) -> Result<f64, String>`",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_arbalign_threshold",
+    "type": "api-item"
+  },
   "rq-4ea8ca35": {
     "decl": "## Printing",
     "file": "filtering",
@@ -4585,6 +4809,22 @@
     ],
     "title": "Printing",
     "type": "section"
+  },
+  "rq-4ebb0210": {
+    "decl": "Scenario: The warning counts non-preparable records once",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The warning counts non-preparable records once",
+    "type": "scenario"
   },
   "rq-4eefe504": {
     "decl": "- `RecordInvalidity` — the reason a record fails validation. Variants:",
@@ -5597,6 +5837,14 @@
     "title": "electronic_energy",
     "type": "api-item"
   },
+  "rq-616ceeee": {
+    "decl": "### Pipeline Integration",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [],
+    "title": "Pipeline Integration",
+    "type": "section"
+  },
   "rq-61cdb639": {
     "decl": "Scenario: A corrupt line in a source is skipped and fails the run",
     "file": "extrapolation",
@@ -5736,6 +5984,14 @@
     ],
     "title": "Absurd-temperature records print dashes and drop out of --glob",
     "type": "scenario"
+  },
+  "rq-6463cb8b": {
+    "decl": "## Algorithm",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [],
+    "title": "Algorithm",
+    "type": "section"
   },
   "rq-646cd2be": {
     "decl": "Scenario: The MRCC corpus fixture reproduces the JKQC ground truth",
@@ -5968,6 +6224,18 @@
     "title": "A candidate without an electronic energy is skipped with a warning",
     "type": "scenario"
   },
+  "rq-6a0e38b6": {
+    "decl": "Scenario: Arbalign counts as a manipulation",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Arbalign counts as a manipulation",
+    "type": "scenario"
+  },
   "rq-6a872802": {
     "decl": "Scenario: Shuffle is deterministic per seed",
     "file": "filtering",
@@ -6194,6 +6462,14 @@
     "title": "A print-only run prints the database without writing anything",
     "type": "scenario"
   },
+  "rq-6ea7c8ff": {
+    "decl": "## Out of Scope",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [],
+    "title": "Out of Scope",
+    "type": "section"
+  },
   "rq-6eeaa8ed": {
     "decl": "Scenario: An empty composition part does not resolve",
     "file": "composition",
@@ -6229,6 +6505,14 @@
     ],
     "title": "The main table and --glob ignore the concentrations",
     "type": "scenario"
+  },
+  "rq-6f4605b7": {
+    "decl": "### Crate Layout",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [],
+    "title": "Crate Layout",
+    "type": "section"
   },
   "rq-6f572182": {
     "decl": "Scenario: Matching is exact and case-sensitive",
@@ -6362,6 +6646,18 @@
     "title": "An ORCA run embedding an xtb banner routes to ORCA",
     "type": "scenario"
   },
+  "rq-71cd97d3": {
+    "decl": "Scenario: An unknown element leaves a record untouched",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unknown element leaves a record untouched",
+    "type": "scenario"
+  },
   "rq-720a810c": {
     "decl": "Scenario: A genuine failed record from a matched parser is collected",
     "file": "collection",
@@ -6398,6 +6694,18 @@
     "title": "Records keep argument order at any worker count",
     "type": "scenario"
   },
+  "rq-72a1a9da": {
+    "decl": "Scenario: Repeated runs produce identical prepared coordinates",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Repeated runs produce identical prepared coordinates",
+    "type": "scenario"
+  },
   "rq-72e0ded9": {
     "decl": "Scenario: Help takes precedence over extra arguments",
     "file": "scaffolding",
@@ -6422,6 +6730,22 @@
     ],
     "title": "Canonical Units and Values",
     "type": "section"
+  },
+  "rq-7330b65b": {
+    "decl": "- `ArbAlignStructure` — a preparable record's alignment form: element",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ArbAlignStructure",
+    "type": "api-item"
   },
   "rq-7331508e": {
     "decl": "- `scf_energy` — the converged SCF total of the last SCF section, in",
@@ -6556,6 +6880,22 @@
     "file": "parsers/orca",
     "refs": [],
     "title": "detect",
+    "type": "api-item"
+  },
+  "rq-76495264": {
+    "decl": "- `ArbAlignReport` — the stage's diagnostics: `skipped: usize`, the number",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ArbAlignReport",
     "type": "api-item"
   },
   "rq-7650a23d": {
@@ -6774,6 +7114,18 @@
     "title": "The version banner is detected",
     "type": "scenario"
   },
+  "rq-79b6a9ff": {
+    "decl": "Scenario: Different geometries have a positive RMSD",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Different geometries have a positive RMSD",
+    "type": "scenario"
+  },
   "rq-79e2785e": {
     "decl": "Scenario: a name's line breaks do not split the comment line",
     "file": "movie",
@@ -6924,6 +7276,18 @@
     "file": "parsers/mrcc",
     "refs": [],
     "title": "charge",
+    "type": "api-item"
+  },
+  "rq-7c5578c0": {
+    "decl": "- `FilterSpec` carries `arbalign: Option<f64>` and `parallel: usize`, the",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "FilterSpec",
     "type": "api-item"
   },
   "rq-7c56284e": {
@@ -7623,6 +7987,18 @@
     "title": "CorrectionError",
     "type": "api-item"
   },
+  "rq-87ba569d": {
+    "decl": "- `FilterOutcome` — the pipeline result: `records: Vec<Record>` and",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "FilterOutcome",
+    "type": "api-item"
+  },
   "rq-87c46fa4": {
     "decl": "Scenario: A negative reference frequency is a usage error",
     "file": "thermo",
@@ -7722,6 +8098,18 @@
     "title": "rotational_symmetry_number",
     "type": "api-item"
   },
+  "rq-8a55e4b4": {
+    "decl": "Scenario: A pair exactly at the threshold is kept",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A pair exactly at the threshold is kept",
+    "type": "scenario"
+  },
   "rq-8a869bbd": {
     "decl": "Scenario: --extrapolate prints nothing of its own",
     "file": "extrapolation",
@@ -7733,6 +8121,26 @@
     ],
     "title": "--extrapolate prints nothing of its own",
     "type": "scenario"
+  },
+  "rq-8ab03978": {
+    "decl": "Scenario: Arbalign requires a visible outcome",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Arbalign requires a visible outcome",
+    "type": "scenario"
+  },
+  "rq-8ac48ef4": {
+    "decl": "### Principal-Axis Preprocessing",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [],
+    "title": "Principal-Axis Preprocessing",
+    "type": "section"
   },
   "rq-8ad5063d": {
     "decl": "## Input Classification",
@@ -7799,6 +8207,22 @@
     ],
     "title": "Performance",
     "type": "section"
+  },
+  "rq-8b4b0278": {
+    "decl": "- `arbalign_mask(structures: &[Option<ArbAlignStructure>], threshold: f64, parallel: usize) -> (Vec<bool>, ArbAlignReport)`",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "arbalign_mask",
+    "type": "api-item"
   },
   "rq-8b4b5dc5": {
     "decl": "Scenario: Without --unit the energies remain hartree",
@@ -7945,6 +8369,18 @@
     "title": "A group without defined states prints all dashes",
     "type": "scenario"
   },
+  "rq-8f0d2e24": {
+    "decl": "Scenario: Principal-axis preprocessing centers on the center of mass",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Principal-axis preprocessing centers on the center of mass",
+    "type": "scenario"
+  },
   "rq-8f1add9c": {
     "decl": "Scenario: Loading a directory is an error",
     "file": "database",
@@ -7996,6 +8432,18 @@
     ],
     "title": "derived_value",
     "type": "api-item"
+  },
+  "rq-8f809f5d": {
+    "decl": "Scenario: A record without geometry is left untouched",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record without geometry is left untouched",
+    "type": "scenario"
   },
   "rq-8f9a701f": {
     "decl": "Scenario: Merge can write onto one of its inputs",
@@ -8340,6 +8788,18 @@
     "title": "Attachment",
     "type": "api-item"
   },
+  "rq-95322f48": {
+    "decl": "Scenario: Different element multisets are not compared",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Different element multisets are not compared",
+    "type": "scenario"
+  },
   "rq-953a8521": {
     "decl": "Scenario: Version takes precedence over extra arguments",
     "file": "scaffolding",
@@ -8503,6 +8963,23 @@
     ],
     "title": "An attached correction carries its provenance",
     "type": "scenario"
+  },
+  "rq-975c0536": {
+    "decl": "## Performance Constraints",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/arbalign_bench.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Performance Constraints",
+    "type": "section"
   },
   "rq-97790ec7": {
     "decl": "- `ok` — the tail carries `Normal termination of mrcc`.",
@@ -8683,6 +9160,14 @@
     "title": "Crate Layout",
     "type": "section"
   },
+  "rq-9af43b1b": {
+    "decl": "## Grouping and Comparability",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [],
+    "title": "Grouping and Comparability",
+    "type": "section"
+  },
   "rq-9b20809b": {
     "decl": "Scenario: A member far above the minimum underflows to zero",
     "file": "population",
@@ -8858,6 +9343,18 @@
     "title": "The section obeys the unit setting",
     "type": "scenario"
   },
+  "rq-9cfce088": {
+    "decl": "Scenario: An invalid CLI threshold is a usage error",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An invalid CLI threshold is a usage error",
+    "type": "scenario"
+  },
   "rq-9d155d29": {
     "decl": "Scenario: Leading zeros in a count are accepted",
     "file": "composition",
@@ -8962,6 +9459,18 @@
     ],
     "title": "The Attached Correction",
     "type": "section"
+  },
+  "rq-9e72baf5": {
+    "decl": "Scenario: Rotated and translated structures have zero RMSD",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Rotated and translated structures have zero RMSD",
+    "type": "scenario"
   },
   "rq-9e898298": {
     "decl": "- `collect_monomers(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> MonomerReferences`",
@@ -9394,6 +9903,22 @@
     "title": "A run without local corrections reports its plain total",
     "type": "scenario"
   },
+  "rq-a637fc31": {
+    "decl": "- `prepare_arbalign(record: &Record) -> Option<ArbAlignStructure>`",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "prepare_arbalign",
+    "type": "api-item"
+  },
   "rq-a652c946": {
     "decl": "- `failed` — no normal marker and the tail carries xtb's own error report.",
     "file": "parsers/xtb",
@@ -9762,6 +10287,18 @@
       }
     ],
     "title": "ExtrapolationError",
+    "type": "api-item"
+  },
+  "rq-ae71d266": {
+    "decl": "- `apply_filters` applies the arbalign stage after the sort and after",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "apply_filters",
     "type": "api-item"
   },
   "rq-aeb0d510": {
@@ -10422,6 +10959,18 @@
     "title": "charge",
     "type": "api-item"
   },
+  "rq-b8a74911": {
+    "decl": "Scenario: Arbalign removes records before glob chooses a minimum",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Arbalign removes records before glob chooses a minimum",
+    "type": "scenario"
+  },
   "rq-b8a853f8": {
     "decl": "Scenario: The command block stops at the first resource or geometry key",
     "file": "parsers/mrcc",
@@ -10594,6 +11143,22 @@
     "title": "Resolution Model",
     "type": "section"
   },
+  "rq-bb73fa3f": {
+    "decl": "- `arbalign_rmsd(a: &ArbAlignStructure, b: &ArbAlignStructure) -> Option<f64>`",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "arbalign_rmsd",
+    "type": "api-item"
+  },
   "rq-bbf4e72d": {
     "decl": "Scenario: A component without a spec stays at the standard state",
     "file": "formation",
@@ -10607,7 +11172,7 @@
     "type": "scenario"
   },
   "rq-bc3e1482": {
-    "decl": "- `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<Vec<Record>,",
+    "decl": "- `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<FilterOutcome,",
     "file": "filtering",
     "refs": [
       {
@@ -10899,6 +11464,18 @@
     ],
     "title": "Feature: Plain xyz Parser",
     "type": "file"
+  },
+  "rq-bfbfdd2b": {
+    "decl": "Scenario: A pair strictly below the threshold eliminates the later record",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A pair strictly below the threshold eliminates the later record",
+    "type": "scenario"
   },
   "rq-bfd2765b": {
     "decl": "Scenario: Tie in frequency breaks by earliest occurrence",
@@ -12093,6 +12670,18 @@
     "title": "The frame order follows the sort",
     "type": "scenario"
   },
+  "rq-d72b5bc0": {
+    "decl": "Scenario: Worker count does not change survivors",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Worker count does not change survivors",
+    "type": "scenario"
+  },
   "rq-d72bb4c5": {
     "decl": "- `MrccParser` — unit struct implementing the framework `Parser` trait with",
     "file": "parsers/mrcc",
@@ -12280,6 +12869,18 @@
     "title": "RenameSpec",
     "type": "api-item"
   },
+  "rq-da57e104": {
+    "decl": "Scenario: Different composition groups are never compared",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Different composition groups are never compared",
+    "type": "scenario"
+  },
   "rq-da98d00b": {
     "decl": "Scenario: --noname does not pool the core groups",
     "file": "hydration",
@@ -12315,6 +12916,18 @@
     ],
     "title": "metric_dipole_magnitude",
     "type": "api-item"
+  },
+  "rq-daef887e": {
+    "decl": "Scenario: Threshold zero removes nothing",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Threshold zero removes nothing",
+    "type": "scenario"
   },
   "rq-daf59b28": {
     "decl": "- `XtbParser`, `OrcaParser`, `GaussianParser`, `MrccParser`, `XyzParser` —",
@@ -12472,6 +13085,18 @@
     "title": "--select 1 leaves the survivor at the full population",
     "type": "scenario"
   },
+  "rq-df401c1b": {
+    "decl": "Scenario: Arbalign runs after sort and after select",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Arbalign runs after sort and after select",
+    "type": "scenario"
+  },
   "rq-df4e27e8": {
     "decl": "Scenario: The registry exposes the five energy keys",
     "file": "thermo",
@@ -12514,6 +13139,18 @@
       }
     ],
     "title": "A reacted heavy skeleton deviates from the consensus",
+    "type": "scenario"
+  },
+  "rq-dfca14c2": {
+    "decl": "Scenario: Noname does not make different compositions comparable",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Noname does not make different compositions comparable",
     "type": "scenario"
   },
   "rq-dff9b11a": {
@@ -12949,6 +13586,18 @@
     "refs": [],
     "title": "Out of Scope",
     "type": "section"
+  },
+  "rq-e753e60e": {
+    "decl": "Scenario: Arbalign runs after the sort and after select",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Arbalign runs after the sort and after select",
+    "type": "scenario"
   },
   "rq-e770b7b2": {
     "decl": "Scenario: The corpus fixture conforms",
@@ -13405,6 +14054,18 @@
     ],
     "title": "ReactedMode",
     "type": "api-item"
+  },
+  "rq-ef412fee": {
+    "decl": "Scenario: A finite non-negative threshold is accepted",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A finite non-negative threshold is accepted",
+    "type": "scenario"
   },
   "rq-ef61dab4": {
     "decl": "- `scf_energy` — the value of the last",
@@ -13873,6 +14534,18 @@
     "title": "RecordStatus",
     "type": "api-item"
   },
+  "rq-f85b53e6": {
+    "decl": "Scenario: A reflected structure is matched by the symmetry search",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A reflected structure is matched by the symmetry search",
+    "type": "scenario"
+  },
   "rq-f87aad94": {
     "decl": "Scenario: A directory is an Io error",
     "file": "parser-framework",
@@ -13987,6 +14660,13 @@
     ],
     "title": "validate rejects a failed record without an error message",
     "type": "scenario"
+  },
+  "rq-f9909f23": {
+    "decl": "# Feature: ArbAlign Structure-Alignment Filtering",
+    "file": "arbalign",
+    "refs": [],
+    "title": "Feature: ArbAlign Structure-Alignment Filtering",
+    "type": "file"
   },
   "rq-f99b56ad": {
     "decl": "Scenario: Filtered-away monomers serve as no corrected references",
@@ -14139,6 +14819,14 @@
     ],
     "title": "corrected_formation_values",
     "type": "api-item"
+  },
+  "rq-fbc3a0c8": {
+    "decl": "### Pairwise RMSD",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [],
+    "title": "Pairwise RMSD",
+    "type": "section"
   },
   "rq-fbfe30a4": {
     "decl": "Scenario: Rounded percentages need not sum to exactly 100",

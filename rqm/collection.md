@@ -128,8 +128,10 @@ overwritten; `--fout` forces the replacement without asking
 
 - `--parallel <N>` sets the worker count of the run's build-mode passes —
   classification and parsing, including the parse pass behind a print
-  flag's re-read. The default is 1: fully sequential. A value below 1 is a
-  usage error (exit 2). The flag changes nothing else in the invocation.
+  flag's re-read — and, when the manipulation pipeline runs `--arbalign`,
+  the worker count of that pairwise sweep (`rqm/arbalign.md`). The default
+  is 1: fully sequential. A value below 1 is a usage error (exit 2). In
+  collection it changes nothing else in the invocation.
 - With N > 1 the inputs are distributed over N workers; each worker opens,
   window-reads, and parses whole inputs on its own (a record is never
   split across workers), so the per-input cost stays the sequential one
@@ -148,9 +150,9 @@ overwritten; `--fout` forces the replacement without asking
 - An open that fails at the process's open-file limit is a fatal input
   error whose message names the limit and the worker knob: fewer workers
   or a higher open-file limit fits the batch.
-- Merge mode is sequential at any N: its inputs are the tool's own JSON
-  Lines databases, and `--parallel` governs the passes that parse program
-  outputs only.
+- Merge-mode collection reads sequentially at any N: its inputs are the
+  tool's own JSON Lines databases. A merge run that also requests
+  `--arbalign` still uses N workers for that pairwise sweep.
 
 ## Merge Mode <!-- rq-f832a4fa -->
 
@@ -179,10 +181,12 @@ CJKQC <inputs>… -o <path> [--fout]
   export files, `rqm/movie.md`) without the confirmation question
   (Overwrite Confirmation). It is accepted in both modes.
 - `--parallel <N>` — the worker count of the run's build-mode passes
-  (Parallel Collection), an integer of 1 or more; the default is 1
+  (Parallel Collection) and of the `--arbalign` pairwise sweep
+  (`rqm/arbalign.md`), an integer of 1 or more; the default is 1
   (sequential), and a value below 1 is a usage error (exit 2). It is
-  accepted in both modes and ignored by merge. Help advertises it
-  alongside `--head-bytes`/`--tail-bytes`.
+  accepted in both modes; merge-mode collection ignores it, but a merge run
+  that also requests `--arbalign` still uses it for that sweep. Help
+  advertises it alongside `--head-bytes`/`--tail-bytes`.
 - A literal `-` is an ordinary path, not stdin; stdin is not collected.
 - Usage errors — no inputs, a missing `--out`, unknown flags (including JKQC
   flags that no feature has adopted, such as `-el`) — print clap's parse

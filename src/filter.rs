@@ -7,6 +7,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use crate::arbalign::{apply_arbalign, ArbAlignReport};
 use crate::composition::{rename_component, RenameError, RenameSpec};
 use crate::metrics::{
     dedup_names_mask, metric_dipole_magnitude, metric_radius_of_gyration, metric_total_mass,
@@ -291,6 +292,9 @@ pub struct FilterSpec {
     pub cutoffs: Vec<Cutoff>,
     /// `--uniq` mode.
     pub uniq: Option<UniqMode>,
+    // rq-7c5578c0
+    /// `--arbalign` RMSD threshold in Å (`rqm/arbalign.md`).
+    pub arbalign: Option<f64>,
     /// `--reacted`/`--reacted2` mode.
     pub reacted: Option<ReactedMode>,
     /// `--sort` key.
@@ -307,6 +311,22 @@ pub struct FilterSpec {
     pub seed: u64,
     /// `--noname` grouping.
     pub grouping: Grouping,
+    // rq-7c5578c0
+    /// The run's `--parallel` worker count; only arbalign reads it.
+    pub parallel: usize,
+}
+
+/// The pipeline result: the surviving records and the arbalign stage's
+/// diagnostics (`rqm/arbalign.md`).
+///
+/// (rq-87ba569d)
+#[derive(Debug, Clone)]
+pub struct FilterOutcome {
+    /// Records that survived every pipeline stage.
+    pub records: Vec<Record>,
+    /// The arbalign stage's report; `skipped` is zero when arbalign ran
+    /// not at all or found every geometry usable.
+    pub arbalign: ArbAlignReport,
 }
 
 /// The print-boundary energy unit: `Kcal` when the `--unit` flag is
@@ -711,12 +731,12 @@ pub fn extract_matches(pattern: &ExtractPattern, components: Option<&Components>
 /// key, the `g` uniqueness metric, and `--glob` (`rqm/thermo.md`
 /// Performance).
 ///
-/// (rq-bc3e1482 rq-0137b5f9 rq-8b44ad8d rq-958da001 rq-2c3246dc)
+/// (rq-bc3e1482 rq-0137b5f9 rq-8b44ad8d rq-958da001 rq-2c3246dc rq-ae71d266)
 pub fn apply_filters(
     records: &[Record],
     spec: &FilterSpec,
     memo: &ThermoMemo,
-) -> Result<Vec<Record>, FilterError> {
+) -> Result<FilterOutcome, FilterError> {
     let mut current: Vec<Record> = records
         .iter()
         .filter(|record| record.status == RecordStatus::Ok)
@@ -748,7 +768,9 @@ pub fn apply_filters(
     }
 
     let implicit_sort = spec.sort.is_none()
-        && (matches!(spec.uniq, Some(UniqMode::Keys(_))) || spec.select.is_some());
+        && (matches!(spec.uniq, Some(UniqMode::Keys(_)))
+            || spec.select.is_some()
+            || spec.arbalign.is_some());
     if implicit_sort {
         sort_records(&mut current, SortKey::El, spec.reverse, memo);
     }
@@ -764,13 +786,20 @@ pub fn apply_filters(
     if let Some(count) = spec.select {
         apply_select(&mut current, count, spec.grouping);
     }
+    let mut arbalign_report = ArbAlignReport::default();
+    if let Some(threshold) = spec.arbalign {
+        arbalign_report = apply_arbalign(&mut current, threshold, spec.parallel);
+    }
     if spec.glob {
         apply_glob(&mut current, spec.grouping, memo);
     }
     if spec.shuffle {
         shuffle(&mut current, spec.seed);
     }
-    Ok(current)
+    Ok(FilterOutcome {
+        records: current,
+        arbalign: arbalign_report,
+    })
 }
 
 /// A column's cell alignment in the aligned tables: text columns

@@ -10,8 +10,9 @@ The metrics are inputs to filtering and uniqueness (`rqm/filtering.md`).
 Uniqueness removes redundant structures:
 records whose name repeats (`dup` mode) or records that share a rounded
 property signature with an earlier record of the same composition group
-(`keys` mode). RMSD/structure-alignment uniqueness is not supported
-(`rqm/ARCHITECTURE.md` open question, deferred).
+(`keys` mode). Structural-alignment filtering is a separate pipeline stage,
+`--arbalign` (`rqm/arbalign.md`), which shares the atomic-mass table below
+but not the uniqueness modes.
 
 ## Metric Definitions <!-- rq-4a909f01 -->
 
@@ -41,7 +42,8 @@ each other.
 
 - A static table of standard atomic weights (u) for element symbols H
   through Og (Z = 1–118), title-case keys, embedded in the binary; no
-  dependency and no runtime download.
+  dependency and no runtime download. The same table supplies the masses
+  for principal-axis preprocessing in `rqm/arbalign.md`.
 - Lookup matches the geometry's title-case symbols exactly (`"Cl"`, not
   `"CL"` or `"cl"`); an unknown symbol leaves total mass and Rg undefined
   for that record.
@@ -127,8 +129,9 @@ first — the CLI does exactly that when `--uniq` is used without `--sort`
 
 ## Out of Scope <!-- rq-3c8142e6 -->
 
-- RMSD / structure-alignment uniqueness (ArbAlign replacement) — deferred;
-  no flag for it is accepted (`rqm/filtering.md`).
+- Mass-weighted ArbAlign (`--MWarbalign`) and other structure-alignment
+  variants; structural-alignment filtering is `--arbalign`
+  (`rqm/arbalign.md`), not a uniqueness mode.
 - Adaptive-precision sampling (`-sample` in JKQC).
 - Storing any metric in a record — all are derived at request time.
 

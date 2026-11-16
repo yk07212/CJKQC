@@ -53,7 +53,9 @@ fn names(records: &[Record]) -> Vec<String> {
 }
 
 fn run(records: &[Record], spec: &FilterSpec) -> Vec<Record> {
-    apply_filters(records, spec, &ThermoMemo::default()).expect("pipeline")
+    apply_filters(records, spec, &ThermoMemo::default())
+        .expect("pipeline")
+        .records
 }
 
 #[test] // rq-9fa28264

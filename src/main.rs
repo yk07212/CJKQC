@@ -11,6 +11,7 @@ use std::process::ExitCode;
 
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser};
 
+use compiled_jkqc::arbalign::parse_arbalign_threshold;
 use compiled_jkqc::collect::{gather_inputs_with, CollectError, CollectOutcome, Gathered};
 use compiled_jkqc::composition::RenameSpec;
 use compiled_jkqc::correction::{attach_corrections, CorrectionError};
@@ -97,6 +98,17 @@ struct Cli {
     #[arg(long = "uniq")]
     uniq: Option<String>,
 
+    // rq-0ad6f888
+    /// Remove geometrically redundant structures within composition groups
+    /// (ArbAlign RMSD threshold in Å; rqm/arbalign.md). Principal-axis
+    /// preprocessing is always applied.
+    #[arg(
+        long = "arbalign",
+        value_name = "THRESHOLD",
+        allow_hyphen_values = true
+    )]
+    arbalign: Option<String>,
+
     /// Keep the composition group's majority fragment pattern.
     #[arg(long = "reacted")]
     reacted: bool,
@@ -160,8 +172,8 @@ struct Cli {
     #[arg(long = "tail-bytes", value_name = "BYTES")]
     tail_bytes: Option<usize>,
 
-    /// Worker threads parsing build inputs (default 1, sequential).
-    /// Any count writes the same database the sequential run writes.
+    /// Worker threads for build parsing and the --arbalign sweep (default 1,
+    /// sequential). Any count produces the same result as a sequential run.
     #[arg(long = "parallel", value_name = "N", default_value_t = 1)]
     parallel: usize,
 
@@ -528,6 +540,14 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         Some(value) => match SortKey::parse(value) {
             Some(key) => Some(key),
             None => return usage(&format!("unknown sort key `{value}`")),
+        },
+        None => None,
+    };
+    // rq-4ddb030f
+    let arbalign = match &cli.arbalign {
+        Some(value) => match parse_arbalign_threshold(value) {
+            Ok(threshold) => Some(threshold),
+            Err(error) => return usage(&error),
         },
         None => None,
     };
@@ -1121,6 +1141,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         renames,
         cutoffs,
         uniq,
+        arbalign,
         reacted: match (cli.reacted, cli.reacted2) {
             (true, _) => Some(ReactedMode::Consensus),
             (_, true) => Some(ReactedMode::Deviants),
@@ -1133,8 +1154,9 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         shuffle: cli.shuffle,
         seed: cli.seed.unwrap_or(0),
         grouping,
+        parallel: workers,
     };
-    records = match apply_filters(&records, &spec, &memo) {
+    let outcome = match apply_filters(&records, &spec, &memo) {
         Ok(records) => records,
         Err(FilterError::Extract(error)) => {
             eprintln!("error: extract query: {error}");
@@ -1152,6 +1174,13 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    if outcome.arbalign.skipped > 0 {
+        eprintln!(
+            "arbalign: kept {} records without usable geometry",
+            outcome.arbalign.skipped
+        );
+    }
+    records = outcome.records;
 
     // The export's duplicate and collision checks run before any write of
     // the run, including --out (`rqm/movie.md`).
@@ -2041,6 +2070,7 @@ fn manipulation_ids(cli: &Cli) -> Vec<&'static str> {
         ("nextract", !cli.nextract.is_empty()),
         ("rename", !cli.rename.is_empty()),
         ("uniq", cli.uniq.is_some()),
+        ("arbalign", cli.arbalign.is_some()),
         ("reacted", cli.reacted),
         ("reacted2", cli.reacted2),
         ("sort", cli.sort.is_some()),
@@ -2137,6 +2167,8 @@ mod tests {
             "a",
             "--uniq",
             "dup",
+            "--arbalign",
+            "0.1",
             "--reacted",
             "--reacted2",
             "--sort",

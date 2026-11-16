@@ -5,6 +5,7 @@
 //! Library target for unit and integration tests. Domain modules arrive with
 //! the milestones that implement them.
 
+pub mod arbalign;
 pub mod collect;
 pub mod composition;
 pub mod correction;
@@ -26,6 +27,13 @@ pub(crate) mod atomic;
 
 // rq-8c5e4002
 pub use record::{Components, Correction, Geometry, Record, RecordInvalidity, RecordStatus};
+
+// rq-7330b65b rq-76495264 rq-4ddb030f rq-a637fc31 rq-bb73fa3f rq-8b4b0278 rq-1967b16e
+// arbalign surface (rqm/arbalign.md)
+pub use arbalign::{
+    apply_arbalign, arbalign_mask, arbalign_rmsd, parse_arbalign_threshold, prepare_arbalign,
+    ArbAlignReport, ArbAlignStructure,
+};
 
 // rq-f8ab9d1b single-point correction surface (rqm/correction.md)
 pub use correction::{attach_corrections, corrected_energy, Attachment, CorrectionError};
@@ -86,8 +94,8 @@ pub use hydration::{
 // rq-bf062c8f filtering surface (rqm/filtering.md)
 pub use filter::{
     apply_filters, extract_matches, parse_extract_query, print_table, property_value, CmpOp,
-    Column, Cutoff, ExtractError, ExtractMode, ExtractPattern, FilterError, FilterSpec, Grouping,
-    Mode, Property, SortKey, Unit, Wildcard,
+    Column, Cutoff, ExtractError, ExtractMode, ExtractPattern, FilterError, FilterOutcome,
+    FilterSpec, Grouping, Mode, Property, SortKey, Unit, Wildcard,
 };
 
 // rq-eff8dce8 overwrite confirmation surface (rqm/collection.md)

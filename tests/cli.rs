@@ -1404,15 +1404,15 @@ fn missing_out_is_still_required_without_manipulation_flags() {
 }
 
 #[test] // rq-3bbefb05
-fn arbalign_flags_remain_unknown_usage_errors() {
+fn mwarbalign_remains_an_unknown_usage_error() {
     let dir = temp_dir();
     let db = database_in(
         &dir,
         &[comp_line("a", Some(-1.0), &[("am", 1)], RecordStatus::Ok)],
     );
-    let run = cjkqc(&[&db, "--arbalign", "0.38"]);
+    let run = cjkqc(&[&db, "--MWarbalign", "0.38"]);
     assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
-    assert!(stderr(&run).contains("arbalign"), "{}", stderr(&run));
+    assert!(stderr(&run).contains("MWarbalign"), "{}", stderr(&run));
 }
 
 // ---------------------------------------------------------------------------
@@ -8866,4 +8866,63 @@ fn a_rename_overflow_names_the_offending_record_among_several() {
     assert!(error.contains("overflowing"), "{error}");
     assert!(!error.contains("fine"), "{error}");
     assert!(!out.exists(), "nothing is written when a rename overflows");
+}
+
+// --- arbalign scenarios (rqm/arbalign.md) ---
+
+fn arbalign_record(name: &str, geometry: Option<Geometry>) -> Record {
+    Record {
+        name: Some(name.to_string()),
+        geometry,
+        ..Record::default()
+    }
+}
+
+#[test] // rq-8ab03978 rq-6a0e38b6
+fn arbalign_requires_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = dir.join("db.jsonl");
+    let line = serde_json::to_string(&arbalign_record("a", None)).expect("serialization");
+    write_jsonl(&db, &[&line]);
+    let db_text = db.to_string_lossy().into_owned();
+    let out = cjkqc(&[&db_text, "--arbalign", "0.1"]);
+    assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    assert!(stderr(&out).contains("a manipulation needs --out or at least one print flag"));
+}
+
+#[test] // rq-9cfce088
+fn an_invalid_arbalign_threshold_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = dir.join("db.jsonl");
+    let line = serde_json::to_string(&arbalign_record("a", None)).expect("serialization");
+    write_jsonl(&db, &[&line]);
+    let db_text = db.to_string_lossy().into_owned();
+    let out = cjkqc(&[&db_text, "--arbalign", "-0.1", "--filename"]);
+    assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    assert!(stderr(&out).contains("negative"));
+}
+
+#[test] // rq-4ebb0210
+fn arbalign_reports_records_without_usable_geometry() {
+    let dir = temp_dir();
+    let db = dir.join("db.jsonl");
+    let missing = arbalign_record("missing", None);
+    let usable = arbalign_record(
+        "usable",
+        Some(Geometry {
+            symbols: vec!["H".to_string(), "H".to_string()],
+            coordinates: vec![-0.5, 0.0, 0.0, 0.5, 0.0, 0.0],
+        }),
+    );
+    let missing_line = serde_json::to_string(&missing).expect("serialization");
+    let usable_line = serde_json::to_string(&usable).expect("serialization");
+    write_jsonl(&db, &[&missing_line, &usable_line]);
+    let db_text = db.to_string_lossy().into_owned();
+    let out = cjkqc(&[&db_text, "--arbalign", "0.1", "--filename"]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("arbalign: kept 1 records without usable geometry"),
+        "{}",
+        stderr(&out)
+    );
 }

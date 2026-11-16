@@ -41,8 +41,9 @@ surface:
   Failed or truncated jobs are recorded as failed records, never crashes.
 - **Manipulation and filtering.** Merge databases; extract subsets by
   composition; sort by property; print selected properties; remove duplicate
-  structures (uniqueness/RMSD-based); apply cutoffs (imaginary frequencies,
-  energy windows, radius of gyration); detect reacted/exploded structures.
+  structures (uniqueness and ArbAlign structure-alignment filtering); apply
+  cutoffs (imaginary frequencies, energy windows, radius of gyration);
+  detect reacted/exploded structures.
 - **Thermochemical post-processing.** All thermochemistry — ZPE, enthalpy,
   entropy, free energy at any temperature — is computed on demand from the
   stored observables. On top of that: formation/binding energies of clusters
@@ -94,12 +95,19 @@ are not attempted at all:
   invalidates a database, and records stay lean.
 - **Concurrency.** Build-mode collection parses inputs across worker
   threads behind the CLI's `--parallel <N>` flag (`rqm/collection.md`),
-  with 1 — fully sequential — as the default; no other stage is parallel.
+  and the `--arbalign` pairwise sweep (`rqm/arbalign.md`) uses the same
+  flag; 1 — fully sequential — is the default. No other stage is
+  parallel. The arbalign result is deterministic: every worker count
+  produces the same survivors and the same survivor order.
   Internal layouts avoid shared mutable state and prefer
   structures-of-arrays, and the parse result of an input never depends on
   which worker reads it: records and errors are ordered by argument
   position, so a parallel run produces the same database as a sequential
   one, byte for byte.
+- **Structure alignment.** The `--arbalign` filter implements ArbAlign's
+  principal-axis preprocessing, Kabsch RMSD, and linear-assignment atom
+  matching in-crate, with no linear-algebra or assignment dependency
+  (`rqm/arbalign.md`).
 - **Dependencies.** Keep the tree minimal: `clap` (CLI), `serde` +
   `serde_json` (records), and small helpers where hand-rolling would cost
   more than it saves. No heavyweight dataframe dependency (polars/arrow);
@@ -160,7 +168,5 @@ Conformance harness:
 - The JKQC property vocabulary: which flags carry over 1:1, which are
   renamed, which dropped. Decided feature-by-feature in `/rr-plan`, but the
   overall flag surface shapes the CLI's feel.
-- Geometric uniqueness: which RMSD/alignment approach replaces ArbAlign,
-  and whether it is a dependency or hand-rolled.
 - Record schema versioning: how a `.jsonl` record declares its schema
   version so the format can evolve without breaking older databases.

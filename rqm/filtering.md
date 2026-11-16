@@ -20,8 +20,9 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
   `--nextract`, `--cut`,
   `--cutr`, `--pass`, `--passr`, `--is`, `--isnot`, `--filter-lt`,
   `--filter-ge`, `--rel-filter-lt`, `--rel-filter-ge`, `--uniq`,
-  `--reacted`, `--reacted2`, `--sort`, `--reverse`, `--select`,
-  `--glob`, `--shuffle`, `--seed`, `--noname`. **Print flags**
+  `--arbalign` (`rqm/arbalign.md`), `--reacted`, `--reacted2`, `--sort`,
+  `--reverse`, `--select`, `--glob`, `--shuffle`, `--seed`, `--noname`.
+  **Print flags**
   (`--filename`, `--name`, `--path`, `--el`, … — see Printing) select
   table columns; they print and
   manipulate nothing. **Settings flags** — `--temp`, `--fc`, `--fscale`,
@@ -52,21 +53,23 @@ group as defined below:
 6. `--reacted` / `--reacted2` (`rqm/detection.md`)
 7. `--sort` (then `--reverse`)
 8. `--select`
-9. `--glob`
-10. `--shuffle`
+9. `--arbalign` (`rqm/arbalign.md`)
+10. `--glob`
+11. `--shuffle`
 
 Renaming precedes every composition-dependent stage, so extraction,
-relative cutoffs, uniqueness, reacted detection, grouping, and the printed
+relative cutoffs, uniqueness, reacted detection, arbalign filtering,
+grouping, and the printed
 sections all see the renamed composition (`rqm/composition.md`).
 
-Implicit sort: when `--uniq` (keys mode) or `--select` is present but
-`--sort` is not, records sort by `el` ascending first. `--uniq dup` does
-not trigger it.
+Implicit sort: when `--uniq` (keys mode), `--arbalign`, or `--select` is
+present but `--sort` is not, records sort by `el` ascending first.
+`--uniq dup` does not trigger it.
 
 ## Grouping <!-- rq-2f996ba6 -->
 
-- Cutoffs (relative mode), `--uniq`, `--reacted`, `--select`, and
-  `--extract` wildcard/exact composition matching treat records by
+- Cutoffs (relative mode), `--uniq`, `--arbalign`, `--reacted`, `--select`,
+  and `--extract` wildcard/exact composition matching treat records by
   **composition group**: records sharing the same `components` map
   (`rqm/composition.md`) form a group; records without `components` form
   one separate unnamed group.
@@ -75,7 +78,9 @@ not trigger it.
   each record's `name` (no ranges, wildcards, or zero-count rules). The
   compared `name` is the record's `name` field — the `filename` column
   (`rqm/filtering.md` Printing) — not the composition token the `name`
-  column prints.
+  column prints. `--arbalign` is the exception: it always partitions by
+  exact `components`, so `--noname` never makes structures of different
+  composition comparable (`rqm/arbalign.md`).
 - The population columns (`rqm/population.md`) group by the same rule: one
   population per composition group, or one global population under
   `--noname`.
@@ -182,6 +187,32 @@ the property set and units:
   by a splitmix64 PRNG seeded from `--seed <u64>` (default 0), making any
   run reproducible.
 
+## Arbalign Filtering <!-- rq-2b057ce6 -->
+
+`--arbalign <threshold>` removes geometrically redundant structures within
+composition groups, using ArbAlign's principal-axis preprocessing, atom
+assignment, and Kabsch RMSD (`rqm/arbalign.md`). The threshold is an RMSD
+in ångström; it must be finite and non-negative, and a later record is
+eliminated when its RMSD to an earlier survivor is strictly below it.
+Principal-axis preprocessing is always applied; there is no flag to
+disable it.
+
+- The stage runs at step 9, after `--sort`, `--reverse`, and `--select`,
+  and before `--glob` and `--shuffle`. When `--sort` is absent it
+  triggers the implicit `el` sort, so the lowest-energy record of a
+  duplicate set survives unless `--reverse` or an explicit sort says
+  otherwise.
+- Within a group, records are compared in their current order. A record
+  already removed never eliminates another record, so the first surviving
+  record in that order wins.
+- Records without usable geometry (no geometry or an unknown element) are
+  left untouched and counted on stderr as
+  `arbalign: kept <k> records without usable geometry`. Pairs whose
+  geometries have different atom counts or element multisets are not
+  compared and neither record is removed.
+- `--arbalign` is the only structure-alignment flag; `--MWarbalign` is not
+  accepted.
+
 ## Printing <!-- rq-4ea8ca35 -->
 
 - Printing follows JKQC: every printable column has its own flag —
@@ -286,10 +317,13 @@ the property set and units:
 - `FilterSpec` — the whole manipulation: `extract: Option<(Vec<String>, <!-- rq-773db11b -->
   ExtractMode)>` with `ExtractMode::{Keep, Drop}`, `renames:
   Vec<RenameSpec>` (`rqm/composition.md`), `cutoffs:
-  Vec<Cutoff>`, `uniq: Option<UniqMode>` (`rqm/uniqueness.md`), `reacted:
+  Vec<Cutoff>`, `uniq: Option<UniqMode>` (`rqm/uniqueness.md`),
+  `arbalign: Option<f64>` (`rqm/arbalign.md`), `reacted:
   Option<ReactedMode>` (`rqm/detection.md`), `sort: Option<SortKey>`,
   `reverse: bool`, `select: Option<usize>`, `glob: bool`, `shuffle: bool`,
-  `seed: u64`, `grouping: Grouping` (`Grouping::{Composition, Unit}`).
+  `seed: u64`, `grouping: Grouping` (`Grouping::{Composition, Unit}`),
+  `parallel: usize` (the run's `--parallel` worker count, read only by the
+  arbalign stage).
 - `ExtractMode` — `Keep` (`--extract`) or `Drop` (`--nextract`). <!-- rq-b0d6f2f5 -->
 - `ExtractPattern` — a parsed pattern: pairs `(count, code)` (zero allowed) <!-- rq-0186810c -->
   and a wildcard `Wildcard::{None, Any, Exactly(u32), Only(Vec<String>),
@@ -307,6 +341,9 @@ the property set and units:
 - `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the <!-- rq-8718aee5 -->
   `--unit` flag is present, `Au` (hartree) otherwise.
 - `ExtractError` — parse failure detail for usage reporting. <!-- rq-881749dc -->
+- `FilterOutcome` — the pipeline result: `records: Vec<Record>` and <!-- rq-87ba569d -->
+  `arbalign: ArbAlignReport` (`rqm/arbalign.md`), whose skipped count the
+  CLI reports on stderr.
 - `FilterError` — why a pipeline run stopped: `Extract(ExtractError)` for a <!-- rq-2c3246dc -->
   query that fails to parse (a usage error, exit 2), or
   `Rename { record: Option<String>, error: RenameError }`
@@ -323,7 +360,7 @@ the property set and units:
   — derived per the table (`rg`, `mass`, `dip` via `rqm/uniqueness.md`;
   `el`, `g`, `elcorr`, and `gcorr` through the derived-property registry on
   the run's memo, `rqm/thermo.md` and `rqm/correction.md`).
-- `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<Vec<Record>, <!-- rq-bc3e1482 -->
+- `apply_filters(records: &[Record], spec: &FilterSpec, memo: &ThermoMemo) -> Result<FilterOutcome, <!-- rq-bc3e1482 -->
   FilterError>` — the full pipeline including the ok-only pre-filter and
   grouping; never mutates the input. The renames apply to the survivors in
   command order before extraction, and a merge beyond `u32::MAX` surfaces as
@@ -332,11 +369,14 @@ the property set and units:
   thermochemistry conditions (`rqm/thermo.md`) and feeds every
   Gibbs-valued stage — the `g` cutoff, the `g` sort key, the `g`
   uniqueness metric, and `--glob` — deriving each record at most once
-  (`rqm/thermo.md` Performance). In composition grouping it parses the
-  `extract` query strings and propagates an `ExtractError` rather than
-  silently dropping records (the CLI pre-validates, so callers see `Ok`
-  except for a rename overflow); under `Unit` grouping extract compares
-  names verbatim and cannot fail to parse.
+  (`rqm/thermo.md` Performance). The stage order is fixed: the implicit
+  `el` sort is triggered by `--uniq` in keys mode, `--arbalign`, or
+  `--select`; arbalign runs after the explicit or implicit sort and after
+  `--select`, before `--glob` and `--shuffle`. In composition grouping it
+  parses the `extract` query strings and propagates an `ExtractError`
+  rather than silently dropping records (the CLI pre-validates, so callers
+  see `Ok` except for a rename overflow); under `Unit` grouping extract
+  compares names verbatim and cannot fail to parse.
 - `print_table(records: &[Record], columns: &[Column], memo: &ThermoMemo, unit: Unit, grouping: Grouping) -> String` <!-- rq-8420b870 -->
   — `grouping` is the run's grouping (`rqm/filtering.md` Grouping): the
   population columns (`rqm/population.md`) pool per composition group, or
@@ -345,21 +385,23 @@ the property set and units:
 ### Crate Layout <!-- rq-bf062c8f -->
 
 - The pipeline, extract parser, cutoffs, sort/select/shuffle, and printing
-  live in `src/filter.rs`; the library root re-exports the public types
-  and functions. `FilterSpec::renames` reuses `RenameSpec` and
+  live in `src/filter.rs`; the arbalign algorithm lives in
+  `src/arbalign.rs` (`rqm/arbalign.md`), called from the pipeline. The
+  library root re-exports the public types and functions.
+  `FilterSpec::renames` reuses `RenameSpec` and
   `rename_component` from `src/composition.rs` (`rqm/composition.md`). No
   new dependencies.
 - `tests/filter.rs` tests the pipeline as pure functions (grouping, <!-- rq-b21ce0b5 -->
   extract grammar incl. ranges/choices/wildcards, cutoff units and NaN
-  behavior, implicit sort, select, seeded shuffle determinism, table
+  behavior, implicit sort, arbalign ordering, select, seeded shuffle
+  determinism, table
   formatting); `tests/cli.rs` covers the flag surface, `--out` optionality,
   stdout printing, summary and exclusion lines, and exit codes.
 
 ## Out of Scope <!-- rq-98e65100 -->
 
-- RMSD/structure-alignment uniqueness (`--arbalign`, `--MWarbalign`): not
-  supported; the flags are unknown flags and stay usage errors
-  (`rqm/uniqueness.md`).
+- Mass-weighted ArbAlign (`--MWarbalign`) and other ArbAlign variants;
+  `--arbalign` is the only structure-alignment flag (`rqm/arbalign.md`).
 - Adaptive sampling (`-sample`), the JKQC `bonded` cutoff property,
   `-dropimg` (deleting imaginary modes from the record — `--makereal`
   and `--ignoreimag` (`rqm/thermo.md`) fold or skip imaginary frequencies
@@ -842,8 +884,20 @@ Feature: Filtering, sorting, and printing
     Then the exit code is 2
 
   @rq-3bbefb05
-  Scenario: ArbAlign flags remain unknown usage errors
-    When CJKQC is invoked with "--arbalign 0.38"
+  Scenario: --MWarbalign remains an unknown usage error
+    When CJKQC is invoked with "--MWarbalign 0.38"
     Then the exit code is 2
     And stderr is clap's unknown-flag diagnostic
+
+  @rq-e753e60e
+  Scenario: Arbalign runs after the sort and after select
+    Given a database whose energy-sorted order is A, B, C and A eliminates B
+    When CJKQC is invoked with the database, "--sort el --arbalign 0.1 --select 2 --filename" and no --out
+    Then only A is printed
+
+  @rq-6a0e38b6
+  Scenario: Arbalign counts as a manipulation
+    Given a database with one ok record
+    When CJKQC is invoked with the database and "--arbalign 0.1" and no --out and no print flag
+    Then the exit code is 2
 ```

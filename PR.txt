@@ -1,0 +1,102 @@
+# PR Review: `--arbalign` structure-alignment filtering
+
+## What this change is
+
+An in-crate port of ArbAlignCPP's `--SORT --MPA` dedup mode: mass-weighted
+principal-axis preprocessing (hand-rolled Jacobi eigensolver), 48 axis
+operations, per-element linear assignment (JV solver), Kabsch RMSD with
+determinant correction, wired into the filter pipeline at stage 9 with
+implicit `el` sort, exact-components grouping, `--parallel` inner-sweep
+threading, CLI validation, full rqm docs, 28 tests + parity corpus +
+benchmark harness.
+
+## Verification performed
+
+- Full suite passes (28 arbalign, 342 CLI, 31 filter tests), clippy clean,
+  fmt clean on changed files (remaining fmt diffs pre-exist in untouched
+  files).
+- Compared line-by-line against the actual reference source
+  (github.com/yk07212/ArbAlignCPP). The port is faithful: inertia tensor,
+  ascending-eigenvalue projection, baseline Kabsch on original order with
+  the `0.001` early exit, first-group centered pre-assignment, per-group
+  LAP, per-stage Kabsch minimum, baseline floor, U-column-2 determinant
+  flip — all match, including subtle details like re-running LAP for the
+  first group inside the group loop (src/arbalign.rs:459).
+- Re-derived the math: the Kabsch rotation is the textbook optimum (the
+  row/column convention initially looks transposed but is correct), and
+  the Rg safe-rejection bound (`|ΔRg| ≥ threshold ⇒ no elimination`) is
+  provably valid via Cauchy–Schwarz.
+- CLI smoke-tested: dedup picks the lowest-energy record, warning line,
+  exit codes, `--MWarbalign` still rejected.
+
+**It performs as intended.** Determinism (worker-count invariance,
+bit-identical prep) is sound by construction and tested.
+
+## Problems (in priority order)
+
+1. **The benchmark gate doesn't test what the requirement says.**
+   rq-975c0536 requires the comparison to measure *the sweep after
+   structures are loaded and prepared*. `arbalign_bench.py` times the
+   full ArbAlignCPP process (fork/exec + file loading + prep + sweep) but
+   times only the Rust **sweep** (`load_database`/`prepare_arbalign` sit
+   outside the loop in tests/arbalign_bench.rs:30-37). Measured: the Rust
+   sweep on the 64-structure corpus is **1.2 ms** — less than C++ process
+   startup alone. The "hard parity gate" trivially passes and cannot
+   detect an algorithmic regression. The harness also never prints or
+   compares survivor sets as the requirement demands.
+2. **The corpora are unrepresentative.** Both `corpus/` (16) and
+   `bench_corpus/` (64) are 3-atom water monomers: one meaningful element
+   group (H2), planar asymmetric tops. The LAP search — the
+   performance-critical machinery — is barely exercised; no multi-atom
+   groups, no third element, no symmetric tops. A survivor oracle on 16
+   waters is weak parity evidence. Clusters (e.g. water hexamers:
+   6 O / 12 H) would exercise it.
+3. **Spec/code mismatches in rqm/arbalign.md.**
+   (a) The spec says the first group's pre-assignment "is applied" and
+   "each *remaining* group is assigned" — but code and reference both
+   re-LAP the first group in the loop; the doc is wrong, the code is
+   right.
+   (b) Code treats non-finite coordinates as non-preparable
+   (src/arbalign.rs:81); the spec's preparability definition does not
+   mention them.
+4. **Stale doc: rqm/collection.md** still says `--parallel` governs "the
+   run's build-mode passes" only and "merge mode is sequential at any N"
+   (lines 129, 151-153). With `--arbalign`, any mode's sweep reads it.
+   ARCHITECTURE.md and filtering.md were updated; collection.md was
+   missed.
+5. **Traceability nit:** the two new filtering.md Gherkin scenarios
+   (@rq-e753e60e, @rq-6a0e38b6) have no code refs or tests. Behavior is
+   covered by the equivalent arbalign.md scenarios (@rq-df401c1b,
+   @rq-8ab03978), so it is duplicate-ID bookkeeping only.
+
+## Technical debt
+
+- **Modest, mostly intentional.** The self-contained
+  eigensolver/SVD/LAP is justified by the crate's explicit
+  no-dependency policy and is compact and deterministic. The one literal
+  violation: `jacobi_eigen` allocates a `Vec` per call
+  (src/arbalign.rs:897), invoked ~48×groups times per pair inside
+  `kabsch_rmsd` — contradicting the "no allocation per pair or per
+  operation" clause. Trivial to fix (fixed-size array for N=3) and
+  negligible in practice, but it is a stated contract.
+- `thread::scope` spawns up to N threads *per survivor sweep* —
+  thousands of spawns over a large group vs. the reference's OpenMP
+  pool. Fine at current scale; a pooled design would age better.
+- `FilterSpec.parallel` embeds a collection setting into the filter
+  pipeline (mandated by the rqm spec; slightly awkward but the
+  least-churn option). `apply_filters`' return-type change to
+  `FilterOutcome` is an internal API break; all callers were updated.
+- Inherited limitation worth a doc note someday: for symmetric tops
+  (degenerate principal moments) the principal frame is arbitrary within
+  the degenerate subspace, so exact-zero RMSD can be missed — identical
+  to the reference's behavior, so parity holds.
+
+## Better way?
+
+Not structurally. Hand-rolling is the right call given the project's
+constraints, and it is unusually well-executed (verified against
+upstream, mathematically sound shortcuts, robustness *beyond* the
+reference: incomparable pairs skip gracefully where C++ aborts). The
+real improvement is **evidence, not code**: fix the harness to time
+comparable work, and make the corpora big/complex enough that the
+parity oracle and the perf gate can actually fail.
