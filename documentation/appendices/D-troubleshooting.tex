@@ -108,8 +108,24 @@ ordinary correction; a run cannot use both.
 
 An output file already exists and standard input is not a terminal, so
 \CJKQC{} will not ask. Either run interactively and answer \texttt{y}, or add
-\flg{--fout}. The same rule applies to \texttt{movie.xyz}. A refusal at
-\flg{--out} ends the run before \texttt{movie.xyz} is considered.
+\flg{--fout}. The same rule applies to \texttt{movie.xyz} and to the separate
+files written by \flg{--write-xyz}; for \flg{--write-xyz}, one answer covers
+the whole set of files. A refusal at \flg{--out} ends the run before the xyz
+exports are considered.
+
+\subsection{\texttt{duplicate xyz file name} or \texttt{collides with}}
+
+\flg{--write-xyz} names each file after the record's \fld{filename}. Two
+records that would produce the same file name stop the run before anything
+is written, including the \flg{--out} database. Names that differ only by
+upper and lower case count as the same file name, because common
+case-insensitive filesystems cannot keep both.
+
+A record's file must also not replace another output of the same run. A
+record named \texttt{movie} cannot be exported together with \flg{--movie},
+and a record named \texttt{kept} cannot be exported with
+\flg{--out kept.xyz}. Rename the record in the database or choose a
+different \flg{--out} path.
 
 \subsection{A formation block or solvation block is missing}
 

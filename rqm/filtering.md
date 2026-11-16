@@ -364,8 +364,8 @@ the property set and units:
   `-dropimg` (deleting imaginary modes from the record — `--makereal`
   and `--ignoreimag` (`rqm/thermo.md`) fold or skip imaginary frequencies
   inside a derivation and never edit a record).
-- `-xyz` and spreadsheet output: milestone 7 (`--movie` is specified in
-  `rqm/movie.md`).
+- Spreadsheet output: milestone 7 (`--movie` and `--write-xyz` are
+  specified in `rqm/movie.md`).
 - stdin input (`rqm/collection.md`).
 
 ## Gherkin Scenarios <!-- rq-ad88b915 -->

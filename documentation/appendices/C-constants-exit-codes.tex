@@ -63,6 +63,8 @@ corrections completed. \\
 \texttt{filtered <n> records into <out> (<k> corrected)} & A manipulation run
 with corrections wrote records. \\
 \texttt{wrote <n> frames into movie.xyz} & \flg{--movie} wrote a file. \\
+\texttt{wrote <n> xyz files into the current directory} & \flg{--write-xyz}
+wrote separate xyz files. \\
 \bottomrule
 \end{longtable}
 
@@ -90,6 +92,14 @@ yes. \\
 the run is not interactive (input is not a terminal). \\
 \texttt{excluded <n> records from movie.xyz (no geometry or not ok)} & Some
 records could not become frames. \\
+\texttt{excluded <n> records from -{}-write-xyz (no name, no geometry, or
+not ok)} & Some records could not become separate xyz files. \\
+\texttt{error: duplicate xyz file name <name>.xyz; nothing written} & Two
+\flg{--write-xyz} records would use the same file name. \\
+\texttt{error: xyz file name <name>.xyz collides with movie.xyz; nothing
+written} & A record's xyz file would replace the \flg{--movie} output. \\
+\texttt{error: xyz file name <name>.xyz collides with -{}-out <path>; nothing
+written} & A record's xyz file would replace the \flg{--out} database. \\
 \bottomrule
 \end{longtable}
 

@@ -35,7 +35,7 @@ use compiled_jkqc::hydration::{
     HydrationGroup, SolventConditions,
 };
 use compiled_jkqc::metrics::parse_uniq_mode;
-use compiled_jkqc::movie::{movie_frames, write_movie_xyz};
+use compiled_jkqc::movie::{movie_frames, select_xyz_records, write_movie_xyz, write_xyz_files};
 use compiled_jkqc::overwrite::{confirm_overwrite, overwrite_error};
 use compiled_jkqc::parser::WindowBudget;
 use compiled_jkqc::population::{parse_pop_level, PopLevel};
@@ -72,8 +72,9 @@ struct Cli {
     #[arg(short = 'o', long = "out")]
     out: Option<PathBuf>,
 
-    /// Force the replacement of an existing --out (or movie.xyz) without
-    /// the confirmation question (rqm/collection.md).
+    /// Force the replacement of an existing --out (or movie.xyz /
+    /// --write-xyz files) without the confirmation question
+    /// (rqm/collection.md).
     #[arg(long = "fout")]
     fout: bool,
 
@@ -419,6 +420,14 @@ struct Cli {
     /// nothing.
     #[arg(long = "movie")]
     movie: bool,
+
+    /// Write one xyz file per final-record-set record into the current
+    /// directory, named <name>.xyz (rqm/movie.md). Records that are not
+    /// ok, lack a geometry, or lack a usable name are skipped and
+    /// counted. A print flag like --movie: it is a visible outcome on
+    /// its own and manipulates nothing.
+    #[arg(long = "write-xyz")]
+    write_xyz: bool,
 
     /// Input files: QC program outputs (build) or record databases (merge).
     #[arg(required = true)]
@@ -880,16 +889,17 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             None => set_print(*column),
         })
         .collect();
-    // `--formation`, `--formation-corr`, `--movie`, and the hydration
-    // flags print sections or write files instead of columns but still
-    // count as print flags for the visible-outcome rule
-    // (`rqm/formation.md`, `rqm/hydration.md`, `rqm/movie.md`).
-    // rq-2dbfbb9a
+    // `--formation`, `--formation-corr`, `--movie`, `--write-xyz`, and
+    // the hydration flags print sections or write files instead of
+    // columns but still count as print flags for the visible-outcome
+    // rule (`rqm/formation.md`, `rqm/hydration.md`, `rqm/movie.md`).
+    // rq-2dbfbb9a rq-570d2b80
     let has_print = !columns.is_empty()
         || cli.formation
         || cli.formation_corr
         || hydration_requested
-        || cli.movie;
+        || cli.movie
+        || cli.write_xyz;
 
     // A run must have a visible outcome (`rqm/filtering.md`); `has_manipulation`
     // and `has_print` are the single source of truth for the rule.
@@ -909,6 +919,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     // write verbatim — until milestone 7 unifies the plumbing.)
     if !has_manipulation {
         let mut gathered_records: Option<Vec<Record>> = None;
+        let mut prepared_xyz: Option<(Vec<(&Record, String)>, usize)> = None;
         if has_print {
             let gathered = match gather_inputs_with(&inputs, &budget, workers) {
                 Ok(gathered) => gathered,
@@ -917,10 +928,25 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                     return collect_exit_code(&error);
                 }
             };
-            let records = match gathered {
+            gathered_records = Some(match gathered {
                 Gathered::Build { records } => records,
                 Gathered::Merge { records, .. } => records,
-            };
+            });
+            let records = gathered_records
+                .as_deref()
+                .expect("the gathered records were just stored");
+            // The export's duplicate and collision checks run before any
+            // write of the run, including --out (`rqm/movie.md`).
+            // rq-5b65c269 rq-26470d18 rq-7bdc15be rq-5040a356
+            if cli.write_xyz {
+                match prepare_xyz_export(records, cli.out.as_deref(), cli.movie) {
+                    Ok(selection) => prepared_xyz = Some(selection),
+                    Err(error) => {
+                        eprintln!("error: {error}");
+                        return ExitCode::from(2);
+                    }
+                }
+            }
             // The hydration section's solvent code must appear in the
             // record set (`rqm/hydration.md` Flag Surface), validated
             // first so a combined `--formation --hydration` run names
@@ -930,17 +956,17 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             // sections evaluate (`rqm/formation.md`).
             // rq-10341821 rq-bcb7acc5
             if let Some(solvent) = &solvent {
-                if let Err(error) = validate_solvent_code(solvent, &records) {
+                if let Err(error) = validate_solvent_code(solvent, records) {
                     return usage(&error);
                 }
             }
             if cli.formation || cli.formation_corr {
-                if let Err(error) = validate_conc_codes(&concs, &records) {
+                if let Err(error) = validate_conc_codes(&concs, records) {
                     return usage(&error);
                 }
             }
             if !columns.is_empty() {
-                println!("{}", print_table(&records, &columns, &memo, unit, grouping));
+                println!("{}", print_table(records, &columns, &memo, unit, grouping));
             }
             // A print-only run has no --sort (that would be a
             // manipulation), so the references use the el ordering
@@ -949,7 +975,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             // (rqm/formation.md Boltzmann-Averaged Sections).
             // rq-dd65e289
             print_formation_sections(
-                &records,
+                records,
                 &memo,
                 &concs,
                 unit,
@@ -966,7 +992,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             // rq-5e154b92
             if let Some(solvent) = &solvent {
                 print_hydration_sections(
-                    &records,
+                    records,
                     &memo,
                     &concs,
                     &solvent.code,
@@ -976,14 +1002,22 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                     SortKey::El,
                 );
             }
-            gathered_records = Some(records);
         }
-        // The --out write precedes the movie write (`rqm/movie.md`); a
-        // failed --out write ends the run before the movie is written.
+        // The --out write precedes both xyz exports (`rqm/movie.md`); a
+        // failed --out write ends the run before either is written.
         let (mut code, out_written) = match &cli.out {
             Some(out) => run_collection(&inputs, out, cli.fout, &budget, workers),
             None => (ExitCode::SUCCESS, false),
         };
+        if cli.write_xyz && (cli.out.is_none() || out_written) {
+            let (files, skipped) = prepared_xyz
+                .as_ref()
+                .expect("--write-xyz is a print flag, so the export was prepared");
+            let xyz_code = write_xyz_block(files, *skipped, cli.fout);
+            if xyz_code != ExitCode::SUCCESS {
+                return xyz_code;
+            }
+        }
         if cli.movie && (cli.out.is_none() || out_written) {
             let records = gathered_records
                 .as_deref()
@@ -1119,6 +1153,21 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         }
     };
 
+    // The export's duplicate and collision checks run before any write of
+    // the run, including --out (`rqm/movie.md`).
+    // rq-5b65c269 rq-26470d18 rq-7bdc15be rq-5040a356
+    let prepared_xyz = if cli.write_xyz {
+        match prepare_xyz_export(&records, cli.out.as_deref(), cli.movie) {
+            Ok(selection) => Some(selection),
+            Err(error) => {
+                eprintln!("error: {error}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        None
+    };
+
     // The hydration section's solvent code must appear in the record
     // set (`rqm/hydration.md` Flag Surface), validated first so a
     // combined `--formation --hydration` run names the solvent, not
@@ -1207,8 +1256,22 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         );
     }
 
-    // The movie writes after the --out write (`rqm/movie.md`), always the
-    // run's last stdout line; its failure fails the run.
+    // The per-structure export writes after --out and before the movie
+    // (`rqm/movie.md`); its failure or refusal ends the run before the
+    // movie is attempted, while a successful export leaves the movie to
+    // follow.
+    // rq-570d2b80
+    if cli.write_xyz {
+        let (files, skipped) = prepared_xyz
+            .as_ref()
+            .expect("--write-xyz prepared the export after filtering");
+        let xyz_code = write_xyz_block(files, *skipped, cli.fout);
+        if xyz_code != ExitCode::SUCCESS {
+            return xyz_code;
+        }
+    }
+    // The movie writes after both other writes (`rqm/movie.md`), always
+    // the run's last stdout line; its failure fails the run.
     // rq-6fb174a0
     let mut code =
         if problems.is_empty() && correction_problems.is_empty() && !extrapolation_problems {
@@ -1670,6 +1733,111 @@ fn confirm_target(path: &Path, forced: bool) -> bool {
     }
 }
 
+/// The per-structure export's prepared target set: the eligible records
+/// paired with their target file names, plus the count of skipped records.
+type XyzSelection<'a> = (Vec<(&'a Record, String)>, usize);
+
+/// Selects the per-structure export and validates its target names before
+/// any write of the run. Duplicate names and collisions with `movie.xyz`
+/// (on a `--movie` run) or the `--out` database are usage errors.
+// rq-5b65c269 rq-26470d18 rq-7bdc15be rq-5040a356
+fn prepare_xyz_export<'a>(
+    records: &'a [Record],
+    out: Option<&Path>,
+    movie: bool,
+) -> Result<XyzSelection<'a>, String> {
+    let (files, skipped) = select_xyz_records(records).map_err(|error| error.to_string())?;
+    for (_, target) in &files {
+        if movie && same_output_path(target, Path::new("movie.xyz")) {
+            return Err(format!(
+                "xyz file name {target} collides with movie.xyz; nothing written"
+            ));
+        }
+        if let Some(out) = out {
+            if same_output_path(target, out) {
+                return Err(format!(
+                    "xyz file name {target} collides with --out {}; nothing written",
+                    out.display()
+                ));
+            }
+        }
+    }
+    Ok((files, skipped))
+}
+
+/// Whether a per-structure export target in the current directory and
+/// another run output refer to the same file. Parents are resolved so
+/// `--out kept.xyz`, `--out ./kept.xyz`, and an absolute path all match;
+/// file names compare without regard to letter case so a case-insensitive
+/// filesystem cannot hide a collision.
+// rq-7bdc15be rq-5040a356
+fn same_output_path(target: &str, other: &Path) -> bool {
+    let target_name = Path::new(target)
+        .file_name()
+        .map(|name| name.to_string_lossy().to_lowercase());
+    let other_name = other
+        .file_name()
+        .map(|name| name.to_string_lossy().to_lowercase());
+    if target_name.is_none() || target_name != other_name {
+        return false;
+    }
+    let target_parent = resolved_directory(Path::new("."));
+    let other_parent = other
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    target_parent == resolved_directory(other_parent)
+}
+
+/// The resolved directory of `path`, falling back to a lexical
+/// absolute path when the filesystem cannot resolve it.
+fn resolved_directory(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| {
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            std::env::current_dir()
+                .map(|current| current.join(path))
+                .unwrap_or_else(|_| path.to_path_buf())
+        }
+    })
+}
+
+/// The per-structure export of an already validated target set
+/// (`rqm/movie.md`): report skipped records, confirm the whole set once
+/// when any file exists, write the files in order, and print the summary
+/// line.
+// rq-570d2b80
+fn write_xyz_block(files: &[(&Record, String)], skipped: usize, fout: bool) -> ExitCode {
+    // rq-a0dfabb1
+    if skipped > 0 {
+        eprintln!("excluded {skipped} records from --write-xyz (no name, no geometry, or not ok)");
+    }
+    // One confirmation covers the whole export, naming the first existing
+    // target in run order (`rqm/collection.md`).
+    // rq-92d9ed7f
+    let first_existing = files.iter().find_map(|(_, target)| {
+        let path = PathBuf::from(target);
+        path.exists().then_some(path)
+    });
+    if let Some(path) = first_existing {
+        if !confirm_target(&path, fout) {
+            return ExitCode::FAILURE;
+        }
+    }
+    match write_xyz_files(Path::new("."), files) {
+        Ok(()) => {
+            // rq-cde11874
+            println!("wrote {} xyz files into the current directory", files.len());
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
 /// The movie export of the run's final record set (`rqm/movie.md`): the
 /// frame-eligible subset in run order, the skip note, the overwrite
 /// confirmation (`rqm/collection.md`), the atomic write, and the summary
@@ -1947,6 +2115,7 @@ mod tests {
         "cnt",
         "bavg",
         "movie",
+        "write_xyz",
     ];
 
     /// Every flag on `Cli` must be wired into `run`: a cutoff flag, a print

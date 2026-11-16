@@ -16,8 +16,8 @@ mark optional values.
 record databases (merge mode). \\
 \flg{-o}, \flg{--out <PATH>} & Database to write. Required unless a
 manipulation or print flag makes it optional. \\
-\flg{--fout} & Force replacement of an existing \flg{--out} or
-\texttt{movie.xyz} without asking. \\
+\flg{--fout} & Force replacement of an existing \flg{--out},
+\texttt{movie.xyz}, or \flg{--write-xyz} file without asking. \\
 \flg{--head-bytes <N>} & How much of the start of each program output is read,
 in bytes (default 262144, about 256 kilobytes). \\
 \flg{--tail-bytes <N>} & How much of the end of each program output is read,
@@ -26,6 +26,9 @@ in bytes (default 4194304, about 4 megabytes). \\
 mode ignores it. \\
 \flg{--movie} & Write final structures to \texttt{movie.xyz}, one frame per
 \fld{ok} record with a geometry. \\
+\flg{--write-xyz} & Write one xyz file per \fld{ok} record with a geometry and
+a usable name, in the current directory. The file name is the record's
+\fld{filename} with \texttt{.xyz} added. \\
 \bottomrule
 \end{longtable}
 

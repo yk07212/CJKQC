@@ -5,7 +5,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use compiled_jkqc::movie::{frame_text, movie_frames, write_movie_xyz};
+use compiled_jkqc::movie::{
+    frame_text, movie_frames, select_xyz_records, write_movie_xyz, write_xyz_files, xyz_file_name,
+};
 use compiled_jkqc::{Geometry, Record, RecordStatus};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -179,4 +181,139 @@ fn a_names_line_breaks_do_not_split_the_comment_line() {
     let text = frame_text(&crlf);
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines, ["1", "a  b", "O 0.000000 0.000000 0.000000"]);
+}
+
+#[test] // rq-7dda644d
+fn xyz_file_name_uses_the_record_name_and_rejects_unsafe_names() {
+    let safe = geometry_record(Some("1sa-3xstr"), None, &[("N", 0.0, 0.0, 0.0)]);
+    assert_eq!(xyz_file_name(&safe).as_deref(), Some("1sa-3xstr.xyz"));
+
+    let nameless = geometry_record(None, None, &[("N", 0.0, 0.0, 0.0)]);
+    assert_eq!(xyz_file_name(&nameless), None);
+
+    for name in [
+        "",
+        ".",
+        "..",
+        "../escape",
+        "a/b",
+        "a\\b",
+        "a\0b",
+        "bad\nname",
+        "bad\tname",
+        "bad\u{7f}name",
+    ] {
+        let unsafe_name = geometry_record(Some(name), None, &[("N", 0.0, 0.0, 0.0)]);
+        assert_eq!(xyz_file_name(&unsafe_name), None, "name {name:?}");
+    }
+
+    let failed = Record {
+        status: RecordStatus::Failed,
+        name: Some("failed".to_string()),
+        error: Some("boom".to_string()),
+        geometry: Some(Geometry {
+            symbols: vec!["N".to_string()],
+            coordinates: vec![0.0, 0.0, 0.0],
+        }),
+        ..Record::default()
+    };
+    assert_eq!(xyz_file_name(&failed), None);
+
+    let no_geometry = Record {
+        name: Some("no-geometry".to_string()),
+        ..Record::default()
+    };
+    assert_eq!(xyz_file_name(&no_geometry), None);
+}
+
+#[test] // rq-f48c7dd8
+fn select_xyz_records_keeps_the_eligible_subset_in_order_and_counts_skips() {
+    let first = geometry_record(Some("a"), Some(-1.0), &[("N", 0.0, 0.0, 0.0)]);
+    let nameless = geometry_record(None, Some(-2.0), &[("N", 0.0, 0.0, 0.0)]);
+    let no_geometry = Record {
+        name: Some("b".to_string()),
+        ..Record::default()
+    };
+    let failed = Record {
+        status: RecordStatus::Failed,
+        name: Some("c".to_string()),
+        error: Some("boom".to_string()),
+        geometry: Some(Geometry {
+            symbols: vec!["N".to_string()],
+            coordinates: vec![0.0, 0.0, 0.0],
+        }),
+        ..Record::default()
+    };
+    let second = geometry_record(Some("d"), Some(-3.0), &[("N", 0.0, 0.0, 0.0)]);
+    let records = vec![first, nameless, no_geometry, failed, second];
+    let (selected, skipped) = select_xyz_records(&records).expect("unique names");
+    let names: Vec<(&str, &str)> = selected
+        .iter()
+        .map(|(record, target)| (record.name.as_deref().unwrap_or_default(), target.as_str()))
+        .collect();
+    assert_eq!(names, [("a", "a.xyz"), ("d", "d.xyz")]);
+    assert_eq!(skipped, 3);
+}
+
+#[test] // rq-4a8815f8
+fn select_xyz_records_rejects_equal_names_before_writing() {
+    let first = geometry_record(Some("1dma"), Some(-1.0), &[("N", 0.0, 0.0, 0.0)]);
+    let second = geometry_record(Some("1dma"), Some(-2.0), &[("N", 0.0, 0.0, 0.0)]);
+    let error = select_xyz_records(&[first, second]).expect_err("duplicate target");
+    assert_eq!(
+        error,
+        compiled_jkqc::XyzError::DuplicateName("1dma.xyz".to_string())
+    );
+    assert_eq!(
+        error.to_string(),
+        "duplicate xyz file name 1dma.xyz; nothing written"
+    );
+}
+
+#[test] // rq-26470d18
+fn select_xyz_records_rejects_names_differing_only_by_case() {
+    let first = geometry_record(Some("Water"), Some(-1.0), &[("O", 0.0, 0.0, 0.0)]);
+    let second = geometry_record(Some("water"), Some(-2.0), &[("O", 0.0, 0.0, 0.0)]);
+    let error = select_xyz_records(&[first, second]).expect_err("case duplicate target");
+    assert_eq!(
+        error,
+        compiled_jkqc::XyzError::DuplicateName("water.xyz".to_string())
+    );
+}
+
+#[test] // rq-42664cae
+fn write_xyz_files_writes_each_record_and_an_empty_slice_writes_nothing() {
+    let dir = temp_dir();
+    let first = geometry_record(Some("a"), Some(-1.0), &[("N", 0.0, 0.0, 0.0)]);
+    let second = geometry_record(
+        Some("1sa-3xstr"),
+        Some(-2.0),
+        &[("O", 0.1, 0.2, 0.3), ("H", 0.4, 0.5, 0.6)],
+    );
+    let files = [
+        (&first, xyz_file_name(&first).expect("a is eligible")),
+        (
+            &second,
+            xyz_file_name(&second).expect("1sa-3xstr is eligible"),
+        ),
+    ];
+    write_xyz_files(&dir, &files).expect("write files");
+    assert_eq!(
+        fs::read_to_string(dir.join("a.xyz")).expect("read a.xyz"),
+        frame_text(&first)
+    );
+    assert_eq!(
+        fs::read_to_string(dir.join("1sa-3xstr.xyz")).expect("read 1sa-3xstr.xyz"),
+        frame_text(&second)
+    );
+
+    let empty = temp_dir();
+    write_xyz_files(&empty, &[]).expect("empty export");
+    assert_eq!(fs::read_dir(&empty).expect("read dir").count(), 0);
+
+    let record = geometry_record(Some("a"), None, &[("N", 0.0, 0.0, 0.0)]);
+    let files = [(&record, xyz_file_name(&record).expect("a is eligible"))];
+    let error =
+        write_xyz_files(&dir.join("no-such-dir"), &files).expect_err("missing parent directory");
+    assert!(matches!(error, compiled_jkqc::XyzError::Io(_)), "{error:?}");
 }

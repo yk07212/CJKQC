@@ -223,6 +223,27 @@ standard-error note. The file is always named \texttt{movie.xyz} in the
 current working directory and is subject to the same overwrite confirmation
 as \flg{--out}.
 
+\flg{--write-xyz} writes one separate xyz file for each \fld{ok} record that
+has a geometry and a usable \fld{filename}. The file is named after the
+record: a record whose \fld{filename} is \texttt{1sa-3xstr} becomes
+\texttt{1sa-3xstr.xyz} in the current working directory. Each file has the
+same one-structure content as the corresponding \flg{--movie} frame. It is a
+print flag and a visible outcome on its own, and it can be combined with
+\flg{--out} and \flg{--movie}.
+
+Records that are not \fld{ok}, have no geometry, have no name, or have a name
+that cannot be used as a file name are skipped and counted in a
+standard-error note. Names that would produce the same file, including names
+that differ only by upper and lower case, stop the run as a usage error
+before anything is written. A record's file also must not have the same name
+as \texttt{movie.xyz} in a \flg{--movie} run, or as the \flg{--out} database
+in a run that writes one. The existing files are covered by one overwrite
+confirmation, and \flg{--fout} forces their replacement.
+
+When \flg{--out} is also used, the database is written first, then the
+separate xyz files, then \texttt{movie.xyz}. The completion line is
+\texttt{wrote <n> xyz files into the current directory}.
+
 \subsection{A complete example}\label{sec:printing-example}
 
 \begin{verbatim}

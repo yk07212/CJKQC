@@ -106,7 +106,8 @@ reported problem while the valid records load; only filesystem-level failures
 - The database operations live in `src/db.rs` and operate on the record
   types from `src/record.rs`. The shared atomic replacement write —
   temporary file, sync, rename — lives in `src/atomic.rs` and is used by
-  both `src/db.rs` and the movie export (`src/movie.rs`). No dependency
+  both `src/db.rs` and the movie and per-structure xyz exports
+  (`src/movie.rs`). No dependency
   beyond `serde`/`serde_json`.
 
 ## Database File Rules <!-- rq-1d1a1d61 -->

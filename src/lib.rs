@@ -98,6 +98,9 @@ pub use overwrite::{
 // rq-6fb174a0 movie export surface (rqm/movie.md)
 pub use movie::{frame_text, movie_frames, write_movie_xyz, MovieError};
 
+// rq-570d2b80 per-structure xyz export surface (rqm/movie.md)
+pub use movie::{select_xyz_records, write_xyz_files, xyz_file_name, XyzError};
+
 // rq-15f15563
 pub use parser::{
     first_line_offset, FileWindows, GaussianParser, LineMatches, LinePattern, MrccParser,

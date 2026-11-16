@@ -1808,6 +1808,18 @@
     "title": "A signature beyond the head window is not detected",
     "type": "scenario"
   },
+  "rq-20104820": {
+    "decl": "Scenario: A name with a control character is skipped and counted",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A name with a control character is skipped and counted",
+    "type": "scenario"
+  },
   "rq-20204b94": {
     "decl": "Scenario: The last TOTAL ENERGY line wins",
     "file": "parsers/xtb",
@@ -2183,6 +2195,18 @@
     "title": "The build produces the exact executable name",
     "type": "scenario"
   },
+  "rq-24ffa417": {
+    "decl": "Scenario: --write-xyz combines with --out and --movie",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--write-xyz combines with --out and --movie",
+    "type": "scenario"
+  },
   "rq-2550fa8c": {
     "decl": "Scenario: The rots column is undefined for a monatomic record",
     "file": "filtering",
@@ -2193,6 +2217,26 @@
       }
     ],
     "title": "The rots column is undefined for a monatomic record",
+    "type": "scenario"
+  },
+  "rq-26470d18": {
+    "decl": "Scenario: Names differing only by case are duplicates",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Names differing only by case are duplicates",
     "type": "scenario"
   },
   "rq-26ba140d": {
@@ -3830,6 +3874,22 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-42664cae": {
+    "decl": "- `write_xyz_files(dir: &Path, files: &[(&Record, String)]) -> Result<(), XyzError>`",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "write_xyz_files",
+    "type": "api-item"
+  },
   "rq-4293ca31": {
     "decl": "- `CollectionMode` — `Build` or `Merge`, the classification verdict.",
     "file": "collection",
@@ -4237,6 +4297,22 @@
     "title": "A label comment in a pattern is ignored",
     "type": "scenario"
   },
+  "rq-4a8815f8": {
+    "decl": "Scenario: Equal names among survivors are a usage error",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Equal names among survivors are a usage error",
+    "type": "scenario"
+  },
   "rq-4a909f01": {
     "decl": "## Metric Definitions",
     "file": "uniqueness",
@@ -4554,6 +4630,22 @@
     "title": "--fout forces the replacement without asking",
     "type": "scenario"
   },
+  "rq-5040a356": {
+    "decl": "Scenario: A record cannot collide with the --out path",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record cannot collide with the --out path",
+    "type": "scenario"
+  },
   "rq-509b31ed": {
     "decl": "Scenario: An unreadable first frame fails",
     "file": "parsers/xyz",
@@ -4845,6 +4937,23 @@
     ],
     "title": "--rh scales the saturation vapor pressure",
     "type": "scenario"
+  },
+  "rq-570d2b80": {
+    "decl": "## Per-Structure Export (`--write-xyz`)",
+    "file": "movie",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Per-Structure Export (`--write-xyz`)",
+    "type": "section"
   },
   "rq-57329ad4": {
     "decl": "Scenario: Detection ignores name and extension",
@@ -5167,6 +5276,22 @@
     ],
     "title": "Terms",
     "type": "section"
+  },
+  "rq-5b65c269": {
+    "decl": "Scenario: Duplicate names abort before the --out database is written",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Duplicate names abort before the --out database is written",
+    "type": "scenario"
   },
   "rq-5b9c015a": {
     "decl": "Scenario: The ASCII-art banner is detected",
@@ -5871,6 +5996,18 @@
     "title": "command",
     "type": "api-item"
   },
+  "rq-6b0a7ad4": {
+    "decl": "Scenario: Files are the pipeline survivors in run order",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Files are the pipeline survivors in run order",
+    "type": "scenario"
+  },
   "rq-6b872f89": {
     "decl": "Scenario: No arguments is a usage error",
     "file": "scaffolding",
@@ -6143,7 +6280,7 @@
     "type": "scenario"
   },
   "rq-6fb174a0": {
-    "decl": "# Feature: Movie Export (`--movie`)",
+    "decl": "# Feature: XYZ Export (`--movie` and `--write-xyz`)",
     "file": "movie",
     "refs": [
       {
@@ -6159,7 +6296,7 @@
         "kind": "code"
       }
     ],
-    "title": "Feature: Movie Export (`--movie`)",
+    "title": "Feature: XYZ Export (`--movie` and `--write-xyz`)",
     "type": "file"
   },
   "rq-6ffbf9aa": {
@@ -6754,6 +6891,22 @@
     "title": "scf_energy is the SCF total, distinct from the final single point energy",
     "type": "scenario"
   },
+  "rq-7bdc15be": {
+    "decl": "Scenario: A record named movie cannot collide with movie.xyz",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A record named movie cannot collide with movie.xyz",
+    "type": "scenario"
+  },
   "rq-7be2650a": {
     "decl": "Scenario: A non-monatomic record without frequencies is undefined",
     "file": "thermo",
@@ -6862,6 +7015,22 @@
     "refs": [],
     "title": "Numerics",
     "type": "section"
+  },
+  "rq-7dda644d": {
+    "decl": "- `xyz_file_name(record: &Record) -> Option<String>` — the target file name",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "xyz_file_name",
+    "type": "api-item"
   },
   "rq-7de7b92a": {
     "decl": "Scenario: Absent commands are omitted",
@@ -8039,6 +8208,22 @@
     "title": "Atom lines carry the stored geometry",
     "type": "scenario"
   },
+  "rq-92d9ed7f": {
+    "decl": "Scenario: Replacing existing files follows the --out confirmation",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Replacing existing files follows the --out confirmation",
+    "type": "scenario"
+  },
   "rq-92e3f3e9": {
     "decl": "## Out of Scope",
     "file": "collection",
@@ -8077,6 +8262,18 @@
       }
     ],
     "title": "The dips column is undefined without a dipole moment",
+    "type": "scenario"
+  },
+  "rq-94142c9a": {
+    "decl": "Scenario: An unsafe record name is skipped and counted",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An unsafe record name is skipped and counted",
     "type": "scenario"
   },
   "rq-9423306b": {
@@ -8937,6 +9134,22 @@
     ],
     "title": "ConcConditions",
     "type": "api-item"
+  },
+  "rq-a0dfabb1": {
+    "decl": "Scenario: A nameless record is skipped and counted",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A nameless record is skipped and counted",
+    "type": "scenario"
   },
   "rq-a0dfc43a": {
     "decl": "## Out of Scope",
@@ -9956,6 +10169,18 @@
     "refs": [],
     "title": "derived_value",
     "type": "api-item"
+  },
+  "rq-b56902e0": {
+    "decl": "Scenario: No skip note when every record becomes a file",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "No skip note when every record becomes a file",
+    "type": "scenario"
   },
   "rq-b5b01447": {
     "decl": "- `multiplicity` — `Multiplicity           Mult            .... <n>` value",
@@ -11230,6 +11455,18 @@
     "title": "Undefined metrics are mutually equal",
     "type": "scenario"
   },
+  "rq-ca43482f": {
+    "decl": "Scenario: A print-only run exports every loaded ok named record",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A print-only run exports every loaded ok named record",
+    "type": "scenario"
+  },
   "rq-caa759ba": {
     "decl": "Scenario: A magnitude at or below the cutoff never survives",
     "file": "parser-framework",
@@ -11408,6 +11645,22 @@
       }
     ],
     "title": "The corrected formation enthalpy subtracts the corrected monomer enthalpies",
+    "type": "scenario"
+  },
+  "rq-cde11874": {
+    "decl": "Scenario: --write-xyz alone is a visible outcome",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--write-xyz alone is a visible outcome",
     "type": "scenario"
   },
   "rq-cdf88b68": {
@@ -12090,6 +12343,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-dc092b01": {
+    "decl": "Scenario: A print-only run skips a failed record with a geometry",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A print-only run skips a failed record with a geometry",
+    "type": "scenario"
+  },
   "rq-dce37e6e": {
     "decl": "Scenario: A parser record that fails validation is replaced",
     "file": "parser-framework",
@@ -12134,6 +12399,18 @@
     ],
     "title": "Boltzmann-Averaged Sections",
     "type": "section"
+  },
+  "rq-dd71a15a": {
+    "decl": "Scenario: The exported file carries the movie frame text",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The exported file carries the movie frame text",
+    "type": "scenario"
   },
   "rq-de12aef8": {
     "decl": "Scenario: A normally terminated run yields the observable set",
@@ -13293,6 +13570,18 @@
     "title": "An empty database loads as zero records",
     "type": "scenario"
   },
+  "rq-f10e3fb2": {
+    "decl": "- `XyzError` — the per-structure export failure:",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "XyzError",
+    "type": "api-item"
+  },
   "rq-f11e09b1": {
     "decl": "Scenario: Trivial modes are dropped and a genuine imaginary mode is kept",
     "file": "parsers/orca",
@@ -13327,6 +13616,18 @@
       }
     ],
     "title": "Failed and truncated fixtures yield status records",
+    "type": "scenario"
+  },
+  "rq-f1a120cc": {
+    "decl": "Scenario: An ok record without a geometry is skipped and counted",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An ok record without a geometry is skipped and counted",
     "type": "scenario"
   },
   "rq-f2821d27": {
@@ -13400,6 +13701,22 @@
     ],
     "title": "An unparsable query is a usage error",
     "type": "scenario"
+  },
+  "rq-f48c7dd8": {
+    "decl": "- `select_xyz_records(records: &[Record]) -> Result<(Vec<(&Record, String)>, usize), XyzError>`",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "src/movie.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/movie.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "select_xyz_records",
+    "type": "api-item"
   },
   "rq-f4a74fc9": {
     "decl": "Scenario: last_line_where prefers the match in the tail",
@@ -13762,6 +14079,18 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-faaf6c4c": {
+    "decl": "Scenario: Zero survivors write no files",
+    "file": "movie",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Zero survivors write no files",
+    "type": "scenario"
   },
   "rq-fb368603": {
     "decl": "Scenario: first_line_where falls back to the tail",

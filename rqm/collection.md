@@ -28,8 +28,9 @@ overwritten; `--fout` forces the replacement without asking
 
 ## Overwrite Confirmation <!-- rq-eff8dce8 -->
 
-- A target that already exists — the `--out` database in either mode, or
-  `movie.xyz` (`rqm/movie.md`) — is never replaced silently. Immediately
+- A target that already exists — the `--out` database in either mode, the
+  per-structure xyz files of `--write-xyz`, or `movie.xyz`
+  (`rqm/movie.md`) — is never replaced silently. Immediately
   before its atomic write the run prints the question
   `<path> already exists; overwrite? [y/N]` to stderr and reads one answer
   line from stdin. The line is trimmed; `y` and `yes` in any casing mean
@@ -47,9 +48,16 @@ overwritten; `--fout` forces the replacement without asking
   else — a target that does not exist is written the same way with or
   without it.
 - Each target is confirmed at its own write, in write order: the `--out`
-  database before `movie.xyz` (`rqm/movie.md`), so a no or a refusal at
-  `--out` ends the run before `movie.xyz` is considered, while a confirmed
-  and written `--out` stays written when `movie.xyz` is then declined.
+  database before the per-structure xyz files of `--write-xyz`, and those
+  before `movie.xyz` (`rqm/movie.md`), so a no or a refusal at `--out` ends
+  the run before the xyz exports are considered, while a confirmed and
+  written `--out` stays written when a later export is declined. The
+  `--write-xyz` export confirms the whole file set once, naming the first
+  existing target in run order; a yes replaces every existing target, and a
+  no or refusal aborts before any of its files is written. The export's
+  duplicate-name and output-collision checks (`rqm/movie.md`) run before the
+  `--out` write, so a duplicate or colliding target aborts the run before
+  the database is replaced.
 - The question and the answer are CLI logic (`src/overwrite.rs`): the
   collection pipeline invokes a caller-supplied hook immediately before
   replacing an existing output, and every other write site asks directly.
@@ -167,8 +175,8 @@ CJKQC <inputs>… -o <path> [--fout]
 - `<inputs>…` — one or more input files (positional, required).
 - `--out` / `-o` — the database to write (required). Both modes replace it;
   its parent directory must already exist.
-- `--fout` — force the replacement of an existing `--out` (or
-  `movie.xyz`, `rqm/movie.md`) without the confirmation question
+- `--fout` — force the replacement of an existing `--out` (or the xyz
+  export files, `rqm/movie.md`) without the confirmation question
   (Overwrite Confirmation). It is accepted in both modes.
 - `--parallel <N>` — the worker count of the run's build-mode passes
   (Parallel Collection), an integer of 1 or more; the default is 1

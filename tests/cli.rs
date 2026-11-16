@@ -8020,6 +8020,382 @@ fn a_refusal_at_out_ends_the_run_before_movie_xyz() {
     assert!(stderr(&run).contains("error: kept.jsonl exists; not interactive; use --fout to force"));
 }
 
+// --- per-structure xyz export scenarios (rqm/movie.md) ---
+
+/// The `.xyz` file names in a directory, sorted, so a test asserts the
+/// exact export set without depending on directory order.
+fn xyz_files_in(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(dir)
+        .expect("read directory")
+        .filter_map(|entry| {
+            let name = entry.ok()?.file_name().into_string().ok()?;
+            name.ends_with(".xyz").then_some(name)
+        })
+        .collect();
+    names.sort();
+    names
+}
+
+/// A database line for a record with an optional name and a standard
+/// two-atom geometry.
+fn optional_name_geometry_line(name: Option<&str>, energy: f64) -> String {
+    let record = Record {
+        name: name.map(str::to_string),
+        electronic_energy: Some(energy),
+        geometry: Some(Geometry {
+            symbols: vec!["N".to_string(), "H".to_string()],
+            coordinates: vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+        }),
+        ..Record::default()
+    };
+    serde_json::to_string(&record).expect("serialization")
+}
+
+#[test] // rq-6b0a7ad4
+fn xyz_files_are_the_pipeline_survivors_in_run_order() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -40.0),
+            sample_geometry_line("b", -40.001),
+            sample_geometry_line("c", -38.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--cutr", "el", "5", "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(xyz_files_in(&dir), ["a.xyz", "b.xyz"]);
+    assert!(!dir.join("c.xyz").exists());
+}
+
+#[test] // rq-ca43482f
+fn a_print_only_run_exports_every_loaded_ok_named_record() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -1.0),
+            sample_geometry_line("b", -2.0),
+            failed_geometry_line("f"),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(xyz_files_in(&dir), ["a.xyz", "b.xyz"]);
+    let out = stdout(&run);
+    assert!(!out.contains("collected"), "{out}");
+    assert!(!out.contains("merged"), "{out}");
+    assert!(!out.contains("filtered"), "{out}");
+}
+
+#[test] // rq-dd71a15a
+fn the_exported_file_carries_the_movie_frame_text() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_geometry_line("1dma", -38.51)]);
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let frames = movie_frames_of(&dir.join("1dma.xyz"));
+    assert_eq!(frames.len(), 1);
+    assert_eq!(frames[0].0, "1dma E=-38.5100000000");
+    assert_eq!(
+        frames[0].1,
+        [
+            "N 0.000000 0.000000 0.000000",
+            "H 0.000000 0.000000 1.000000"
+        ]
+    );
+}
+
+#[test] // rq-a0dfabb1
+fn a_nameless_record_is_skipped_and_counted() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -1.0),
+            optional_name_geometry_line(None, -2.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(xyz_files_in(&dir), ["a.xyz"]);
+    assert!(stderr(&run)
+        .contains("excluded 1 records from --write-xyz (no name, no geometry, or not ok)"));
+}
+
+#[test] // rq-f1a120cc
+fn an_ok_record_without_a_geometry_is_skipped_and_counted_for_xyz() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_geometry_line("a", -1.0), sample_line("b", -2.0)],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(xyz_files_in(&dir), ["a.xyz"]);
+    assert!(stderr(&run)
+        .contains("excluded 1 records from --write-xyz (no name, no geometry, or not ok)"));
+}
+
+#[test] // rq-dc092b01
+fn a_print_only_run_skips_a_failed_record_with_a_geometry_for_xyz() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[sample_geometry_line("a", -1.0), failed_geometry_line("f")],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(xyz_files_in(&dir), ["a.xyz"]);
+    assert!(stderr(&run)
+        .contains("excluded 1 records from --write-xyz (no name, no geometry, or not ok)"));
+}
+
+#[test] // rq-b56902e0
+fn no_skip_note_when_every_record_becomes_an_xyz_file() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -1.0),
+            sample_geometry_line("b", -2.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(xyz_files_in(&dir), ["a.xyz", "b.xyz"]);
+    assert!(!stderr(&run).contains("excluded"), "{}", stderr(&run));
+}
+
+#[test] // rq-94142c9a
+fn an_unsafe_record_name_is_skipped_and_counted() {
+    let dir = temp_dir();
+    let outside = format!(
+        "cjkqc-escape-{}-{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    );
+    let outside_path = dir
+        .parent()
+        .expect("temp parent")
+        .join(format!("{outside}.xyz"));
+    let name = format!("../{outside}");
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -1.0),
+            optional_name_geometry_line(Some(&name), -2.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(xyz_files_in(&dir), ["a.xyz"]);
+    assert!(!outside_path.exists(), "{}", outside_path.display());
+    assert!(stderr(&run)
+        .contains("excluded 1 records from --write-xyz (no name, no geometry, or not ok)"));
+}
+
+#[test] // rq-4a8815f8
+fn equal_names_among_survivors_are_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("1dma", -1.0),
+            sample_geometry_line("1dma", -2.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(xyz_files_in(&dir).is_empty(), "{:?}", xyz_files_in(&dir));
+    assert!(stderr(&run).contains("error: duplicate xyz file name 1dma.xyz; nothing written"));
+}
+
+#[test] // rq-cde11874
+fn write_xyz_alone_is_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_geometry_line("a", -1.0)]);
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(xyz_files_in(&dir), ["a.xyz"]);
+    assert!(
+        stdout(&run).contains("wrote 1 xyz files into the current directory"),
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-24ffa417
+fn write_xyz_combines_with_out_and_movie() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("a", -40.0),
+            sample_geometry_line("b", -40.001),
+            sample_geometry_line("c", -38.0),
+        ],
+    );
+    let run = cjkqc_in(
+        &dir,
+        &[
+            &db,
+            "--cutr",
+            "el",
+            "5",
+            "--write-xyz",
+            "--movie",
+            "--out",
+            "kept.jsonl",
+        ],
+    );
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert_eq!(loaded(&dir.join("kept.jsonl")).len(), 2);
+    assert!(dir.join("a.xyz").exists());
+    assert!(dir.join("b.xyz").exists());
+    assert_eq!(movie_frames_of(&dir.join("movie.xyz")).len(), 2);
+    let out = stdout(&run);
+    let filtered = out
+        .find("filtered 2 records into kept.jsonl")
+        .expect("filtered line");
+    let files = out
+        .find("wrote 2 xyz files into the current directory")
+        .expect("xyz summary line");
+    let movie = out
+        .find("wrote 2 frames into movie.xyz")
+        .expect("movie summary line");
+    assert!(filtered < files && files < movie, "{out}");
+}
+
+#[test] // rq-faaf6c4c
+fn zero_survivors_write_no_xyz_files() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_geometry_line("a", -1.0)]);
+    let run = cjkqc_in(&dir, &[&db, "--extract", "9w", "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(xyz_files_in(&dir).is_empty(), "{:?}", xyz_files_in(&dir));
+    assert!(
+        stdout(&run).contains("wrote 0 xyz files into the current directory"),
+        "{}",
+        stdout(&run)
+    );
+}
+
+#[test] // rq-92d9ed7f
+fn replacing_existing_xyz_files_follows_the_out_confirmation() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("1dma", -1.0),
+            sample_geometry_line("2dma", -2.0),
+            sample_geometry_line("3dma", -3.0),
+        ],
+    );
+    fs::write(dir.join("1dma.xyz"), "sentinel one\n").expect("seed 1dma.xyz");
+    fs::write(dir.join("2dma.xyz"), "sentinel two\n").expect("seed 2dma.xyz");
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(1), "{}", stderr(&run));
+    assert_eq!(
+        fs::read_to_string(dir.join("1dma.xyz")).expect("read 1dma.xyz"),
+        "sentinel one\n"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.join("2dma.xyz")).expect("read 2dma.xyz"),
+        "sentinel two\n"
+    );
+    assert!(!dir.join("3dma.xyz").exists());
+    assert!(stderr(&run).contains("error: 1dma.xyz exists; not interactive; use --fout to force"));
+
+    let forced = cjkqc_in(&dir, &[&db, "--write-xyz", "--fout"]);
+    assert_eq!(forced.status.code(), Some(0), "{}", stderr(&forced));
+    assert_eq!(xyz_files_in(&dir), ["1dma.xyz", "2dma.xyz", "3dma.xyz"]);
+    assert_ne!(
+        fs::read_to_string(dir.join("1dma.xyz")).expect("read 1dma.xyz"),
+        "sentinel one\n"
+    );
+    assert_ne!(
+        fs::read_to_string(dir.join("2dma.xyz")).expect("read 2dma.xyz"),
+        "sentinel two\n"
+    );
+    assert!(
+        !stderr(&forced).contains("overwrite?"),
+        "{}",
+        stderr(&forced)
+    );
+}
+
+#[test] // rq-5b65c269
+fn duplicate_names_abort_before_the_out_database_is_written() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("1dma", -1.0),
+            sample_geometry_line("1dma", -2.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--out", "kept.jsonl", "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(!dir.join("kept.jsonl").exists());
+    assert!(xyz_files_in(&dir).is_empty(), "{:?}", xyz_files_in(&dir));
+    assert!(stderr(&run).contains("duplicate xyz file name 1dma.xyz; nothing written"));
+}
+
+#[test] // rq-26470d18
+fn names_differing_only_by_case_are_duplicates() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            sample_geometry_line("Water", -1.0),
+            sample_geometry_line("water", -2.0),
+        ],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(xyz_files_in(&dir).is_empty(), "{:?}", xyz_files_in(&dir));
+    assert!(stderr(&run).contains("duplicate xyz file name water.xyz; nothing written"));
+}
+
+#[test] // rq-7bdc15be
+fn a_record_named_movie_cannot_collide_with_movie_xyz() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_geometry_line("movie", -1.0)]);
+    let run = cjkqc_in(&dir, &[&db, "--movie", "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(xyz_files_in(&dir).is_empty(), "{:?}", xyz_files_in(&dir));
+    assert!(
+        stderr(&run).contains("xyz file name movie.xyz collides with movie.xyz; nothing written")
+    );
+}
+
+#[test] // rq-5040a356
+fn a_record_cannot_collide_with_the_out_path() {
+    let dir = temp_dir();
+    let db = database_in(&dir, &[sample_geometry_line("kept", -1.0)]);
+    let run = cjkqc_in(&dir, &[&db, "--out", "kept.xyz", "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(!dir.join("kept.xyz").exists());
+    assert!(xyz_files_in(&dir).is_empty(), "{:?}", xyz_files_in(&dir));
+    assert!(stderr(&run)
+        .contains("xyz file name kept.xyz collides with --out kept.xyz; nothing written"));
+}
+
+#[test] // rq-20104820
+fn a_name_with_a_control_character_is_skipped_and_counted() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[optional_name_geometry_line(Some("bad\nname"), -1.0)],
+    );
+    let run = cjkqc_in(&dir, &[&db, "--write-xyz"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    assert!(xyz_files_in(&dir).is_empty(), "{:?}", xyz_files_in(&dir));
+    assert!(stderr(&run)
+        .contains("excluded 1 records from --write-xyz (no name, no geometry, or not ok)"));
+}
+
 // --- parallel collection (rqm/collection.md, Parallel Collection) ---
 
 // rq-c974ee61
