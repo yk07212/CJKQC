@@ -1,6 +1,6 @@
 [package]
 name = "compiled-jkqc"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "A spiritual successor to JKQC from JKCS2.1: https://github.com/kubeckaj/JKCS2.1/"
 authors = ["YK <yosef@chem.au.dk>"]
