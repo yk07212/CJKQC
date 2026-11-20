@@ -22,6 +22,10 @@ except ImportError as exc:
     raise SystemExit("ase is required to read the stored structures") from exc
 
 
+DEBYE_PER_E_A0 = 2.541746473
+ANGSTROM3_PER_A0_3 = 0.14818471147
+
+
 def column_map(frame):
     return {
         ".".join(column) if isinstance(column, tuple) else str(column): column
@@ -97,10 +101,21 @@ def as_polarizability(value):
     number = as_float(value)
     if number is None:
         return None
-    # The JKQC pickle stores only the isotropic polarizability. CJKQC
-    # records carry the full tensor, so represent the known isotropic
-    # value as a diagonal tensor; the isotropic trace is preserved.
-    return [number, 0.0, 0.0, 0.0, number, 0.0, 0.0, 0.0, number]
+    # The JKQC pickle stores only the isotropic polarizability in Angstrom^3.
+    # CJKQC records carry the full tensor in atomic units, so convert the
+    # known isotropic value and represent it as a diagonal tensor.
+    isotropic = number / ANGSTROM3_PER_A0_3
+    return [
+        isotropic,
+        0.0,
+        0.0,
+        0.0,
+        isotropic,
+        0.0,
+        0.0,
+        0.0,
+        isotropic,
+    ]
 
 
 def as_geometry(structure):
@@ -124,6 +139,26 @@ def as_geometry(structure):
     if not symbols or len(coordinates) != 3 * len(symbols):
         return None
     return {"symbols": symbols, "coordinates": coordinates}
+
+
+def components_from_name(name):
+    if missing(name):
+        return None
+    head = str(name).split("-", 1)[0]
+    components = {}
+    position = 0
+    for match in re.finditer(r"([0-9]+)([A-Za-z]+)", head):
+        if match.start() != position:
+            return None
+        count = int(match.group(1))
+        if count < 1:
+            return None
+        code = match.group(2)
+        components[code] = components.get(code, 0) + count
+        position = match.end()
+    if position != len(head) or not components:
+        return None
+    return dict(sorted(components.items()))
 
 
 def as_components(codes, counts):
@@ -242,13 +277,21 @@ def convert_row(row, columns):
     frequencies = as_float_list(cell(row, columns, "log.vibrational_frequencies"))
     gradient = as_float_list(cell(row, columns, "log.gradient"))
     dipole = as_vector3(cell(row, columns, "log.dipole_moments"))
+    if dipole is not None:
+        # JKQC stores dipole vectors in Debye; CJKQC uses atomic units.
+        dipole = [value / DEBYE_PER_E_A0 for value in dipole]
     polarizability = as_polarizability(cell(row, columns, "log.polarizability"))
     mulliken = as_float_list(cell(row, columns, "log.mulliken_charges"))
     symmetry = as_int(cell(row, columns, "log.rotational_symmetry_number"))
-    components = as_components(
-        cell(row, columns, "info.components"),
-        cell(row, columns, "info.component_ratio"),
-    )
+    # JKQC's -rename rewrites the composition metadata (and file names) but
+    # can leave info.components/component_ratio inconsistent. The file name
+    # is the authoritative source for the structure's renamed composition.
+    components = components_from_name(name)
+    if components is None:
+        components = as_components(
+            cell(row, columns, "info.components"),
+            cell(row, columns, "info.component_ratio"),
+        )
 
     if symmetry is not None and symmetry < 1:
         symmetry = None
