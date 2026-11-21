@@ -11,23 +11,29 @@
 #
 # Options:
 #   -n, --dry-run      Report the changes without writing any file
-#   --no-backup        Do not create *.cjkqc-patch.bak backups
+#   --no-backup        Do not create .*.cjkqc-patch.bak backups
 #   -h, --help         Show this help
 #
 # What it does:
 #   * adds CJKQC_BIN and program_CJKQC to the user setup file
 #   * ABCluster collection (JKCS2_explore) writes collectionABC.jsonl via CJKQC
+#   * ABCluster collection runs in the job scratch directory, not the submit dir
 #   * CREST collection (program_CREST in the user setup) writes JSONL via CJKQC
 #   * JKCS3_run checks/writes JSONL collections where it used to write PKL
+#   * JKCS3_run extracts JSONL structures on the compute nodes, not the frontend
+#   * hot per-file loops use shell arithmetic instead of forking bc
 #   * JKCS4_collect and JKcollect use CJKQC + JSONL instead of the bundled JKQC
 #   * patches a helper function that carries ABC/CREST energies into the records
+#
+# Backups are hidden (.<name>.cjkqc-patch.bak) so that script globs such as
+# JKCSx/JKCS2* do not mistake them for the real next-step script.
 #
 # The patch is idempotent; running it again only refreshes the CJKQC path.
 
 set -euo pipefail
 
 usage() {
-  sed -n '3,24p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,29p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRY_RUN=0
@@ -90,6 +96,7 @@ export JKCS_DIR USERSETUP CJKQC_BIN DRY_RUN BACKUP
 perl - <<'PERL'
 use strict;
 use warnings;
+use File::Basename qw(basename dirname);
 use File::Copy qw(copy);
 
 my $JKCS_DIR = $ENV{JKCS_DIR};
@@ -98,10 +105,12 @@ my $CJKQC_BIN = $ENV{CJKQC_BIN};
 my $DRY_RUN = $ENV{DRY_RUN} eq '1';
 my $BACKUP = $ENV{BACKUP} eq '1';
 
+my $JKCS1 = "$JKCS_DIR/JKCSx/JKCS1_prepare";
 my $JKCS3 = "$JKCS_DIR/JKCSx/JKCS3_run";
 my $JKCS4 = "$JKCS_DIR/JKCSx/JKCS4_collect";
 my $EXPLORE = "$JKCS_DIR/JKCSx/JKCS2_explore";
 my $JKCOLLECT = "$JKCS_DIR/TOOLS/SCRIPTS/JKcollect";
+my $JSONL_HELPER = "$JKCS_DIR/TOOLS/SCRIPTS/JKjsonl_records.py";
 
 for my $path ($USERSETUP, $JKCS3, $JKCS4, $EXPLORE, $JKCOLLECT) {
     die "error: required file is missing: $path\n" unless -f $path;
@@ -122,7 +131,13 @@ sub slurp {
 sub ensure_backup {
     my ($path) = @_;
     return unless $BACKUP && !$DRY_RUN;
-    my $backup = "$path.cjkqc-patch.bak";
+    return unless -e $path;
+    my $backup = dirname($path) . '/.' . basename($path) . '.cjkqc-patch.bak';
+    my $old_backup = "$path.cjkqc-patch.bak";
+    if (!-e $backup && -e $old_backup) {
+        rename($old_backup, $backup)
+            or die "error: cannot move backup $old_backup to $backup: $!\n";
+    }
     return if -e $backup;
     copy($path, $backup) or die "error: cannot back up $path: $!\n";
 }
@@ -162,6 +177,24 @@ sub patch {
     }
     spew($path, $text);
     print $DRY_RUN ? "  would  $label\n" : "  patch  $label\n";
+}
+
+sub patch_variants {
+    my ($path, $variants, $new, $label, $all) = @_;
+    chomp $new;
+    my $text = slurp($path);
+    for my $old (@$variants) {
+        chomp $old;
+        if (index($text, $old) >= 0) {
+            patch($path, $old, $new, $label, $all);
+            return;
+        }
+    }
+    if (index($text, $new) >= 0) {
+        print "  skip   $label (already applied)\n";
+    } else {
+        print "  skip   $label (pattern not present)\n";
+    }
 }
 
 sub install_block {
@@ -293,6 +326,218 @@ BLOCK
                    : "  patch  add CJKQC helper block\n";
 }
 
+sub install_jsonl_helper {
+    my ($path) = @_;
+    my $content = <<'PY';
+#!/usr/bin/env python3
+"""List or extract records from a CJKQC JSON Lines database.
+
+Usage:
+  JKjsonl_records.py list DATABASE.jsonl
+  JKjsonl_records.py extract DATABASE.jsonl OUTPUT_DIRECTORY LINE [LINE...]
+
+`list` prints LINE<TAB>NAME for every record that has a usable geometry.
+`extract` writes only the requested records as NAME.xyz into OUTPUT_DIRECTORY.
+"""
+
+import json
+import math
+import os
+import re
+import sys
+
+
+def fail(message):
+  print("error: " + message, file=sys.stderr)
+  sys.exit(1)
+
+
+def safe_name(name, line_number):
+  if not isinstance(name, str) or not name.strip():
+    return "record_{}".format(line_number)
+  name = os.path.basename(name.strip())
+  name = re.sub(r"[^A-Za-z0-9._-]+", "_", name)
+  name = name.strip("._-")
+  if not name:
+    return "record_{}".format(line_number)
+  return name
+
+
+def record_name(record, line_number):
+  name = record.get("name")
+  if isinstance(name, str) and name.strip():
+    return safe_name(name, line_number)
+  source_path = record.get("source_path")
+  if isinstance(source_path, str) and source_path.strip():
+    stem = os.path.splitext(os.path.basename(source_path.strip()))[0]
+    if stem:
+      return safe_name(stem, line_number)
+  return safe_name(None, line_number)
+
+
+def extract_geometry(record):
+  geometry = record.get("geometry")
+  if not isinstance(geometry, dict):
+    return None
+  symbols = geometry.get("symbols")
+  coordinates = geometry.get("coordinates")
+  if not isinstance(symbols, list) or not isinstance(coordinates, list):
+    return None
+  if not symbols or len(coordinates) != 3 * len(symbols):
+    return None
+  for symbol in symbols:
+    if not isinstance(symbol, str) or not symbol:
+      return None
+  values = []
+  for coordinate in coordinates:
+    if isinstance(coordinate, bool) or not isinstance(coordinate, (int, float)):
+      return None
+    coordinate = float(coordinate)
+    if not math.isfinite(coordinate):
+      return None
+    values.append(coordinate)
+  return symbols, values
+
+
+def write_xyz(path, name, geometry):
+  symbols, coordinates = geometry
+  try:
+    with open(path, "w", encoding="utf-8") as xyz:
+      xyz.write("{}\n".format(len(symbols)))
+      xyz.write("{}\n".format(name))
+      for atom in range(len(symbols)):
+        xyz.write("{} {:.10f} {:.10f} {:.10f}\n".format(
+          symbols[atom],
+          coordinates[3 * atom],
+          coordinates[3 * atom + 1],
+          coordinates[3 * atom + 2]))
+  except OSError as error:
+    fail("cannot write {}: {}".format(path, error))
+
+
+def parse_record(line, database, line_number, warn):
+  line = line.strip()
+  if not line:
+    return None
+  try:
+    record = json.loads(line)
+  except json.JSONDecodeError as error:
+    if warn:
+      print("warning: {}:{}: cannot parse JSON ({}); skipping".format(
+        database, line_number, error), file=sys.stderr)
+    return None
+  if not isinstance(record, dict):
+    if warn:
+      print("warning: {}:{}: record is not a JSON object; skipping".format(
+        database, line_number), file=sys.stderr)
+    return None
+  return record
+
+
+def command_list(database):
+  names = {}
+  count = 0
+  try:
+    handle = open(database, "r", encoding="utf-8")
+  except OSError as error:
+    fail("cannot read {}: {}".format(database, error))
+  with handle:
+    for line_number, line in enumerate(handle, 1):
+      record = parse_record(line, database, line_number, True)
+      if record is None:
+        continue
+      geometry = extract_geometry(record)
+      if geometry is None:
+        print("warning: {}:{}: no usable geometry; skipping".format(
+          database, line_number), file=sys.stderr)
+        continue
+      name = record_name(record, line_number)
+      if name in names:
+        fail("duplicate structure name '{}' at lines {} and {}".format(
+          name, names[name], line_number))
+      names[name] = line_number
+      print("{}\t{}".format(line_number, name))
+      count += 1
+  if count == 0:
+    fail("no usable structures found in {}".format(database))
+
+
+def command_extract(database, outdir, requested):
+  wanted = set()
+  for value in requested:
+    try:
+      wanted.add(int(value))
+    except ValueError:
+      fail("invalid line number: {}".format(value))
+  if not wanted:
+    fail("no line numbers requested")
+  try:
+    os.makedirs(outdir, exist_ok=True)
+  except OSError as error:
+    fail("cannot create output directory {}: {}".format(outdir, error))
+  written = set()
+  try:
+    handle = open(database, "r", encoding="utf-8")
+  except OSError as error:
+    fail("cannot read {}: {}".format(database, error))
+  with handle:
+    for line_number, line in enumerate(handle, 1):
+      if line_number not in wanted:
+        continue
+      record = parse_record(line, database, line_number, True)
+      geometry = None if record is None else extract_geometry(record)
+      if geometry is None:
+        fail("no usable structure at line {}".format(line_number))
+      name = record_name(record, line_number)
+      path = os.path.abspath(os.path.join(outdir, name + ".xyz"))
+      write_xyz(path, name, geometry)
+      print(path)
+      written.add(line_number)
+      if written == wanted:
+        break
+  missing = wanted - written
+  if missing:
+    fail("no usable structure at line(s): {}".format(
+      " ".join(str(number) for number in sorted(missing))))
+
+
+def main(argv):
+  if len(argv) < 3 or argv[1] in ("-h", "--help"):
+    print("Usage: JKjsonl_records.py list DATABASE.jsonl\n"
+          "       JKjsonl_records.py extract DATABASE.jsonl OUTPUT_DIRECTORY LINE [LINE...]",
+          file=sys.stderr)
+    return 2
+  database = argv[2]
+  if not os.path.isfile(database):
+    fail("database does not exist: {}".format(database))
+  if argv[1] == "list":
+    if len(argv) != 3:
+      fail("list takes exactly one database")
+    command_list(database)
+    return 0
+  if argv[1] == "extract":
+    if len(argv) < 5:
+      fail("extract needs an output directory and at least one line number")
+    command_extract(database, argv[3], argv[4:])
+    return 0
+  fail("unknown command: {}".format(argv[1]))
+
+
+if __name__ == "__main__":
+  sys.exit(main(sys.argv))
+PY
+    if (-f $path) {
+        my $text = slurp($path);
+        if ($text eq $content) {
+            print "  skip   JSONL records helper (already applied)\n";
+            return;
+        }
+    }
+    spew($path, $content);
+    print $DRY_RUN ? "  would  install JSONL records helper\n"
+                   : "  patch  install JSONL records helper\n";
+}
+
 print "Patching JKCS2.1 in $JKCS_DIR\n";
 print "  user setup: $USERSETUP\n";
 print "  CJKQC:      $CJKQC_BIN\n";
@@ -315,14 +560,66 @@ $old = 'addexploded=" -cut rg 50"';
 $new = 'addexploded=" --cut rg 50"';
 patch($EXPLORE, $old, $new, 'ABCluster explode cutoff -> CJKQC spelling');
 
-$old = <<'OLD';
-program_JKQCpickle -folder ./ -collect xyz -noex $addexploded -out collectionABC.pkl
-OLD
-$new = <<'NEW';
+my $collection_scratch = <<'NEW';
+      echo """cd $name-LM
+source ~/.JKCSusersetup.txt$loc
+collectdir=\"\${WRKDIR:-.}/TMP/ABCCOLLECT_\${SLURM_JOBID:-\$\$}_${const_iter}\"
+mkdir -p \"\$collectdir\"
+cp *.xyz \"\$collectdir\"/ 2>/dev/null
+(
+  cd \"\$collectdir\"
+  program_CJKQC *.xyz $addexploded --out collectionABC.jsonl --fout
+  program_CJKQC_energy collectionABC.jsonl
+)
+cp \"\$collectdir/collectionABC.jsonl\" .
+rm -rf \"\$collectdir\"
+rm -f *.xyz *.log
+cd ..""" >> rename.sh
+NEW
+
+my $collection_old_patched = <<'OLD';
+      echo """cd $name-LM
+source ~/.JKCSusersetup.txt$loc
+for i in *.xyz
+do
+  base=\$(basename \$i .xyz)
+  test=\`grep -c \"Energy:\" \$i\`
+  if [ \$test -gt 0 ]
+  then
+    energy=\`grep \"Energy:\" \$i | awk '{print \$2}'\`
+  else
+    energy=\`head -n 2 \$i | tail -n 1\`
+  fi
+  echo \"ABC\" > \${base}.log
+  echo \"ABC energy: \$energy\" >> \${base}.log
+done
 program_CJKQC *.xyz $addexploded --out collectionABC.jsonl --fout
 program_CJKQC_energy collectionABC.jsonl
-NEW
-patch($EXPLORE, $old, $new, 'ABCluster collection -> collectionABC.jsonl');
+rm *.xyz *.log
+cd ..""" >> rename.sh
+OLD
+my $collection_old_pristine = <<'OLD';
+      echo """cd $name-LM
+source ~/.JKCSusersetup.txt$loc
+for i in *.xyz
+do
+  base=\$(basename \$i .xyz)
+  test=\`grep -c \"Energy:\" \$i\`
+  if [ \$test -gt 0 ]
+  then
+    energy=\`grep \"Energy:\" \$i | awk '{print \$2}'\`
+  else
+    energy=\`head -n 2 \$i | tail -n 1\`
+  fi
+  echo \"ABC\" > \${base}.log
+  echo \"ABC energy: \$energy\" >> \${base}.log
+done
+program_JKQCpickle -folder ./ -collect xyz -noex $addexploded -out collectionABC.pkl
+rm *.xyz *.log
+cd ..""" >> rename.sh
+OLD
+patch_variants($EXPLORE, [$collection_old_patched, $collection_old_pristine],
+    $collection_scratch, 'ABCluster collection in scratch -> collectionABC.jsonl');
 
 $old = <<'OLD';
 elif [ -e "collection${folderNEW}.pkl" ]
@@ -547,13 +844,71 @@ patch($JKCS4, '$method/c*.pkl $method/*/c*.pkl $method/*/*/c*.pkl',
     '$method/c*.jsonl $method/*/c*.jsonl $method/*/*/c*.jsonl',
     'JKCS4 commandTODO globs -> JSONL', 1);
 
-$old = <<'OLD';
+my $merge_old = <<'OLD';
 program_JKQCpickle \$JSONLinsubfolders -out $savejsonlfile >> output; program_JKQCpickle  $savejsonlfile ${arguments[@]} >  $savefile;
 OLD
-$new = <<'NEW';
+my $merge_old_patched = <<'OLD';
 if [ -n \"\$JSONLinsubfolders\" ]; then program_CJKQC \$JSONLinsubfolders --parallel $Qparallel --out $savejsonlfile --fout >> output; fi; program_CJKQC_energy $savejsonlfile >> output 2>&1; program_CJKQC $savejsonlfile --parallel $Qparallel ${arguments[@]} | tail -n +2 | awk '$tableawk' > $savefile;
+OLD
+my $merge_new = <<'NEW';
+if [ -n \"\$JSONLinsubfolders\" ]; then program_CJKQC \$JSONLinsubfolders --parallel $Qparallel --out $savejsonlfile --fout >> output; fi; program_CJKQC_energy $savejsonlfile >> output 2>&1; if [ $Qonlycollect -eq 0 ]; then program_CJKQC $savejsonlfile --parallel $Qparallel ${arguments[@]} | tail -n +2 | awk '$tableawk' > $savefile; fi;
 NEW
-patch($JKCS4, $old, $new, 'JKCS4 merge + table generation -> CJKQC', 1);
+patch_variants($JKCS4, [$merge_old, $merge_old_patched], $merge_new,
+    'JKCS4 merge -> CJKQC JSONL (text table only without -oc)', 1);
+
+$old = <<'OLD';
+if [ -e $savefile ]; then rm $savefile; fi
+touch $savefile
+if [ -e $resultfile ]; then rm $resultfile;fi
+if [ -e $movie ]; then rm $movie;fi
+JKecho 2 "Output files checked (${cfYELLOW}$savefile${cfDEF},${cfYELLOW}$resultfile${cfDEF},${cfYELLOW}$movie${cfDEF})"
+OLD
+$new = <<'NEW';
+if [ $Qonlycollect -eq 0 ]
+then
+  if [ -e $savefile ]; then rm $savefile; fi
+  touch $savefile
+  if [ -e $resultfile ]; then rm $resultfile;fi
+  if [ -e $movie ]; then rm $movie;fi
+fi
+JKecho 2 "Output files checked (${cfYELLOW}$savejsonlfile${cfDEF},${cfYELLOW}$resultfile${cfDEF},${cfYELLOW}$movie${cfDEF})"
+NEW
+patch($JKCS4, $old, $new, 'JKCS4 onlycollect skips text database');
+
+$old = <<'OLD';
+if [ "$Qperform" != 2 ]
+then
+  JKecho 3 "Command ${cfMAGENTA}$commandTODO${cfDEF}"
+  echo  "$SC_command '$commandTODO'" >> output
+  JKecho 3 "Submitting CONTROL command"
+  if [ $SCtasks -eq 0 ]
+  then
+    SC_command_dep=$SC_command
+  else
+    job_id=`echo $job | awk '{print $4}'`
+    SC_command_dep=`echo $SC_command | sed "s/sbatch/sbatch --dependency=afterany:$job_id/"`
+  fi
+  echo  "$SC_command_dep '$commandTODO'" > .runC
+  job=$(/bin/bash .runC)
+OLD
+$new = <<'NEW';
+if [ "$Qperform" != 2 ]
+then
+  printf '%s\n' "$commandTODO" > .runC_command
+  JKecho 3 "Command ${cfMAGENTA}$commandTODO${cfDEF}"
+  echo  "$SC_command sh .runC_command" >> output
+  JKecho 3 "Submitting CONTROL command"
+  if [ $SCtasks -eq 0 ]
+  then
+    SC_command_dep=$SC_command
+  else
+    job_id=`echo $job | awk '{print $4}'`
+    SC_command_dep=`echo $SC_command | sed "s/sbatch/sbatch --dependency=afterany:$job_id/"`
+  fi
+  echo  "$SC_command_dep sh .runC_command" > .runC
+  job=$(/bin/bash .runC)
+NEW
+patch($JKCS4, $old, $new, 'JKCS4 control job quoting -> command file');
 
 $old = <<'OLD';
   ending=`echo $savefile | rev | cut -c-4 | rev`
@@ -616,6 +971,148 @@ $new = <<'NEW';
   fi
 NEW
 patch($JKCOLLECT, $old, $new, 'JKcollect movie export -> CJKQC');
+
+if (index(slurp($JKCS3), 'JKjsonl2xyz.py') >= 0
+    || index(slurp($JKCS3), 'JKjsonl_records.py') >= 0) {
+    install_jsonl_helper($JSONL_HELPER);
+
+    $old = <<'OLD';
+  if [ "$(echo ${resultsaddition} | rev | cut -c-6 | rev)" == ".jsonl" ]
+  then
+    jsonlxyzdir="$currentdirpath/.JKCS3_jsonl_$(basename "$resultsaddition" .jsonl).$$"
+    trap 'rm -rf "$jsonlxyzdir"; rm -f "$currentdirpath/toexecute.txt"' EXIT
+    if ! program_PYTHON "$toolspath/SCRIPTS/JKjsonl2xyz.py" "$resultsaddition" "$jsonlxyzdir" > toexecute.txt
+    then
+      JKecho 0 "Could not extract XYZ structures from ${cfYELLOW}${resultsaddition}${cfDEF}. [${cfRED}EXIT${cfDEF}]"
+      exit 1
+    fi
+    resultsaddition=toexecute.txt
+    Qjsonl=1
+  fi
+OLD
+    $new = <<'NEW';
+  if [ "$(echo ${resultsaddition} | rev | cut -c-6 | rev)" == ".jsonl" ]
+  then
+    jsonldb="$( cd "$(dirname "${resultsaddition}")" ; pwd -P )"/$(basename "$resultsaddition")
+    trap 'rm -f "$currentdirpath/toexecute.txt"' EXIT
+    if ! program_PYTHON "$toolspath/SCRIPTS/JKjsonl_records.py" list "$jsonldb" > toexecute.txt
+    then
+      JKecho 0 "Could not read XYZ structures from ${cfYELLOW}${resultsaddition}${cfDEF}. [${cfRED}EXIT${cfDEF}]"
+      exit 1
+    fi
+    declare -A jsonlnames=()
+    while IFS=$'\t' read -r jsonlline jsonlname
+    do
+      jsonlnames[$jsonlline]=$jsonlname
+    done < toexecute.txt
+    resultsaddition=toexecute.txt
+    Qjsonl=1
+  fi
+NEW
+    patch($JKCS3, $old, $new, 'JKCS3_run JSONL input lists records only');
+
+    $old = <<'OLD';
+    if [ "$Qjsonl" == "1" ]
+    then
+      cp "$file" "$currentdirpath/$folderNEW/${name}-LM$ADDc/" || {
+        JKecho 0 "Could not copy ${cfYELLOW}$file${cfDEF} into ${cfBLUE}$folderNEW/${name}-LM$ADDc${cfDEF}. [${cfRED}EXIT${cfDEF}]"
+        exit 1
+      }
+      file="$(basename "$file")"
+    fi
+OLD
+    $new = <<'NEW';
+    if [ "$Qjsonl" == "1" ]
+    then
+      jsonlline=$file
+      file=${jsonlnames[$jsonlline]}
+      if [ -z "$file" ]
+      then
+        JKecho 0 "Could not resolve JSONL record at line ${cfYELLOW}$jsonlline${cfDEF}. [${cfRED}EXIT${cfDEF}]"
+        exit 1
+      fi
+      jsonlout="$currentdirpath/$folderNEW/${name}-LM$ADDc"
+      file="$file.xyz"
+    fi
+NEW
+    patch($JKCS3, $old, $new, 'JKCS3_run JSONL input no frontend copy');
+
+    $old = <<'OLD';
+    #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file${Qcpall}"
+    #printf "$command" > run${scriptfilecommand}.sh
+    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM$ADDc/; program_$program $file${addbase}${Qcpall};"
+OLD
+    $new = <<'NEW';
+    #command="source ~/.JKCSusersetup.txt;\n program_$program $currentdirapth/$folderOLD/${name}-LM/$file${Qcpall}"
+    #printf "$command" > run${scriptfilecommand}.sh
+    if [ "$Qjsonl" == "1" ]
+    then
+      commandTODO+="if [ ! -e \"$jsonlout/$file\" ]; then program_PYTHON \"$toolspath/SCRIPTS/JKjsonl_records.py\" extract \"$jsonldb\" \"$jsonlout\" $jsonlline >/dev/null || exit 1; fi;"
+    fi
+    commandTODO+="cd $currentdirpath/$folderNEW/${name}-LM$ADDc/; program_$program $file${addbase}${Qcpall};"
+NEW
+    patch($JKCS3, $old, $new, 'JKCS3_run JSONL extraction moved into jobs');
+
+    $old = <<'OLD';
+  if [ "$Qjsonl" == "1" ]
+  then
+    rm -rf "$jsonlxyzdir"
+  fi
+OLD
+    $new = <<'NEW';
+  if [ "$Qjsonl" == "1" ] && [ -n "$jsonlxyzdir" ]
+  then
+    rm -rf "$jsonlxyzdir"
+  fi
+NEW
+    patch($JKCS3, $old, $new, 'JKCS3_run JSONL temporary cleanup guard');
+} else {
+    print "  skip   JKCS3_run JSONL extraction (JSONL input support not found)\n";
+}
+
+patch($JKCS3, 'count=`echo $count+1 | bc`', 'count=$((count + 1))',
+    'JKCS3_run per-file counter uses shell arithmetic');
+patch($JKCS3, 'enum=`echo $enum+1 | bc`', 'enum=$((enum + 1))',
+    'JKCS3_run folder counter uses shell arithmetic', 1);
+patch($JKCS3, 'Qjpt_iter=`echo $Qjpt_iter + 1 |bc`', 'Qjpt_iter=$((Qjpt_iter + 1))',
+    'JKCS3_run tasks-per-job counter uses shell arithmetic', 1);
+patch($JKCS3, 'const_iter=`echo $const_iter+1 |bc`', 'const_iter=$((const_iter + 1))',
+    'JKCS3_run job counter uses shell arithmetic', 1);
+patch($JKCS3, 'jobscount=`echo $jobscount+1|bc`', 'jobscount=$((jobscount + 1))',
+    'JKCS3_run job total uses shell arithmetic', 1);
+patch($JKCS3, 'fi=\`echo \$fi+1|bc\`', 'fi=\$((fi+1))',
+    'JKCS3_run old-folder file counter uses shell arithmetic', 1);
+
+patch($EXPLORE, 'Qjpt_iter=`echo $Qjpt_iter + 1 |bc`',
+    'Qjpt_iter=$((Qjpt_iter + 1))',
+    'JKCS2_explore tasks-per-job counter uses shell arithmetic');
+patch($EXPLORE, 'const_iter=`echo $const_iter+1 |bc`',
+    'const_iter=$((const_iter + 1))',
+    'JKCS2_explore job counter uses shell arithmetic');
+
+patch($JKCS4, 'Qjpt_iter=`echo $Qjpt_iter + 1 |bc`',
+    'Qjpt_iter=$((Qjpt_iter + 1))',
+    'JKCS4_collect subfolder counter uses shell arithmetic');
+
+for my $performer ("$JKCS_DIR/TOOLS/SCRIPTS/JKperform.sh",
+                  "$JKCS_DIR/TOOLS/SCRIPTS/JKperform2.sh") {
+    next unless -f $performer;
+    my $name = basename($performer);
+    patch($performer, 'local linenumber=`echo $linenumber+1 | bc`',
+        'local linenumber=$((linenumber + 1))',
+        "$name command-line counter uses shell arithmetic");
+    patch($performer, 'doingcount=`echo $doingcount+1 | bc`',
+        'doingcount=$((doingcount + 1))',
+        "$name doing counter uses shell arithmetic");
+}
+
+if (-f $JKCS1) {
+    $old = 'nextscript=`ls $scriptpath/JKCS2*`';
+    $new = 'nextscript=`ls $scriptpath/JKCS2* 2>/dev/null | grep -v "\.cjkqc-patch\.bak$" | head -n 1`';
+    patch($JKCS1, $old, $new, 'JKCS1 next-step ignores patch backups');
+} else {
+    print "  skip   JKCS1 next-step (JKCS1_prepare not found)\n";
+}
 
 print "Done." . ($DRY_RUN ? " No files were written (dry run)." : "") . "\n";
 PERL
