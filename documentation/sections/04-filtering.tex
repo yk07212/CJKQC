@@ -22,7 +22,8 @@ groups:
   \item \flg{--reacted} or \flg{--reacted2};
   \item \flg{--sort}, then \flg{--reverse};
   \item \flg{--select};
-  \item \flg{--arbalign};
+  \item \flg{--arbalign}, optionally within the smaller groups chosen by
+        \flg{--align-within};
   \item \flg{--glob};
   \item \flg{--shuffle}.
 \end{enumerate}
@@ -48,7 +49,9 @@ directly against each record's \fld{name} (the same text the \fld{filename}
 column prints), with no composition grammar, ranges, wildcards, or zero-count
 rules. \flg{--arbalign} is the exception: it always compares records only
 when they have the same stored composition, so \flg{--noname} does not make
-different compositions comparable.
+different compositions comparable. \flg{--align-within} also compares only
+records with the same stored composition and forms its smaller groups inside
+each composition group.
 
 \subsection{Renaming component codes}\label{sec:rename}
 
@@ -306,6 +309,28 @@ first sorts by \fld{el} ascending, so the lowest-electronic-energy member of
 a duplicate set survives. Add \flg{--sort g} first if you want the
 lowest-Gibbs member instead.
 
+By default, every record of the same composition can be compared. Add
+\flg{--align-within LIST} to compare only records whose chosen properties
+agree. The list uses the same spelling as \flg{--uniq}: \fld{dup}, or one or
+more of \fld{el}, \fld{g}, \fld{rg}, \fld{mass}, and \fld{dip} separated
+by commas. Each property may be followed by the number of decimal places to
+compare, for example \fld{el8} or \fld{el2.4,rg}. The flag is used only
+together with \flg{--arbalign}; without it, \CJKQC{} stops with a usage
+error.
+
+\flg{--align-within} divides each composition group into smaller groups
+called subgroups. Records in a property subgroup agree on every listed
+property when the values are rounded to the stated number of decimal places.
+With \fld{dup}, records with the same name form a subgroup, and a record
+without a name is in a subgroup by itself. Only records in the same subgroup
+are compared, so two records in different subgroups are both kept even when
+their geometries are identical. The first surviving record in each subgroup
+wins, following the same order rules as \flg{--arbalign}.
+
+\flg{--uniq} and \flg{--align-within} are separate. When both are used,
+\flg{--uniq} runs first, and the alignment subgroups are formed from the
+records that \flg{--uniq} kept.
+
 Further rules:
 
 \begin{itemize}
@@ -341,6 +366,14 @@ are within 0.5 \AA{} RMSD of each other:
 
 \begin{verbatim}
 CJKQC db.jsonl --sort el --arbalign 0.5 \
+  --filename --el --out unique.jsonl
+\end{verbatim}
+
+To compare only structures that also have the same electronic energy to eight
+decimal places:
+
+\begin{verbatim}
+CJKQC db.jsonl --align-within el8 --arbalign 0.5 \
   --filename --el --out unique.jsonl
 \end{verbatim}
 

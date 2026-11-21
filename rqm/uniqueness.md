@@ -12,7 +12,9 @@ records whose name repeats (`dup` mode) or records that share a rounded
 property signature with an earlier record of the same composition group
 (`keys` mode). Structural-alignment filtering is a separate pipeline stage,
 `--arbalign` (`rqm/arbalign.md`), which shares the atomic-mass table below
-but not the uniqueness modes.
+but keeps its own elimination rules. The optional `--align-within` scope on
+that stage reuses the same parsed `UniqMode` and the same rounded-signature
+partition as uniqueness.
 
 ## Metric Definitions <!-- rq-4a909f01 -->
 
@@ -78,6 +80,15 @@ first — the CLI does exactly that when `--uniq` is used without `--sort`
   the same metric at different decimals is a genuine two-component
   signature and both entries stay.
 
+The signature partition behind both modes is exposed once as a stable
+subgroup assignment. Records with equal rounded signatures (`keys` mode) or
+the same present `name` (`dup` mode) share a subgroup id; each nameless
+record gets its own id in `dup` mode; undefined signature components are
+mutually equal in `keys` mode. First-wins uniqueness is exactly the first
+occurrence per subgroup. `--align-within` (`rqm/arbalign.md`) consumes the
+same ids, so every metric added to the `--uniq` grammar automatically
+becomes available to `--align-within`.
+
 ## Feature API <!-- rq-7c56284e -->
 
 ### Types <!-- rq-db938553 -->
@@ -117,6 +128,20 @@ first — the CLI does exactly that when `--uniq` is used without `--sort`
   - Parses a comma list of `metric[decimals]` tokens (`el2.4,rg`);
     unknown metrics, negative or malformed decimal counts, and empty
     lists yield the `Err` text for CLI usage exit 2.
+- `parse_align_within(value: &str) -> Result<UniqMode, String>` <!-- rq-90eefa9e -->
+  - Parses a `--align-within` value with exactly the `--uniq` grammar and
+    returns the same `UniqMode`. The `Err` text names `--align-within`
+    and feeds the CLI's usage reporting (exit 2). The grammar is shared,
+    not duplicated, so a new `--uniq` metric is valid here without another
+    parser change.
+- `uniqueness_subgroups(records: &[&Record], mode: &UniqMode, memo: &ThermoMemo) -> Vec<usize>` <!-- rq-cc06bd73 -->
+  - Returns one stable subgroup id per record in input order. Equal
+    rounded signatures in `keys` mode share an id; equal present names in
+    `dup` mode share an id, with each nameless record receiving a fresh
+    id. The memo feeds the Gibbs metric exactly as for uniqueness.
+    `dedup_names_mask`, `uniqueness_mask`, `dedup_names`, and
+    `unique_by_properties` derive first-wins selection from this partition
+    so uniqueness and `--align-within` cannot diverge.
 
 ### Crate Layout <!-- rq-88cb3513 -->
 
@@ -268,4 +293,27 @@ Feature: Geometric metrics and property uniqueness
     Given two ok records with no electronic energy and the key G
     When unique_by_properties is called with default conditions
     Then only the first record is kept
+
+  @rq-e9240186
+  Scenario: Subgroup ids agree with keys uniqueness
+    Given three records A, B, C where A and B agree at 3 decimals and C differs
+    When uniqueness_subgroups is called with the key El at 3 decimals
+    Then A and B share an id and C has a different id
+
+  @rq-014ec037
+  Scenario: Subgroup ids agree with dup uniqueness
+    Given records named "a", "b", "a" and one nameless record
+    When uniqueness_subgroups is called with Dup mode
+    Then the two "a" records share an id
+    And "b" and the nameless record each have their own id
+
+  @rq-618c4346
+  Scenario: align-within parsing shares the uniqueness grammar
+    When parse_align_within("el2.4,rg") is called
+    Then it equals the UniqMode returned by parse_uniq_mode("el2.4,rg")
+
+  @rq-a8a207ad
+  Scenario: align-within parse errors name the align-within flag
+    When parse_align_within("xyz") is called
+    Then it returns Err mentioning "--align-within"
 ```

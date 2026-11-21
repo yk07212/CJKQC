@@ -8998,3 +8998,372 @@ fn arbalign_reports_records_without_usable_geometry() {
         stderr(&out)
     );
 }
+
+// --- --align-within scenarios (rqm/arbalign.md, rqm/filtering.md) ---
+
+fn arbalign_geom_line(
+    name: Option<&str>,
+    energy: Option<f64>,
+    comps: Option<&[(&str, u32)]>,
+    symbols: &[&str],
+    coords: &[f64],
+) -> String {
+    let mut record = Record {
+        name: name.map(str::to_string),
+        electronic_energy: energy,
+        ..Record::default()
+    };
+    if let Some(comps) = comps {
+        record.components = Some(
+            comps
+                .iter()
+                .map(|(code, count)| ((*code).to_string(), *count))
+                .collect(),
+        );
+    }
+    record.geometry = Some(compiled_jkqc::Geometry {
+        symbols: symbols.iter().map(|symbol| (*symbol).to_string()).collect(),
+        coordinates: coords.to_vec(),
+    });
+    serde_json::to_string(&record).expect("serialization")
+}
+
+fn h2_coordinates(bond: f64) -> Vec<f64> {
+    let half = bond / 2.0;
+    vec![-half, 0.0, 0.0, half, 0.0, 0.0]
+}
+
+#[test] // rq-8ac5fbd3 rq-9e0e3300
+fn align_within_without_arbalign_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[arbalign_geom_line(
+            Some("a"),
+            Some(-1.0),
+            None,
+            &["H", "H"],
+            &h2_coordinates(1.0),
+        )],
+    );
+    let out = cjkqc(&[&db, "--align-within", "el8", "--filename"]);
+    assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("--align-within requires --arbalign"),
+        "{}",
+        stderr(&out)
+    );
+}
+
+#[test] // rq-68964eb9
+fn align_within_different_energy_subgroups_are_never_compared() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(
+                Some("low"),
+                Some(-1.000001),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("high"),
+                Some(-1.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--align-within",
+        "el8",
+        "--arbalign",
+        "1.0",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "filename\nlow\nhigh");
+}
+
+#[test] // rq-fb0a8b46
+fn align_within_same_energy_subgroup_is_filtered_by_rmsd() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(
+                Some("low"),
+                Some(-1.000000002),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("high"),
+                Some(-1.000000001),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--align-within",
+        "el8",
+        "--arbalign",
+        "0.1",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "filename\nlow");
+}
+
+#[test] // rq-d0949c67
+fn align_within_requires_every_selected_key_to_agree() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(
+                Some("a"),
+                Some(-1.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("b"),
+                Some(-1.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.2),
+            ),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--align-within",
+        "el,rg",
+        "--arbalign",
+        "1.0",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "filename\na\nb");
+}
+
+#[test] // rq-b827e2d4
+fn align_within_dup_compares_only_records_with_the_same_name() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(
+                Some("a"),
+                Some(-1.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("b"),
+                Some(-2.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("a"),
+                Some(-3.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--align-within",
+        "dup",
+        "--arbalign",
+        "0.1",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "filename\na\nb");
+}
+
+#[test] // rq-dd8d9a63
+fn align_within_dup_treats_nameless_records_as_singletons() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(None, Some(-2.0), None, &["H", "H"], &h2_coordinates(1.0)),
+            arbalign_geom_line(None, Some(-1.0), None, &["H", "H"], &h2_coordinates(1.0)),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--align-within",
+        "dup",
+        "--arbalign",
+        "0.1",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim().lines().count(), 3, "{}", stdout(&out));
+}
+
+#[test] // rq-52a3d5ea
+fn align_within_undefined_metrics_are_mutually_equal() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(Some("a"), None, None, &["H", "H"], &h2_coordinates(1.0)),
+            arbalign_geom_line(Some("b"), None, None, &["H", "H"], &h2_coordinates(1.0)),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--align-within",
+        "el8",
+        "--arbalign",
+        "0.1",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim().lines().count(), 2, "{}", stdout(&out));
+}
+
+#[test] // rq-d08d83a4
+fn align_within_never_crosses_composition_groups() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(
+                Some("a"),
+                Some(-1.0),
+                Some(&[("x", 1)]),
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("b"),
+                Some(-1.0),
+                Some(&[("y", 1)]),
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--noname",
+        "--align-within",
+        "el8",
+        "--arbalign",
+        "10",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "filename\na\nb");
+}
+
+#[test] // rq-98ece9e5
+fn align_within_keeps_its_own_flag_value() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(
+                Some("other"),
+                Some(-2.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("low"),
+                Some(-1.000000002),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("high"),
+                Some(-1.000000001),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--align-within",
+        "el8",
+        "--arbalign",
+        "0.1",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "filename\nother\nlow");
+}
+
+#[test] // rq-06bb80f9
+fn align_within_forms_subgroups_after_the_uniq_survivors() {
+    let dir = temp_dir();
+    let db = database_in(
+        &dir,
+        &[
+            arbalign_geom_line(
+                Some("x"),
+                Some(-2.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("y"),
+                Some(-1.000000002),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("z"),
+                Some(-1.000000001),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+            arbalign_geom_line(
+                Some("x"),
+                Some(-1.0),
+                None,
+                &["H", "H"],
+                &h2_coordinates(1.0),
+            ),
+        ],
+    );
+    let out = cjkqc(&[
+        &db,
+        "--uniq",
+        "dup",
+        "--align-within",
+        "el8",
+        "--arbalign",
+        "0.1",
+        "--filename",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "filename\nx\ny");
+}

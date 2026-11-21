@@ -56,10 +56,11 @@ pub use collect::{
 };
 
 // rq-88cb3513 metrics + uniqueness surface (rqm/uniqueness.md)
+// rq-90eefa9e rq-cc06bd73
 pub use metrics::{
     atomic_mass, dedup_names, metric_dipole_magnitude, metric_radius_of_gyration,
-    metric_total_mass, parse_uniq_keys, parse_uniq_mode, unique_by_properties, UniqKey, UniqMetric,
-    UniqMode,
+    metric_total_mass, parse_align_within, parse_uniq_keys, parse_uniq_mode, unique_by_properties,
+    uniqueness_subgroups, UniqKey, UniqMetric, UniqMode,
 };
 
 // rq-83c62ce0 detection surface (rqm/detection.md)

@@ -8,7 +8,9 @@ use compiled_jkqc::arbalign::{
     ArbAlignStructure,
 };
 use compiled_jkqc::filter::{apply_filters, FilterSpec, Grouping, SortKey};
-use compiled_jkqc::metrics::atomic_mass;
+use compiled_jkqc::metrics::{
+    atomic_mass, parse_align_within, uniqueness_subgroups, UniqKey, UniqMetric, UniqMode,
+};
 use compiled_jkqc::thermo::ThermoMemo;
 use compiled_jkqc::{Components, Geometry, ParserRegistry, Record};
 
@@ -213,7 +215,7 @@ fn a_record_without_geometry_is_left_untouched() {
         ..Record::default()
     };
     let mut records = vec![missing.clone(), water("a", None), water("b", None)];
-    let report = apply_arbalign(&mut records, 0.1, 1);
+    let report = apply_arbalign(&mut records, 0.1, 1, None);
     assert_eq!(report.skipped, 1);
     assert_eq!(names(&records), ["missing", "a"]);
     missing.geometry = None;
@@ -249,7 +251,7 @@ fn a_non_finite_coordinate_leaves_a_record_untouched() {
 #[test] // rq-bfbfdd2b
 fn a_pair_strictly_below_the_threshold_eliminates_the_later_record() {
     let records = [water("a", None), water("b", None)];
-    let (mask, report) = arbalign_mask(&structures(&records), 0.1, 1);
+    let (mask, report) = arbalign_mask(&structures(&records), 0.1, 1, None);
     assert_eq!(report.skipped, 0);
     assert_eq!(mask, [true, false]);
 }
@@ -264,21 +266,21 @@ fn a_pair_exactly_at_the_threshold_is_kept() {
     )
     .expect("comparable");
     assert!(close(rmsd, 0.1, 1e-9), "rmsd = {rmsd}");
-    let (mask, _) = arbalign_mask(&values, rmsd, 1);
+    let (mask, _) = arbalign_mask(&values, rmsd, 1, None);
     assert_eq!(mask, [true, true]);
 }
 
 #[test] // rq-daef887e
 fn threshold_zero_removes_nothing() {
     let records = [water("a", None), water("b", None)];
-    let (mask, _) = arbalign_mask(&structures(&records), 0.0, 1);
+    let (mask, _) = arbalign_mask(&structures(&records), 0.0, 1, None);
     assert_eq!(mask, [true, true]);
 }
 
 #[test] // rq-45705445
 fn the_first_record_in_order_always_wins() {
     let records = [h2("a", 1.0, None), h2("b", 1.1, None), h2("c", 1.25, None)];
-    let (mask, _) = arbalign_mask(&structures(&records), 0.1, 1);
+    let (mask, _) = arbalign_mask(&structures(&records), 0.1, 1, None);
     assert_eq!(mask, [true, false, true]);
 }
 
@@ -286,7 +288,7 @@ fn the_first_record_in_order_always_wins() {
 fn a_removed_record_cannot_eliminate_another_record() {
     let records = [h2("a", 1.0, None), h2("b", 1.1, None), h2("c", 1.25, None)];
     let values = structures(&records);
-    let (mask, _) = arbalign_mask(&values, 0.1, 1);
+    let (mask, _) = arbalign_mask(&values, 0.1, 1, None);
     assert!(!mask[1]);
     let b = values[1].as_ref().expect("prepared");
     let c = values[2].as_ref().expect("prepared");
@@ -303,7 +305,7 @@ fn the_survivor_order_is_the_input_order() {
         h2("c", 1.5, None),
         h2("d", 1.7, None),
     ];
-    apply_arbalign(&mut records, 0.09, 1);
+    apply_arbalign(&mut records, 0.09, 1, None);
     assert_eq!(names(&records), ["a", "c", "d"]);
 }
 
@@ -377,7 +379,7 @@ fn different_composition_groups_are_never_compared() {
     sulfide_a.name = Some("sulfide-a".to_string());
     sulfide_b.name = Some("sulfide-b".to_string());
     let mut records = vec![water_a, water_b, sulfide_a, sulfide_b];
-    apply_arbalign(&mut records, 1.0, 1);
+    apply_arbalign(&mut records, 1.0, 1, None);
     assert_eq!(names(&records), ["water-a", "sulfide-a"]);
 }
 
@@ -406,7 +408,7 @@ fn noname_does_not_make_different_compositions_comparable() {
 #[test] // rq-d72b5bc0 rq-4ebb0210
 fn a_pooled_sweep_leaves_unpreparable_records_untouched() {
     let structures = vec![None, None];
-    let (mask, report) = arbalign_mask(&structures, 0.1, 4);
+    let (mask, report) = arbalign_mask(&structures, 0.1, 4, None);
     assert_eq!(mask, [true, true]);
     assert_eq!(report.skipped, 2);
 }
@@ -424,7 +426,7 @@ fn the_warning_counts_non_preparable_records_once() {
         ..Record::default()
     };
     let mut records = vec![missing_a, missing_b];
-    let report = apply_arbalign(&mut records, 0.1, 1);
+    let report = apply_arbalign(&mut records, 0.1, 1, None);
     assert_eq!(report.skipped, 2);
     assert_eq!(names(&records), ["missing-a", "missing-b"]);
 }
@@ -463,7 +465,7 @@ fn checked_in_corpus_survivor_set_matches_arbaligncpp_reference() {
         .collect();
 
     // reference.txt was generated with ArbAlignCPP --SORT ... 0.3 --MPA.
-    let report = apply_arbalign(&mut records, 0.3, 1);
+    let report = apply_arbalign(&mut records, 0.3, 1, None);
     assert_eq!(report.skipped, 0);
     assert_eq!(names(&records), expected);
 }
@@ -478,8 +480,24 @@ fn worker_count_does_not_change_survivors() {
         records.push(h2(&format!("h{index}"), bond, None));
     }
     let values = structures(&records);
-    let (sequential, _) = arbalign_mask(&values, 0.12, 1);
-    let (parallel, _) = arbalign_mask(&values, 0.12, 4);
+    let (sequential, _) = arbalign_mask(&values, 0.12, 1, None);
+    let (parallel, _) = arbalign_mask(&values, 0.12, 4, None);
+    assert_eq!(sequential, parallel);
+}
+
+#[test] // rq-41077fb2
+fn worker_count_does_not_change_scoped_survivors() {
+    let mut records = Vec::new();
+    for index in 0..80 {
+        let bond = 1.0 + 0.05 * (index % 8) as f64;
+        let energy = if index % 2 == 0 { -1.0 } else { -2.0 };
+        records.push(h2(&format!("h{index}"), bond, Some(energy)));
+    }
+    let scope = scope_for(&records, &energy_key(8.0));
+    assert!(scope.iter().any(|&id| id != scope[0]), "two subgroups");
+    let values = structures(&records);
+    let (sequential, _) = arbalign_mask(&values, 0.12, 1, Some(&scope));
+    let (parallel, _) = arbalign_mask(&values, 0.12, 4, Some(&scope));
     assert_eq!(sequential, parallel);
 }
 
@@ -496,4 +514,66 @@ fn repeated_runs_produce_identical_prepared_coordinates() {
     for axis in 0..3 {
         assert_eq!(first.center[axis].to_bits(), second.center[axis].to_bits());
     }
+}
+
+// --- Within-subgroup comparison (rqm/arbalign.md) ---
+
+fn scope_for(records: &[Record], mode: &UniqMode) -> Vec<usize> {
+    let refs: Vec<&Record> = records.iter().collect();
+    uniqueness_subgroups(&refs, mode, &ThermoMemo::default())
+}
+
+fn energy_key(decimals: f64) -> UniqMode {
+    UniqMode::Keys(vec![UniqKey {
+        metric: UniqMetric::El,
+        decimals,
+    }])
+}
+
+#[test] // rq-b94b3e6b
+fn align_within_value_uses_the_uniq_syntax() {
+    let mode = parse_align_within("el2.4,rg").expect("parses");
+    assert_eq!(
+        mode,
+        UniqMode::Keys(vec![
+            UniqKey {
+                metric: UniqMetric::El,
+                decimals: 2.4,
+            },
+            UniqKey {
+                metric: UniqMetric::Rg,
+                decimals: 2.0,
+            },
+        ])
+    );
+}
+
+#[test] // rq-0f42db73
+fn dup_is_accepted_for_align_within() {
+    assert_eq!(parse_align_within("dup"), Ok(UniqMode::Dup));
+}
+
+#[test] // rq-2e47f269
+fn malformed_align_within_values_are_rejected() {
+    assert!(parse_align_within("el-1").is_err());
+    assert!(parse_align_within("").is_err());
+    assert!(parse_align_within("xyz").is_err());
+}
+
+#[test] // rq-236d4dc3
+fn the_first_record_of_each_subgroup_survives() {
+    let records = [
+        h2("a", 1.0, Some(-1.000000001)),
+        h2("c", 1.5, Some(-2.000000001)),
+        h2("b", 1.05, Some(-1.000000002)),
+        h2("d", 1.55, Some(-2.000000002)),
+    ];
+    let scope = scope_for(&records, &energy_key(8.0));
+    assert_eq!(scope[0], scope[2]);
+    assert_eq!(scope[1], scope[3]);
+    assert_ne!(scope[0], scope[1]);
+
+    let mut filtered = records.to_vec();
+    apply_arbalign(&mut filtered, 0.1, 1, Some(&scope));
+    assert_eq!(names(&filtered), ["a", "c"]);
 }

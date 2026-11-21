@@ -11,7 +11,7 @@ use crate::arbalign::{apply_arbalign, ArbAlignReport};
 use crate::composition::{rename_component, RenameError, RenameSpec};
 use crate::metrics::{
     dedup_names_mask, metric_dipole_magnitude, metric_radius_of_gyration, metric_total_mass,
-    uniqueness_mask, UniqMode,
+    uniqueness_mask, uniqueness_subgroups, UniqMode,
 };
 use crate::population::{populations, PopLevel};
 use crate::reacted::{reacted_mask, ReactedMode};
@@ -297,6 +297,8 @@ pub struct FilterSpec {
     // rq-7c5578c0
     /// `--arbalign` RMSD threshold in Å (`rqm/arbalign.md`).
     pub arbalign: Option<f64>,
+    /// `--align-within` subgroup scope (`rqm/arbalign.md`).
+    pub align_within: Option<UniqMode>,
     /// `--reacted`/`--reacted2` mode.
     pub reacted: Option<ReactedMode>,
     /// `--sort` key.
@@ -796,7 +798,12 @@ pub fn apply_filters(
     }
     let mut arbalign_report = ArbAlignReport::default();
     if let Some(threshold) = spec.arbalign {
-        arbalign_report = apply_arbalign(&mut current, threshold, spec.parallel);
+        // rq-b73bf2f4
+        let scope = spec.align_within.as_ref().map(|mode| {
+            let refs: Vec<&Record> = current.iter().collect();
+            uniqueness_subgroups(&refs, mode, memo)
+        });
+        arbalign_report = apply_arbalign(&mut current, threshold, spec.parallel, scope.as_deref());
     }
     if spec.glob {
         apply_glob(&mut current, spec.grouping, memo);

@@ -16,6 +16,10 @@ pairwise, not a clustering: a record already removed by an earlier sweep is
 never used to remove another record, so the first record in the current
 order always wins.
 
+`--align-within <keys>` optionally restricts each sweep to records that
+share a uniqueness signature (`rqm/uniqueness.md`); it is only valid with
+`--arbalign` and is described under Within-Subgroup Comparison.
+
 ## Threshold <!-- rq-2b831cd3 -->
 
 - `--arbalign` takes exactly one value, the RMSD threshold in ångström.
@@ -62,6 +66,66 @@ order always wins.
   `arbalign: kept <k> records without usable geometry` when non-zero.
 - Records that are preparable but lack a comparable partner are likewise
   kept untouched.
+- When `--align-within` is present, a pair is additionally comparable only
+  when both records belong to the same alignment subgroup (below). Records
+  in different subgroups are never compared, even when their RMSD is below
+  the threshold.
+
+## Within-Subgroup Comparison (`--align-within`) <!-- rq-b73bf2f4 -->
+
+`--align-within <keys>` scopes the arbalign elimination sweep to subgroups
+of records whose uniqueness signatures agree. It never filters records on
+its own: it changes which pairs the `--arbalign` stage is allowed to
+compare.
+
+### Flag Value <!-- rq-089b9919 -->
+
+- `--align-within` takes exactly one value, using the same syntax and
+  parser as `--uniq` (`rqm/uniqueness.md`): the literal `dup`, or a comma
+  list of `metric[decimals]` tokens such as `el8` or `el2.4,rg`.
+- The metrics, default decimal counts, fractional decimal counts, floor
+  rounding, duplicate-entry collapsing, and malformed-value handling are
+  exactly those of `--uniq`. Unknown metrics, empty lists, and negative or
+  malformed decimal counts are usage errors (exit 2).
+- `--align-within` and `--uniq` are independent filters with independent
+  values. When both are present, `--uniq` runs earlier in the pipeline
+  (`rqm/filtering.md` Pipeline Order), so alignment subgroups are formed
+  over the uniqueness survivors.
+- `--align-within` requires `--arbalign`. Supplying `--align-within`
+  without `--arbalign` is a usage error (exit 2), whether or not other
+  manipulation flags are present.
+
+### Subgroups <!-- rq-34fa9d89 -->
+
+Alignment subgroups are formed inside each exact-`components` composition
+group. `--noname` does not change this: records of different composition
+are never compared, exactly as for `--arbalign` alone.
+
+- **`keys` mode.** Two records belong to the same subgroup exactly when
+  their rounded signature tuples agree on every selected key, using the
+  uniqueness signature (`rqm/uniqueness.md` Uniqueness Model): values agree
+  at `d` decimals when `floor(a · 10^d) == floor(b · 10^d)`, and undefined
+  components are mutually equal.
+- **`dup` mode.** Two records belong to the same subgroup exactly when both
+  have the same present `name`. A record without a `name` forms its own
+  singleton subgroup and is never compared with another record for this
+  reason.
+- The subgroup assignment and the `--uniq` first-wins masks derive from the
+  same shared signature routine, so a metric added to `--uniq` is
+  automatically available to `--align-within`.
+
+### Elimination <!-- rq-e5ed6309 -->
+
+- Each composition group is partitioned into subgroups, and the existing
+  pairwise sweep runs independently within each subgroup. A later record
+  is eliminated when its RMSD to an earlier survivor of the same subgroup
+  is strictly below `threshold`.
+- The first record of every subgroup in the current order survives.
+  Elimination never crosses subgroup boundaries, so a record close to a
+  member of another subgroup is kept.
+- Survivors remain in their original relative order, and the
+  `arbalign: kept <k> records without usable geometry` count is unchanged:
+  non-preparable records survive regardless of subgroup.
 
 ## Algorithm <!-- rq-6463cb8b -->
 
@@ -163,10 +227,11 @@ must not regress against the C++ reference implementation.
 - **Parallelism.** The inner `j` sweep of each survivor is distributed over
   the run's `--parallel <N>` worker count. Worker threads are created once
   per composition group and reused across that group's survivor sweeps; the
-  sweep does not spawn threads per survivor. Worker count 1 is fully
-  sequential and is the default. The result is independent of the worker
-  count: the same records survive for every `N`, and the survivor order is
-  the sequential order.
+  sweep does not spawn threads per survivor. Scope ids never cause a
+  second pool: with `--align-within`, the same pool skips pairs whose
+  subgroup ids differ. Worker count 1 is fully sequential and is the
+  default. The result is independent of the worker count: the same records
+  survive for every `N`, and the survivor order is the sequential order.
 
 ## Feature API <!-- rq-23f0a802 -->
 
@@ -193,40 +258,61 @@ must not regress against the C++ reference implementation.
 - `arbalign_rmsd(a: &ArbAlignStructure, b: &ArbAlignStructure) -> Option<f64>` <!-- rq-bb73fa3f -->
   - The ArbAlign RMSD in ångström for a comparable pair; `None` when atom
     counts or element multisets differ.
-- `arbalign_mask(structures: &[Option<ArbAlignStructure>], threshold: f64, parallel: usize) -> (Vec<bool>, ArbAlignReport)` <!-- rq-8b4b0278 -->
+- `arbalign_mask(structures: &[Option<ArbAlignStructure>], threshold: f64, parallel: usize, scope: Option<&[usize]>) -> (Vec<bool>, ArbAlignReport)` <!-- rq-8b4b0278 -->
   - Runs the pairwise elimination over one composition group in the given
     order. Returns a keep mask that is `true` for every preparable survivor
-    and for every non-preparable record, plus the report. The first record
-    in order always survives; a later record is dropped when its RMSD to an
-    earlier survivor is strictly below `threshold`. `parallel` is at least
-    one and does not affect the mask.
-- `apply_arbalign(records: &mut Vec<Record>, threshold: f64, parallel: usize) -> ArbAlignReport` <!-- rq-1967b16e -->
-  - Groups by exact `components`, calls `arbalign_mask` per group, and
-  retains survivors in their original relative order. The caller is
-  responsible for the warning line from the returned report.
+    and for every non-preparable record, plus the report. Within each
+    subgroup, the first record in order survives; a later record is dropped
+    when its RMSD to an earlier survivor of the same subgroup is strictly
+    below `threshold`. `parallel` is at least one and does not affect the
+    mask.
+  - `scope`, when present, holds one stable subgroup id per structure;
+    pairs with different ids are never compared. `None` treats the whole
+    slice as one subgroup. The worker pool is created once for the slice
+    either way.
+- `apply_arbalign(records: &mut Vec<Record>, threshold: f64, parallel: usize, scope: Option<&[usize]>) -> ArbAlignReport` <!-- rq-1967b16e -->
+  - Groups by exact `components`, prepares each group's structures once,
+    calls `arbalign_mask` once per group, and retains survivors in their
+    original relative order. The caller is responsible for the warning line
+    from the returned report.
+  - `scope`, when present, holds one stable subgroup id per record in the
+    input order. Within each composition group, records with different ids
+    are never compared, while the sweep still runs once per composition
+    group. `None` means every record in a composition group forms one
+    subgroup, which is the `--arbalign`-only behaviour.
 
 ### Pipeline Integration <!-- rq-616ceeee -->
 
-- `FilterSpec` carries `arbalign: Option<f64>` and `parallel: usize`, the <!-- rq-7c5578c0 -->
-  latter being the run's `--parallel` worker count; only arbalign reads it.
+- `FilterSpec` carries `arbalign: Option<f64>`, <!-- rq-7c5578c0 -->
+  `align_within: Option<UniqMode>` (`rqm/uniqueness.md`), and
+  `parallel: usize`, the latter being the run's `--parallel` worker count;
+  only arbalign reads it.
 - `apply_filters` applies the arbalign stage after the sort and after <!-- rq-ae71d266 -->
   `--select`, before `--glob` and `--shuffle`, triggers the implicit `el`
   sort when `--arbalign` is present without `--sort`, and returns a
   `FilterOutcome` carrying the surviving records and the
-  `ArbAlignReport`.
+  `ArbAlignReport`. When both `arbalign` and `align_within` are present it
+  derives the scope ids from the shared uniqueness subgroup routine and
+  passes them to `apply_arbalign`.
+- The CLI rejects `--align-within` without `--arbalign` before the
+  pipeline runs, and parses the value with the shared uniqueness parser;
+  both are usage errors (exit 2) with the same validation as `--uniq`.
 
 ### Crate Layout <!-- rq-6f4605b7 -->
 
 - The algorithm, assignment solver, eigensolver, and Kabsch RMSD live in
-  `src/arbalign.rs`; the library root re-exports the public types and
-  functions. `src/filter.rs` wires the stage into the pipeline. No new
-  dependencies.
+  `src/arbalign.rs`; the subgroup signature routine and `--align-within`
+  parser live with the uniqueness code in `src/metrics.rs`; the library
+  root re-exports the public types and functions. `src/filter.rs` wires the
+  stage into the pipeline. No new dependencies.
 - `tests/arbalign.rs` tests the pure alignment functions: principal-axis <!-- rq-212d67dd -->
   preprocessing, Kabsch and assignment RMSD on hand-built geometries,
   permutation/rotation/reflection invariance, strict threshold behaviour,
-  non-transitive pairwise elimination, comparability, and worker-count
-  determinism. `tests/cli.rs` covers flag validation, implicit sorting,
-  pipeline position, the warning line, and exit codes.
+  non-transitive pairwise elimination, comparability, subgroup scoping,
+  scoped worker-count determinism, and the `--uniq` then `--align-within`
+  interaction. `tests/metrics.rs` tests the shared subgroup routine.
+  `tests/cli.rs` covers flag validation, implicit sorting, pipeline
+  position, the warning line, and exit codes.
 - The benchmark harness and the C++-generated parity corpus live under the
   test/benchmark tree described in Performance Constraints.
 
@@ -238,6 +324,9 @@ must not regress against the C++ reference implementation.
   filters records and writes no auxiliary files.
 - Using alignment as a `--uniq` mode; arbalign is a separate pipeline
   stage with its own ordering rules (`rqm/uniqueness.md`).
+- Comparing different compositions: `--align-within` subdivides each
+  exact-`components` group and never makes structures of different
+  composition comparable, even under `--noname`.
 
 ## Gherkin Scenarios <!-- rq-062f3774 -->
 
@@ -367,6 +456,87 @@ Feature: ArbAlign structure-alignment filtering
     When the sweep runs
     Then the survivors are ordered A, C, D
 
+  # --- Within-subgroup comparison ---
+
+  @rq-b94b3e6b
+  Scenario: The --align-within value uses the --uniq syntax
+    When parse_align_within("el2.4,rg") is called
+    Then it returns Ok with keys El at 2.4 decimals and Rg at 2 decimals
+
+  @rq-0f42db73
+  Scenario: dup is accepted for --align-within
+    When parse_align_within("dup") is called
+    Then it returns Ok with Dup mode
+
+  @rq-2e47f269
+  Scenario: Malformed --align-within values are rejected
+    When parse_align_within("el-1") is called
+    Then it returns Err
+    When parse_align_within("") is called
+    Then it returns Err
+    When parse_align_within("xyz") is called
+    Then it returns Err
+
+  @rq-8ac5fbd3
+  Scenario: --align-within without --arbalign is a usage error
+    When CJKQC is invoked with a database, "--align-within el8 --filename" and no --out
+    Then the exit code is 2
+
+  @rq-68964eb9
+  Scenario: Different energy subgroups are never compared
+    Given two identical geometries whose energies differ at 8 decimals
+    When CJKQC is invoked with "--align-within el8 --arbalign 1.0 --filename" and no --out
+    Then both records are printed
+
+  @rq-fb0a8b46
+  Scenario: The same energy subgroup is filtered by RMSD
+    Given two identical geometries whose energies agree at 8 decimals
+    When CJKQC is invoked with "--align-within el8 --arbalign 0.1 --filename" and no --out
+    Then only one record is printed
+
+  @rq-236d4dc3
+  Scenario: The first record of each subgroup survives
+    Given subgroups A, B in group 1 and C, D in group 2 in the order A, C, B, D, where A removes B and C removes D
+    When apply_arbalign is called with the subgroup scope and threshold 0.1
+    Then A and C survive in the order A, C
+
+  @rq-d0949c67
+  Scenario: Every selected key must agree for a pair to be compared
+    Given two identical geometries with equal energies but Rg differing in the second decimal
+    When CJKQC is invoked with "--align-within el,rg --arbalign 1.0 --filename" and no --out
+    Then both records are printed
+
+  @rq-b827e2d4
+  Scenario: dup mode compares only records with the same name
+    Given three identical geometries named "a", "b", "a" in that order
+    When CJKQC is invoked with "--align-within dup --arbalign 0.1 --filename" and no --out
+    Then the first "a" and "b" are printed
+
+  @rq-dd8d9a63
+  Scenario: Nameless records are singleton subgroups in dup mode
+    Given two identical nameless geometries
+    When CJKQC is invoked with "--align-within dup --arbalign 0.1 --filename" and no --out
+    Then both records are printed
+
+  @rq-52a3d5ea
+  Scenario: Undefined metrics are mutually equal for subgrouping
+    Given two identical geometries with no electronic energy
+    When CJKQC is invoked with "--align-within el8 --arbalign 0.1 --filename" and no --out
+    Then only one record is printed
+
+  @rq-d08d83a4
+  Scenario: Align-within never crosses composition groups
+    Given identical geometries of H2O and H2S with equal energies
+    When CJKQC is invoked with "--noname --align-within el8 --arbalign 10 --filename" and no --out
+    Then both records are printed
+
+  @rq-06bb80f9
+  Scenario: Align-within forms subgroups after the uniq survivors
+    Given a composition group with records x(-2), y(-1.000000002), z(-1.000000001), and x(-1), all with identical geometries
+    And --uniq dup keeps the first x in the sorted order and drops the second
+    When CJKQC is invoked with "--uniq dup --align-within el8 --arbalign 0.1 --filename" and no --out
+    Then only x and y are printed
+
   # --- Pipeline integration ---
 
   @rq-36e90144
@@ -429,6 +599,13 @@ Feature: ArbAlign structure-alignment filtering
     Given a corpus of mixed structures and threshold 0.2
     When arbalign_mask is called with parallel 1
     And arbalign_mask is called with parallel 4
+    Then both masks are identical
+
+  @rq-41077fb2
+  Scenario: Worker count does not change scoped survivors
+    Given a corpus of mixed structures with two subgroup ids and threshold 0.2
+    When arbalign_mask is called with that scope and parallel 1
+    And arbalign_mask is called with that scope and parallel 4
     Then both masks are identical
 
   @rq-72a1a9da

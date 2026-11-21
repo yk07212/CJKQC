@@ -6,7 +6,7 @@
 //! in the current order (`Keys`).
 
 use std::cmp::Ordering;
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::record::Record;
 use crate::thermo::ThermoMemo;
@@ -293,10 +293,21 @@ pub enum UniqMode {
 ///
 /// (rq-07f5aebd)
 pub fn parse_uniq_mode(value: &str) -> Result<UniqMode, String> {
+    parse_uniq_mode_for(value, "--uniq")
+}
+
+/// Parses an `--align-within` value with exactly the `--uniq` grammar.
+///
+/// (rq-90eefa9e)
+pub fn parse_align_within(value: &str) -> Result<UniqMode, String> {
+    parse_uniq_mode_for(value, "--align-within")
+}
+
+fn parse_uniq_mode_for(value: &str, flag: &str) -> Result<UniqMode, String> {
     if value.trim() == "dup" {
         return Ok(UniqMode::Dup);
     }
-    Ok(UniqMode::Keys(parse_uniq_keys(value)?))
+    Ok(UniqMode::Keys(parse_uniq_keys_for(value, flag)?))
 }
 
 /// Parses a comma list of `metric[decimals]` tokens (`el2.4,rg`); unknown
@@ -306,14 +317,18 @@ pub fn parse_uniq_mode(value: &str) -> Result<UniqMode, String> {
 ///
 /// (rq-0f6147ac)
 pub fn parse_uniq_keys(list: &str) -> Result<Vec<UniqKey>, String> {
+    parse_uniq_keys_for(list, "--uniq")
+}
+
+fn parse_uniq_keys_for(list: &str, flag: &str) -> Result<Vec<UniqKey>, String> {
     if list.trim().is_empty() {
-        return Err("`--uniq` needs `dup` or a non-empty key list".to_string());
+        return Err(format!("`{flag}` needs `dup` or a non-empty key list"));
     }
     let mut keys: Vec<UniqKey> = Vec::new();
     for token in list.split(',') {
         let token = token.trim();
         if token.is_empty() {
-            return Err(format!("`--uniq {list}`: empty key"));
+            return Err(format!("`{flag} {list}`: empty key"));
         }
         let split = token
             .find(|c: char| c.is_ascii_digit() || c == '.' || c == '-')
@@ -325,16 +340,16 @@ pub fn parse_uniq_keys(list: &str) -> Result<Vec<UniqKey>, String> {
             "rg" => UniqMetric::Rg,
             "mass" => UniqMetric::Mass,
             "dip" => UniqMetric::Dip,
-            other => return Err(format!("`--uniq {list}`: unknown metric `{other}`")),
+            other => return Err(format!("`{flag} {list}`: unknown metric `{other}`")),
         };
         let decimals = if decimals.is_empty() {
             metric.default_decimals()
         } else {
             let value: f64 = decimals
                 .parse()
-                .map_err(|_| format!("`--uniq {list}`: bad decimal count `{decimals}`"))?;
+                .map_err(|_| format!("`{flag} {list}`: bad decimal count `{decimals}`"))?;
             if !value.is_finite() || value < 0.0 {
-                return Err(format!("`--uniq {list}`: bad decimal count `{decimals}`"));
+                return Err(format!("`{flag} {list}`: bad decimal count `{decimals}`"));
             }
             value
         };
@@ -362,16 +377,63 @@ pub fn dedup_names(records: &[Record]) -> Vec<Record> {
         .collect()
 }
 
-/// First-wins name-duplication flags over the slice order.
-pub(crate) fn dedup_names_mask(records: &[&Record]) -> Vec<bool> {
-    let mut seen: HashSet<&str> = HashSet::new();
+/// One stable subgroup id per record in input order. Equal rounded
+/// signatures (`Keys`) or equal present names (`Dup`) share an id; each
+/// nameless record gets its own id in `Dup` mode.
+///
+/// (rq-cc06bd73)
+pub fn uniqueness_subgroups(records: &[&Record], mode: &UniqMode, memo: &ThermoMemo) -> Vec<usize> {
+    match mode {
+        UniqMode::Dup => name_subgroups(records),
+        UniqMode::Keys(keys) => key_subgroups(records, keys, memo),
+    }
+}
+
+fn name_subgroups(records: &[&Record]) -> Vec<usize> {
+    let mut ids: HashMap<&str, usize> = HashMap::new();
+    let mut next = 0usize;
     records
         .iter()
         .map(|record| match &record.name {
-            Some(name) => seen.insert(name.as_str()),
-            None => true,
+            Some(name) => match ids.get(name.as_str()) {
+                Some(&id) => id,
+                None => {
+                    let id = next;
+                    next += 1;
+                    ids.insert(name.as_str(), id);
+                    id
+                }
+            },
+            None => {
+                let id = next;
+                next += 1;
+                id
+            }
         })
         .collect()
+}
+
+fn key_subgroups(records: &[&Record], keys: &[UniqKey], memo: &ThermoMemo) -> Vec<usize> {
+    let mut ids: BTreeMap<Vec<OrderedF64>, usize> = BTreeMap::new();
+    records
+        .iter()
+        .map(|record| {
+            let signature: Vec<OrderedF64> =
+                keys.iter().map(|key| key.component(record, memo)).collect();
+            let next = ids.len();
+            *ids.entry(signature).or_insert(next)
+        })
+        .collect()
+}
+
+fn first_in_group(groups: &[usize]) -> Vec<bool> {
+    let mut seen: HashSet<usize> = HashSet::new();
+    groups.iter().map(|&group| seen.insert(group)).collect()
+}
+
+/// First-wins name-duplication flags over the slice order.
+pub(crate) fn dedup_names_mask(records: &[&Record]) -> Vec<bool> {
+    first_in_group(&name_subgroups(records))
 }
 
 /// Stable first-wins selection on rounded signature tuples over the whole
@@ -401,15 +463,7 @@ pub(crate) fn uniqueness_mask(
     keys: &[UniqKey],
     memo: &ThermoMemo,
 ) -> Vec<bool> {
-    let mut seen: BTreeSet<Vec<OrderedF64>> = BTreeSet::new();
-    records
-        .iter()
-        .map(|record| {
-            let signature: Vec<OrderedF64> =
-                keys.iter().map(|key| key.component(record, memo)).collect();
-            seen.insert(signature)
-        })
-        .collect()
+    first_in_group(&key_subgroups(records, keys, memo))
 }
 /// −0.0 and 0.0 are the same rounded value.
 fn norm_zero(value: f64) -> f64 {

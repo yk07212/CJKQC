@@ -33,7 +33,7 @@ fn arbalign_sweep_benchmark() {
     let mut times = Vec::with_capacity(runs);
     for _ in 0..runs {
         let start = Instant::now();
-        let (_mask, report) = arbalign_mask(&structures, threshold, threads);
+        let (_mask, report) = arbalign_mask(&structures, threshold, threads, None);
         times.push(start.elapsed());
         assert_eq!(report.skipped, 0, "benchmark corpus must be preparable");
     }

@@ -35,7 +35,7 @@ use compiled_jkqc::hydration::{
     hydration_states_from_ensembles, print_hydration_section, saturation_pressure_water,
     HydrationGroup, SolventConditions,
 };
-use compiled_jkqc::metrics::parse_uniq_mode;
+use compiled_jkqc::metrics::{parse_align_within, parse_uniq_mode};
 use compiled_jkqc::movie::{movie_frames, select_xyz_records, write_movie_xyz, write_xyz_files};
 use compiled_jkqc::overwrite::{confirm_overwrite, overwrite_error};
 use compiled_jkqc::parser::WindowBudget;
@@ -108,6 +108,12 @@ struct Cli {
         allow_hyphen_values = true
     )]
     arbalign: Option<String>,
+
+    /// Restrict --arbalign comparisons to records with the same uniqueness
+    /// signature: `dup` or a `metric[decimals]` comma list
+    /// (rqm/arbalign.md).
+    #[arg(long = "align-within", value_name = "KEYS")]
+    align_within: Option<String>,
 
     /// Keep the composition group's majority fragment pattern.
     #[arg(long = "reacted")]
@@ -550,6 +556,16 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     let arbalign = match &cli.arbalign {
         Some(value) => match parse_arbalign_threshold(value) {
             Ok(threshold) => Some(threshold),
+            Err(error) => return usage(&error),
+        },
+        None => None,
+    };
+    if cli.align_within.is_some() && cli.arbalign.is_none() {
+        return usage("--align-within requires --arbalign");
+    }
+    let align_within = match &cli.align_within {
+        Some(value) => match parse_align_within(value) {
+            Ok(mode) => Some(mode),
             Err(error) => return usage(&error),
         },
         None => None,
@@ -1145,6 +1161,7 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         cutoffs,
         uniq,
         arbalign,
+        align_within,
         reacted: match (cli.reacted, cli.reacted2) {
             (true, _) => Some(ReactedMode::Consensus),
             (_, true) => Some(ReactedMode::Deviants),
@@ -2074,6 +2091,7 @@ fn manipulation_ids(cli: &Cli) -> Vec<&'static str> {
         ("rename", !cli.rename.is_empty()),
         ("uniq", cli.uniq.is_some()),
         ("arbalign", cli.arbalign.is_some()),
+        ("align_within", cli.align_within.is_some()),
         ("reacted", cli.reacted),
         ("reacted2", cli.reacted2),
         ("sort", cli.sort.is_some()),
@@ -2172,6 +2190,8 @@ mod tests {
             "dup",
             "--arbalign",
             "0.1",
+            "--align-within",
+            "el8",
             "--reacted",
             "--reacted2",
             "--sort",

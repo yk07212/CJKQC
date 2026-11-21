@@ -60,6 +60,18 @@
     "title": "Pipeline Order",
     "type": "section"
   },
+  "rq-014ec037": {
+    "decl": "Scenario: Subgroup ids agree with dup uniqueness",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Subgroup ids agree with dup uniqueness",
+    "type": "scenario"
+  },
   "rq-017a3a9c": {
     "decl": "Scenario: Fortran float parsing rejects non-numeric and non-finite fields",
     "file": "parser-framework",
@@ -307,6 +319,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-06bb80f9": {
+    "decl": "Scenario: Align-within forms subgroups after the uniq survivors",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Align-within forms subgroups after the uniq survivors",
+    "type": "scenario"
+  },
   "rq-06cfcbfe": {
     "decl": "Scenario: An absurd temperature leaves thermochemistry undefined",
     "file": "thermo",
@@ -393,6 +417,14 @@
     ],
     "title": "Parameter bounds are enforced",
     "type": "scenario"
+  },
+  "rq-089b9919": {
+    "decl": "### Flag Value",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [],
+    "title": "Flag Value",
+    "type": "section"
   },
   "rq-09af191f": {
     "decl": "Scenario: Bare --hydration distributes over the hydration states of water",
@@ -770,6 +802,18 @@
       }
     ],
     "title": "A failed record still gains its composition",
+    "type": "scenario"
+  },
+  "rq-0f42db73": {
+    "decl": "Scenario: dup is accepted for --align-within",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "dup is accepted for --align-within",
     "type": "scenario"
   },
   "rq-0f5b209d": {
@@ -1501,7 +1545,7 @@
     "type": "scenario"
   },
   "rq-1967b16e": {
-    "decl": "- `apply_arbalign(records: &mut Vec<Record>, threshold: f64, parallel: usize) -> ArbAlignReport`",
+    "decl": "- `apply_arbalign(records: &mut Vec<Record>, threshold: f64, parallel: usize, scope: Option<&[usize]>) -> ArbAlignReport`",
     "file": "arbalign",
     "refs": [
       {
@@ -2168,6 +2212,18 @@
       }
     ],
     "title": "A relative corrected-energy window is per composition group",
+    "type": "scenario"
+  },
+  "rq-236d4dc3": {
+    "decl": "Scenario: The first record of each subgroup survives",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The first record of each subgroup survives",
     "type": "scenario"
   },
   "rq-2371c178": {
@@ -2877,6 +2933,18 @@
     "title": "A seam-cut frequency table is stored truncated",
     "type": "scenario"
   },
+  "rq-2e47f269": {
+    "decl": "Scenario: Malformed --align-within values are rejected",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Malformed --align-within values are rejected",
+    "type": "scenario"
+  },
   "rq-2e483977": {
     "decl": "Scenario: Components read from a JSON object",
     "file": "record",
@@ -3369,6 +3437,14 @@
     ],
     "title": "The corrected section follows the raw section and precedes the summary",
     "type": "scenario"
+  },
+  "rq-34fa9d89": {
+    "decl": "### Subgroups",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [],
+    "title": "Subgroups",
+    "type": "section"
   },
   "rq-355e66c9": {
     "decl": "- `detect(head)` returns the byte offset of the earliest line containing",
@@ -3960,6 +4036,18 @@
       }
     ],
     "title": "--noname pools every record into one population",
+    "type": "scenario"
+  },
+  "rq-41077fb2": {
+    "decl": "Scenario: Worker count does not change scoped survivors",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Worker count does not change scoped survivors",
     "type": "scenario"
   },
   "rq-41528ecc": {
@@ -4978,6 +5066,18 @@
     "title": "command",
     "type": "api-item"
   },
+  "rq-52a3d5ea": {
+    "decl": "Scenario: Undefined metrics are mutually equal for subgrouping",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undefined metrics are mutually equal for subgrouping",
+    "type": "scenario"
+  },
   "rq-52f7d9a4": {
     "decl": "- `parse_extrapolation(values: &[String]) -> Result<ExtrapolationSpec, String>`",
     "file": "extrapolation",
@@ -5845,6 +5945,18 @@
     "title": "Pipeline Integration",
     "type": "section"
   },
+  "rq-618c4346": {
+    "decl": "Scenario: align-within parsing shares the uniqueness grammar",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "align-within parsing shares the uniqueness grammar",
+    "type": "scenario"
+  },
   "rq-61cdb639": {
     "decl": "Scenario: A corrupt line in a source is skipped and fails the run",
     "file": "extrapolation",
@@ -6178,6 +6290,18 @@
       }
     ],
     "title": "A completed run yields the full observable set",
+    "type": "scenario"
+  },
+  "rq-68964eb9": {
+    "decl": "Scenario: Different energy subgroups are never compared",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Different energy subgroups are never compared",
     "type": "scenario"
   },
   "rq-68e223b9": {
@@ -7311,7 +7435,7 @@
     "type": "api-item"
   },
   "rq-7c5578c0": {
-    "decl": "- `FilterSpec` carries `arbalign: Option<f64>` and `parallel: usize`, the",
+    "decl": "- `FilterSpec` carries `arbalign: Option<f64>`,",
     "file": "arbalign",
     "refs": [
       {
@@ -8174,6 +8298,18 @@
     "title": "Principal-Axis Preprocessing",
     "type": "section"
   },
+  "rq-8ac5fbd3": {
+    "decl": "Scenario: --align-within without --arbalign is a usage error",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--align-within without --arbalign is a usage error",
+    "type": "scenario"
+  },
   "rq-8ad5063d": {
     "decl": "## Input Classification",
     "file": "collection",
@@ -8241,7 +8377,7 @@
     "type": "section"
   },
   "rq-8b4b0278": {
-    "decl": "- `arbalign_mask(structures: &[Option<ArbAlignStructure>], threshold: f64, parallel: usize) -> (Vec<bool>, ArbAlignReport)`",
+    "decl": "- `arbalign_mask(structures: &[Option<ArbAlignStructure>], threshold: f64, parallel: usize, scope: Option<&[usize]>) -> (Vec<bool>, ArbAlignReport)`",
     "file": "arbalign",
     "refs": [
       {
@@ -8559,6 +8695,22 @@
     ],
     "title": "An elided geometry header falls back to the visible frequency lines",
     "type": "scenario"
+  },
+  "rq-90eefa9e": {
+    "decl": "- `parse_align_within(value: &str) -> Result<UniqMode, String>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_align_within",
+    "type": "api-item"
   },
   "rq-91435a73": {
     "decl": "Scenario: A recorded failed run is classified failed",
@@ -9117,6 +9269,18 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-98ece9e5": {
+    "decl": "Scenario: Align-within keeps its own flag value",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Align-within keeps its own flag value",
+    "type": "scenario"
+  },
   "rq-990dde7d": {
     "decl": "- `UniqMode` — `Dup` or `Keys(Vec<UniqKey>)` (non-empty, identical",
     "file": "uniqueness",
@@ -9457,6 +9621,18 @@
       }
     ],
     "title": "Undefined thermochemistry prints as a dash",
+    "type": "scenario"
+  },
+  "rq-9e0e3300": {
+    "decl": "Scenario: Align-within without arbalign is a usage error",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Align-within without arbalign is a usage error",
     "type": "scenario"
   },
   "rq-9e28654c": {
@@ -10056,6 +10232,18 @@
     "refs": [],
     "title": "multiplicity",
     "type": "api-item"
+  },
+  "rq-a8a207ad": {
+    "decl": "Scenario: align-within parse errors name the align-within flag",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "align-within parse errors name the align-within flag",
+    "type": "scenario"
   },
   "rq-a8f483c7": {
     "decl": "Scenario: The corrected columns sit in canonical order",
@@ -10898,6 +11086,23 @@
     "title": "A single-point-only run reports the last job's values",
     "type": "scenario"
   },
+  "rq-b73bf2f4": {
+    "decl": "## Within-Subgroup Comparison (`--align-within`)",
+    "file": "arbalign",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Within-Subgroup Comparison (`--align-within`)",
+    "type": "section"
+  },
   "rq-b73d0021": {
     "decl": "Scenario: Exact composition extracts its records",
     "file": "filtering",
@@ -11000,6 +11205,18 @@
     "title": "A manipulation with neither --out nor a print flag is a usage error",
     "type": "scenario"
   },
+  "rq-b827e2d4": {
+    "decl": "Scenario: dup mode compares only records with the same name",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "dup mode compares only records with the same name",
+    "type": "scenario"
+  },
   "rq-b846e66c": {
     "decl": "- `charge` — `Total Charge           Charge          .... <n>` value.",
     "file": "parsers/orca",
@@ -11068,6 +11285,18 @@
       }
     ],
     "title": "2s needs no scf_energy",
+    "type": "scenario"
+  },
+  "rq-b94b3e6b": {
+    "decl": "Scenario: The --align-within value uses the --uniq syntax",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The --align-within value uses the --uniq syntax",
     "type": "scenario"
   },
   "rq-b954f3fb": {
@@ -12176,6 +12405,22 @@
     "title": "Blank lines are ignored",
     "type": "scenario"
   },
+  "rq-cc06bd73": {
+    "decl": "- `uniqueness_subgroups(records: &[&Record], mode: &UniqMode, memo: &ThermoMemo) -> Vec<usize>`",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "uniqueness_subgroups",
+    "type": "api-item"
+  },
   "rq-cc3c275c": {
     "decl": "Scenario: A geometryless record survives only with a none-consensus",
     "file": "detection",
@@ -12377,6 +12622,30 @@
       }
     ],
     "title": "A degenerate geometry prints dashes, not infinities",
+    "type": "scenario"
+  },
+  "rq-d08d83a4": {
+    "decl": "Scenario: Align-within never crosses composition groups",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Align-within never crosses composition groups",
+    "type": "scenario"
+  },
+  "rq-d0949c67": {
+    "decl": "Scenario: Every selected key must agree for a pair to be compared",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Every selected key must agree for a pair to be compared",
     "type": "scenario"
   },
   "rq-d0b32669": {
@@ -13097,6 +13366,18 @@
     "title": "The exported file carries the movie frame text",
     "type": "scenario"
   },
+  "rq-dd8d9a63": {
+    "decl": "Scenario: Nameless records are singleton subgroups in dup mode",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Nameless records are singleton subgroups in dup mode",
+    "type": "scenario"
+  },
   "rq-de12aef8": {
     "decl": "Scenario: A normally terminated run yields the observable set",
     "file": "parsers/mrcc",
@@ -13580,6 +13861,19 @@
     "title": "write_movie_xyz",
     "type": "api-item"
   },
+  "rq-e5ed6309": {
+    "decl": "### Elimination",
+    "file": "arbalign",
+    "level": 3,
+    "refs": [
+      {
+        "file": "src/arbalign.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Elimination",
+    "type": "section"
+  },
   "rq-e61c2633": {
     "decl": "- `tests/` contains integration tests; the CLI tests run the built binary",
     "file": "scaffolding",
@@ -13756,6 +14050,18 @@
       }
     ],
     "title": "The corrected section shifts gcorr and stcorr the same way",
+    "type": "scenario"
+  },
+  "rq-e9240186": {
+    "decl": "Scenario: Subgroup ids agree with keys uniqueness",
+    "file": "uniqueness",
+    "refs": [
+      {
+        "file": "tests/metrics.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Subgroup ids agree with keys uniqueness",
     "type": "scenario"
   },
   "rq-e982f0e0": {
@@ -14858,6 +15164,18 @@
       }
     ],
     "title": "Zero survivors write no files",
+    "type": "scenario"
+  },
+  "rq-fb0a8b46": {
+    "decl": "Scenario: The same energy subgroup is filtered by RMSD",
+    "file": "arbalign",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The same energy subgroup is filtered by RMSD",
     "type": "scenario"
   },
   "rq-fb368603": {

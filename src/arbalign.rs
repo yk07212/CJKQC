@@ -153,6 +153,7 @@ pub fn arbalign_mask(
     structures: &[Option<ArbAlignStructure>],
     threshold: f64,
     parallel: usize,
+    scope: Option<&[usize]>,
 ) -> (Vec<bool>, ArbAlignReport) {
     let len = structures.len();
     let skipped = structures
@@ -168,12 +169,22 @@ pub fn arbalign_mask(
 
     let workers = parallel.max(1).min(len);
     if workers <= 1 {
-        return (sequential_sweep(structures, threshold), report);
+        return (sequential_sweep(structures, threshold, scope), report);
     }
-    (pooled_sweep(structures, threshold, workers), report)
+    (pooled_sweep(structures, threshold, workers, scope), report)
 }
 
-fn sequential_sweep(structures: &[Option<ArbAlignStructure>], threshold: f64) -> Vec<bool> {
+/// Whether two positions may be compared under `scope`; `None` means one
+/// whole group.
+fn same_scope(scope: Option<&[usize]>, left: usize, right: usize) -> bool {
+    scope.is_none_or(|ids| ids[left] == ids[right])
+}
+
+fn sequential_sweep(
+    structures: &[Option<ArbAlignStructure>],
+    threshold: f64,
+    scope: Option<&[usize]>,
+) -> Vec<bool> {
     let mut alive = vec![true; structures.len()];
     let mut scratch = Scratch::default();
     for i in 0..structures.len() {
@@ -184,7 +195,7 @@ fn sequential_sweep(structures: &[Option<ArbAlignStructure>], threshold: f64) ->
             continue;
         };
         for j in i + 1..structures.len() {
-            if !alive[j] {
+            if !alive[j] || !same_scope(scope, i, j) {
                 continue;
             }
             let Some(b) = structures[j].as_ref() else {
@@ -199,11 +210,13 @@ fn sequential_sweep(structures: &[Option<ArbAlignStructure>], threshold: f64) ->
 }
 
 /// A persistent pool: the workers are spawned once per composition group and
-/// reused across every survivor sweep (`rqm/arbalign.md` Parallelism).
+/// reused across every survivor sweep; pairs in different `--align-within`
+/// subgroups are skipped (`rqm/arbalign.md` Parallelism).
 fn pooled_sweep(
     structures: &[Option<ArbAlignStructure>],
     threshold: f64,
     workers: usize,
+    scope: Option<&[usize]>,
 ) -> Vec<bool> {
     let len = structures.len();
     let alive: Vec<AtomicBool> = (0..len).map(|_| AtomicBool::new(true)).collect();
@@ -214,7 +227,7 @@ fn pooled_sweep(
     let next = AtomicUsize::new(0);
     let mut scratches: Vec<Scratch> = (0..workers).map(|_| Scratch::default()).collect();
 
-    thread::scope(|scope| {
+    thread::scope(|thread_scope| {
         for scratch in &mut scratches {
             let alive = &alive;
             let eliminated = &eliminated;
@@ -222,7 +235,7 @@ fn pooled_sweep(
             let done = &done;
             let current = &current;
             let next = &next;
-            scope.spawn(move || loop {
+            thread_scope.spawn(move || loop {
                 barrier.wait();
                 if done.load(Ordering::SeqCst) {
                     break;
@@ -236,7 +249,7 @@ fn pooled_sweep(
                     if j >= len {
                         break;
                     }
-                    if !alive[j].load(Ordering::SeqCst) {
+                    if !alive[j].load(Ordering::SeqCst) || !same_scope(scope, i, j) {
                         continue;
                     }
                     let Some(b) = structures[j].as_ref() else {
@@ -299,6 +312,7 @@ pub fn apply_arbalign(
     records: &mut Vec<Record>,
     threshold: f64,
     parallel: usize,
+    scope: Option<&[usize]>,
 ) -> ArbAlignReport {
     let mut ids: HashMap<Option<Components>, usize> = HashMap::new();
     let mut groups: Vec<Vec<usize>> = Vec::new();
@@ -319,11 +333,15 @@ pub fn apply_arbalign(
     let mut keep = vec![false; records.len()];
     let mut report = ArbAlignReport::default();
     for members in groups {
+        // rq-b73bf2f4 rq-e5ed6309
         let structures: Vec<Option<ArbAlignStructure>> = members
             .iter()
             .map(|&index| prepare_arbalign(&records[index]))
             .collect();
-        let (mask, group_report) = arbalign_mask(&structures, threshold, parallel);
+        let member_scope: Option<Vec<usize>> =
+            scope.map(|scope| members.iter().map(|&index| scope[index]).collect());
+        let (mask, group_report) =
+            arbalign_mask(&structures, threshold, parallel, member_scope.as_deref());
         report.skipped += group_report.skipped;
         for (position, &index) in members.iter().enumerate() {
             keep[index] = mask[position];

@@ -20,7 +20,8 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
   `--nextract`, `--cut`,
   `--cutr`, `--pass`, `--passr`, `--is`, `--isnot`, `--filter-lt`,
   `--filter-ge`, `--rel-filter-lt`, `--rel-filter-ge`, `--uniq`,
-  `--arbalign` (`rqm/arbalign.md`), `--reacted`, `--reacted2`, `--sort`,
+  `--arbalign` (`rqm/arbalign.md`), `--align-within` (`rqm/arbalign.md`),
+  `--reacted`, `--reacted2`, `--sort`,
   `--reverse`, `--select`, `--glob`, `--shuffle`, `--seed`, `--noname`.
   **Print flags**
   (`--filename`, `--name`, `--path`, `--el`, … — see Printing) select
@@ -53,7 +54,7 @@ group as defined below:
 6. `--reacted` / `--reacted2` (`rqm/detection.md`)
 7. `--sort` (then `--reverse`)
 8. `--select`
-9. `--arbalign` (`rqm/arbalign.md`)
+9. `--arbalign`, optionally scoped by `--align-within` (`rqm/arbalign.md`)
 10. `--glob`
 11. `--shuffle`
 
@@ -80,7 +81,9 @@ present but `--sort` is not, records sort by `el` ascending first.
   (`rqm/filtering.md` Printing) — not the composition token the `name`
   column prints. `--arbalign` is the exception: it always partitions by
   exact `components`, so `--noname` never makes structures of different
-  composition comparable (`rqm/arbalign.md`).
+  composition comparable (`rqm/arbalign.md`). `--align-within` forms its
+  subgroups inside those exact-`components` groups and likewise ignores
+  `--noname`.
 - The population columns (`rqm/population.md`) group by the same rule: one
   population per composition group, or one global population under
   `--noname`.
@@ -210,6 +213,11 @@ disable it.
   `arbalign: kept <k> records without usable geometry`. Pairs whose
   geometries have different atom counts or element multisets are not
   compared and neither record is removed.
+- `--align-within <keys>` restricts the sweep to records sharing a
+  uniqueness signature (`rqm/arbalign.md` Within-Subgroup Comparison). It
+  uses the `--uniq` value syntax and parser, requires `--arbalign`, and
+  never filters on its own. `--align-within` without `--arbalign` is a
+  usage error (exit 2).
 - `--arbalign` is the only structure-alignment flag; `--MWarbalign` is not
   accepted.
 
@@ -326,7 +334,8 @@ disable it.
   ExtractMode)>` with `ExtractMode::{Keep, Drop}`, `renames:
   Vec<RenameSpec>` (`rqm/composition.md`), `cutoffs:
   Vec<Cutoff>`, `uniq: Option<UniqMode>` (`rqm/uniqueness.md`),
-  `arbalign: Option<f64>` (`rqm/arbalign.md`), `reacted:
+  `arbalign: Option<f64>` and `align_within: Option<UniqMode>`
+  (`rqm/arbalign.md`), `reacted:
   Option<ReactedMode>` (`rqm/detection.md`), `sort: Option<SortKey>`,
   `reverse: bool`, `select: Option<usize>`, `glob: bool`, `shuffle: bool`,
   `seed: u64`, `grouping: Grouping` (`Grouping::{Composition, Unit}`),
@@ -385,7 +394,9 @@ disable it.
   (`rqm/thermo.md` Performance). The stage order is fixed: the implicit
   `el` sort is triggered by `--uniq` in keys mode, `--arbalign`, or
   `--select`; arbalign runs after the explicit or implicit sort and after
-  `--select`, before `--glob` and `--shuffle`. In composition grouping it
+  `--select`, before `--glob` and `--shuffle`, scoped to the
+  `--align-within` subgroups when that flag is present. In composition
+  grouping it
   parses the `extract` query strings and propagates an `ExtractError`
   rather than silently dropping records (the CLI pre-validates, so callers
   see `Ok` except for a rename overflow); under `Unit` grouping extract
@@ -942,4 +953,16 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record
     When CJKQC is invoked with the database and "--arbalign 0.1" and no --out and no print flag
     Then the exit code is 2
+
+  @rq-9e0e3300
+  Scenario: Align-within without arbalign is a usage error
+    Given a database with one ok record
+    When CJKQC is invoked with the database, "--align-within el8 --filename" and no --out
+    Then the exit code is 2
+
+  @rq-98ece9e5
+  Scenario: Align-within keeps its own flag value
+    Given a database whose records fall into two energy subgroups
+    When CJKQC is invoked with the database and "--align-within el8 --arbalign 0.1 --filename" and no --out
+    Then each subgroup contributes its survivors
 ```

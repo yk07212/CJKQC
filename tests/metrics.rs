@@ -4,8 +4,8 @@
 use compiled_jkqc::thermo::{ThermoConditions, ThermoMemo};
 use compiled_jkqc::{
     atomic_mass, dedup_names, metric_dipole_magnitude, metric_radius_of_gyration,
-    metric_total_mass, parse_uniq_keys, unique_by_properties, Geometry, Record, UniqKey,
-    UniqMetric,
+    metric_total_mass, parse_align_within, parse_uniq_keys, parse_uniq_mode, unique_by_properties,
+    uniqueness_subgroups, Geometry, Record, UniqKey, UniqMetric, UniqMode,
 };
 
 fn geom(symbols: &[&str], coordinates: &[f64]) -> Geometry {
@@ -339,4 +339,61 @@ fn undefined_gibbs_metrics_are_mutually_equal() {
     let records = vec![Record::default(), Record::default()];
     let kept = unique_by_properties(&records, &[key(UniqMetric::G, 3.0)], &ThermoMemo::default());
     assert_eq!(kept.len(), 1);
+}
+
+// ---------------------------------------------------------------------------
+// Shared subgroup partition and --align-within parsing (rqm/uniqueness.md).
+// ---------------------------------------------------------------------------
+
+#[test] // rq-e9240186
+fn subgroup_ids_agree_with_keys_uniqueness() {
+    let records = [
+        energy_record(-38.5123),
+        energy_record(-38.5124),
+        energy_record(-38.5099),
+    ];
+    let refs: Vec<&Record> = records.iter().collect();
+    let groups = uniqueness_subgroups(
+        &refs,
+        &UniqMode::Keys(vec![key(UniqMetric::El, 3.0)]),
+        &ThermoMemo::default(),
+    );
+    assert_eq!(groups[0], groups[1], "agreeing energies share a subgroup");
+    assert_ne!(
+        groups[0], groups[2],
+        "a rounding step apart is another subgroup"
+    );
+}
+
+#[test] // rq-014ec037
+fn subgroup_ids_agree_with_dup_uniqueness() {
+    let named = |name: &str| Record {
+        name: Some(name.to_string()),
+        ..Record::default()
+    };
+    let records = [named("a"), named("b"), named("a"), Record::default()];
+    let refs: Vec<&Record> = records.iter().collect();
+    let groups = uniqueness_subgroups(&refs, &UniqMode::Dup, &ThermoMemo::default());
+    assert_eq!(
+        groups[0], groups[2],
+        "the two \"a\" records share a subgroup"
+    );
+    assert_ne!(groups[0], groups[1]);
+    assert_ne!(groups[3], groups[0], "nameless records get their own id");
+    assert_ne!(groups[3], groups[1]);
+}
+
+#[test] // rq-618c4346
+fn align_within_parsing_shares_the_uniqueness_grammar() {
+    assert_eq!(
+        parse_align_within("el2.4,rg").expect("parses"),
+        parse_uniq_mode("el2.4,rg").expect("parses")
+    );
+    assert_eq!(parse_align_within("dup").expect("parses"), UniqMode::Dup);
+}
+
+#[test] // rq-a8a207ad
+fn align_within_parse_errors_name_the_align_within_flag() {
+    let error = parse_align_within("xyz").expect_err("unknown metric");
+    assert!(error.contains("--align-within"), "{error}");
 }
