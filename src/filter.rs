@@ -16,7 +16,9 @@ use crate::metrics::{
 use crate::population::{populations, PopLevel};
 use crate::reacted::{reacted_mask, ReactedMode};
 use crate::record::{Components, Record, RecordStatus};
-use crate::thermo::{rotational_constants, ThermoMemo, KCAL_MOL_PER_HARTREE};
+use crate::thermo::{
+    rotational_constants, ThermoMemo, ANGSTROM3_PER_BOHR3, DEBYE_PER_E_A0, KCAL_MOL_PER_HARTREE,
+};
 
 /// Whether `--extract` keeps matches (`Keep`) or `--nextract` drops them
 /// (`Drop`).
@@ -329,16 +331,22 @@ pub struct FilterOutcome {
     pub arbalign: ArbAlignReport,
 }
 
-/// The print-boundary energy unit: `Kcal` when the `--unit` flag is
-/// present, `Au` (hartree) otherwise.
+/// The print-boundary unit mode: `Kcal` when the `--unit` flag is
+/// present, `Au` otherwise. `Kcal` prints energies in kcal/mol, dipoles
+/// in Debye, and polarizabilities in Å³; `Au` prints energies in
+/// hartree and dipoles and polarizabilities in atomic units. The variant
+/// name `Kcal` is historical: it selects every practical print unit, not
+/// only kcal/mol, and is retained for API stability.
 ///
 /// (rq-8718aee5)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Unit {
-    /// Hartree (the default).
+    /// Atomic units (the default): hartree energies.
     #[default]
     Au,
-    /// kcal/mol (`--unit`).
+    /// Practical units (`--unit`): kcal/mol energies, Debye dipoles,
+    /// Å³ polarizabilities. The name is historical and retained for API
+    /// stability.
     Kcal,
 }
 
@@ -866,7 +874,9 @@ pub(crate) fn align_table(rows: &[Vec<String>], aligns: &[Alignment]) -> String 
 /// memo, which derives each record's thermochemistry once across all
 /// thermo columns (`rqm/thermo.md` Performance); `unit` converts every
 /// energy column (`el`, `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, `gcorr`)
-/// to kcal/mol. `grouping` is the run's grouping (`rqm/filtering.md`
+/// to kcal/mol, the dipole columns (`dip`, `dips`) to Debye, and the
+/// polarizability columns (`pol`, `pols`) to Å³. `grouping` is the run's
+/// grouping (`rqm/filtering.md`
 /// Grouping): the population columns (`rqm/population.md`) pool per
 /// composition group, or into one global pool under `--noname`.
 ///
@@ -927,6 +937,28 @@ pub(crate) fn format_energy(value: f64, unit: Unit) -> String {
     match unit {
         Unit::Au => format!("{value:.10}"),
         Unit::Kcal => format!("{:.4}", value * KCAL_MOL_PER_HARTREE),
+    }
+}
+
+/// One dipole cell: atomic units or Debye with 3 decimals under `--unit`
+/// (`rqm/filtering.md` Printing; `rqm/thermo.md` Constants).
+///
+/// (rq-4ea8ca35 rq-6da80a21 rq-ee2f64a3)
+fn format_dipole(value: f64, unit: Unit) -> String {
+    match unit {
+        Unit::Au => format!("{value:.3}"),
+        Unit::Kcal => format!("{:.3}", value * DEBYE_PER_E_A0),
+    }
+}
+
+/// One polarizability cell: atomic units or Å³ with 3 decimals under
+/// `--unit` (`rqm/filtering.md` Printing; `rqm/thermo.md` Constants).
+///
+/// (rq-4ea8ca35 rq-6da80a21 rq-ac4624f4)
+fn format_polarizability(value: f64, unit: Unit) -> String {
+    match unit {
+        Unit::Au => format!("{value:.3}"),
+        Unit::Kcal => format!("{:.3}", value * ANGSTROM3_PER_BOHR3),
     }
 }
 
@@ -1005,25 +1037,31 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
             Some(value) => format!("{value:.3}"),
             None => undefined(),
         },
+        // rq-ee2f64a3 rq-79642963
         Column::Dip => match metric_dipole_magnitude(record) {
-            Some(value) => format!("{value:.3}"),
+            Some(value) => format_dipole(value, unit),
             None => undefined(),
         },
         Column::Dips => match record.dipole_moment {
-            Some([x, y, z]) => format!("{x:.3},{y:.3},{z:.3}"),
+            Some([x, y, z]) => format!(
+                "{},{},{}",
+                format_dipole(x, unit),
+                format_dipole(y, unit),
+                format_dipole(z, unit)
+            ),
             None => undefined(),
         },
         // The isotropic value is one third of the tensor trace; the
         // tensor cell lists all nine entries row-major.
-        // rq-1b7b3af3 rq-77dd2f68
+        // rq-1b7b3af3 rq-77dd2f68 rq-ac4624f4 rq-79642963
         Column::Pol => match &record.polarizability {
-            Some(tensor) => format!("{:.3}", (tensor[0] + tensor[4] + tensor[8]) / 3.0),
+            Some(tensor) => format_polarizability((tensor[0] + tensor[4] + tensor[8]) / 3.0, unit),
             None => undefined(),
         },
         Column::Pols => match &record.polarizability {
             Some(tensor) => tensor
                 .iter()
-                .map(|value| format!("{value:.3}"))
+                .map(|value| format_polarizability(*value, unit))
                 .collect::<Vec<_>>()
                 .join(","),
             None => undefined(),

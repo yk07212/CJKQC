@@ -96,10 +96,12 @@ Chapter~\ref{sec:thermo} and Chapter~\ref{sec:corrections}.
 \end{center}
 
 \flg{--unit} is a simple on/off switch: adding it alone converts every
-hartree-valued print quantity to kcal/mol. It takes no value, and a value
-after it is a usage error. Without it, energies print in hartree. Relative
+hartree-valued print quantity to kcal/mol, every dipole value to debye,
+and every polarizability value to \AA$^3$. It takes no value, and a value
+after it is a usage error. Without it, energies print in hartree and
+dipoles and polarizabilities in atomic units. Relative
 cutoffs (Chapter~\ref{sec:filtering}) already compare in kcal/mol and are not
-affected by \flg{--unit}.
+affected by \flg{--unit}, and the dipole cutoff remains in atomic units.
 
 \subsection{Structure and property columns}\label{sec:property-columns}
 
@@ -111,14 +113,16 @@ affected by \flg{--unit}.
 \flg{--rg} & \fld{rg} & Mass-weighted radius of gyration in \AA{}, 3
 decimals. \\
 \flg{--mass} & \fld{mass} & Total mass in u, 3 decimals. \\
-\flg{--dip} & \fld{dip} & Dipole magnitude in atomic units, 3 decimals. \\
+\flg{--dip} & \fld{dip} & Dipole magnitude in atomic units, or debye under
+\flg{--unit}, 3 decimals. \\
 \flg{--dips} & \fld{dips} & The dipole vector's $x,y,z$ components in atomic
-units, 3 decimals each, comma-separated without spaces. \\
-\flg{--pol} & \fld{pol} & Isotropic polarizability in atomic units, 3
-decimals. \\
+units, or debye under \flg{--unit}, 3 decimals each, comma-separated
+without spaces. \\
+\flg{--pol} & \fld{pol} & Isotropic polarizability in atomic units, or
+\AA$^3$ under \flg{--unit}, 3 decimals. \\
 \flg{--pols} & \fld{pols} & The nine polarizability tensor values in atomic
-units, 3 decimals each, comma-separated without spaces, in the order
-$xx, xy, xz, yx, yy, yz, zx, zy, zz$. \\
+units, or \AA$^3$ under \flg{--unit}, 3 decimals each, comma-separated
+without spaces, in the order $xx, xy, xz, yx, yy, yz, zx, zy, zz$. \\
 \flg{--charge} & \fld{charge} & Net charge as a whole number. \\
 \flg{--multiplicity} & \fld{multiplicity} & Spin multiplicity as a whole
 number. \\

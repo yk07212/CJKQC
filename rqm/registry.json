@@ -6398,6 +6398,22 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-6da80a21": {
+    "decl": "- `DEBYE_PER_E_A0 = 2.541746473` (e·a₀ → Debye) and",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "DEBYE_PER_E_A0",
+    "type": "api-item"
+  },
   "rq-6decd555": {
     "decl": "Scenario: The program column prints only the name without a version",
     "file": "filtering",
@@ -7097,6 +7113,22 @@
     ],
     "title": "movie_frames",
     "type": "api-item"
+  },
+  "rq-79642963": {
+    "decl": "Scenario: Without --unit the dipole and polarizability columns remain atomic units",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Without --unit the dipole and polarizability columns remain atomic units",
+    "type": "scenario"
   },
   "rq-799f6155": {
     "decl": "Scenario: The version banner is detected",
@@ -7960,7 +7992,7 @@
     "type": "scenario"
   },
   "rq-8718aee5": {
-    "decl": "- `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the",
+    "decl": "- `Unit` — `Au | Kcal`, the print-boundary unit mode: `Kcal` when the",
     "file": "filtering",
     "refs": [
       {
@@ -10144,6 +10176,22 @@
     "title": "Merge copies lines without re-serializing them",
     "type": "scenario"
   },
+  "rq-ac4624f4": {
+    "decl": "Scenario: --unit converts the polarizability columns to cubic angstroms",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--unit converts the polarizability columns to cubic angstroms",
+    "type": "scenario"
+  },
   "rq-ac683d6d": {
     "decl": "### Definedness",
     "file": "thermo",
@@ -11609,6 +11657,18 @@
     "title": "A log without an SCF Done line carries neither energy",
     "type": "scenario"
   },
+  "rq-c30e5c79": {
+    "decl": "Scenario: The cubic-bohr conversion derives from the length constant",
+    "file": "thermo",
+    "refs": [
+      {
+        "file": "tests/thermo.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The cubic-bohr conversion derives from the length constant",
+    "type": "scenario"
+  },
   "rq-c32bf4fa": {
     "decl": "### Functions",
     "file": "thermo",
@@ -11834,6 +11894,18 @@
     ],
     "title": "Candidates and Matching",
     "type": "section"
+  },
+  "rq-c6b69701": {
+    "decl": "Scenario: --unit leaves the dip cutoff in atomic units",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--unit leaves the dip cutoff in atomic units",
+    "type": "scenario"
   },
   "rq-c6dcf9fc": {
     "decl": "- `LineMatches<'w>` — the located lines of one `locate` call, borrowed from",
@@ -14017,6 +14089,22 @@
       }
     ],
     "title": "Identical electronic energies are fatal",
+    "type": "scenario"
+  },
+  "rq-ee2f64a3": {
+    "decl": "Scenario: --unit converts the dipole columns to Debye",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "src/filter.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--unit converts the dipole columns to Debye",
     "type": "scenario"
   },
   "rq-ee3e38de": {

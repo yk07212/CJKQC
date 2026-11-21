@@ -10,6 +10,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::metrics::atomic_mass;
+use crate::parser::extract::BOHR_TO_ANGSTROM;
 use crate::record::Record;
 
 // rq-361306ea — CODATA 2018, the single constant set behind every
@@ -27,6 +28,20 @@ pub const E_HARTREE: f64 = 4.3597447222071e-18; // J
 ///
 /// (rq-361306ea)
 pub const KCAL_MOL_PER_HARTREE: f64 = 627.5094740631;
+
+/// Elementary-charge bohr to Debye: the print conversion for the dipole
+/// columns and the inverse of Gaussian's Debye-to-atomic-unit extraction
+/// (`rqm/thermo.md` Constants).
+///
+/// (rq-6da80a21)
+pub const DEBYE_PER_E_A0: f64 = 2.541746473;
+
+/// Cubic bohr to cubic ångström: the print conversion for the
+/// polarizability columns, derived from the length constant so the two
+/// cannot drift (`rqm/thermo.md` Constants).
+///
+/// (rq-6da80a21)
+pub const ANGSTROM3_PER_BOHR3: f64 = BOHR_TO_ANGSTROM * BOHR_TO_ANGSTROM * BOHR_TO_ANGSTROM;
 
 /// A frequency at or below this value (cm⁻¹) never participates in the
 /// vibrational sums: programs print near-zero translational and rotational

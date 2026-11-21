@@ -68,7 +68,8 @@ pub use reacted::{are_bonded, filter_reacted, fragment_signature, ReactedMode};
 // rq-3345a07b thermochemistry surface (rqm/thermo.md)
 pub use thermo::{
     classify_species, derived_value, rotational_constants, thermochemistry, SpeciesClass, Thermo,
-    ThermoConditions, ThermoMemo, E_HARTREE, KCAL_MOL_PER_HARTREE, K_B, P_STANDARD,
+    ThermoConditions, ThermoMemo, ANGSTROM3_PER_BOHR3, DEBYE_PER_E_A0, E_HARTREE,
+    KCAL_MOL_PER_HARTREE, K_B, P_STANDARD,
 };
 
 // rq-f8ebbc84 formation surface (rqm/formation.md)

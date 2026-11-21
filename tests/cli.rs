@@ -1001,6 +1001,78 @@ fn pols_column_is_undefined_without_a_polarizability_tensor() {
     assert_eq!(lines[1], ["-"]);
 }
 
+#[test] // rq-ee2f64a3
+fn unit_converts_the_dipole_columns_to_debye() {
+    let dir = temp_dir();
+    let record = Record {
+        dipole_moment: Some([0.1234, -0.4567, 0.7891]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--dip", "--dips", "--unit"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["dip", "dips"]);
+    assert_eq!(lines[1], ["2.339", "0.314,-1.161,2.006"]);
+}
+
+#[test] // rq-ac4624f4
+fn unit_converts_the_polarizability_columns_to_cubic_angstroms() {
+    let dir = temp_dir();
+    let record = Record {
+        polarizability: Some([3.0, 0.1, 0.2, 0.1, 6.0, 0.3, 0.2, 0.3, 9.0]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--pol", "--pols", "--unit"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["pol", "pols"]);
+    assert_eq!(
+        lines[1],
+        [
+            "0.889",
+            "0.445,0.015,0.030,0.015,0.889,0.044,0.030,0.044,1.334"
+        ]
+    );
+}
+
+#[test] // rq-79642963
+fn without_unit_the_dipole_and_polarizability_columns_remain_atomic_units() {
+    let dir = temp_dir();
+    let record = Record {
+        dipole_moment: Some([0.1234, -0.4567, 0.7891]),
+        polarizability: Some([3.0, 0.0, 0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 9.0]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--dip", "--pol"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["dip", "pol"]);
+    assert_eq!(lines[1], ["0.920", "6.000"]);
+}
+
+#[test] // rq-c6b69701
+fn unit_leaves_the_dip_cutoff_in_atomic_units() {
+    let dir = temp_dir();
+    let record = Record {
+        name: Some("polar".to_string()),
+        dipole_moment: Some([0.1234, -0.4567, 0.7891]),
+        ..Record::default()
+    };
+    let db = database_in(&dir, &[serde_json::to_string(&record).expect("line")]);
+    let run = cjkqc(&[&db, "--unit", "--cut", "dip", "1.0", "--filename"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["filename"]);
+    assert_eq!(lines[1], ["polar"]);
+}
+
 #[test] // rq-003218f8
 fn freqs_column_prints_every_stored_frequency_in_stored_order() {
     let dir = temp_dir();

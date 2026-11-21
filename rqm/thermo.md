@@ -175,9 +175,16 @@ CODATA 2018 values, the single set used by every conversion:
 | E_h | 4.3597447222071 × 10⁻¹⁸ J |
 | 1 kcal/mol | 4184 J/mol (exact) |
 | Eh → kcal/mol | 627.5094740631 (= `KCAL_MOL_PER_HARTREE`) |
+| e·a₀ → Debye | 2.541746473 (= `DEBYE_PER_E_A0`) |
+| bohr³ → Å³ | `BOHR_TO_ANGSTROM³` (= `ANGSTROM3_PER_BOHR3`) |
 
-Energies are hartree internally; conversion to kcal/mol happens only at
-the print boundary via the `--unit` flag (`rqm/filtering.md` Printing).
+`ANGSTROM3_PER_BOHR3` is derived from the length constant
+`BOHR_TO_ANGSTROM = 0.529177210903` (`rqm/parser-framework.md`), so the
+two length conversions cannot drift. Energies are hartree internally and
+dipoles and polarizabilities are in
+atomic units internally. Conversion to kcal/mol, Debye, and Å³ happens
+only at the print boundary via the `--unit` flag
+(`rqm/filtering.md` Printing).
 
 ## Feature API <!-- rq-7da16174 -->
 
@@ -224,11 +231,15 @@ the print boundary via the `--unit` flag (`rqm/filtering.md` Printing).
 ### Constants <!-- rq-a9ede621 -->
 
 The crate exports the single constant set of the Constants table for the
-concentration term of `rqm/formation.md` and its tests:
+concentration term of `rqm/formation.md`, the print conversions of
+`rqm/filtering.md`, and their tests:
 
 - `K_B = 1.380649e-23` J/K, `P_STANDARD = 101325.0` Pa (1 atm), <!-- rq-150f26f1 -->
   `E_HARTREE = 4.3597447222071e-18` J, and `KCAL_MOL_PER_HARTREE =
   627.5094740631` (Eh → kcal/mol).
+- `DEBYE_PER_E_A0 = 2.541746473` (e·a₀ → Debye) and <!-- rq-6da80a21 -->
+  `ANGSTROM3_PER_BOHR3 = BOHR_TO_ANGSTROM³` (bohr³ → Å³), derived from
+  the length constant of `rqm/parser-framework.md`.
 
 ## Performance <!-- rq-8b44ad8d -->
 
@@ -606,6 +617,11 @@ Feature: Thermochemistry on demand
   Scenario: Without --unit the energies remain hartree
     When CJKQC is invoked with the database and "--g" and no --out
     Then g prints in hartree with 10 decimals
+
+  @rq-c30e5c79
+  Scenario: The cubic-bohr conversion derives from the length constant
+    When the conversion constants are read
+    Then ANGSTROM3_PER_BOHR3 equals BOHR_TO_ANGSTROM cubed
 
   @rq-48b6dd65
   Scenario: A value passed to --unit is a usage error

@@ -8,9 +8,17 @@ use std::path::PathBuf;
 
 use compiled_jkqc::thermo::{
     classify_species, derived_value, rotational_constants, thermochemistry, SpeciesClass,
-    ThermoConditions, ThermoMemo,
+    ThermoConditions, ThermoMemo, ANGSTROM3_PER_BOHR3,
 };
-use compiled_jkqc::{Geometry, ParserRegistry, Record};
+use compiled_jkqc::{Geometry, ParserRegistry, Record, BOHR_TO_ANGSTROM};
+
+#[test] // rq-c30e5c79
+fn cubic_bohr_conversion_derives_from_the_length_constant() {
+    assert_eq!(
+        ANGSTROM3_PER_BOHR3,
+        BOHR_TO_ANGSTROM * BOHR_TO_ANGSTROM * BOHR_TO_ANGSTROM
+    );
+}
 
 fn conditions(temperature: f64) -> ThermoConditions {
     ThermoConditions {

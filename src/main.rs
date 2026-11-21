@@ -65,7 +65,7 @@ const CUTOFF_FLAGS: &[(&str, CmpOp, Mode)] = &[
     name = "CJKQC",
     version,
     about = "Collect, organize, filter, and post-process quantum-chemistry output for molecular clusters",
-    after_help = "Cutoff/sort/uniqueness PROPERTY: el (electronic energy), g (Gibbs at --temp), elcorr (correction energy), gcorr (Gibbs from the correction), rg (radius of gyration), lf (lowest frequency), dip (dipole magnitude), mass, charge, multiplicity, natoms, nfreq, nimag.\nEnergy units: absolute cutoffs compare hartree, relative cutoffs kcal/mol; --unit switches printing to kcal/mol."
+    after_help = "Cutoff/sort/uniqueness PROPERTY: el (electronic energy), g (Gibbs at --temp), elcorr (correction energy), gcorr (Gibbs from the correction), rg (radius of gyration), lf (lowest frequency), dip (dipole magnitude), mass, charge, multiplicity, natoms, nfreq, nimag.\nEnergy units: absolute cutoffs compare hartree, relative cutoffs kcal/mol; --unit switches printing to kcal/mol, dipoles to Debye, and polarizabilities to Angstrom^3."
 )]
 struct Cli {
     /// Database to write; required unless a manipulation or print flag
@@ -182,7 +182,8 @@ struct Cli {
     #[arg(long = "ignoreimag", conflicts_with = "makereal")]
     ignoreimag: bool,
 
-    /// Print energies in kcal/mol instead of hartree; takes no value.
+    /// Print energies in kcal/mol, dipoles in Debye, and polarizabilities
+    /// in Angstrom^3 instead of atomic units; takes no value.
     #[arg(long = "unit", num_args = 0..=1)]
     unit: Option<Option<String>>,
 
@@ -377,18 +378,20 @@ struct Cli {
     /// Print the total mass (u).
     #[arg(long = "mass")]
     mass: bool,
-    /// Print the dipole moment magnitude (atomic units).
+    /// Print the dipole moment magnitude (atomic units; Debye with
+    /// --unit).
     #[arg(long = "dip")]
     dip: bool,
-    /// Print the dipole moment vector (atomic units, x,y,z
-    /// comma-separated).
+    /// Print the dipole moment vector (atomic units; Debye with --unit,
+    /// x,y,z comma-separated).
     #[arg(long = "dips")]
     dips: bool,
-    /// Print the isotropic polarizability (atomic units, 3 decimals).
+    /// Print the isotropic polarizability (atomic units; Angstrom^3 with
+    /// --unit, 3 decimals).
     #[arg(long = "pol")]
     pol: bool,
-    /// Print the polarizability tensor (atomic units, row-major,
-    /// comma-separated, 3 decimals each).
+    /// Print the polarizability tensor (atomic units; Angstrom^3 with
+    /// --unit, row-major, comma-separated, 3 decimals each).
     #[arg(long = "pols")]
     pols: bool,
     /// Print the net charge (elementary charges).

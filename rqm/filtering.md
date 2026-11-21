@@ -27,7 +27,7 @@ CJKQC <inputs>… [--manipulation flags] [print flags…] [settings flags…] [-
   table columns; they print and
   manipulate nothing. **Settings flags** — `--temp`, `--fc`, `--fscale`,
   `--makereal`, `--ignoreimag` (`rqm/thermo.md`) and `--unit` — configure
-  derivations and the energy unit at printing; they never manipulate,
+  derivations and the print units; they never manipulate,
   print, or satisfy the visible-outcome rule on their own.
 - A run must have a visible outcome. With neither manipulation nor print
   flags, `--out` is required and behavior is exactly collection's.
@@ -223,8 +223,10 @@ disable it.
   `--lf`, `--freqs`, `--nfreq`, `--nimag`, `--rots`, `--components`.
   `--dip` prints the dipole magnitude; `--dips` prints the dipole
   vector; `--pol` prints the isotropic polarizability (one third of the
-  polarizability tensor's trace) in atomic units; `--pols` prints the
-  polarizability tensor. There is no default
+  polarizability tensor's trace); `--pols` prints the polarizability
+  tensor. The dipole columns print in atomic units or Debye, the
+  polarizability columns in atomic units or Å³, selected by `--unit`.
+  There is no default
   selection: no print flag means no table is printed at all. The
   `--formation` flag (`rqm/formation.md`) prints a section after the
   table; it selects no column and counts as a print flag for the
@@ -256,8 +258,10 @@ disable it.
   `dips` and `pols` print with 3 decimals; `dips` lists the stored dipole
   vector's x, y, z components in that order, comma-separated without
   spaces. `pol` prints the isotropic polarizability — one third of the
-  trace of the record's `polarizability` tensor (`rqm/record.md`) — in
-  atomic units, and is undefined when the tensor is absent. `pols` lists
+  trace of the record's `polarizability` tensor (`rqm/record.md`) — and
+  is undefined when the tensor is absent; `--unit` selects Debye for the
+  dipole columns and Å³ for the polarizability columns, atomic units
+  otherwise. `pols` lists
   all nine tensor entries row-major
   (`xx,xy,xz,yx,yy,yz,zx,zy,zz`), comma-separated without spaces, and is
   likewise undefined when the tensor is absent. `lf`
@@ -287,13 +291,17 @@ disable it.
   in double quotes, since the value contains spaces; an absent command
   prints a bare unquoted `-`. The `correction` column prints a record's
   correction provenance (`rqm/correction.md`).
-- `--unit` converts every Hartree-valued print quantity — the energy
-  columns (`el`, `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, `gcorr`) and the
-  `--formation` section's values (`rqm/formation.md`) — from hartree to
-  kcal/mol at this boundary: kcal/mol prints with 4 decimals. The flag is
-  a plain boolean: it takes no value, and without it energies print in
-  hartree. The relative-cutoff kcal/mol conversion above is unaffected by
-  `--unit`.
+- `--unit` selects the practical print units. The energy columns (`el`,
+  `zpe`, `h`, `s`, `g`, `elcorr`, `hcorr`, `gcorr`) and the `--formation`
+  section's values (`rqm/formation.md`) convert from hartree to kcal/mol
+  (4 decimals); the dipole columns (`dip`, `dips`) convert from atomic
+  units to Debye (3 decimals); the polarizability columns (`pol`, `pols`)
+  convert from atomic units to Å³ (3 decimals), using the conversion
+  constants of `rqm/thermo.md` Constants. The flag is a plain boolean: it
+  takes no value, and without it energies print in hartree and dipoles
+  and polarizabilities print in atomic units. The relative-cutoff
+  kcal/mol conversion above and the `dip` cutoff's atomic units are
+  unaffected by `--unit`.
 - A run that manipulates prints the pipeline survivors (all status
   `ok`); a run with print flags but no manipulation flag prints every
   record as loaded, in file order — printing alone is not an operation
@@ -338,8 +346,13 @@ disable it.
   HCorr | GCorr | Correction | Dips | Rsn | Freqs | RotS` included,
   plus the population columns
   `Pop | PopEl | PopElCorr | PopGCorr` (`rqm/population.md`).
-- `Unit` — `Au | Kcal`, the print-boundary energy unit: `Kcal` when the <!-- rq-8718aee5 -->
-  `--unit` flag is present, `Au` (hartree) otherwise.
+- `Unit` — `Au | Kcal`, the print-boundary unit mode: `Kcal` when the <!-- rq-8718aee5 -->
+  `--unit` flag is present, `Au` otherwise. `Kcal` prints energies in
+  kcal/mol, dipole columns in Debye, and polarizability columns in Å³;
+  `Au` prints energies in hartree and dipole and polarizability columns
+  in atomic units. The variant name `Kcal` is historical: it selects
+  every practical print unit, not only kcal/mol, and is retained for API
+  stability.
 - `ExtractError` — parse failure detail for usage reporting. <!-- rq-881749dc -->
 - `FilterOutcome` — the pipeline result: `records: Vec<Record>` and <!-- rq-87ba569d -->
   `arbalign: ArbAlignReport` (`rqm/arbalign.md`), whose skipped count the
@@ -735,6 +748,35 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record without a polarizability
     When CJKQC is invoked with the database and "--pols" and no --out
     Then the pols column prints -
+
+  @rq-ee2f64a3
+  Scenario: --unit converts the dipole columns to Debye
+    Given a database with one ok record whose dipole_moment is [0.1234, -0.4567, 0.7891]
+    When CJKQC is invoked with the database and "--dip --dips --unit" and no --out
+    Then the dip column prints 2.339
+    And the dips column prints 0.314,-1.161,2.006
+
+  @rq-ac4624f4
+  Scenario: --unit converts the polarizability columns to cubic angstroms
+    Given a database with one ok record whose polarizability tensor is
+    [3.0, 0.1, 0.2, 0.1, 6.0, 0.3, 0.2, 0.3, 9.0]
+    When CJKQC is invoked with the database and "--pol --pols --unit" and no --out
+    Then the pol column prints 0.889
+    And the pols column prints 0.445,0.015,0.030,0.015,0.889,0.044,0.030,0.044,1.334
+
+  @rq-79642963
+  Scenario: Without --unit the dipole and polarizability columns remain atomic units
+    Given a database with one ok record whose dipole_moment is [0.1234, -0.4567, 0.7891]
+    And whose polarizability tensor is [3.0, 0.0, 0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 9.0]
+    When CJKQC is invoked with the database and "--dip --pol" and no --out
+    Then the dip column prints 0.920
+    And the pol column prints 6.000
+
+  @rq-c6b69701
+  Scenario: --unit leaves the dip cutoff in atomic units
+    Given a database with one ok record whose dipole_moment has magnitude 0.920 au
+    When CJKQC is invoked with the database and "--unit --cut dip 1.0 --filename" and no --out
+    Then the record survives because 0.920 au is at most 1.0 au
 
   @rq-003218f8
   Scenario: The freqs column prints every stored frequency in stored order

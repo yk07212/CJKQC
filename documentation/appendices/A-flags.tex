@@ -63,10 +63,14 @@ order of Section~\ref{sec:printing}.
 \fld{el}, \fld{elcorr}, or \fld{gcorr}. Repeatable. \\
 \flg{--rg} & \fld{rg}: mass-weighted radius of gyration in \AA{}. \\
 \flg{--mass} & \fld{mass}: total mass in u. \\
-\flg{--dip} & \fld{dip}: dipole magnitude in atomic units. \\
-\flg{--dips} & \fld{dips}: dipole vector components in atomic units. \\
-\flg{--pol} & \fld{pol}: isotropic polarizability in atomic units. \\
-\flg{--pols} & \fld{pols}: polarizability tensor values in atomic units. \\
+\flg{--dip} & \fld{dip}: dipole magnitude in atomic units (debye under
+\flg{--unit}). \\
+\flg{--dips} & \fld{dips}: dipole vector components in atomic units
+(debye under \flg{--unit}). \\
+\flg{--pol} & \fld{pol}: isotropic polarizability in atomic units
+(\AA$^3$ under \flg{--unit}). \\
+\flg{--pols} & \fld{pols}: polarizability tensor values in atomic units
+(\AA$^3$ under \flg{--unit}). \\
 \flg{--charge} & \fld{charge}: net charge. \\
 \flg{--multiplicity} & \fld{multiplicity}: spin multiplicity. \\
 \flg{--rsn} & \fld{rsn}: rotational symmetry number. \\
@@ -146,7 +150,8 @@ $>0$). \\
 inside the derivation. \\
 \flg{--ignoreimag} & Drop imaginary frequencies from the vibrational sums.
 Conflicts with \flg{--makereal}. \\
-\flg{--unit} & Print energies in kcal/mol instead of hartree. Takes no value. \\
+\flg{--unit} & Print energies in kcal/mol, dipoles in debye, and
+polarizabilities in \AA$^3$ instead of atomic units. Takes no value. \\
 \bottomrule
 \end{longtable}
 

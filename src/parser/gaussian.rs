@@ -14,10 +14,7 @@ use crate::parser::{
     FileWindows, LinePattern, Parser, Program,
 };
 use crate::record::{Record, RecordStatus};
-
-/// Debye per elementary-charge bohr (CODATA), the conversion Gaussian's
-/// dipole table needs to reach the record's atomic units.
-const DEBYE_PER_E_A0: f64 = 2.541746473;
+use crate::thermo::DEBYE_PER_E_A0;
 
 /// Gaussian log reader: `program()` is `Program::GAUSSIAN`.
 ///
