@@ -15,8 +15,10 @@ apply to them like to any derived property. The `--conc` and `--cnt`
 flags further shift the free-energy and entropy-term levels at vapors of
 named components at given concentrations (Formation at Given
 Concentrations),
-and `--bavg` collapses each printed section to one Boltzmann-averaged
-row per composition (Boltzmann-Averaged Sections).
+`--bavg` collapses each printed section to one Boltzmann-averaged
+row per composition (Boltzmann-Averaged Sections),
+and `--ion CODE TOKEN` declares stored ion codes' ACDC spellings and
+selects relative reference ions (Ionic References).
 
 ## Monomer References <!-- rq-1b571f91 -->
 
@@ -316,6 +318,158 @@ binding column exists.
   cancelling for equally floppy cluster and monomers. The stabilization
   is visible in the entropy-term column, since st_ens = h_ens − g_ens.
 
+## Ionic References (ACDC) <!-- rq-2ea9b81f -->
+
+`--ion CODE TOKEN` declares that a stored component code is an ion and
+puts the formation sections and the `--name` column on a common
+ACDC-compatible scale. CODE is a component code of the final record set
+(after `--rename`, `rqm/composition.md`), and TOKEN is the ion's ACDC
+composition: its neutral molecules plus added or removed protons. The
+flag is repeatable, applies in command order, and is a settings flag
+like `--conc`: it configures derivations and display, never counts as a
+manipulation or print flag, and a run that passes only it still needs
+`--out` or a print flag. It never changes a record's stored
+`components`; the ACDC spelling is a display and reference-layer
+concern.
+
+### Ion Tokens <!-- rq-bbeba344 -->
+
+A TOKEN is a composition of count-and-code pairs with no label:
+
+```text
+TOKEN := ( count code )+
+count := digit+                    (ASCII digits, value 1 to 4 294 967 295)
+code  := letter+                   (ASCII letters, either case)
+```
+
+- Exactly one proton marker kind appears: `P` for added protons (the
+  ion's polarity is positive) or `H` for removed protons (the ion's
+  polarity is negative). Pairs whose code is the marker sum into the
+  ion's proton count, which is at least 1. A TOKEN containing both `P`
+  and `H`, or neither, is a usage error (exit 2).
+- All other pairs name the ion's neutral molecules; repeated neutral
+  codes sum. The markers are exactly the uppercase single letters `P` and
+  `H`: a lowercase `p` or `h`, or any longer code, is an ordinary neutral
+  code. `P` and `H` are reserved and never name neutral molecules in a
+  TOKEN. A count of zero, a count beyond `u32::MAX`, an empty pair, a
+  non-letter code, or a hyphenated label makes the TOKEN invalid (usage
+  error).
+- A TOKEN may contain only the marker and its count: `1P` is a free
+  proton, `2H` a doubly removed proton. Such an ion has no neutral
+  parent.
+- Examples: `--ion iam 1am1P` is ammonium, `--ion isa 1sa1H` is
+  bisulfate, `--ion p 1P` maps a stored free-proton code to ACDC's `P`,
+  and `--ion iisa 1sa2H` is sulfate (two removed protons); the record
+  name is `1iisa`, so the declaration's CODE is `iisa`.
+
+Each `--ion` spec's CODE is a non-empty letter-only component code and is
+unique across the run's specs; a duplicate CODE, an empty CODE, or a
+non-letter CODE is a usage error. A TOKEN's neutral code may not itself
+be declared by another `--ion` spec: a token whose neutral part names a
+declared ion code is a usage error.
+
+### Reference Ions and Values <!-- rq-d32961c8 -->
+
+For each polarity, the **first** `--ion` spec with that marker
+(`P` positive, `H` negative) in command order names that polarity's
+**reference ion**; declaration order decides, never the sort. An ion
+code whose polarity has exactly one declared ion code is its own
+reference.
+
+For one formation level L — `el`, `h`, `st`, or `g` on the raw section,
+and the matching corrected levels on the corrected section — let
+`ref_L(code)` be that code's monomer reference at L under the run's
+existing sort-based selection (Monomer References). For a declared ion
+code C whose TOKEN has neutral counts N_C = {X: n_X} and proton count
+p_C, and for the polarity's reference ion R with neutral counts N_R and
+proton count p_R:
+
+- The **reference chemical potential per proton** is
+
+  μ_L = ( ref_L(R) − Σ_{X ∈ N_R} n_X · ref_L(X) ) / p_R,
+
+  with the sum taken as 0 when N_R is empty.
+- The ion code's **effective reference** is
+
+  eff_L(C) = Σ_{X ∈ N_C} n_X · ref_L(X) + p_C · μ_L.
+
+- The reference ion itself always uses eff_L(R) = ref_L(R): its own
+  monomer row prints exactly 0 at every defined level. The formula above
+  gives the same value whenever R's neutral parents are present.
+- When a polarity has exactly one declared ion code C, eff_L(C) =
+  ref_L(C) directly: the ion is its own reference and **no neutral
+  parent records are needed**. A set of only `isa` records therefore
+  works with `--ion isa 1sa1H` and no `sa` monomer, and `2isa` prints as
+  `2sa2H`.
+
+For a record, every declared ion code contributes its effective
+reference instead of its ordinary monomer reference; undeclared codes
+keep their ordinary references. The four levels keep their usual
+definitions, `g_form = h_form − st_form` holds, and everything else —
+`--formation-corr`, `--bavg`, printing, units — is unchanged. Under
+`--bavg` the effective references are computed from the ensemble
+references (`ensemble_references` and `corrected_ensemble_references`),
+so the reference ion's monomer ensemble and the neutral parent
+ensembles supply the same μ and eff values.
+
+An ion code's own monomer record is used only when the code is its
+polarity's reference (or when the polarity has only that one ion code).
+A non-reference ion code of a multi-ion polarity is defined by its
+TOKEN's neutral parents and the reference μ; it needs no monomer record
+of its own.
+
+### Definedness and Validation <!-- rq-049bc8a0 -->
+
+- When a formation section is printed, each polarity's reference ion
+  must have an `ok`, single-component monomer in the run's final record
+  set (`rqm/filtering.md`); otherwise the run is a usage error (exit 2)
+  naming the code. A missing neutral parent reference only makes the
+  levels that need it undefined: the reference ion still prints against
+  its own monomer, while non-reference ion codes whose TOKEN needs the
+  missing parent have no effective reference at that level and their
+  records print `-` (the ordinary missing-reference rule).
+- A record containing a non-reference ion code whose μ or parent
+  references are undefined prints `-` at the affected levels; the
+  electronic level remains independent of the thermal levels, exactly as
+  in Formation Values.
+- On the corrected section the same rules read the corrected reference
+  maps; a reference ion without a correction leaves the corrected levels
+  it would define undefined, which prints `-` rather than erroring, like
+  any record without a correction.
+- `--ion` with any `--conc` spec is a usage error (exit 2): the
+  concentration machinery and relative ion references are not combined.
+  `--cnt` alone creates no concentration term and remains an accepted
+  no-op. `--ion` with any hydration or solvation flag (`--hydration`,
+  `--hydration-corr`, `--solvation`, `--solvation-corr`, `--rh`,
+  `--psolvent`) is likewise a usage error, because those flags carry
+  concentration shifts.
+- `--ion` alone is not a visible outcome (`rqm/filtering.md`): it needs
+  `--out` or a print flag, like every settings flag.
+
+### ACDC Names <!-- rq-c14f5748 -->
+
+For display, each declared ion code C with count q in a record's
+`components` contributes q·N_C neutral counts and q·p_C marker protons.
+The resulting **ACDC composition token** lists its neutral codes
+alphabetically, each as `{count}{code}`, then the removed-proton total
+as `{count}H` when non-zero, then the added-proton total as `{count}P`
+when non-zero. Undeclared codes stay as their ordinary `{count}{code}`
+pairs in the neutral part. Records without components or with an empty
+map remain `-`.
+
+- The `name` column of the main table (`--name`) and the `name` cells of
+  the raw and corrected formation sections, collapsed or not, print this
+  ACDC token. `--name` therefore changes with `--ion` even when no
+  formation section is printed.
+- `--components` prints the raw codes as usual; `--filename` prints the
+  source stem; `--extract`/`--nextract`, composition grouping,
+  population pooling, hydration section names, and every stored record
+  keep the raw `components` map. To select an ion record, query its
+  stored code (`--extract 1isa`), not its ACDC spelling.
+- Examples: `1iam` → `1am1P`; `2isa` → `2sa2H`; `1isa1sa` → `2sa1H`;
+  `1iam1x` (with `x` undeclared) → `1am1x1P`; `2isa1iam` →
+  `1am2sa2H1P`.
+
 ## Feature API <!-- rq-e814b912 -->
 
 ### Types <!-- rq-85b79495 -->
@@ -351,6 +505,29 @@ binding column exists.
   `entropy_term: Option<f64>`, `gibbs: Option<f64>` (Eh); the four values
   are `Some` together or `None` together, and `entropy_term` is
   `enthalpy − gibbs`.
+- `FormationSettings` — the run's formation presentation settings: <!-- rq-2c95cff0 -->
+  `concs: ConcConditions`, `ions: IonDeclarations`, `unit: Unit`,
+  `bavg: bool`, and `sort: SortKey`. `Default` is the standard state, no
+  ion declarations, hartree, no collapse, and the `el` sort.
+- `ProtonKind` — the polarity of an ion token: `Added` for the `P` <!-- rq-06569a42 -->
+  marker, `Removed` for the `H` marker.
+- `IonToken` — a parsed TOKEN: `neutral: Components` (the non-marker <!-- rq-81af40f0 -->
+  pairs; empty for a bare `P` or `2H`), `protons: u32`, and
+  `kind: ProtonKind`.
+- `IonSpec` — one `--ion` occurrence: `code: String` and <!-- rq-fcd56d7e -->
+  `token: IonToken`.
+- `IonDeclarations` — the run's ion settings in command order: <!-- rq-c993d09a -->
+  `specs: Vec<IonSpec>`; `Default` is empty. `reference(kind:
+  ProtonKind) -> Option<&IonSpec>` returns the first spec with that
+  kind, the polarity's reference ion.
+- `IonTokenError` — why a TOKEN is invalid: an empty TOKEN, a bad or <!-- rq-836b1614 -->
+  zero count, a non-letter code, a label, no proton marker, both proton
+  markers, or a reserved neutral code. The CLI turns it into a usage
+  error.
+- `IonDeclarationError` — why a declaration set is invalid: a duplicate <!-- rq-6731c06b -->
+  CODE or a TOKEN whose neutral part names a declared ion code.
+- `IonReferenceError` — the polarity and code of a reference ion with no <!-- rq-b879564f -->
+  qualifying monomer in the final record set.
 
 ### Functions <!-- rq-ded51dfb -->
 
@@ -377,10 +554,11 @@ binding column exists.
   under `self_consistent`, nᵢ·(N−1)/N; 0 when no spec matches. The
   formation printers subtract it from the Gibbs value and add it to the
   entropy-term value.
-- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-9503bcb2 -->
+- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, settings: &FormationSettings) -> String` <!-- rq-9503bcb2 -->
   — the section table with header `name el h st g`, one row per record in
   the given order, `-` for undefined values and for the composition token
-  when the record has no components.
+  when the record has no components; the `name` cell is the ACDC token of
+  ACDC Names when `ions` declares the record's codes.
 - `corrected_monomer_references(records: &[Record], memo: &ThermoMemo, sort: SortKey) -> CorrectedMonomerReferences` <!-- rq-789635d3 -->
   — the same selection as `collect_monomers`, read through the corrected
   keys `elcorr`/`hcorr`/`gcorr` (`rqm/correction.md`) and the raw T·S
@@ -390,9 +568,9 @@ binding column exists.
   value has the concentration term subtracted and the corrected
   entropy-term value has it added, with the same non-finite guard; a
   record without a correction has no corrected value at any level.
-- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4f20e170 -->
+- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, settings: &FormationSettings) -> String` <!-- rq-4f20e170 -->
   — the corrected section table with header `name elcorr hcorr stcorr
-  gcorr`.
+  gcorr`, with the same `name` cell rule.
 - `collapse_ensembles(records: &[Record], memo: &ThermoMemo) -> Vec<Ensemble>` <!-- rq-18dba668 -->
   — the raw section's collapse (Boltzmann-Averaged Sections): groups by
   components map in first-appearance order, the records without
@@ -417,23 +595,64 @@ binding column exists.
   values.
 - `corrected_ensemble_formation_values(ensemble: &Ensemble, references: &CorrectedMonomerReferences, memo: &ThermoMemo, concs: &ConcConditions) -> Formation` <!-- rq-f5583f17 -->
   — the corrected row's four levels, same rule.
-- `print_formation_ensembles(ensembles: &[Ensemble], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-30ea9ebc -->
+- `print_formation_ensembles(ensembles: &[Ensemble], references: &MonomerReferences, memo: &ThermoMemo, settings: &FormationSettings) -> String` <!-- rq-30ea9ebc -->
   — the collapsed raw section: header `name el h st g`, one row per
   ensemble in the given order, `-` for undefined values and for the
-  unnamed ensemble's token.
-- `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String` <!-- rq-4c1bcb87 -->
+  unnamed ensemble's token, the `name` cell following the ACDC token rule
+  for the ensemble's components.
+- `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, settings: &FormationSettings) -> String` <!-- rq-4c1bcb87 -->
   — the collapsed corrected section: header `name elcorr hcorr stcorr
-  gcorr`.
+  gcorr`, with the same `name` cell rule.
+
+- `parse_acdc_token(text: &str) -> Result<IonToken, IonTokenError>` — <!-- rq-0fd47d97 -->
+  the TOKEN grammar above; `Ok` for a valid token, an error naming the
+  first violation otherwise.
+- `validate_ion_declarations(ions: &IonDeclarations) -> Result<(), IonDeclarationError>` <!-- rq-6873e99b -->
+  — the CODE uniqueness and declared-neutral-code checks above.
+- `validate_ion_references(ions: &IonDeclarations, records: &[Record]) -> Result<(), IonReferenceError>` <!-- rq-8449c2a1 -->
+  — for each polarity that has declared ions, the reference ion must have
+  an `ok`, single-component monomer in the given (final) records; the
+  CLI runs this when a formation section is printed.
+- `acdc_composition_token(components: Option<&Components>, ions: &IonDeclarations) -> Option<String>` <!-- rq-c19ab727 -->
+  — the ACDC display token of ACDC Names: substitute each declared ion
+  code with its TOKEN times the code's count, sort neutral pairs
+  alphabetically, append the `H` and then the `P` totals; `None` for
+  absent or empty components. With empty declarations it equals
+  `composition_token`.
+- `acdc_monomer_references(references: &MonomerReferences, ions: &IonDeclarations) -> MonomerReferences` <!-- rq-ae446bcb -->
+  — the effective-reference map of Reference Ions and Values: each
+  declared ion code's entry at each level becomes eff_L(C); entries with
+  an undefined μ or parent reference are omitted; undeclared codes are
+  unchanged. The sole-ion-per-polarity and reference-ion rules decide
+  when a code reads its own monomer reference.
+- `acdc_corrected_monomer_references(references: &CorrectedMonomerReferences, ions: &IonDeclarations) -> CorrectedMonomerReferences` <!-- rq-aef2862b -->
+  — the same transformation over the corrected reference maps.
+- The four formation section printers (`print_formation_section`,
+  `print_formation_corr_section`, `print_formation_ensembles`,
+  `print_formation_corr_ensembles`) take `settings: &FormationSettings`
+  for the ACDC display token, the unit, and the concentration term; with
+  default settings they behave exactly as before. `print_table` takes
+  `ions: &IonDeclarations` for its `name` cell.
 
 ### Crate Layout <!-- rq-22e7999c -->
 
-- The scan, values, and sections live in `src/formation.rs`; the library
-  root re-exports the types and functions. No new dependencies; the CLI
-  adds `--formation`, `--formation-corr`, `--conc`, `--cnt`, and
-  `--bavg`, parses the specs into `ConcConditions` with the usage-error
-  validation above, and wires both sections into the printing block —
-  through the ensemble path when `--bavg` is set. The collapse reuses the
-  Boltzmann populations of `rqm/population.md`.
+- The scan, values, sections, `FormationSettings`, and ACDC reference
+  transforms live in `src/formation.rs`. The ion TOKEN grammar,
+  declarations, declaration validation, and display token live in the
+  neutral `src/ions.rs` module, which depends only on the record's
+  `Components`; `src/filter.rs` imports it directly, so it does not depend
+  on `src/formation.rs`. The library root re-exports both modules' types
+  and functions. No new dependencies; the CLI adds `--formation`,
+  `--formation-corr`, `--conc`, `--cnt`, `--bavg`, and `--ion`, parses
+  the specs into `ConcConditions` and `IonDeclarations` with the
+  usage-error validation above, validates the reference ions when a
+  formation section is printed, transforms the collected or ensemble
+  references through `acdc_monomer_references` /
+  `acdc_corrected_monomer_references`, and wires both sections into the
+  printing block — through the ensemble path when `--bavg` is set. The
+  collapse reuses the Boltzmann populations of `rqm/population.md`.
+  `print_table` in `src/filter.rs` takes the declarations for its `name`
+  cell.
 - `tests/formation.rs` tests the scan and the values as pure functions <!-- rq-eb7da353 -->
   (sort-based reference selection, per-level definedness, missing
   references, stoichiometry, and the g_form = h_form − st_form identity),
@@ -445,7 +664,12 @@ binding column exists.
   partition-function Gibbs against hand-computed splits, and the entropy
   term as H_ens − G_ens), the ensemble references, and the collapsed
   sections' formatting and concentration terms extend the same tests;
-  CLI coverage extends `tests/cli.rs`.
+  the ion token grammar, declaration validation, effective references
+  (single-ion, multi-ion, bare-proton, multiply charged, and missing
+  reference cases), the corrected reference transformation at both one
+  and several declared ions, and the ACDC display token extend them
+  further; CLI coverage extends `tests/cli.rs` with multi-ion formation,
+  the concentration and hydration conflict set, and the `--name` column.
 
 ## Out of Scope <!-- rq-39f86935 -->
 
@@ -473,6 +697,22 @@ binding column exists.
 - A separate formation entropy in J mol⁻¹ K⁻¹ and formation ZPE columns:
   the sections print the `st` energy term (T·S), matching the main table's
   `s` column, plus the `el`, `h`, and `g` levels.
+- Writing an ACDC energy file (the pressure and temperature header plus
+  `name G` lines): the printed formation sections are the interface, and
+  the ACDC file is assembled outside CJKQC.
+- ACDC tokens anywhere other than the `--name` column and the formation
+  `name` cells: `--components`, `--filename`, extract and nextract
+  queries, composition grouping, population pooling, hydration section
+  names, and stored `components` keep the raw codes.
+- Concentration and hydration together with ions: `--conc` combined with
+  `--ion`, and `--ion` combined with a hydration or solvation flag, are
+  usage errors rather than a supported mixed model.
+- Automatic ion detection from `charge`, from the component code
+  spelling, or from chemistry tables, and more than one reference ion per
+  polarity: reference ions come from the declaration order of `--ion`.
+- Charged species beyond the `P` and `H` markers — electrons, generic
+  charger ions, or ACDC cluster-set and ion-neutral collision data — and
+  per-record reference overrides for ions.
 
 ## Gherkin Scenarios <!-- rq-077d9eed -->
 
@@ -1057,4 +1297,170 @@ Feature: Formation energies from monomer references
     Given a database with one record
     When CJKQC is invoked with the database and "--formation --bavgout" and no --out
     Then the exit code is 2
+
+  # --- Ionic references (ACDC) ---
+
+  @rq-1560f041
+  Scenario: An ion token parses into neutral molecules and added protons
+    When parse_acdc_token("1am1P") is called
+    Then it returns neutral am = 1 and 1 proton of the Added kind
+
+  @rq-32cc4472
+  Scenario: An ion token parses removed protons
+    When parse_acdc_token("2sa2H") is called
+    Then it returns neutral sa = 2 and 2 protons of the Removed kind
+
+  @rq-6bccfd36
+  Scenario: A bare proton token is valid
+    When parse_acdc_token("1P") is called
+    Then it returns no neutral molecules and 1 proton of the Added kind
+
+  @rq-b2a7d478
+  Scenario: A token without a proton marker is invalid
+    When parse_acdc_token("1sa2") is called
+    Then it returns an IonTokenError
+
+  @rq-5b7a95ea
+  Scenario: A token mixing P and H is invalid
+    When parse_acdc_token("1sa1H1P") is called
+    Then it returns an IonTokenError
+
+  @rq-3a4da0c5
+  Scenario: A token with a hyphenated label is invalid
+    When parse_acdc_token("1sa1H-1conf") is called
+    Then it returns an IonTokenError
+
+  @rq-0f165990
+  Scenario: A duplicate --ion code is a usage error
+    Given a database with an iam monomer
+    When CJKQC is invoked with the database and "--formation --ion iam 1am1P --ion iam 1am1P" and no --out
+    Then the exit code is 2
+
+  @rq-a91db93c
+  Scenario: A token whose neutral part names a declared ion code is a usage error
+    Given a database with an iam monomer
+    When CJKQC is invoked with the database and "--formation --ion iam 1am1P --ion x 1iam1P" and no --out
+    Then the exit code is 2
+
+  @rq-d04d9704
+  Scenario: --ion with --conc is a usage error
+    Given a database with an iam monomer and an am monomer
+    When CJKQC is invoked with the database and "--formation --ion iam 1am1P --conc am 100ppt" and no --out
+    Then the exit code is 2
+
+  @rq-9a671beb
+  Scenario: --ion with a hydration flag is a usage error
+    Given a database with an iam monomer and an am monomer
+    When CJKQC is invoked with the database and "--formation --ion iam 1am1P --hydration" and no --out
+    Then the exit code is 2
+
+  @rq-5ef9c329
+  Scenario: --ion alone is not a visible outcome
+    When CJKQC is invoked with a database and "--ion iam 1am1P" and no --out and no print flag
+    Then the exit code is 2
+
+  @rq-be4cce98
+  Scenario: --name prints the ACDC token of a declared ion
+    Given a database with one ok record with components iam = 1
+    When CJKQC is invoked with the database, "--name --ion iam 1am1P" and no --out
+    Then the name cell prints 1am1P
+
+  @rq-35eab7ec
+  Scenario: The ACDC token multiplies the ion count
+    Given a database with one ok record with components isa = 2
+    When CJKQC is invoked with the database, "--name --ion isa 1sa1H" and no --out
+    Then the name cell prints 2sa2H
+
+  @rq-8cfefe27
+  Scenario: The ACDC token combines an ion with explicit neutral parents
+    Given a database with one ok record with components isa = 1 and sa = 1
+    When CJKQC is invoked with the database, "--name --ion isa 1sa1H" and no --out
+    Then the name cell prints 2sa1H
+
+  @rq-77c8e134
+  Scenario: Undeclared codes stay in the ACDC token
+    Given a database with one ok record with components iam = 1 and x = 1
+    When CJKQC is invoked with the database, "--name --ion iam 1am1P" and no --out
+    Then the name cell prints 1am1x1P
+
+  @rq-e09d20d7
+  Scenario: --components keeps the raw ion code
+    Given a database with one ok record with components iam = 1
+    When CJKQC is invoked with the database, "--components --name --ion iam 1am1P" and no --out
+    Then the components cell prints 1iam
+    And the name cell prints 1am1P
+
+  @rq-ffda800e
+  Scenario: --extract matches the stored ion code, not the ACDC spelling
+    Given a database with a 1isa record and a 1sa record
+    When CJKQC is invoked with the database, "--extract 1isa --name --ion isa 1sa1H" and no --out
+    Then only the 1isa row prints, with the name 1sa1H
+
+  @rq-eecbf103
+  Scenario: A lone ion code is its own reference without neutral parents
+    Given a database with a 1isa monomer and a 2isa record and no sa monomer
+    When CJKQC is invoked with the database, "--formation --ion isa 1sa1H" and no --out
+    Then the 1isa row prints 0 at every level
+    And the 2isa row prints a defined formation value
+
+  @rq-a8c9d487
+  Scenario: The first declared positive ion is the zero point
+    Given a database with am, dma, iam, and idma monomers whose energies define the proton-transfer energies
+    When CJKQC is invoked with the database, "--formation --ion iam 1am1P --ion idma 1dma1P" and no --out
+    Then the 1iam row prints 0 at every level
+    And the 1idma row's formation energy is F(idma) - F(dma) - F(iam) + F(am)
+
+  @rq-38ba7c86
+  Scenario: Declaration order, not sort, chooses the zero point
+    Given a database with am, dma, iam, and idma monomers
+    When CJKQC is invoked with the database, "--formation --sort g --ion idma 1dma1P --ion iam 1am1P" and no --out
+    Then the 1idma row prints 0 at every level
+    And the 1iam row's formation energy is F(iam) - F(am) - F(idma) + F(dma)
+
+  @rq-9df91500
+  Scenario: A missing reference ion monomer is a usage error
+    Given a database with an am monomer and no iam monomer
+    When CJKQC is invoked with the database, "--formation --ion iam 1am1P" and no --out
+    Then the exit code is 2
+
+  @rq-45390ea2
+  Scenario: A missing neutral parent leaves non-reference ions undefined
+    Given a database with iam and idma monomers and a dma monomer but no am monomer
+    When CJKQC is invoked with the database, "--formation --ion iam 1am1P --ion idma 1dma1P" and no --out
+    Then the 1iam row prints 0 at every level
+    And the 1idma row shows - for every level
+
+  @rq-33f96f23
+  Scenario: Multiply charged ions scale the reference potential
+    Given a database with iisa, isa, and sa monomers
+    When CJKQC is invoked with the database, "--formation --ion isa 1sa1H --ion iisa 1sa2H" and no --out
+    Then the 1isa row prints 0 at every level
+    And the 1iisa row's formation energy is F(iisa) - 2*F(isa) + F(sa)
+
+  @rq-d7b92272
+  Scenario: The corrected ion section uses corrected references
+    Given a corrected 1isa monomer and a corrected 2isa record and no sa monomer
+    When CJKQC is invoked with the database, "--formation-corr --ion isa 1sa1H" and no --out
+    Then the 1isa corrected row prints 0 at every level
+    And the 2isa corrected row prints a defined value
+
+  @rq-8f47a00f
+  Scenario: --bavg with --ion uses the ensemble references
+    Given a database with two am conformers, an iam monomer, and a 2iam record
+    When CJKQC is invoked with the database, "--formation --bavg --ion iam 1am1P" and no --out
+    Then the 1am ensemble row prints 0 at every level
+    And the 1iam ensemble row prints 0 at every level
+
+  @rq-f619cd22
+  Scenario: --cnt alone with --ion is an accepted no-op
+    Given a database with a 1isa monomer and a 2isa record and no sa monomer
+    When the same database is run with "--formation --ion isa 1sa1H" and with "--formation --cnt --ion isa 1sa1H"
+    Then the two runs' formation sections are identical
+
+  @rq-a5b9c56a
+  Scenario: --ion with only --name does not require a reference monomer
+    Given a database with one ok record with components iam = 1 and sa = 1
+    When CJKQC is invoked with the database, "--name --ion iam 1am1P" and no --out
+    Then the name cell prints 1am1sa1P
+    And the exit code is 0
 ```

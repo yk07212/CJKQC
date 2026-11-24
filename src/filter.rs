@@ -9,6 +9,7 @@ use std::fmt;
 
 use crate::arbalign::{apply_arbalign, ArbAlignReport};
 use crate::composition::{rename_component, RenameError, RenameSpec};
+use crate::ions::{acdc_composition_token, IonDeclarations};
 use crate::metrics::{
     dedup_names_mask, metric_dipole_magnitude, metric_radius_of_gyration, metric_total_mass,
     uniqueness_mask, uniqueness_subgroups, UniqMode,
@@ -894,6 +895,7 @@ pub fn print_table(
     memo: &ThermoMemo,
     unit: Unit,
     grouping: Grouping,
+    ions: &IonDeclarations,
 ) -> String {
     // Population columns are ensemble properties: each requested column's
     // populations are computed once over the printed record set, grouped
@@ -928,7 +930,7 @@ pub fn print_table(
                 // rq-b7d07857
                 Some(Some(value)) => cells.push(format!("{value:.4}")),
                 Some(None) => cells.push("-".to_string()),
-                None => cells.push(format_cell(record, *column, memo, unit)),
+                None => cells.push(format_cell(record, *column, memo, unit, ions)),
             }
         }
         rows.push(cells);
@@ -969,7 +971,13 @@ fn format_polarizability(value: f64, unit: Unit) -> String {
     }
 }
 
-fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -> String {
+fn format_cell(
+    record: &Record,
+    column: Column,
+    memo: &ThermoMemo,
+    unit: Unit,
+    ions: &IonDeclarations,
+) -> String {
     let undefined = || "-".to_string();
     match column {
         // The energy columns share one registry dispatch (rq-8f6da1c2);
@@ -993,7 +1001,9 @@ fn format_cell(record: &Record, column: Column, memo: &ThermoMemo, unit: Unit) -
         // rq-c0c700b2 rq-9bea312b rq-1f63ac38 rq-7b0d8978 rq-5ad1c077 rq-3f2648cf
         Column::Filename => record.name.clone().unwrap_or_else(undefined),
         Column::Path => record.source_path.clone().unwrap_or_else(undefined),
-        Column::Name => composition_token(record.components.as_ref()).unwrap_or_else(undefined),
+        Column::Name => {
+            acdc_composition_token(record.components.as_ref(), ions).unwrap_or_else(undefined)
+        }
         Column::Status => match record.status {
             RecordStatus::Ok => "ok",
             RecordStatus::Failed => "failed",

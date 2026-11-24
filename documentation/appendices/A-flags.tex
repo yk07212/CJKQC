@@ -45,7 +45,8 @@ order of Section~\ref{sec:printing}.
 \endhead
 \flg{--filename} & \fld{filename}: the record's \fld{name} (file stem). \\
 \flg{--name} & \fld{name}: composition written without separators
-(\texttt{2am3sa}). \\
+(\texttt{2am3sa}); under \flg{--ion}, the ACDC ion name
+(for example \texttt{1am1P}). \\
 \flg{--path} & \fld{path}: the full path of the original output file. \\
 \flg{--status} & \fld{status}: \fld{ok}, \fld{failed}, or \fld{truncated}. \\
 \flg{--program} & \fld{program}: program name and version (\texttt{xtb 6.7.1}). \\
@@ -186,6 +187,9 @@ concentration. Repeatable; one setting per code. \\
 \flg{--cnt} & Use the self-consistent $(N-1)/N$ concentration scaling. \\
 \flg{--bavg} & Collapse each printed formation section into one
 Boltzmann-averaged row per composition. \\
+\flg{--ion <CODE> <TOKEN>} & Declare a stored ion code and its ACDC name,
+for example \flg{--ion isa 1sa1H}. Repeatable; changes the \fld{name}
+column and the formation sections. \\
 \bottomrule
 \end{longtable}
 

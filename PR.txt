@@ -1,0 +1,96 @@
+# PR Review: `--ion` / ACDC ionic references
+
+**Scope:** ~2,000 lines across requirements (`rqm/formation.md` + filtering/composition
+cross-refs), implementation (`src/formation.rs`, `src/main.rs`, `src/filter.rs`), tests,
+and a regenerated registry.
+
+## Requirement conformance — verified
+
+I traced every clause of the new *Ionic References* section to code and verified
+behavior beyond the test suite with hand-built databases (multi-ion polarities,
+missing parents, corrected maps, `--sort` interplay, bare protons, error paths):
+
+- **Token grammar** (`parse_acdc_token`, src/formation.rs:383): counts 1..u32::MAX,
+  letter-only codes, exact `P`/`H` markers (lowercase/longer codes stay neutral),
+  mixed/missing markers rejected, hyphens rejected, repeated pairs sum, overflow
+  guarded. ✓
+- **μ/eff math** (`acdc_reference_map`, src/formation.rs:645):
+  μ = (ref(R) − parents)/p_R, eff(C) = parents + p_C·μ; empty-parent sum = 0
+  (bare-proton reference verified numerically: `--ion p 1P --ion iam 1am1P` gives
+  the 1iam row el = 2.0 exactly as the formula predicts); multiply-charged case
+  matches rq-33f96f23's F(iisa) − 2F(isa) + F(sa). ✓
+- **Declaration order, not sort, picks the zero point**: verified `--sort g` with
+  reversed declarations (rq-38ba7c86 behavior confirmed end-to-end). ✓
+- **Definedness**: reference ion keeps its own monomer even when a parent is
+  missing (verified: `1am1P` row prints 0 while `1dma1P` prints `-`); corrected
+  maps follow the same rules; reference-without-correction prints `-`, not an
+  error. ✓
+- **Validation**: duplicates, token-names-a-declared-ion (including
+  self-reference — correctly rejected), `--conc` and all six hydration/solvation
+  conflicts, `--cnt` still a no-op, reference-monomer check (exit 2, names the
+  code) on both the print-only and manipulation paths, not required for
+  `--name`-only runs. ✓
+- **ACDC names**: alphabetical neutrals then `H` then `P` totals, count
+  multiplication, undeclared codes pass through, `--components`/`--extract`/
+  grouping keep raw codes; empty declarations reproduce `composition_token`
+  exactly. ✓
+- **Traceability**: every Gherkin scenario has a tagged test; the registry
+  regenerates byte-identically (`rqm.sh index` produced no diff); the full suite
+  passes; clippy is clean; no new dependencies. The one special case worth
+  praising: the reference ion reads its own monomer directly rather than through
+  the μ round-trip, so its row prints exactly 0 with no floating-point drift.
+
+## Problems
+
+1. **User manual not updated (the one I'd block on).**
+   `documentation/appendices/A-flags.tex` claims to list *every* flag, and
+   `07-formation.tex` documents `--conc`/`--cnt`/`--bavg` in depth — `--ion`
+   appears nowhere in `documentation/`. Previous flag-adding commits (e.g.
+   9557355) updated the manual and `manual.pdf`. For a chemist-facing tool this
+   is a real gap, not polish.
+
+2. **Test-coverage gaps**, all minor since I verified each manually:
+   - No CLI test exercises a **multi-ion polarity** end-to-end — every CLI ion
+     test is single-ion; multi-ion is covered only by unit tests with hand-built
+     reference maps, so the sort-based monomer selection + ions interplay is
+     untested end-to-end.
+   - **Bare-proton effective references** (empty N_R) are untested, though
+     rqm/formation.md's test plan (rq-eb7da353) explicitly lists "bare-proton"
+     among the effective-reference cases; only the parser is tested.
+   - `--ion` conflicts are CLI-tested only for `--conc` and `--hydration`;
+     `--rh`/`--psolvent`/`--solvation`/`--solvation-corr` rely on the same
+     boolean (src/main.rs:707).
+   - `acdc_corrected_monomer_references`' multi-spec path has no direct test
+     (shared helper mitigates).
+
+3. **Layering nit:** `filter.rs` now imports from `formation.rs` while
+   `formation.rs` imports from `filter.rs` — a crate-internal module cycle. Legal,
+   and the rqm layout mandates it, but the display helper
+   (`acdc_composition_token`) arguably belongs somewhere neutral.
+
+4. **Display ambiguity (informational):** an undeclared stored code spelled `P`
+   or `H` prints identically to the proton markers (a record `1P` looks like an
+   added proton). Spec-conformant — P/H are reserved only inside TOKENs — but
+   worth a warning in the manual.
+
+## Technical debt — modest
+
+- **Parameter lists keep growing**: `print_formation_sections` is now 8 params,
+  `print_table` 6, each section printer 6–7. This is the *second* settings flag
+  bolted on the same way (`concs` before it). Not yet painful, but extract a
+  `FormationSettings { concs, ions, unit, bavg, sort }` struct before a third
+  arrives.
+- The two `acdc_*_monomer_references` bodies are copy-paste except the
+  constructor; the validate-then-print sequence is duplicated across the two run
+  paths — but that duplicates the pre-existing `validate_conc_codes`/
+  `validate_solvent_code` pattern, so this adds an instance rather than new debt.
+- `acdc_composition_token` allocates a `BTreeMap` per row on the `--name` path
+  (previously allocation-free). Printing is I/O-bound; negligible.
+
+## Is there a better way?
+
+Not for the core design — it's good. Post-hoc transformation of the reference
+maps (`acdc_monomer_references(collect_monomers(...))`) leaves the scan
+untouched and composes cleanly with all four section paths and the ensemble
+path; display and reference concerns are cleanly separated; validation is
+centralized and reuses the usage-error machinery. I would not restructure it.

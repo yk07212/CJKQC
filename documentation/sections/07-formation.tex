@@ -13,9 +13,10 @@ records' stored values under the run's thermochemistry conditions, so
 temperature, reference frequency, and unit changes apply to them like to any
 other derived property. The \flg{--conc} flag further shifts the
 free-energy and entropy-term levels at vapors of given concentrations
-(Section~\ref{sec:concentrations}), and \flg{--bavg} collapses each printed
+(Section~\ref{sec:concentrations}), \flg{--bavg} collapses each printed
 section to one Boltzmann-averaged row per composition
-(Section~\ref{sec:bavg}).
+(Section~\ref{sec:bavg}), and \flg{--ion} declares ionic short codes and
+their ACDC names (Section~\ref{sec:ion-references}).
 
 The sign convention is:
 
@@ -297,6 +298,63 @@ same header, unit, and formatting as the uncollapsed section. A composition
 whose records all lack the section's Gibbs level prints one row of dashes.
 Undefined members never poison their group: the surviving members define the
 ensemble.
+
+\subsection{Ionic references and ACDC names}\label{sec:ion-references}
+
+\flg{--ion CODE TOKEN} tells \CJKQC{} that a stored component code is an
+ion and gives the name that code should have in an ACDC cluster name. It may
+be repeated, once per ion code. For example,
+
+\begin{verbatim}
+CJKQC db.jsonl --formation --ion isa 1sa1H --ion iam 1am1P --unit --name
+\end{verbatim}
+
+declares \texttt{isa} as bisulfate and \texttt{iam} as ammonium.
+
+A TOKEN is written like a cluster name: a count before each code, with no
+separators. Use the uppercase letter \texttt{P} for each added proton and
+\texttt{H} for each removed proton. Thus \texttt{1am1P} is ammonium,
+\texttt{1sa1H} is bisulfate, and \texttt{1sa2H} is sulfate. A token may be
+only a proton, for example \texttt{1P}. Counts multiply: two records with
+code \texttt{isa} become \texttt{2sa2H} when the token is
+\texttt{1sa1H}.
+
+\flg{--ion} changes only names and reference energies; it never changes the
+stored composition. The \fld{name} column and the formation sections use
+the ACDC name. \flg{--components}, \flg{--extract}, grouping, and the
+stored database keep the original short codes. A cluster written
+\texttt{2isa1am1sa} therefore prints as \texttt{1am3sa2P} under
+\flg{--ion isa 1sa1P}.
+
+For each polarity — positive ions with \texttt{P}, negative ions with
+\texttt{H} — the first \flg{--ion} setting is the zero point. If there is
+only one declared ion of that polarity, it is its own zero point and no
+neutral parent monomer is needed; a set containing only \texttt{isa}
+records therefore works with \flg{--ion isa 1sa1H} even when no neutral
+\texttt{sa} monomer is present.
+
+If several ions of the same polarity are declared, the first one defines the
+scale for all of them, whether or not a cluster contains that first ion. The
+reference ion's energy relative to its neutral molecules fixes the
+contribution of one proton; every other ion of that polarity is then
+measured against that same contribution. A missing neutral parent monomer
+only makes the affected values undefined; it does not change the reference
+ion's own zero. The reference ion itself must have an \fld{ok} monomer in
+the printed records, otherwise the run stops with a usage error.
+
+\flg{--ion} cannot be combined with \flg{--conc} or with the hydration and
+solvation flags, because those flags add concentration shifts that the ionic
+reference model does not include. \flg{--cnt} on its own remains an
+accepted no-op. Like every settings flag, \flg{--ion} does not produce
+output by itself: add a print flag or \flg{--out}.
+
+\begin{warning}
+The letters \texttt{P} and \texttt{H} are reserved only inside a TOKEN. An
+undeclared stored code that is literally \texttt{P} or \texttt{H} prints
+exactly like a proton marker, so a cluster with a component named
+\texttt{P} looks the same as an added proton. Avoid those short codes, or
+declare them explicitly with \flg{--ion}.
+\end{warning}
 
 \subsection{A formation example}\label{sec:formation-example}
 

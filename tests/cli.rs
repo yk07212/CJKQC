@@ -9367,3 +9367,365 @@ fn align_within_forms_subgroups_after_the_uniq_survivors() {
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     assert_eq!(stdout(&out).trim(), "filename\nx\ny");
 }
+
+// --- Ionic references (rqm/formation.md Ionic References) ---
+
+#[test] // rq-0f165990
+fn a_duplicate_ion_code_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[comp_line(
+            "iam1",
+            Some(-50.0),
+            &[("iam", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--formation",
+        "--ion",
+        "iam",
+        "1am1P",
+        "--ion",
+        "iam",
+        "1am1P",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-a91db93c
+fn a_token_whose_neutral_part_names_a_declared_ion_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[comp_line(
+            "iam1",
+            Some(-50.0),
+            &[("iam", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--formation",
+        "--ion",
+        "iam",
+        "1am1P",
+        "--ion",
+        "x",
+        "1iam1P",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-d04d9704
+fn ion_with_conc_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            comp_line("iam1", Some(-50.0), &[("iam", 1)], RecordStatus::Ok),
+            comp_line("am1", Some(-50.0), &[("am", 1)], RecordStatus::Ok),
+        ],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--formation",
+        "--ion",
+        "iam",
+        "1am1P",
+        "--conc",
+        "am",
+        "100ppt",
+    ]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-9a671beb
+fn ion_with_a_hydration_or_solvation_flag_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            comp_line("iam1", Some(-50.0), &[("iam", 1)], RecordStatus::Ok),
+            comp_line("am1", Some(-50.0), &[("am", 1)], RecordStatus::Ok),
+        ],
+    );
+    let cases: &[&[&str]] = &[
+        &["--hydration"],
+        &["--hydration-corr"],
+        &["--solvation", "w"],
+        &["--solvation-corr", "w"],
+        &["--rh", "0.5"],
+        &["--psolvent", "101325"],
+    ];
+    for extra in cases {
+        let mut args = vec![db.as_str(), "--formation", "--ion", "iam", "1am1P"];
+        args.extend_from_slice(extra);
+        let run = cjkqc(&args);
+        assert_eq!(run.status.code(), Some(2), "{extra:?}: {}", stderr(&run));
+    }
+}
+
+#[test] // rq-a8c9d487
+fn a_multi_ion_polarity_works_end_to_end() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            gibbs_json("am1", -50.0, &[("am", 1)]),
+            gibbs_json("dma1", -40.0, &[("dma", 1)]),
+            gibbs_json("iam1", -49.5, &[("iam", 1)]),
+            gibbs_json("idma1", -39.0, &[("idma", 1)]),
+        ],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--formation",
+        "--ion",
+        "iam",
+        "1am1P",
+        "--ion",
+        "idma",
+        "1dma1P",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let reference = formation_row(&text, "1am1P");
+    assert!(
+        reference[1..].iter().all(|value| value == "0.0000000000"),
+        "{text}"
+    );
+    let other = formation_row(&text, "1dma1P");
+    // mu = -49.5 - (-50.0) = 0.5 Eh; the idma formation is
+    // -39.0 - (-40.0 + 0.5) = 0.5 Eh.
+    assert_eq!(other[4], format!("{:.10}", 0.5), "{text}");
+}
+
+#[test] // rq-38ba7c86
+fn declaration_order_not_sort_chooses_the_zero_point_end_to_end() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            gibbs_json("am1", -50.0, &[("am", 1)]),
+            gibbs_json("dma1", -40.0, &[("dma", 1)]),
+            gibbs_json("iam1", -49.5, &[("iam", 1)]),
+            gibbs_json("idma1", -39.0, &[("idma", 1)]),
+        ],
+    );
+    let run = cjkqc(&[
+        &db,
+        "--formation",
+        "--sort",
+        "g",
+        "--ion",
+        "idma",
+        "1dma1P",
+        "--ion",
+        "iam",
+        "1am1P",
+    ]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let reference = formation_row(&text, "1dma1P");
+    assert!(
+        reference[1..].iter().all(|value| value == "0.0000000000"),
+        "{text}"
+    );
+    let other = formation_row(&text, "1am1P");
+    // mu = -39.0 - (-40.0) = 1.0 Eh; the iam formation is
+    // -49.5 - (-50.0 + 1.0) = -0.5 Eh.
+    assert_eq!(other[4], format!("{:.10}", -0.5), "{text}");
+}
+
+#[test] // rq-5ef9c329
+fn ion_alone_is_not_a_visible_outcome() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[comp_line(
+            "iam1",
+            Some(-50.0),
+            &[("iam", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[&db, "--ion", "iam", "1am1P"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+}
+
+#[test] // rq-be4cce98 rq-224ec53a
+fn the_name_column_prints_the_acdc_token_under_ion() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[comp_line(
+            "iam1",
+            Some(-50.0),
+            &[("iam", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[&db, "--components", "--name", "--ion", "iam", "1am1P"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[0], ["name", "components"]);
+    assert_eq!(lines[1], ["1am1P", "1iam"]);
+}
+
+#[test] // rq-e09d20d7
+fn components_keeps_the_raw_ion_code() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[comp_line(
+            "iam1",
+            Some(-50.0),
+            &[("iam", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[&db, "--components", "--name", "--ion", "iam", "1am1P"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[1][0], "1am1P");
+    assert_eq!(lines[1][1], "1iam");
+}
+
+#[test] // rq-ffda800e
+fn extract_matches_the_stored_ion_code_not_the_acdc_spelling() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            comp_line("isa1", Some(-90.0), &[("isa", 1)], RecordStatus::Ok),
+            comp_line("sa1", Some(-80.0), &[("sa", 1)], RecordStatus::Ok),
+        ],
+    );
+    let run = cjkqc(&[&db, "--extract", "1isa", "--name", "--ion", "isa", "1sa1H"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines.len(), 2, "{text}");
+    assert_eq!(lines[1], ["1sa1H"]);
+}
+
+#[test] // rq-9df91500
+fn a_missing_reference_ion_monomer_is_a_usage_error() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[comp_line(
+            "am1",
+            Some(-50.0),
+            &[("am", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[&db, "--formation", "--ion", "iam", "1am1P"]);
+    assert_eq!(run.status.code(), Some(2), "{}", stderr(&run));
+    assert!(stderr(&run).contains("iam"), "{}", stderr(&run));
+}
+
+#[test] // rq-d7b92272
+fn the_corrected_ion_section_uses_corrected_references() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("isa1", -100.0, &[("isa", 1)], Some(-0.5)),
+            thermo_line("isa2", -200.0, &[("isa", 2)], Some(-1.0)),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation-corr", "--ion", "isa", "1sa1H"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let section = corrected_section(&text);
+    let reference = formation_row(section, "1sa1H");
+    assert!(
+        reference[1..].iter().all(|value| value == "0.0000000000"),
+        "{text}"
+    );
+    let cluster = formation_row(section, "2sa2H");
+    assert!(cluster[1..].iter().all(|value| value != "-"), "{text}");
+}
+
+#[test] // rq-8f47a00f
+fn bavg_with_ion_uses_the_ensemble_references() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            gibbs_json("am_a", -50.0, &[("am", 1)]),
+            gibbs_json("am_b", -50.5, &[("am", 1)]),
+            gibbs_json("iam1", -49.0, &[("iam", 1)]),
+            gibbs_json("iam2", -100.0, &[("iam", 2)]),
+        ],
+    );
+    let run = cjkqc(&[&db, "--formation", "--bavg", "--ion", "iam", "1am1P"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    for token in ["1am", "1am1P"] {
+        let row = formation_row(&text, token);
+        assert!(
+            row[1..].iter().all(|value| value == "0.0000000000"),
+            "{token}: {text}"
+        );
+    }
+}
+
+#[test] // rq-f619cd22
+fn cnt_alone_with_ion_is_an_accepted_no_op() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[
+            thermo_line("isa1", -100.0, &[("isa", 1)], None),
+            thermo_line("isa2", -200.0, &[("isa", 2)], None),
+        ],
+    );
+    let plain = cjkqc(&[&db, "--formation", "--ion", "isa", "1sa1H"]);
+    let cnt = cjkqc(&[&db, "--formation", "--cnt", "--ion", "isa", "1sa1H"]);
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    assert_eq!(cnt.status.code(), Some(0), "{}", stderr(&cnt));
+    assert_eq!(stdout(&plain), stdout(&cnt));
+}
+
+#[test] // rq-a5b9c56a
+fn ion_with_only_name_does_not_require_a_reference_monomer() {
+    let dir = temp_dir();
+    let db = db_with(
+        &dir,
+        "db.jsonl",
+        &[comp_line(
+            "mixed",
+            Some(-100.0),
+            &[("iam", 1), ("sa", 1)],
+            RecordStatus::Ok,
+        )],
+    );
+    let run = cjkqc(&[&db, "--name", "--ion", "iam", "1am1P"]);
+    assert_eq!(run.status.code(), Some(0), "{}", stderr(&run));
+    let text = stdout(&run);
+    let lines = rows(&text);
+    assert_eq!(lines[1], ["1am1sa1P"]);
+}

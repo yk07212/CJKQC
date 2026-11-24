@@ -25,16 +25,19 @@ use compiled_jkqc::filter::{
     FilterError, FilterSpec, Grouping, Mode, Property, SortKey, Unit,
 };
 use compiled_jkqc::formation::{
-    collapse_ensembles, collect_monomers, corrected_collapse_ensembles,
-    corrected_ensemble_references, corrected_monomer_references, ensemble_references,
-    parse_conc_value, print_formation_corr_ensembles, print_formation_corr_section,
-    print_formation_ensembles, print_formation_section, ConcConditions, ConcSpec, ConcUnit,
+    acdc_corrected_monomer_references, acdc_monomer_references, collapse_ensembles,
+    collect_monomers, corrected_collapse_ensembles, corrected_ensemble_references,
+    corrected_monomer_references, ensemble_references, parse_conc_value,
+    print_formation_corr_ensembles, print_formation_corr_section, print_formation_ensembles,
+    print_formation_section, validate_ion_references, ConcConditions, ConcSpec, ConcUnit,
+    FormationSettings,
 };
 use compiled_jkqc::hydration::{
     corrected_hydration_states, corrected_hydration_states_from_ensembles, hydration_states,
     hydration_states_from_ensembles, print_hydration_section, saturation_pressure_water,
     HydrationGroup, SolventConditions,
 };
+use compiled_jkqc::ions::{parse_acdc_token, validate_ion_declarations, IonDeclarations, IonSpec};
 use compiled_jkqc::metrics::{parse_align_within, parse_uniq_mode};
 use compiled_jkqc::movie::{movie_frames, select_xyz_records, write_movie_xyz, write_xyz_files};
 use compiled_jkqc::overwrite::{confirm_overwrite, overwrite_error};
@@ -240,6 +243,12 @@ struct Cli {
     /// like --conc: without a formation section it is an accepted no-op.
     #[arg(long = "bavg")]
     bavg: bool,
+
+    /// Declare a stored ion code and its ACDC composition, CODE TOKEN,
+    /// e.g. `--ion isa 1sa1H` (repeatable; rqm/formation.md Ionic
+    /// References). A settings flag.
+    #[arg(long = "ion", num_args = 2, value_names = ["CODE", "TOKEN"])]
+    ion: Vec<String>,
 
     /// Relative humidity of the vapor for the hydration sections
     /// (rqm/hydration.md): 0.5 is 50 %. A settings flag; an accepted
@@ -688,6 +697,45 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             unit: conc_unit,
         });
     }
+    // --ion declares stored ion codes and their ACDC tokens
+    // (`rqm/formation.md` Ionic References). It is a settings flag; the
+    // concentration and hydration models are not combined with it.
+    // rq-2ea9b81f
+    if !cli.ion.is_empty() {
+        if !cli.conc.is_empty() {
+            return usage("--ion is not supported together with --conc");
+        }
+        if cli.hydration
+            || cli.hydration_corr
+            || cli.solvation.is_some()
+            || cli.solvation_corr.is_some()
+            || cli.rh.is_some()
+            || cli.psolvent.is_some()
+        {
+            return usage("--ion is not supported together with hydration or solvation flags");
+        }
+    }
+    let mut ion_specs: Vec<IonSpec> = Vec::new();
+    for pair in cli.ion.chunks(2) {
+        let [code, token] = pair else {
+            return usage("--ion needs a CODE and a TOKEN");
+        };
+        if code.is_empty() || !code.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+            return usage(&format!("--ion code `{code}` must be letter-only"));
+        }
+        let token = match parse_acdc_token(token) {
+            Ok(token) => token,
+            Err(error) => return usage(&format!("--ion token `{token}`: {error}")),
+        };
+        ion_specs.push(IonSpec {
+            code: code.clone(),
+            token,
+        });
+    }
+    let ions = IonDeclarations { specs: ion_specs };
+    if let Err(error) = validate_ion_declarations(&ions) {
+        return usage(&error.to_string());
+    }
 
     // --psolvent VALUE parses through the --conc grammar whether or not a
     // hydration section is requested, like --conc's own values
@@ -1000,12 +1048,18 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
                 }
             }
             if cli.formation || cli.formation_corr {
+                if let Err(error) = validate_ion_references(&ions, records) {
+                    return usage(&error.to_string());
+                }
                 if let Err(error) = validate_conc_codes(&concs, records) {
                     return usage(&error);
                 }
             }
             if !columns.is_empty() {
-                println!("{}", print_table(records, &columns, &memo, unit, grouping));
+                println!(
+                    "{}",
+                    print_table(records, &columns, &memo, unit, grouping, &ions)
+                );
             }
             // A print-only run has no --sort (that would be a
             // manipulation), so the references use the el ordering
@@ -1013,15 +1067,19 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
             // into one ensemble per composition first
             // (rqm/formation.md Boltzmann-Averaged Sections).
             // rq-dd65e289
+            let formation_settings = FormationSettings {
+                concs: concs.clone(),
+                ions: ions.clone(),
+                unit,
+                bavg: cli.bavg,
+                sort: SortKey::El,
+            };
             print_formation_sections(
                 records,
                 &memo,
-                &concs,
-                unit,
                 cli.formation,
                 cli.formation_corr,
-                cli.bavg,
-                SortKey::El,
+                &formation_settings,
             );
             // The hydration sections print after the formation sections,
             // over the same record set, raw before corrected
@@ -1231,13 +1289,19 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
         }
     }
     if cli.formation || cli.formation_corr {
+        if let Err(error) = validate_ion_references(&ions, &records) {
+            return usage(&error.to_string());
+        }
         if let Err(error) = validate_conc_codes(&concs, &records) {
             return usage(&error);
         }
     }
 
     if !columns.is_empty() {
-        println!("{}", print_table(&records, &columns, &memo, unit, grouping));
+        println!(
+            "{}",
+            print_table(&records, &columns, &memo, unit, grouping, &ions)
+        );
     }
     // The formation sections print after the table, before the summary,
     // over the pipeline survivors (`rqm/formation.md`), collapsing into
@@ -1245,15 +1309,19 @@ fn run(cli: Cli, matches: &ArgMatches) -> ExitCode {
     // Sections).
     // rq-dd65e289
     let sort_key = spec.sort.unwrap_or(SortKey::El);
+    let formation_settings = FormationSettings {
+        concs: concs.clone(),
+        ions: ions.clone(),
+        unit,
+        bavg: cli.bavg,
+        sort: sort_key,
+    };
     print_formation_sections(
         &records,
         &memo,
-        &concs,
-        unit,
         cli.formation,
         cli.formation_corr,
-        cli.bavg,
-        sort_key,
+        &formation_settings,
     );
     // The hydration sections print after the formation sections, over
     // the pipeline survivors, raw before corrected
@@ -1987,46 +2055,52 @@ fn validate_solvent_code(solvent: &SolventConditions, records: &[Record]) -> Res
 /// Sections). A print-only run passes the el ordering — no --sort is a
 /// manipulation — a pipeline run the run's sort ordering.
 // rq-dd65e289
-#[allow(clippy::too_many_arguments)]
 fn print_formation_sections(
     records: &[Record],
     memo: &ThermoMemo,
-    concs: &ConcConditions,
-    unit: Unit,
     raw: bool,
     corr: bool,
-    bavg: bool,
-    sort_key: SortKey,
+    settings: &FormationSettings,
 ) {
     if raw {
-        if bavg {
+        if settings.bavg {
             let ensembles = collapse_ensembles(records, memo);
-            let references = ensemble_references(&ensembles);
+            let references =
+                acdc_monomer_references(&ensemble_references(&ensembles), &settings.ions);
             println!(
                 "{}",
-                print_formation_ensembles(&ensembles, &references, memo, unit, concs)
+                print_formation_ensembles(&ensembles, &references, memo, settings)
             );
         } else {
-            let references = collect_monomers(records, memo, sort_key);
+            let references = acdc_monomer_references(
+                &collect_monomers(records, memo, settings.sort),
+                &settings.ions,
+            );
             println!(
                 "{}",
-                print_formation_section(records, &references, memo, unit, concs)
+                print_formation_section(records, &references, memo, settings)
             );
         }
     }
     if corr {
-        if bavg {
+        if settings.bavg {
             let ensembles = corrected_collapse_ensembles(records, memo);
-            let references = corrected_ensemble_references(&ensembles);
+            let references = acdc_corrected_monomer_references(
+                &corrected_ensemble_references(&ensembles),
+                &settings.ions,
+            );
             println!(
                 "{}",
-                print_formation_corr_ensembles(&ensembles, &references, memo, unit, concs)
+                print_formation_corr_ensembles(&ensembles, &references, memo, settings)
             );
         } else {
-            let references = corrected_monomer_references(records, memo, sort_key);
+            let references = acdc_corrected_monomer_references(
+                &corrected_monomer_references(records, memo, settings.sort),
+                &settings.ions,
+            );
             println!(
                 "{}",
-                print_formation_corr_section(records, &references, memo, unit, concs)
+                print_formation_corr_section(records, &references, memo, settings)
             );
         }
     }
@@ -2136,7 +2210,7 @@ mod tests {
 
     /// Flags exempt from the manipulation/print accounting: settings flags
     /// are read into the conditions, window budget, unit, and the
-    /// concentration and solvent conditions, `--formation`,
+    /// concentration, ion, and solvent conditions, `--formation`,
     /// `--formation-corr`, and the hydration flags into the printed
     /// sections, and the rest never affect the outcome rule.
     const EXEMPT_IDS: &[&str] = &[
@@ -2165,6 +2239,7 @@ mod tests {
         "conc",
         "cnt",
         "bavg",
+        "ion",
         "movie",
         "write_xyz",
     ];

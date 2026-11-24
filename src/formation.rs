@@ -12,10 +12,12 @@
 //! (rq-10341821)
 
 use std::collections::BTreeMap;
+use std::fmt;
 
 use crate::filter::{
-    align_table, composition_token, format_energy, sort_value_for, Alignment, Grouping, Unit,
+    align_table, format_energy, sort_value_for, Alignment, Grouping, SortKey, Unit,
 };
+use crate::ions::{acdc_composition_token, IonDeclarations, IonSpec, ProtonKind};
 use crate::population::{boltzmann_weights, pop_level_value, PopLevel};
 use crate::record::{Components, Record, RecordStatus};
 use crate::thermo::{ThermoMemo, E_HARTREE, K_B, P_STANDARD};
@@ -159,6 +161,65 @@ pub struct ConcConditions {
     pub self_consistent: bool,
 }
 
+/// A polarity's reference ion has no `ok`, single-component monomer in the
+/// run's final record set (`rqm/formation.md` Definedness and Validation).
+///
+/// (rq-b879564f)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IonReferenceError {
+    /// The polarity whose reference ion is missing.
+    pub kind: ProtonKind,
+    /// The reference ion's component code.
+    pub code: String,
+}
+
+impl fmt::Display for IonReferenceError {
+    // rq-b879564f
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "the reference ion `{}` has no ok monomer in the record set",
+            self.code
+        )
+    }
+}
+
+impl std::error::Error for IonReferenceError {}
+
+/// The run's formation presentation settings: the concentration
+/// conditions, ion declarations, output unit, Boltzmann-collapse switch,
+/// and reference-sort ordering (`rqm/formation.md` Feature API). `Default`
+/// is the standard state, no ion declarations, hartree, no collapse, and
+/// the `el` sort.
+///
+/// (rq-2c95cff0)
+#[derive(Debug, Clone, PartialEq)]
+pub struct FormationSettings {
+    /// The run's concentration settings.
+    pub concs: ConcConditions,
+    /// The run's ion declarations.
+    pub ions: IonDeclarations,
+    /// The run's output energy unit.
+    pub unit: Unit,
+    /// Whether each formation section collapses to ensembles.
+    pub bavg: bool,
+    /// The sort ordering that selects the reference monomers.
+    pub sort: SortKey,
+}
+
+impl Default for FormationSettings {
+    // rq-2c95cff0
+    fn default() -> Self {
+        Self {
+            concs: ConcConditions::default(),
+            ions: IonDeclarations::default(),
+            unit: Unit::Au,
+            bavg: false,
+            sort: SortKey::El,
+        }
+    }
+}
+
 /// One collapsed composition group (Boltzmann-Averaged Sections): the
 /// ensemble of one composition's records, with `components` `None` for
 /// the unnamed ensemble of the records without components. The four
@@ -206,6 +267,34 @@ pub fn parse_conc_value(text: &str) -> Option<(f64, ConcUnit)> {
         return None;
     }
     Some((magnitude, unit))
+}
+
+/// The reference-ion check of Ionic References: for each polarity that has
+/// declared ions, the first declaration's code must have an `ok`,
+/// single-component monomer in the given final records.
+///
+/// (rq-8449c2a1)
+pub fn validate_ion_references(
+    ions: &IonDeclarations,
+    records: &[Record],
+) -> Result<(), IonReferenceError> {
+    for kind in [ProtonKind::Added, ProtonKind::Removed] {
+        if let Some(reference) = ions.reference(kind) {
+            let found = records.iter().any(|record| {
+                record.status == RecordStatus::Ok
+                    && record.components.as_ref().is_some_and(|components| {
+                        components.len() == 1 && components.get(reference.code.as_str()) == Some(&1)
+                    })
+            });
+            if !found {
+                return Err(IonReferenceError {
+                    kind,
+                    code: reference.code.clone(),
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 /// The concentration term `c_term` in Eh (`rqm/formation.md` Formation at
@@ -289,6 +378,102 @@ pub fn collect_monomers(
         }
     }
     references
+}
+
+/// The neutral parents' reference sum for an ion token at one level: the
+/// stoichiometric mix of the token's neutral codes, or `None` when one is
+/// absent (`rqm/formation.md` Reference Ions and Values).
+// rq-ae446bcb
+fn neutral_reference_sum(neutral: &Components, map: &BTreeMap<String, f64>) -> Option<f64> {
+    neutral.iter().try_fold(0.0, |sum, (code, count)| {
+        Some(sum + f64::from(*count) * map.get(code)?)
+    })
+}
+
+/// One level's effective-reference map for a polarity's declared ion codes
+/// (`rqm/formation.md` Reference Ions and Values): with one spec the code
+/// keeps its own monomer reference; with several, the first spec is the
+/// zero point, μ is its own reference minus its neutral parents per
+/// proton, and every other spec reads its neutral parents plus its proton
+/// count times μ. Undefined entries are omitted, so the standing
+/// missing-reference rule prints `-`.
+// rq-ae446bcb rq-2ea9b81f
+fn acdc_reference_map(map: &BTreeMap<String, f64>, specs: &[&IonSpec]) -> BTreeMap<String, f64> {
+    if specs.len() <= 1 {
+        return map.clone();
+    }
+    let mut out = map.clone();
+    for spec in specs {
+        out.remove(&spec.code);
+    }
+    let reference = specs[0];
+    let mu = map.get(&reference.code).copied().and_then(|own| {
+        neutral_reference_sum(&reference.token.neutral, map)
+            .map(|parents| (own - parents) / f64::from(reference.token.protons))
+    });
+    for spec in specs {
+        let effective = if spec.code == reference.code {
+            // The zero point reads its own monomer even when a neutral
+            // parent is absent; only the other codes lose their scale.
+            map.get(&spec.code).copied()
+        } else {
+            mu.and_then(|mu| {
+                neutral_reference_sum(&spec.token.neutral, map)
+                    .map(|parents| parents + f64::from(spec.token.protons) * mu)
+            })
+        };
+        if let Some(value) = effective {
+            out.insert(spec.code.clone(), value);
+        }
+    }
+    out
+}
+
+/// The effective-reference map of Reference Ions and Values: each declared
+/// ion code's entry at each level becomes its neutral-parent mix plus the
+/// polarity's proton chemical potential (or its own monomer reference when
+/// it is its polarity's only ion code); undeclared codes are unchanged.
+///
+/// (rq-ae446bcb)
+pub fn acdc_monomer_references(
+    references: &MonomerReferences,
+    ions: &IonDeclarations,
+) -> MonomerReferences {
+    let added = ions.of_kind(ProtonKind::Added);
+    let removed = ions.of_kind(ProtonKind::Removed);
+    let transform = |map: &BTreeMap<String, f64>| {
+        let map = acdc_reference_map(map, &added);
+        acdc_reference_map(&map, &removed)
+    };
+    MonomerReferences {
+        electronic: transform(&references.electronic),
+        enthalpy: transform(&references.enthalpy),
+        entropy_term: transform(&references.entropy_term),
+        gibbs: transform(&references.gibbs),
+    }
+}
+
+/// The corrected section's effective-reference map: the same transformation
+/// read through the corrected reference maps (`rqm/formation.md` Reference
+/// Ions and Values).
+///
+/// (rq-aef2862b)
+pub fn acdc_corrected_monomer_references(
+    references: &CorrectedMonomerReferences,
+    ions: &IonDeclarations,
+) -> CorrectedMonomerReferences {
+    let added = ions.of_kind(ProtonKind::Added);
+    let removed = ions.of_kind(ProtonKind::Removed);
+    let transform = |map: &BTreeMap<String, f64>| {
+        let map = acdc_reference_map(map, &added);
+        acdc_reference_map(&map, &removed)
+    };
+    CorrectedMonomerReferences {
+        electronic: transform(&references.electronic),
+        enthalpy: transform(&references.enthalpy),
+        entropy_term: transform(&references.entropy_term),
+        gibbs: transform(&references.gibbs),
+    }
 }
 
 /// The per-code reference selection shared by the raw and corrected
@@ -547,8 +732,10 @@ pub fn corrected_formation_values(
 }
 
 /// The formation section: a `name el h st g` header row, then one row per
-/// record in the given order. The `name` cell is the record's composition
-/// token (`rqm/filtering.md` Printing), `-` without components; values
+/// record in the given order. The `name` cell is the ACDC token when
+/// `ions` declares the record's codes (ACDC Names), otherwise the record's
+/// composition token (`rqm/filtering.md` Printing); `-` without
+/// components; values
 /// follow the run's energy unit (kcal/mol under `--unit`, hartree
 /// otherwise) and print through the same energy formatter as the table
 /// columns, `-` when undefined.
@@ -558,24 +745,23 @@ pub fn print_formation_section(
     records: &[Record],
     references: &MonomerReferences,
     memo: &ThermoMemo,
-    unit: Unit,
-    concs: &ConcConditions,
+    settings: &FormationSettings,
 ) -> String {
     let rows: Vec<(String, Formation)> = records
         .iter()
         .map(|record| {
-            let token =
-                composition_token(record.components.as_ref()).unwrap_or_else(|| "-".to_string());
-            let formation = formation_values(record, references, memo, concs);
+            let token = acdc_composition_token(record.components.as_ref(), &settings.ions)
+                .unwrap_or_else(|| "-".to_string());
+            let formation = formation_values(record, references, memo, &settings.concs);
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["name", "el", "h", "st", "g"])
+    print_formation_table(&rows, settings.unit, &["name", "el", "h", "st", "g"])
 }
 
 /// The corrected formation section (`rqm/formation.md`): the raw
 /// section's table with the corrected levels — header
-/// `name elcorr hcorr stcorr gcorr`, the same composition tokens,
+/// `name elcorr hcorr stcorr gcorr`, the same `name` token rule,
 /// formatting, and `-` rules.
 ///
 /// (rq-4f20e170)
@@ -583,19 +769,22 @@ pub fn print_formation_corr_section(
     records: &[Record],
     references: &CorrectedMonomerReferences,
     memo: &ThermoMemo,
-    unit: Unit,
-    concs: &ConcConditions,
+    settings: &FormationSettings,
 ) -> String {
     let rows: Vec<(String, Formation)> = records
         .iter()
         .map(|record| {
-            let token =
-                composition_token(record.components.as_ref()).unwrap_or_else(|| "-".to_string());
-            let formation = corrected_formation_values(record, references, memo, concs);
+            let token = acdc_composition_token(record.components.as_ref(), &settings.ions)
+                .unwrap_or_else(|| "-".to_string());
+            let formation = corrected_formation_values(record, references, memo, &settings.concs);
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["name", "elcorr", "hcorr", "stcorr", "gcorr"])
+    print_formation_table(
+        &rows,
+        settings.unit,
+        &["name", "elcorr", "hcorr", "stcorr", "gcorr"],
+    )
 }
 
 /// The shared section table: a header row, then one `name el h st
@@ -1004,48 +1193,52 @@ pub fn corrected_ensemble_formation_values(
 
 /// The collapsed raw section (Boltzmann-Averaged Sections): header
 /// `name el h st g`, one row per ensemble in the given order, `-` for
-/// undefined values and for the unnamed ensemble's token.
+/// undefined values and for the unnamed ensemble's token, the `name` cell
+/// following the ACDC token rule for the ensemble's components.
 ///
 /// (rq-30ea9ebc)
 pub fn print_formation_ensembles(
     ensembles: &[Ensemble],
     references: &MonomerReferences,
     memo: &ThermoMemo,
-    unit: Unit,
-    concs: &ConcConditions,
+    settings: &FormationSettings,
 ) -> String {
     let rows: Vec<(String, Formation)> = ensembles
         .iter()
         .map(|ensemble| {
-            let token =
-                composition_token(ensemble.components.as_ref()).unwrap_or_else(|| "-".to_string());
-            let formation = ensemble_formation_values(ensemble, references, memo, concs);
+            let token = acdc_composition_token(ensemble.components.as_ref(), &settings.ions)
+                .unwrap_or_else(|| "-".to_string());
+            let formation = ensemble_formation_values(ensemble, references, memo, &settings.concs);
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["name", "el", "h", "st", "g"])
+    print_formation_table(&rows, settings.unit, &["name", "el", "h", "st", "g"])
 }
 
 /// The collapsed corrected section (Boltzmann-Averaged Sections): the
 /// collapsed raw section's table with the corrected levels — header
-/// `name elcorr hcorr stcorr gcorr`.
+/// `name elcorr hcorr stcorr gcorr`, with the same `name` cell rule.
 ///
 /// (rq-4c1bcb87)
 pub fn print_formation_corr_ensembles(
     ensembles: &[Ensemble],
     references: &CorrectedMonomerReferences,
     memo: &ThermoMemo,
-    unit: Unit,
-    concs: &ConcConditions,
+    settings: &FormationSettings,
 ) -> String {
     let rows: Vec<(String, Formation)> = ensembles
         .iter()
         .map(|ensemble| {
-            let token =
-                composition_token(ensemble.components.as_ref()).unwrap_or_else(|| "-".to_string());
-            let formation = corrected_ensemble_formation_values(ensemble, references, memo, concs);
+            let token = acdc_composition_token(ensemble.components.as_ref(), &settings.ions)
+                .unwrap_or_else(|| "-".to_string());
+            let formation =
+                corrected_ensemble_formation_values(ensemble, references, memo, &settings.concs);
             (token, formation)
         })
         .collect();
-    print_formation_table(&rows, unit, &["name", "elcorr", "hcorr", "stcorr", "gcorr"])
+    print_formation_table(
+        &rows,
+        settings.unit,
+        &["name", "elcorr", "hcorr", "stcorr", "gcorr"],
+    )
 }

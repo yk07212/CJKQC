@@ -12,9 +12,10 @@ logic never re-parses names (`rqm/ARCHITECTURE.md`, hybrid model).
 Component codes are arbitrary letter tokens with significant case. CJKQC
 holds no table of codes: a code is chemistry to the user, and the
 code-to-substance mapping is the concern of later features (monomer
-references, `rqm/ARCHITECTURE.md`). Resolution therefore only ever produces
-counts per code. Charge and multiplicity never come from the name: they
-arrive from the parser or the record itself.
+references and the explicit ionic ACDC declarations of
+`rqm/formation.md`, `rqm/ARCHITECTURE.md`). Resolution therefore only ever
+produces counts per code. Charge and multiplicity never come from the name:
+they arrive from the parser or the record itself.
 
 ## Filename Grammar <!-- rq-8e661b0d -->
 

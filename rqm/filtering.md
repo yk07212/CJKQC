@@ -284,7 +284,13 @@ disable it.
   `natoms`, and the frequency counts print as plain integers.
   `components` prints as `2am+3sa`-style alphabetical pairs; `name` as
   the same alphabetical pairs with the `+` separators dropped (`2am3sa`),
-  undefined when the record has no components or an empty map. `filename`
+  undefined when the record has no components or an empty map. Under
+  `--ion CODE TOKEN` (`rqm/formation.md` Ionic References) the `name`
+  cell prints the ACDC token instead: each declared ion code contributes
+  its TOKEN's neutral pairs times the code's count, followed by the
+  removed-proton `H` and added-proton `P` totals, so `1iam` prints as
+  `1am1P`. `--components`, `--filename`, extract queries, grouping, and
+  stored records keep the raw codes. `filename`
   prints the record's `name` — the stem of the source file name
   (`rqm/record.md`); `path` prints the record's `source_path`
   (`rqm/record.md`) verbatim. An
@@ -848,6 +854,13 @@ Feature: Filtering, sorting, and printing
     Given a database with one ok record without components
     When CJKQC is invoked with the database and "--name" and no --out
     Then the name column prints -
+
+  @rq-224ec53a
+  Scenario: The name column prints the ACDC token under --ion
+    Given a database with one ok record with components iam = 1
+    When CJKQC is invoked with the database, "--name --ion iam 1am1P" and no --out
+    Then the name column prints 1am1P
+    And the components column still prints 1iam
 
   @rq-c0c700b2
   Scenario: The filename column prints the record's name

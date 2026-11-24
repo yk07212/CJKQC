@@ -14,6 +14,7 @@ pub mod extrapolate;
 pub mod filter;
 pub mod formation;
 pub mod hydration;
+pub mod ions;
 pub mod metrics;
 pub mod movie;
 pub mod overwrite;
@@ -75,12 +76,20 @@ pub use thermo::{
 
 // rq-f8ebbc84 formation surface (rqm/formation.md)
 pub use formation::{
-    collapse_ensembles, collect_monomers, concentration_correction, corrected_collapse_ensembles,
+    acdc_corrected_monomer_references, acdc_monomer_references, collapse_ensembles,
+    collect_monomers, concentration_correction, corrected_collapse_ensembles,
     corrected_ensemble_formation_values, corrected_ensemble_references, corrected_formation_values,
     corrected_monomer_references, ensemble_formation_values, ensemble_references, formation_values,
     parse_conc_value, print_formation_corr_ensembles, print_formation_corr_section,
-    print_formation_ensembles, print_formation_section, ConcConditions, ConcSpec, ConcUnit,
-    CorrectedMonomerReferences, Ensemble, Formation, MonomerReferences,
+    print_formation_ensembles, print_formation_section, validate_ion_references, ConcConditions,
+    ConcSpec, ConcUnit, CorrectedMonomerReferences, Ensemble, Formation, FormationSettings,
+    IonReferenceError, MonomerReferences,
+};
+
+// rq-2ea9b81f ion TOKEN declarations and ACDC display layer (rqm/formation.md)
+pub use ions::{
+    acdc_composition_token, parse_acdc_token, validate_ion_declarations, IonDeclarationError,
+    IonDeclarations, IonSpec, IonToken, IonTokenError, ProtonKind,
 };
 
 // rq-9e28654c population surface (rqm/population.md)

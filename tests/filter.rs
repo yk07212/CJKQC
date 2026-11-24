@@ -632,6 +632,7 @@ fn energy_columns_print_kcal_mol_under_unit() {
         &ThermoMemo::default(),
         Unit::Kcal,
         Grouping::Composition,
+        &compiled_jkqc::IonDeclarations::default(),
     );
     let thermo = thermochemistry(&record, &default_conditions()).unwrap();
     let per_hartree = compiled_jkqc::KCAL_MOL_PER_HARTREE;

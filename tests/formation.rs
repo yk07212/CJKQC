@@ -4,7 +4,8 @@
 
 use compiled_jkqc::filter::{SortKey, Unit};
 use compiled_jkqc::formation::{
-    collect_monomers, formation_values, ConcConditions, Formation, MonomerReferences,
+    collect_monomers, formation_values, ConcConditions, Formation, FormationSettings,
+    MonomerReferences,
 };
 use compiled_jkqc::thermo::{thermochemistry, ThermoConditions, ThermoMemo};
 use compiled_jkqc::{Components, Geometry, Record, RecordStatus};
@@ -467,15 +468,19 @@ fn the_corrected_section_prints_in_the_runs_unit() {
         std::slice::from_ref(&cluster),
         &references,
         &memo(),
-        Unit::Au,
-        &ConcConditions::default(),
+        &FormationSettings {
+            unit: Unit::Au,
+            ..FormationSettings::default()
+        },
     );
     let kcal = print_formation_corr_section(
         std::slice::from_ref(&cluster),
         &references,
         &memo(),
-        Unit::Kcal,
-        &ConcConditions::default(),
+        &FormationSettings {
+            unit: Unit::Kcal,
+            ..FormationSettings::default()
+        },
     );
     // The corrected formation energy is -167.5 - 2*(-76.5) = -14.5 Eh.
     let expected = -14.5 * KCAL_MOL_PER_HARTREE;
@@ -980,8 +985,7 @@ fn monomer_rows_print_exactly_zero() {
         &ensembles,
         &references,
         &memo,
-        Unit::Au,
-        &ConcConditions::default(),
+        &FormationSettings::default(),
     );
     let row = section
         .lines()
@@ -1232,4 +1236,234 @@ fn the_collapse_preserves_first_appearance_order() {
             components(&[("sa", 1)]),
         ]
     );
+}
+
+// --- Ionic references (rqm/formation.md Ionic References) ---
+
+use compiled_jkqc::formation::{
+    acdc_corrected_monomer_references, acdc_monomer_references, CorrectedMonomerReferences,
+};
+use compiled_jkqc::ions::{
+    acdc_composition_token, parse_acdc_token, validate_ion_declarations, IonDeclarationError,
+    IonDeclarations, IonSpec, ProtonKind,
+};
+
+fn ion_declarations(pairs: &[(&str, &str)]) -> IonDeclarations {
+    IonDeclarations {
+        specs: pairs
+            .iter()
+            .map(|(code, token)| IonSpec {
+                code: (*code).to_string(),
+                token: parse_acdc_token(token).expect("test token parses"),
+            })
+            .collect(),
+    }
+}
+
+fn electronic_references(pairs: &[(&str, f64)]) -> MonomerReferences {
+    let mut references = MonomerReferences::default();
+    for (code, value) in pairs {
+        references.electronic.insert((*code).to_string(), *value);
+    }
+    references
+}
+
+#[test] // rq-1560f041
+fn an_ion_token_parses_into_neutral_molecules_and_added_protons() {
+    let token = parse_acdc_token("1am1P").expect("token parses");
+    assert_eq!(token.neutral, components(&[("am", 1)]));
+    assert_eq!(token.protons, 1);
+    assert_eq!(token.kind, ProtonKind::Added);
+}
+
+#[test] // rq-32cc4472
+fn an_ion_token_parses_removed_protons() {
+    let token = parse_acdc_token("2sa2H").expect("token parses");
+    assert_eq!(token.neutral, components(&[("sa", 2)]));
+    assert_eq!(token.protons, 2);
+    assert_eq!(token.kind, ProtonKind::Removed);
+}
+
+#[test] // rq-6bccfd36
+fn a_bare_proton_token_is_valid() {
+    let token = parse_acdc_token("1P").expect("token parses");
+    assert!(token.neutral.is_empty());
+    assert_eq!(token.protons, 1);
+    assert_eq!(token.kind, ProtonKind::Added);
+}
+
+#[test] // rq-b2a7d478
+fn a_token_without_a_proton_marker_is_invalid() {
+    assert!(parse_acdc_token("1sa2").is_err());
+}
+
+#[test] // rq-5b7a95ea
+fn a_token_mixing_p_and_h_is_invalid() {
+    assert!(parse_acdc_token("1sa1H1P").is_err());
+}
+
+#[test] // rq-3a4da0c5
+fn a_token_with_a_hyphenated_label_is_invalid() {
+    assert!(parse_acdc_token("1sa1H-1conf").is_err());
+}
+
+#[test] // rq-35eab7ec
+fn the_acdc_token_multiplies_the_ion_count() {
+    let ions = ion_declarations(&[("isa", "1sa1H")]);
+    assert_eq!(
+        acdc_composition_token(Some(&components(&[("isa", 2)])), &ions),
+        Some("2sa2H".to_string())
+    );
+}
+
+#[test] // rq-8cfefe27
+fn the_acdc_token_combines_an_ion_with_explicit_neutral_parents() {
+    let ions = ion_declarations(&[("isa", "1sa1H")]);
+    assert_eq!(
+        acdc_composition_token(Some(&components(&[("isa", 1), ("sa", 1)])), &ions),
+        Some("2sa1H".to_string())
+    );
+}
+
+#[test] // rq-77c8e134
+fn undeclared_codes_stay_in_the_acdc_token() {
+    let ions = ion_declarations(&[("iam", "1am1P")]);
+    assert_eq!(
+        acdc_composition_token(Some(&components(&[("iam", 1), ("x", 1)])), &ions),
+        Some("1am1x1P".to_string())
+    );
+}
+
+#[test] // rq-eecbf103
+fn a_lone_ion_code_is_its_own_reference_without_neutral_parents() {
+    let ions = ion_declarations(&[("isa", "1sa1H")]);
+    let references = electronic_references(&[("isa", -100.0)]);
+    let effective = acdc_monomer_references(&references, &ions);
+    assert_eq!(effective.electronic.get("isa"), Some(&-100.0));
+}
+
+#[test] // rq-a8c9d487
+fn the_first_declared_positive_ion_is_the_zero_point() {
+    let ions = ion_declarations(&[("iam", "1am1P"), ("idma", "1dma1P")]);
+    let references = electronic_references(&[
+        ("am", -50.0),
+        ("dma", -40.0),
+        ("iam", -49.5),
+        ("idma", -39.0),
+    ]);
+    let effective = acdc_monomer_references(&references, &ions);
+    // mu = ref(iam) - ref(am) = 0.5; eff(idma) = ref(dma) + 0.5.
+    assert_eq!(effective.electronic.get("iam"), Some(&-49.5));
+    assert_eq!(effective.electronic.get("idma"), Some(&-39.5));
+    let cluster = Record {
+        electronic_energy: Some(-39.0),
+        components: Some(components(&[("idma", 1)])),
+        ..Record::default()
+    };
+    let formation = formation_values(&cluster, &effective, &memo(), &ConcConditions::default());
+    assert_eq!(formation.electronic, Some(0.5));
+}
+
+#[test] // rq-38ba7c86
+fn declaration_order_not_sort_chooses_the_zero_point() {
+    let ions = ion_declarations(&[("idma", "1dma1P"), ("iam", "1am1P")]);
+    let references = electronic_references(&[
+        ("am", -50.0),
+        ("dma", -40.0),
+        ("iam", -49.5),
+        ("idma", -39.0),
+    ]);
+    let effective = acdc_monomer_references(&references, &ions);
+    // mu = ref(idma) - ref(dma) = 1.0; eff(iam) = ref(am) + 1.0.
+    assert_eq!(effective.electronic.get("idma"), Some(&-39.0));
+    assert_eq!(effective.electronic.get("iam"), Some(&-49.0));
+}
+
+#[test] // rq-45390ea2
+fn a_missing_neutral_parent_leaves_non_reference_ions_undefined() {
+    let ions = ion_declarations(&[("iam", "1am1P"), ("idma", "1dma1P")]);
+    // No am reference, so mu is undefined; the reference ion keeps its own
+    // reference and the other ion loses its scale.
+    let references = electronic_references(&[("dma", -40.0), ("iam", -49.5), ("idma", -39.0)]);
+    let effective = acdc_monomer_references(&references, &ions);
+    assert_eq!(effective.electronic.get("iam"), Some(&-49.5));
+    assert!(!effective.electronic.contains_key("idma"));
+}
+
+#[test] // rq-33f96f23
+fn multiply_charged_ions_scale_the_reference_potential() {
+    let ions = ion_declarations(&[("isa", "1sa1H"), ("iisa", "1sa2H")]);
+    let references = electronic_references(&[("sa", -90.0), ("isa", -100.0), ("iisa", -108.0)]);
+    let effective = acdc_monomer_references(&references, &ions);
+    // mu = ref(isa) - ref(sa) = -10; eff(iisa) = ref(sa) + 2*mu = -110.
+    assert_eq!(effective.electronic.get("iisa"), Some(&-110.0));
+    let cluster = Record {
+        electronic_energy: Some(-108.0),
+        components: Some(components(&[("iisa", 1)])),
+        ..Record::default()
+    };
+    let formation = formation_values(&cluster, &effective, &memo(), &ConcConditions::default());
+    assert_eq!(formation.electronic, Some(2.0));
+}
+
+#[test] // rq-0f165990
+fn a_duplicate_ion_code_is_rejected() {
+    let ions = ion_declarations(&[("iam", "1am1P"), ("iam", "1am1P")]);
+    assert_eq!(
+        validate_ion_declarations(&ions),
+        Err(IonDeclarationError::DuplicateCode {
+            code: "iam".to_string()
+        })
+    );
+}
+
+#[test] // rq-a91db93c
+fn a_token_whose_neutral_part_names_a_declared_ion_is_rejected() {
+    let ions = ion_declarations(&[("iam", "1am1P"), ("x", "1iam1P")]);
+    assert_eq!(
+        validate_ion_declarations(&ions),
+        Err(IonDeclarationError::NeutralCodeIsIon {
+            code: "iam".to_string()
+        })
+    );
+}
+
+#[test] // rq-eb7da353
+fn bare_proton_references_use_the_proton_monomer_directly() {
+    // The reference token 1P has no neutral parent, so mu is its own
+    // reference and the other ion reads its neutral parent plus mu.
+    let ions = ion_declarations(&[("p", "1P"), ("iam", "1am1P")]);
+    let references = electronic_references(&[("p", -1.0), ("am", -50.0), ("iam", -49.5)]);
+    let effective = acdc_monomer_references(&references, &ions);
+    assert_eq!(effective.electronic.get("p"), Some(&-1.0));
+    assert_eq!(effective.electronic.get("iam"), Some(&-51.0));
+    let cluster = Record {
+        electronic_energy: Some(-49.5),
+        components: Some(components(&[("iam", 1)])),
+        ..Record::default()
+    };
+    let formation = formation_values(&cluster, &effective, &memo(), &ConcConditions::default());
+    assert_eq!(formation.electronic, Some(1.5));
+}
+
+fn corrected_electronic_references(pairs: &[(&str, f64)]) -> CorrectedMonomerReferences {
+    let mut references = CorrectedMonomerReferences::default();
+    for (code, value) in pairs {
+        references.electronic.insert((*code).to_string(), *value);
+    }
+    references
+}
+
+#[test] // rq-aef2862b
+fn the_corrected_reference_transform_reads_a_multi_ion_polarity() {
+    let ions = ion_declarations(&[("iam", "1am1P"), ("idma", "1dma1P")]);
+    let references = corrected_electronic_references(&[
+        ("am", -50.0),
+        ("dma", -40.0),
+        ("iam", -49.5),
+        ("idma", -39.0),
+    ]);
+    let effective = acdc_corrected_monomer_references(&references, &ions);
+    assert_eq!(effective.electronic.get("iam"), Some(&-49.5));
+    assert_eq!(effective.electronic.get("idma"), Some(&-39.5));
 }

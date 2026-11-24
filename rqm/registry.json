@@ -243,6 +243,14 @@
     "title": "Undefined levels print as dashes",
     "type": "scenario"
   },
+  "rq-049bc8a0": {
+    "decl": "### Definedness and Validation",
+    "file": "formation",
+    "level": 3,
+    "refs": [],
+    "title": "Definedness and Validation",
+    "type": "section"
+  },
   "rq-04a56097": {
     "decl": "Scenario: The corrected thermochemistry equals the correction energy plus the raw thermal correction",
     "file": "correction",
@@ -318,6 +326,18 @@
     "refs": [],
     "title": "Gherkin Scenarios",
     "type": "section"
+  },
+  "rq-06569a42": {
+    "decl": "- `ProtonKind` — the polarity of an ion token: `Added` for the `P`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "ProtonKind",
+    "type": "api-item"
   },
   "rq-06bb80f9": {
     "decl": "Scenario: Align-within forms subgroups after the uniq survivors",
@@ -792,6 +812,22 @@
     "title": "Feature API",
     "type": "section"
   },
+  "rq-0f165990": {
+    "decl": "Scenario: A duplicate --ion code is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A duplicate --ion code is a usage error",
+    "type": "scenario"
+  },
   "rq-0f1c73be": {
     "decl": "Scenario: A failed record still gains its composition",
     "file": "composition",
@@ -890,6 +926,18 @@
     ],
     "title": "The combined form attaches a cbs-cps correction",
     "type": "scenario"
+  },
+  "rq-0fd47d97": {
+    "decl": "- `parse_acdc_token(text: &str) -> Result<IonToken, IonTokenError>` —",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "parse_acdc_token",
+    "type": "api-item"
   },
   "rq-1014452e": {
     "decl": "Scenario: The rsn column is undefined without a rotational symmetry number",
@@ -1156,6 +1204,18 @@
       }
     ],
     "title": "A half-paired combined form is a usage error",
+    "type": "scenario"
+  },
+  "rq-1560f041": {
+    "decl": "Scenario: An ion token parses into neutral molecules and added protons",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An ion token parses into neutral molecules and added protons",
     "type": "scenario"
   },
   "rq-15621246": {
@@ -2093,6 +2153,18 @@
     "title": "Feature: Geometric Metrics and Property Uniqueness",
     "type": "file"
   },
+  "rq-224ec53a": {
+    "decl": "Scenario: The name column prints the ACDC token under --ion",
+    "file": "filtering",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The name column prints the ACDC token under --ion",
+    "type": "scenario"
+  },
   "rq-22bb815b": {
     "decl": "### Functions",
     "file": "population",
@@ -2826,6 +2898,18 @@
     "title": "FilterError",
     "type": "api-item"
   },
+  "rq-2c95cff0": {
+    "decl": "- `FormationSettings` — the run's formation presentation settings:",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "FormationSettings",
+    "type": "api-item"
+  },
   "rq-2cc9076e": {
     "decl": "- `load_database(path: &Path) -> Result<LoadOutcome, DbError>`",
     "file": "database",
@@ -2965,6 +3049,27 @@
     "title": "Out of Scope",
     "type": "section"
   },
+  "rq-2ea9b81f": {
+    "decl": "## Ionic References (ACDC)",
+    "file": "formation",
+    "level": 2,
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/lib.rs",
+        "kind": "code"
+      },
+      {
+        "file": "src/main.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Ionic References (ACDC)",
+    "type": "section"
+  },
   "rq-2ec4e6d2": {
     "decl": "- `polarizability` — the nine values of the raw Cartesian tensor in the",
     "file": "parsers/orca",
@@ -3078,7 +3183,7 @@
     "type": "scenario"
   },
   "rq-30ea9ebc": {
-    "decl": "- `print_formation_ensembles(ensembles: &[Ensemble], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
+    "decl": "- `print_formation_ensembles(ensembles: &[Ensemble], references: &MonomerReferences, memo: &ThermoMemo, settings: &FormationSettings) -> String`",
     "file": "formation",
     "refs": [
       {
@@ -3226,6 +3331,18 @@
     "title": "Under noname, extract accepts names outside the composition grammar",
     "type": "scenario"
   },
+  "rq-32cc4472": {
+    "decl": "Scenario: An ion token parses removed protons",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "An ion token parses removed protons",
+    "type": "scenario"
+  },
   "rq-32f97fe7": {
     "decl": "## Gherkin Scenarios",
     "file": "parsers/orca",
@@ -3360,6 +3477,18 @@
       }
     ],
     "title": "A record without an electronic energy prints - at every level",
+    "type": "scenario"
+  },
+  "rq-33f96f23": {
+    "decl": "Scenario: Multiply charged ions scale the reference potential",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Multiply charged ions scale the reference potential",
     "type": "scenario"
   },
   "rq-340e4add": {
@@ -3518,6 +3647,18 @@
     "title": "Bases and Flags",
     "type": "section"
   },
+  "rq-35eab7ec": {
+    "decl": "Scenario: The ACDC token multiplies the ion count",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The ACDC token multiplies the ion count",
+    "type": "scenario"
+  },
   "rq-35f562fe": {
     "decl": "### Extraction",
     "file": "parsers/gaussian",
@@ -3646,6 +3787,22 @@
     "title": "Column",
     "type": "api-item"
   },
+  "rq-38ba7c86": {
+    "decl": "Scenario: Declaration order, not sort, chooses the zero point",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Declaration order, not sort, chooses the zero point",
+    "type": "scenario"
+  },
   "rq-39641660": {
     "decl": "Scenario: The corrected section evaluates the attached corrections",
     "file": "formation",
@@ -3737,6 +3894,18 @@
     ],
     "title": "MergeOutcome",
     "type": "api-item"
+  },
+  "rq-3a4da0c5": {
+    "decl": "Scenario: A token with a hyphenated label is invalid",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A token with a hyphenated label is invalid",
+    "type": "scenario"
   },
   "rq-3a687494": {
     "decl": "## Out of Scope",
@@ -4379,6 +4548,18 @@
     "title": "Types",
     "type": "section"
   },
+  "rq-45390ea2": {
+    "decl": "Scenario: A missing neutral parent leaves non-reference ions undefined",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing neutral parent leaves non-reference ions undefined",
+    "type": "scenario"
+  },
   "rq-4555c02d": {
     "decl": "# Feature: Reacted / Exploded Structure Detection",
     "file": "detection",
@@ -4694,7 +4875,7 @@
     "type": "scenario"
   },
   "rq-4c1bcb87": {
-    "decl": "- `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
+    "decl": "- `print_formation_corr_ensembles(ensembles: &[Ensemble], references: &CorrectedMonomerReferences, memo: &ThermoMemo, settings: &FormationSettings) -> String`",
     "file": "formation",
     "refs": [
       {
@@ -4927,7 +5108,7 @@
     "type": "api-item"
   },
   "rq-4f20e170": {
-    "decl": "- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
+    "decl": "- `print_formation_corr_section(records: &[Record], references: &CorrectedMonomerReferences, memo: &ThermoMemo, settings: &FormationSettings) -> String`",
     "file": "formation",
     "refs": [
       {
@@ -5633,6 +5814,18 @@
     "title": "Duplicate names abort before the --out database is written",
     "type": "scenario"
   },
+  "rq-5b7a95ea": {
+    "decl": "Scenario: A token mixing P and H is invalid",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A token mixing P and H is invalid",
+    "type": "scenario"
+  },
   "rq-5b9c015a": {
     "decl": "Scenario: The ASCII-art banner is detected",
     "file": "parsers/orca",
@@ -5808,6 +6001,18 @@
       }
     ],
     "title": "The corpus fixture conforms",
+    "type": "scenario"
+  },
+  "rq-5ef9c329": {
+    "decl": "Scenario: --ion alone is not a visible outcome",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--ion alone is not a visible outcome",
     "type": "scenario"
   },
   "rq-5f31c98f": {
@@ -6236,6 +6441,18 @@
     "title": "Gherkin Scenarios",
     "type": "section"
   },
+  "rq-6731c06b": {
+    "decl": "- `IonDeclarationError` — why a declaration set is invalid: a duplicate",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "IonDeclarationError",
+    "type": "api-item"
+  },
   "rq-6771a995": {
     "decl": "Scenario: Undefined states print dashes in their columns",
     "file": "hydration",
@@ -6274,6 +6491,18 @@
       }
     ],
     "title": "rename_component",
+    "type": "api-item"
+  },
+  "rq-6873e99b": {
+    "decl": "- `validate_ion_declarations(ions: &IonDeclarations) -> Result<(), IonDeclarationError>`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate_ion_declarations",
     "type": "api-item"
   },
   "rq-68850338": {
@@ -6423,6 +6652,18 @@
     ],
     "title": "HydrationState",
     "type": "api-item"
+  },
+  "rq-6bccfd36": {
+    "decl": "Scenario: A bare proton token is valid",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A bare proton token is valid",
+    "type": "scenario"
   },
   "rq-6bf96b51": {
     "decl": "## Gherkin Scenarios",
@@ -7178,6 +7419,18 @@
     "title": "A line with invalid UTF-8 is skipped and reported",
     "type": "scenario"
   },
+  "rq-77c8e134": {
+    "decl": "Scenario: Undeclared codes stay in the ACDC token",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "Undeclared codes stay in the ACDC token",
+    "type": "scenario"
+  },
   "rq-77d0cf6c": {
     "decl": "Scenario: A relative energy window is per composition group",
     "file": "filtering",
@@ -7797,6 +8050,18 @@
     "title": "validate rejects a component count below one",
     "type": "scenario"
   },
+  "rq-81af40f0": {
+    "decl": "- `IonToken` — a parsed TOKEN: `neutral: Components` (the non-marker",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "IonToken",
+    "type": "api-item"
+  },
   "rq-8209f22b": {
     "decl": "Scenario: A plain xyz head that names a program in its comment stays xyz",
     "file": "parser-framework",
@@ -7868,6 +8133,18 @@
     ],
     "title": "a structural walk performs no allocation",
     "type": "scenario"
+  },
+  "rq-836b1614": {
+    "decl": "- `IonTokenError` — why a TOKEN is invalid: an empty TOKEN, a bad or",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "IonTokenError",
+    "type": "api-item"
   },
   "rq-83c62ce0": {
     "decl": "### Crate Layout",
@@ -7966,6 +8243,18 @@
     ],
     "title": "Short version flag behaves like --version",
     "type": "scenario"
+  },
+  "rq-8449c2a1": {
+    "decl": "- `validate_ion_references(ions: &IonDeclarations, records: &[Record]) -> Result<(), IonReferenceError>`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "validate_ion_references",
+    "type": "api-item"
   },
   "rq-8472dc37": {
     "decl": "## Uniqueness Model",
@@ -8468,6 +8757,18 @@
     "title": "The registry exposes the corrected keys",
     "type": "scenario"
   },
+  "rq-8cfefe27": {
+    "decl": "Scenario: The ACDC token combines an ion with explicit neutral parents",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The ACDC token combines an ion with explicit neutral parents",
+    "type": "scenario"
+  },
   "rq-8d91e753": {
     "decl": "- `geometry` — the table under the last `CARTESIAN COORDINATES",
     "file": "parsers/orca",
@@ -8575,6 +8876,18 @@
       }
     ],
     "title": "2s attaches a cps correction",
+    "type": "scenario"
+  },
+  "rq-8f47a00f": {
+    "decl": "Scenario: --bavg with --ion uses the ensemble references",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--bavg with --ion uses the ensemble references",
     "type": "scenario"
   },
   "rq-8f6da1c2": {
@@ -8949,7 +9262,7 @@
     "type": "scenario"
   },
   "rq-9503bcb2": {
-    "decl": "- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, unit: Unit, concs: &ConcConditions) -> String`",
+    "decl": "- `print_formation_section(records: &[Record], references: &MonomerReferences, memo: &ThermoMemo, settings: &FormationSettings) -> String`",
     "file": "formation",
     "refs": [
       {
@@ -9348,6 +9661,18 @@
     "title": "--makereal prints the saddle point's thermochemistry",
     "type": "scenario"
   },
+  "rq-9a671beb": {
+    "decl": "Scenario: --ion with a hydration flag is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--ion with a hydration flag is a usage error",
+    "type": "scenario"
+  },
   "rq-9a96e81c": {
     "decl": "### Crate Layout",
     "file": "record",
@@ -9621,6 +9946,18 @@
       }
     ],
     "title": "Undefined thermochemistry prints as a dash",
+    "type": "scenario"
+  },
+  "rq-9df91500": {
+    "decl": "Scenario: A missing reference ion monomer is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A missing reference ion monomer is a usage error",
     "type": "scenario"
   },
   "rq-9e0e3300": {
@@ -10067,6 +10404,18 @@
     "title": "A non-finite result leaves the record uncovered",
     "type": "scenario"
   },
+  "rq-a5b9c56a": {
+    "decl": "Scenario: --ion with only --name does not require a reference monomer",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--ion with only --name does not require a reference monomer",
+    "type": "scenario"
+  },
   "rq-a5c79f09": {
     "decl": "Scenario: A seam-cut eigval block is stored truncated",
     "file": "parsers/xtb",
@@ -10245,6 +10594,22 @@
     "title": "align-within parse errors name the align-within flag",
     "type": "scenario"
   },
+  "rq-a8c9d487": {
+    "decl": "Scenario: The first declared positive ion is the zero point",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The first declared positive ion is the zero point",
+    "type": "scenario"
+  },
   "rq-a8f483c7": {
     "decl": "Scenario: The corrected columns sit in canonical order",
     "file": "filtering",
@@ -10255,6 +10620,22 @@
       }
     ],
     "title": "The corrected columns sit in canonical order",
+    "type": "scenario"
+  },
+  "rq-a91db93c": {
+    "decl": "Scenario: A token whose neutral part names a declared ion code is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A token whose neutral part names a declared ion code is a usage error",
     "type": "scenario"
   },
   "rq-a921051d": {
@@ -10501,6 +10882,18 @@
     "title": "The caret power syntax is not part of the grammar",
     "type": "scenario"
   },
+  "rq-ae446bcb": {
+    "decl": "- `acdc_monomer_references(references: &MonomerReferences, ions: &IonDeclarations) -> MonomerReferences`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "acdc_monomer_references",
+    "type": "api-item"
+  },
   "rq-ae4f8a69": {
     "decl": "Scenario: Ties share the population",
     "file": "population",
@@ -10560,6 +10953,22 @@
     ],
     "title": "A symbol table in Ångström parses to a Geometry",
     "type": "scenario"
+  },
+  "rq-aef2862b": {
+    "decl": "- `acdc_corrected_monomer_references(references: &CorrectedMonomerReferences, ions: &IonDeclarations) -> CorrectedMonomerReferences`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      },
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "acdc_corrected_monomer_references",
+    "type": "api-item"
   },
   "rq-af106fa7": {
     "decl": "Scenario: The new print columns follow canonical order",
@@ -10800,6 +11209,18 @@
     ],
     "title": "ParserRegistry",
     "type": "api-item"
+  },
+  "rq-b2a7d478": {
+    "decl": "Scenario: A token without a proton marker is invalid",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A token without a proton marker is invalid",
+    "type": "scenario"
   },
   "rq-b2af2117": {
     "decl": "- `command` — from the echoed `Input file:` deck: the keyword lines from",
@@ -11224,6 +11645,18 @@
     "title": "charge",
     "type": "api-item"
   },
+  "rq-b879564f": {
+    "decl": "- `IonReferenceError` — the polarity and code of a reference ion with no",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "IonReferenceError",
+    "type": "api-item"
+  },
   "rq-b8a74911": {
     "decl": "Scenario: Arbalign removes records before glob chooses a minimum",
     "file": "arbalign",
@@ -11436,6 +11869,14 @@
     "title": "arbalign_rmsd",
     "type": "api-item"
   },
+  "rq-bbeba344": {
+    "decl": "### Ion Tokens",
+    "file": "formation",
+    "level": 3,
+    "refs": [],
+    "title": "Ion Tokens",
+    "type": "section"
+  },
   "rq-bbf4e72d": {
     "decl": "Scenario: A component without a spec stays at the standard state",
     "file": "formation",
@@ -11607,6 +12048,18 @@
       }
     ],
     "title": "A run cut mid-flight is truncated",
+    "type": "scenario"
+  },
+  "rq-be4cce98": {
+    "decl": "Scenario: --name prints the ACDC token of a declared ion",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--name prints the ACDC token of a declared ion",
     "type": "scenario"
   },
   "rq-be59d52a": {
@@ -11861,6 +12314,26 @@
     ],
     "title": "The dips column prints the dipole vector components",
     "type": "scenario"
+  },
+  "rq-c14f5748": {
+    "decl": "### ACDC Names",
+    "file": "formation",
+    "level": 3,
+    "refs": [],
+    "title": "ACDC Names",
+    "type": "section"
+  },
+  "rq-c19ab727": {
+    "decl": "- `acdc_composition_token(components: Option<&Components>, ions: &IonDeclarations) -> Option<String>`",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "acdc_composition_token",
+    "type": "api-item"
   },
   "rq-c2963543": {
     "decl": "Scenario: A leading imaginary mode survives the trivial-mode drop",
@@ -12321,6 +12794,18 @@
     "title": "Undefined thermochemistry stays undefined under --conc",
     "type": "scenario"
   },
+  "rq-c993d09a": {
+    "decl": "- `IonDeclarations` — the run's ion settings in command order:",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "IonDeclarations",
+    "type": "api-item"
+  },
   "rq-ca0185f6": {
     "decl": "Scenario: Undefined metrics are mutually equal",
     "file": "uniqueness",
@@ -12624,6 +13109,18 @@
     "title": "A degenerate geometry prints dashes, not infinities",
     "type": "scenario"
   },
+  "rq-d04d9704": {
+    "decl": "Scenario: --ion with --conc is a usage error",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--ion with --conc is a usage error",
+    "type": "scenario"
+  },
   "rq-d08d83a4": {
     "decl": "Scenario: Align-within never crosses composition groups",
     "file": "arbalign",
@@ -12793,6 +13290,14 @@
     ],
     "title": "A missing solvent count reserves its column",
     "type": "scenario"
+  },
+  "rq-d32961c8": {
+    "decl": "### Reference Ions and Values",
+    "file": "formation",
+    "level": 3,
+    "refs": [],
+    "title": "Reference Ions and Values",
+    "type": "section"
   },
   "rq-d36686ec": {
     "decl": "## Solvent Pressure",
@@ -13081,6 +13586,18 @@
       }
     ],
     "title": "A ppt value is a mole fraction of the standard atmosphere",
+    "type": "scenario"
+  },
+  "rq-d7b92272": {
+    "decl": "Scenario: The corrected ion section uses corrected references",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "The corrected ion section uses corrected references",
     "type": "scenario"
   },
   "rq-d82889ab": {
@@ -13544,6 +14061,18 @@
       }
     ],
     "title": "locate prefers the head for first and the tail for last",
+    "type": "scenario"
+  },
+  "rq-e09d20d7": {
+    "decl": "Scenario: --components keeps the raw ion code",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--components keeps the raw ion code",
     "type": "scenario"
   },
   "rq-e0cba629": {
@@ -14229,7 +14758,12 @@
   "rq-eb7da353": {
     "decl": "- `tests/formation.rs` tests the scan and the values as pure functions",
     "file": "formation",
-    "refs": [],
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
     "title": "tests",
     "type": "api-item"
   },
@@ -14435,6 +14969,18 @@
       }
     ],
     "title": "confirm_overwrite proceeds on yes answers",
+    "type": "scenario"
+  },
+  "rq-eecbf103": {
+    "decl": "Scenario: A lone ion code is its own reference without neutral parents",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/formation.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "A lone ion code is its own reference without neutral parents",
     "type": "scenario"
   },
   "rq-ef146284": {
@@ -14815,6 +15361,18 @@
     ],
     "title": "corrected_ensemble_formation_values",
     "type": "api-item"
+  },
+  "rq-f619cd22": {
+    "decl": "Scenario: --cnt alone with --ion is an accepted no-op",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--cnt alone with --ion is an accepted no-op",
+    "type": "scenario"
   },
   "rq-f61c0532": {
     "decl": "Scenario: Default windows cover every file of the fixture corpus",
@@ -15278,6 +15836,18 @@
     "title": "src",
     "type": "api-item"
   },
+  "rq-fcd56d7e": {
+    "decl": "- `IonSpec` — one `--ion` occurrence: `code: String` and",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "src/ions.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "IonSpec",
+    "type": "api-item"
+  },
   "rq-fcd67083": {
     "decl": "Scenario: 2p attaches a cbs correction",
     "file": "extrapolation",
@@ -15507,6 +16077,18 @@
     ],
     "title": "Components",
     "type": "api-item"
+  },
+  "rq-ffda800e": {
+    "decl": "Scenario: --extract matches the stored ion code, not the ACDC spelling",
+    "file": "formation",
+    "refs": [
+      {
+        "file": "tests/cli.rs",
+        "kind": "code"
+      }
+    ],
+    "title": "--extract matches the stored ion code, not the ACDC spelling",
+    "type": "scenario"
   },
   "rq-ffeb5456": {
     "decl": "Scenario: validate accepts a gradient without a geometry",
