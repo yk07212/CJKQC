@@ -19,6 +19,7 @@
 #   * ABCluster collection (JKCS2_explore) writes collectionABC.jsonl via CJKQC
 #   * ABCluster collection runs in the job scratch directory, not the submit dir
 #   * CREST collection (program_CREST in the user setup) writes JSONL via CJKQC
+#   * a failed CREST run leaves no partial collection behind
 #   * JKCS3_run checks/writes JSONL collections where it used to write PKL
 #   * JKCS3_run extracts JSONL structures on the compute nodes, not the frontend
 #   * hot per-file loops use shell arithmetic instead of forking bc
@@ -33,7 +34,7 @@
 set -euo pipefail
 
 usage() {
-  sed -n '3,29p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,32p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 DRY_RUN=0
@@ -555,6 +556,25 @@ my $new = <<'NEW';
     cp collection${base}.jsonl $DIR/ 2>/dev/null
 NEW
 patch($USERSETUP, $old, $new, 'CREST collection -> collection*.jsonl');
+
+$old = <<'OLD';
+  ${PATH_CREST}/crest calc.xyz $method $args &> $DIR/$output
+OLD
+$new = <<'NEW';
+  # A crashed CREST run can still leave partial conformer files behind; do
+  # not let those become a collection that the next JKCS step would read.
+  if ${PATH_CREST}/crest calc.xyz $method $args &> $DIR/$output
+  then
+    :
+  else
+    crest_status=$?
+    echo "CREST failed (status $crest_status); no collection written. See $DIR/$output." >&2
+    cd "$DIR"
+    rm -rf "$CALC_NAME"
+    return $crest_status
+  fi
+NEW
+patch($USERSETUP, $old, $new, 'CREST failure leaves no partial collection');
 
 $old = 'addexploded=" -cut rg 50"';
 $new = 'addexploded=" --cut rg 50"';
